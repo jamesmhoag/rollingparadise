@@ -1,0 +1,12 @@
+{
+  "name": "rollingparadise",
+  "version": "0.1.0",
+  "description": "Gamble your way to the top",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "test": "node tests/sim.mjs && node tests/ascent.mjs",
+    "balance": "node tests/balance.mjs"
+  }
+}
