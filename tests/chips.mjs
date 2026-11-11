@@ -99,6 +99,67 @@ for (const el of ['corrupt', 'poison', 'boom']) {
   assert(cell.chips.filter((ch) => ch.kind === 'std').length === top && !B.debtOf(cell), `the ${D.SHOP_CHIPS[el].name} stops the hazard before it acts`);
 }
 
+// ---------- Frozen, Lava, Fog ----------
+{
+  const { bout, me } = table({});
+  const spot = B.biddable(me)[0], cell = me.grid[spot.r][spot.c];
+  cell.chips.push({ id: 6e6, kind: 'frozen', value: 0, life: 2 });
+  assert(!B.bidChip(me, spot.r, spot.c) && !B.biddable(me).some((x) => x.r === spot.r && x.c === spot.c), 'a Frozen stack cannot be bid from');
+  drain(ticks(bout)); drain(ticks(bout));
+  assert(!B.frozen(cell), 'Frozen thaws after two turns');
+}
+{
+  const { bout, me } = table({ frozen: 1 });
+  const { cell } = cellsWith(me, 'frozen')[0];
+  cell.chips.push({ id: 6e6 + 1, kind: 'frozen', value: 0, life: 9 }); drain(ticks(bout));
+  assert(!B.frozen(cell), 'an Orange chip thaws its stack');
+}
+{
+  const { bout, me } = table({});
+  const live = me.grid.flatMap((row, r) => row.map((cell, c) => ({ r, c, cell }))).filter((x) => B.solidCount(x.cell) >= 2);
+  const x = live[Math.floor(live.length / 2)], h0 = B.solidCount(x.cell);
+  x.cell.chips.push({ id: 6e6 + 2, kind: 'lava', value: 0, life: 2 });
+  const burnsBefore = me.grid.flat().filter((c) => c.chips.some((ch) => ch.kind === 'burn')).length;
+  drain(ticks(bout));
+  assert(B.solidCount(x.cell) === h0 - 1, 'Lava melts the chip beneath it');
+  assert(me.grid.flat().filter((c) => c.chips.some((ch) => ch.kind === 'burn')).length > burnsBefore, 'Lava spills a Burning chip next door');
+}
+{
+  const { bout, me } = table({ burn: 1 });
+  const { cell } = cellsWith(me, 'burn')[0];
+  cell.chips.push({ id: 6e6 + 3, kind: 'lava', value: 0, life: 2 }); drain(ticks(bout));
+  assert(!cell.chips.some((ch) => ch.kind === 'lava'), 'a Red chip stops Lava');
+}
+{
+  const { bout, me, opp } = table({ fog: 5 });
+  const fogged = cellsWith(me, 'fog').map((x) => x.r + ':' + x.c);
+  const e = { trick: { id: 'scorch', q: 1, up: 0 }, dice: [], state: 'shown' };
+  const aim = B.validTargets(bout, opp, e).filter((v) => v.side === 0).map((v) => v.r + ':' + v.c);
+  assert(fogged.length && !aim.some((k) => fogged.includes(k)), 'an opponent cannot aim at a Fog stack');
+  const self = { trick: { id: 'gild', q: 1, up: 0 }, dice: [], state: 'shown' };
+  assert(B.validTargets(bout, me, self).some((v) => fogged.includes(v.r + ':' + v.c)), 'you can still aim at your own Fog stack');
+}
+
+// ---------- the floor path and prizes ----------
+{
+  const run = R.newRun('hustler', 'standard', 11); R.enterFloor(run, 1);
+  assert(R.tableOpen(run, 0) && !R.tableOpen(run, 1) && !R.tableOpen(run, 2), 'only table 1 is open at first');
+  run.fs.tables[0].beaten = true;
+  assert(R.tableOpen(run, 1) && R.tableOpen(run, 2) && R.tablesLeft(run) === 1, 'table 1 opens tables 2 and 3');
+  run.fs.tables[2].beaten = true;
+  assert(!R.tableOpen(run, 1) && R.tableState(run, 1) === 'passed' && R.tablesLeft(run) === 0, 'beating one of tables 2 and 3 closes the other');
+}
+{
+  const ctx = { opp: { worth: 200 } };
+  assert(R.prizeBonus(ctx) === Math.round(200 * D.PRIZES.bonus), 'the bonus is a share of the opponent\'s worth');
+  const res = { base: 100, winnings: 50, prizes: { dice: [{ type: 'd6' }, { type: 'd8' }], tricks: [{ id: 'charge', q: 1, up: 0 }] } };
+  for (const [choice, extra] of [['die', R.prizeBonus(ctx)], ['dice', 0], ['glean', 0]]) {
+    const run = R.newRun('rascal', 'standard', 2); run.purse = 0; const c2 = { ...ctx, committed: 0, wager: 0 };
+    R.claimPrize(run, c2, res, choice, [0, 1]);
+    assert(run.purse === 150 + extra, `the winnings are kept with the ${choice} prize`);
+  }
+}
+
 // ---------- felts ----------
 for (const [id, F] of Object.entries(D.FELTS)) assert(/^#[0-9a-f]{6}$/i.test(F.a) && /^#[0-9a-f]{6}$/i.test(F.b) && /^#[0-9a-f]{6}$/i.test(F.rim), `${id} felt has colours`);
 assert(D.feltOf('Satin') === D.FELTS.satin && D.feltId('Satin') === 'satin', 'a felt saved by name still resolves');

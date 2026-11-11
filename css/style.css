@@ -396,3 +396,13 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .lib-e.wide { grid-column: span 2; }
 .lib-steps { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; } .lib-steps .arrow { color: var(--dim); }
 .scene.bout .lib-btn { position: absolute; right: 16px; top: 412px; padding: 2px 10px; font-size: 11px; z-index: 4; }
+
+/* ---------- detail level (right-click toggles) ---------- */
+#tooltip:not(.verbose) .v, #tooltip:not(.verbose) p.dim:not(.keep), #tooltip:not(.verbose) .up-line, #tooltip.verbose .c, body.concise .v-only, body:not(.concise) .c-only { display: none !important; }
+#tooltip:not(.verbose) { max-width: 280px; }
+
+/* new hazards and shop chips */
+.k-frozen { --c: #cfeeff; --rim: #ffffff; --edge: #4a8bb0; --fg: #1d5c8a; --bs: solid; --glow: 0 0 9px rgba(160, 225, 255, .9); }
+.k-lava { --c: #3a0d05; --rim: #ff7a1f; --edge: #000; --fg: #ffb36a; --bs: solid; --glow: 0 0 10px rgba(255, 110, 30, .9); animation: flicker .35s infinite alternate; }
+.k-std.r-frozen { --c: #fff1e0; --rim: #ff9f3a; --edge: #7a3f05; --fg: #c96a12; --bs: solid; }
+.k-std.r-fog { --c: #c9cfd8; --rim: #eef2f7; --edge: #5b6378; --fg: #3d4452; --bs: dotted; --glow: 0 0 12px rgba(220, 228, 240, .8); }

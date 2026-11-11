@@ -4,7 +4,7 @@ import * as D from '../data.js';
 import { cents, cap } from '../util.js';
 import { multOf, traitOf } from '../bout.js';
 
-const GLYPH = { opp: '★', block: '▣', counter: '✸', burn: '🔥', acid: '☣', shock: '⚡', corrupt: '☠', poison: '☘', boom: '💣' };
+const GLYPH = { opp: '★', block: '▣', counter: '✸', burn: '🔥', acid: '☣', shock: '⚡', corrupt: '☠', poison: '☘', boom: '💣', frozen: '❄', lava: '🌋' };
 export const chipSig = (ch) => `k-${ch.kind} v${ch.value}${ch.gold ? ' gold' : ''}${ch.resist ? ' r-' + ch.resist : ''}`;
 export const chipGlyph = (ch) => (ch.kind === 'std' ? (ch.resist ? D.SHOP_CHIPS[ch.resist]?.glyph || '◆' : String(ch.value)) : ch.kind === 'debt' ? '−' + ch.value : GLYPH[ch.kind] || '');
 export function chipName(ch) {
@@ -53,14 +53,24 @@ export function trickTip(t, viewerCls, live) {
   const tgt = def.approach === 'none' ? (def.dist === 'rain' ? 'Random stacks of your opponent.' : 'No target needed.')
     : `Targets ${D.APPROACH[def.approach]} in ${def.side === 'self' ? 'your own' : "your opponent's"} position. <b>${D.DIST[def.dist].name}</b>: ${D.DIST[def.dist].text}`;
   return `<div class="tt-trick"><div class="tt-head"><b>${def.name}</b><span class="q">${pips(t)} ${D.QNAME[t.q]}${t.up ? ` · upgraded ${t.up}/2` : ''}</span></div>
-    <div class="tt-type" style="color:${T.color}">${T.name}${def.cls ? ' · ' + D.CLASSES[def.cls].name : ' · Any class'} <span class="dim">— ${T.text}</span></div>
+    <div class="tt-type" style="color:${T.color}">${T.name}${def.cls ? ' · ' + D.CLASSES[def.cls].name : ' · Any class'} <span class="dim v">— ${T.text}</span></div>
     <p><span class="k">Trait</span> Bid a chip: ${T.traitText(mi)}</p>
     <p><span class="k">Roll</span> Bid with up to ${def.count} ${def.die}: ${def.roll.text}</p>
     <p class="${classOk ? '' : 'dim'}"><span class="k">Bonus</span> With ${def.count} ${def.die}${def.count > 1 ? ' dice' : ''}, if ${D.condText(def.bonus.cond)}: ${def.bonus.text}${classOk ? '' : ` <i>(${D.CLASSES[def.cls].name} only)</i>`}</p>
     <p class="dim">${tgt}</p>
-    ${upInfo(t)}<p class="dim">Dice may be loaded over several turns before you bid.</p>${live || ''}</div>`;
+    <div class="v">${upInfo(t)}</div><p class="dim">Dice may be loaded over several turns before you bid.</p>${live || ''}</div>`;
 }
-export function statTip(k, v) { const S = D.STATS[k]; return `<b>${S.name}${v != null ? ' ' + v : ''}</b> <span class="dim">${S.short}</span><p>${S.text}</p>`; }
+export function statTip(k, v) {
+  const S = D.STATS[k];
+  return `<b>${S.name}${v != null ? ' ' + v : ''}</b> <span class="dim">${S.short}</span><p>${S.text}</p>${S.per ? `<p class="dim">Each point: ${S.per(1)}.</p>` : ''}`;
+}
+// What a change to an attribute does, said plainly. `cur`: the value now, if known.
+export function statChange(k, n, cur) {
+  const S = D.STATS[k]; if (!S) return '';
+  const t = S.per(Math.abs(n)), what = n > 0 ? t : t.replace(/\bmore\b/, 'fewer');
+  return `<li><b>${n > 0 ? '+' : ''}${n} ${S.name}</b>${cur != null ? ` <span class="dim">${cur} → ${cur + n}</span>` : ''}<span class="v"> — you ${what}.</span></li>`;
+}
+const changes = (mods, v) => `<ul>${Object.entries(mods || {}).map(([k, n]) => statChange(k, n, v?.[k])).join('')}</ul>`;
 export function statRow(v, keys) {
   return h('div', { class: 'stats' }, keys.map((k) => h('span', { class: 'stat', tip: () => statTip(k, v[k]) }, h('em', { text: D.STATS[k].short }), h('b', { text: v[k] }))));
 }
@@ -69,10 +79,14 @@ export function drinkTip(d) {
   const mods = Object.entries(d.mods).map(([k, n]) => `+${n} ${D.STATS[k].name}`).join(', ');
   return `<b>${d.name}</b> <span class="dim">${d.verb}</span><p>${mods} for one turn per sip. ${d.sips} sip${d.sips === 1 ? '' : 's'}${d.max ? ' left' : ''}. Sip before you act.</p>`;
 }
-export function cardTip(id) { const c = D.CARDS[id]; return `<b>${c.name}</b><p>${c.text}</p>`; }
-export function jacketTip(id) {
-  const J = D.JACKETS[id], mods = Object.entries(J.mods).map(([k, n]) => `${n > 0 ? '+' : ''}${n} ${D.STATS[k].name}`).join(', ') || 'No modifiers';
-  return `<b>${J.name} jacket</b> <span class="dim">${J.effect}</span><p>${mods}</p>`;
+// v: your current attributes (rollerStats(run).v), so a +1 can say what it changes
+export function cardTip(id, v) {
+  const c = D.CARDS[id];
+  return `<b>${c.name}</b>${c.mods ? changes(c.mods, v) : `<p>${c.text}</p>`}${c.mods ? '<p class="dim">Lose the card and you lose this.</p>' : ''}`;
+}
+export function jacketTip(id, v) {
+  const J = D.JACKETS[id];
+  return `<b>${J.name} jacket</b> <span class="dim">${J.effect}</span>${Object.keys(J.mods).length ? changes(J.mods, v) : '<p>No modifiers.</p>'}`;
 }
 
 // ---------- gear visuals ----------

@@ -27,7 +27,7 @@ for (let seed = 1; seed <= 25; seed++) {
   planPhase(bout, opp);
   assert(B.advance(bout) && bout.phase === 'bid', 'Roll closes for both');
   assert(!me.tray.length, 'dice left in the roll go back when rolling closes');
-  assert(B.canPlace(bout, me, e.dice[0].id, e), 'bidding ends moving dice');
+  assert(B.canMove(bout, me, e.dice[0].id), 'dice rolled this turn can still be moved while bidding');
   // Bid: more than one chip on the same trick
   assert(B.needOf(bout, me), 'a bid is required before playing');
   const spots = B.biddable(me);

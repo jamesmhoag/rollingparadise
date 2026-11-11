@@ -37,7 +37,10 @@ function titleScene(root) {
     h('p', { class: 'tagline neon-p', text: 'Gamble your way to the top' }),
     h('div', { class: 'menu' },
       resume ? btn('Continue', () => { app.run = saved; saved.phase === 'ascent' ? nav.ascent() : nav.hub(); }, `<b>Continue</b><p>${D.CLASSES[saved.cls].name}, ${saved.phase === 'ascent' ? 'on the Paradise Ascent' : `floor ${saved.floor}`}, ${cents(saved.purse)} in the purse.</p>`, 'sign-btn') : null,
-      btn('New run', () => nav.select(), resume ? '<b>New run</b><p>Starts over. Your saved run is replaced once the new one reaches the first floor.</p>' : null, resume ? 'sign-btn p' : 'sign-btn'),
+      btn('New run', () => (resume ? openPanel(h('div', { class: 'col' }, h('h2', { text: 'Start a new run?' }),
+        h('p', { text: `You have a run in progress: ${D.CLASSES[saved.cls].name}, ${saved.phase === 'ascent' ? 'on the Paradise Ascent' : `floor ${saved.floor}`}, ${cents(saved.purse)} in the purse.` }),
+        h('p', { class: 'sub', text: 'You can only have one run at a time. Starting a new one ends that run for good.' }),
+        h('div', { class: 'row' }, btn('Keep my run', () => closePanel(), null, 'go'), btn('Start over', () => { R.clearRun(); closePanel(true); nav.select(); }, null, 'danger')))) : nav.select()), resume ? '<b>New run</b><p>You can only have one run at a time. Starting over ends your saved run.</p>' : null, resume ? 'sign-btn p' : 'sign-btn'),
       btn('How to play', () => howTo(), null, 'sign-btn p'),
       btn('Library', () => openLibrary(null, { title: true }), '<b>Library</b><p>Every chip, trick, die, card, drink, wallet, jacket and felt in the game, and the upgrades for each.</p>', 'sign-btn')),
     h('div', { class: 'stats records' },
@@ -49,7 +52,7 @@ function howTo() {
   const p = (t, s) => h('div', {}, h('h3', { text: t }), h('p', { class: 'sub', text: s }));
   openPanel(h('div', { class: 'col' }, h('div', { class: 'row between' }, h('h2', { text: 'How to play' }), btn('Got it', () => closePanel(), null, 'small go')),
     p('The goal', 'Deplete your opponent\'s Worth before they deplete yours. Worth is the chips in your position. Reach zero and you are broke.'),
-    p('Your turn: three steps', '1 · Draw: click tricks in your Book to show them on your Run. Draw at least one, then lock in. 2 · Roll: pick dice from your Pouch (or a top chip to flip as a coin-toss die) and press Roll. Everything you picked lands in the roll at once, showing its value. Put at least one on a shown trick and leave the rest. 3 · Bid: click one of your stacks to pick up its top chip, then click a trick to pay it. Keep going until you are out of bids; a trick can take more than one. Then press Play. Each step closes the one before it.'),
+    p('Your turn: three steps', '1 · Draw: click tricks in your Book to show them on your Run. Draw at least one, then press Roll. 2 · Roll: pick dice from your Pouch (or a top chip to flip as a coin-toss die) and press Roll. Everything you picked lands in the roll at once, showing its value. Put at least one on a shown trick and leave the rest. 3 · Bid: click one of your stacks to pick up its top chip, then click a trick to pay it. Keep going until you are out of bids; a trick can take more than one. Then press Play. Each step closes the one before it.'),
     p('You do not see their move until you make yours', 'Your opponent goes through the same three steps. What they draw, roll and bid in a step is shown only once you have locked in the same step, and they cannot see yours either.'),
     p('The House runs the table', 'Once both Rollers have bid, the House calls each effect type in order: Investments, Insurances, Expenses, Corrections. It has two arms, one for each Roller, and plays both sides of a phase together, so nothing you play changes what your opponent plays in the same phase. The feed under the table posts both calls.'),
     p('Tricks', 'A bid with no dice plays only the small Trait. A bid with dice plays the Roll effect, scaled by the total. Fill the trick with the right dice and meet its condition for the Bonus. You can load dice over several turns before bidding.'),
@@ -57,7 +60,7 @@ function howTo() {
     p('Debt', 'An Expense is a fee on the stacks it hits. The House pays it from the top of each stack, one whole chip at a time. What cannot cover the next chip stays on that stack as Debt, shown as one red marker with the amount; it already counts against Worth, and the chip goes once later fees bring the Debt up to its value. If a stack runs out of chips, the rest (overkill) moves to the next stack behind it in the same lane, never sideways. While aiming, the stacks show what the fee will pay, leave and carry.'),
     p('The Stage', 'Settled fees are stacked on the Stage in front of the House. The winner takes everything on it. Bids go to the House and are gone.'),
     p('Between bouts', 'Shop, drink, place bets, then set your position. Every chip you do not put on the table is wagered on the bout and comes back multiplied if you win.'),
-    p('Anything unclear?', 'Hover it. Every chip, die, trick, number and button explains itself.')));
+    p('Anything unclear?', 'Hover it. Every chip, die, trick, number and button explains itself. Right-click anywhere to switch hovers and prompts between verbose (the rules spelled out) and concise (just the facts).')));
 }
 
 function selectScene(root) {
@@ -74,7 +77,7 @@ function selectScene(root) {
       h('span', { class: 'cap', text: 'Book' }), h('div', { class: 'inv' }, K.tricks.map((tid) => { const t = { id: tid, q: 1, up: 0 }; return h('span', { class: 'tag-t', style: { '--tc': D.TYPES[D.TRICKS[tid].type].color }, tip: () => trickTip(t, id) }, D.TRICKS[tid].name, h('span', { class: 'q', html: pips(t) })); })));
     el._id = id; return el; });
   cards.append(...els);
-  const jb = meta.jackets.map((id) => { const b = btn(`🧥 ${D.JACKETS[id].name}`, () => { jacket = id; sync(); }, () => jacketTip(id), 'small'); b._id = id; return b; });
+  const jb = meta.jackets.map((id) => { const b = btn(`🧥 ${D.JACKETS[id].name}`, () => { jacket = id; sync(); }, () => { const K = D.CLASSES[cls]; return jacketTip(id, { ...K.tip, ...K.c, ...K.bvd }) + `<p class="dim">Shown against the ${K.name}'s own numbers.</p>`; }, 'small'); b._id = id; return b; });
   jackets.append(h('span', { class: 'cap', text: 'Jacket' }), ...jb);
   const wb = meta.wallets.map((id) => { const b = btn(`👛 ${D.WALLETS[id].name}`, () => { wallet = id; sync(); }, () => walletTip(id), 'small'); b._id = id; return b; });
   const keptEl = h('span', { class: 'sub fade-t' });

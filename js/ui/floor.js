@@ -13,13 +13,13 @@ let rerender = () => {};
 // workbook's sketch: stairs up behind the head table, game tables in the middle, shops on one
 // wall, the House's book and the Lounge on the other, the way in at the bottom by the dodgy corner.
 const mirror = (plan) => Object.fromEntries(Object.entries(plan).map(([k, [x, y, w, hh]]) => [k, [900 - x - w, y, w, hh]]));
-const BASEMENT = { stairs: [390, 8, 120, 62], boss: [335, 84, 230, 132], kit: [40, 26, 190, 112], t0: [245, 236, 185, 124], t1: [470, 236, 185, 124], t2: [357, 376, 185, 124],
+const BASEMENT = { stairs: [390, 8, 120, 62], boss: [335, 84, 230, 132], kit: [40, 26, 190, 112], t0: [357, 376, 185, 124], t1: [245, 236, 185, 124], t2: [470, 236, 185, 124],
   smith: [690, 26, 190, 122], trader: [690, 160, 190, 122], exchange: [690, 294, 190, 112], book: [20, 164, 200, 150], lounge: [20, 328, 200, 150], exit: [690, 418, 190, 96], search: [716, 528, 164, 82], entry: [380, 544, 140, 66] };
 const PLANS = {
   1: BASEMENT, 2: mirror(BASEMENT),
-  3: { smith: [20, 20, 190, 116], trader: [222, 20, 190, 116], exchange: [424, 20, 190, 116], stairs: [760, 14, 120, 62], boss: [656, 92, 224, 140], t0: [44, 176, 185, 124], t1: [244, 176, 185, 124], t2: [444, 176, 185, 124],
-    book: [20, 340, 220, 150], lounge: [254, 340, 240, 150], kit: [508, 340, 180, 112], exit: [716, 276, 164, 96], search: [716, 404, 164, 86], entry: [396, 544, 140, 66] },
-  4: { stairs: [390, 6, 120, 58], boss: [325, 72, 250, 136], t0: [140, 214, 185, 124], t1: [357, 246, 185, 124], t2: [575, 214, 185, 124], smith: [20, 26, 190, 116], trader: [20, 366, 190, 116], exchange: [690, 26, 190, 116],
+  3: { smith: [20, 20, 190, 116], trader: [222, 20, 190, 116], exchange: [424, 20, 190, 116], stairs: [760, 14, 120, 62], boss: [656, 92, 224, 140], t1: [124, 176, 185, 124], t2: [344, 176, 185, 124], t0: [244, 340, 185, 124],
+    book: [20, 500, 210, 104], lounge: [452, 330, 240, 150], kit: [20, 330, 200, 112], exit: [716, 276, 164, 96], search: [716, 404, 164, 86], entry: [396, 544, 140, 66] },
+  4: { stairs: [390, 6, 120, 58], boss: [325, 72, 250, 136], t1: [140, 214, 185, 124], t0: [357, 270, 185, 124], t2: [575, 214, 185, 124], smith: [20, 26, 190, 116], trader: [20, 366, 190, 116], exchange: [690, 26, 190, 116],
     book: [690, 366, 190, 124], lounge: [240, 398, 205, 130], kit: [460, 398, 190, 112], exit: [690, 506, 190, 92], search: [20, 500, 170, 92], entry: [380, 548, 140, 62] },
 };
 const FLOOR_HUE = { 1: '#7dffb5', 2: '#ff86ea', 3: '#7df3ff', 4: '#ffd76a' };
@@ -65,13 +65,15 @@ export function hubScene(root) {
 
   function tiles() {
     const out = [];
-    fs.tables.forEach((t, i) => out.push({ k: 't' + i, unseen: !t.seen, cls: `table ${t.beaten ? 'done' : ''}`, ico: '🎴', name: t.seen ? t.opp.name : `Table ${i + 1}`, tag: `${D.feltOf(t.felt).name} felt`, felt: t.felt,
-      sub: t.beaten ? 'Beaten.' : t.seen ? `${D.CLASSES[t.opp.cls].name} · ${cents(t.opp.worth)} on the table` : 'A stranger. Sit down to find out.',
-      tip: () => (t.seen ? oppTip(t.opp) : '<b>Unknown Roller</b><p>You have not seen this table play. Their name, gear and attributes stay hidden until you sit down, or until you close the table before it.</p>'),
-      on: () => { if (t.beaten) return toast('That table is closed.'); if (run.purse < MIN_BUYIN) return toast(`You need at least ${cents(MIN_BUYIN)} to sit down.`, 'warn'); app.nav.prep('table', i); } }));
+    fs.tables.forEach((t, i) => { const st = R.tableState(run, i);
+      const lock = { later: 'Beat table 1 first. Then pick table 2 or table 3.', passed: 'You took the other table. This one has packed up.' }[st];
+      out.push({ k: 't' + i, unseen: !t.seen, cls: `table ${st === 'beaten' ? 'done' : ''} ${lock ? 'locked' : ''}`, ico: '🎴', name: t.seen ? t.opp.name : `Table ${i + 1}`, tag: `${i ? 'Choice · ' : ''}${D.feltOf(t.felt).name} felt`, felt: t.felt,
+        sub: st === 'beaten' ? 'Beaten.' : st === 'passed' ? 'Packed up: you chose the other table.' : st === 'later' ? 'Opens after table 1. Pick this or the table beside it.' : t.seen ? `${D.CLASSES[t.opp.cls].name} · ${cents(t.opp.worth)} on the table${i ? ' · closes the other table' : ''}` : 'A stranger. Sit down to find out.',
+        tip: () => `${t.seen ? oppTip(t.opp) : '<b>Unknown Roller</b><p>You have not seen this table play. Their name, gear and attributes stay hidden until table 1 is closed.</p>'}${lock ? `<p class="bad keep">${lock}</p>` : i ? '<p class="keep">Tables 2 and 3 are a choice: beat one and the other closes. Then the High Roller sees you.</p>' : '<p class="keep">Table 1 comes first on every floor.</p>'}`,
+        on: () => { if (st === 'beaten') return toast('That table is closed.'); if (lock) return toast(lock, 'warn'); if (run.purse < MIN_BUYIN) return toast(`You need at least ${cents(MIN_BUYIN)} to sit down.`, 'warn'); app.nav.prep('table', i); } }); });
     const b = fs.boss;
-    out.push({ k: 'boss', felt: b.felt || 'royal', cls: `boss ${fs.bossOpen ? '' : 'locked'} ${b.beaten ? 'done' : ''}`, ico: '👑', name: b.opp.name, tag: 'Head table', sub: fs.bossOpen ? `High Roller · ${cents(b.opp.worth)} on the table · wager ×${D.WAGER_BOSS}` : `Close ${R.tablesLeft(run)} more table${R.tablesLeft(run) === 1 ? '' : 's'} first.`,
-      tip: () => (fs.bossOpen ? oppTip(b.opp) : `<b>${b.opp.name}</b> <span class="dim">High Roller</span><p>Visible at the head table, but only their name. Close every table, or win a Double Down, and they will see you. Beat them to take the stairs to the next floor.</p>`),
+    out.push({ k: 'boss', felt: b.felt || 'royal', cls: `boss ${fs.bossOpen ? '' : 'locked'} ${b.beaten ? 'done' : ''}`, ico: '👑', name: b.opp.name, tag: 'Head table', sub: fs.bossOpen ? `High Roller · ${cents(b.opp.worth)} on the table · wager ×${D.WAGER_BOSS}` : `${R.tablesLeft(run) === 2 ? 'Beat table 1, then table 2 or 3.' : 'Beat table 2 or table 3.'}`,
+      tip: () => (fs.bossOpen ? oppTip(b.opp) : `<b>${b.opp.name}</b> <span class="dim">High Roller</span><p>Visible at the head table, but only their name. Beat table 1 and then one of tables 2 and 3, or win a Double Down, and they will see you. Beat them to take the stairs to the next floor.</p>`),
       on: () => { if (!fs.bossOpen) return toast('The High Roller will not see you yet.', 'warn'); if (run.purse < MIN_BUYIN) return toast(`You need at least ${cents(MIN_BUYIN)} to sit down.`, 'warn'); app.nav.prep('boss', 0); } });
     out.push({ k: 'smith', ico: '⚒️', name: 'Diesmith', sub: 'Forge, upgrade and sell dice.', tip: '<b>Diesmith</b><p>Melts several small dice into one bigger die, upgrades dice, and buys the ones you no longer need.</p>', on: () => smithPanel() });
     out.push({ k: 'trader', ico: '🃏', name: 'Trick Trader', sub: `${fs.shop.length} trick${fs.shop.length === 1 ? '' : 's'} on the shelf.`, tag: R.hasCard(run, 'membership') ? 'Member' : null, tip: '<b>Trick Trader</b><p>Buy new tricks, upgrade the ones in your Book, or sell them. Buy 5 on one floor to earn a Membership Card.</p>', on: () => traderPanel() });
@@ -85,7 +87,8 @@ export function hubScene(root) {
     out.push({ k: 'exit', cls: 'exit', ico: '🚪', name: 'Exit', sub: 'Through the Gift Shop. Ends the run.', tip: '<b>Exit through the Gift Shop</b><p>Cut your losses. Spend what is left on gear that stays unlocked for future runs, then leave. You cannot come back to the tables.</p>', on: () => exitPanel() });
     out.push({ k: 'stairs', cls: fs.boss.beaten ? '' : 'locked', name: run.floor < 4 ? 'Stairs up' : 'Penthouse lift', sub: run.floor < 4 ? `To ${D.FLOORS[run.floor + 1].name}` : 'To the Penthouse',
       tip: `<b>${run.floor < 4 ? 'Stairs up' : 'Penthouse lift'}</b><p>Behind the head table. The High Roller decides who goes up: beat them and you climb straight away.</p>`, on: () => toast(`${fs.boss.opp.name} is not letting anyone past.`, 'warn') });
-    out.push({ k: 'entry', name: run.floor > 1 ? 'Stairs down' : 'Front door', sub: 'The way you came in.', tip: '<b>The way in</b><p>Where you arrived on this floor. There is no going back down.</p>', on: () => toast('No going back. Only up, or out through the Gift Shop.') });
+    out.push({ k: 'entry', name: run.floor > 1 ? 'Stairs down' : 'Front door', sub: 'Step out. Your run is saved.', tip: '<b>Step out</b><p>Saves this run and goes back to the main menu. Continue from there to come back to this floor as you left it.</p><p class="dim">You have one run at a time: starting a new run replaces this one.</p>',
+      on: () => { R.saveRun(run); toast('Run saved. Continue from the main menu.'); app.nav.title(); } });
     return out;
   }
   function render() {
@@ -226,19 +229,25 @@ function kitPanel() {
       h('span', { class: 'cap', text: 'Pouch' }), h('div', { class: 'dicebox' }, run.dice.map((d) => { const el = dieEl(d); el._tip = () => dieTip(d); el.classList.add('has-tip'); return el; })),
       h('span', { class: 'cap', text: `${R.walletOf(run).name} wallet — ${R.walletCards(run).length}/${R.walletOf(run).slots} slots · passes do not take a slot · click a card twice to drop it` }),
       h('div', { class: 'row wrap', style: { alignItems: 'flex-end' } }, walletEl(run.wallet), jacketEl(run.jacket), run.drink ? drinkEl(run.drink, run.drink.sips, run.drink.max) : null,
-        h('div', { class: 'inv', style: { alignItems: 'flex-end' } }, run.cards.map((c) => { const pass = D.PASS_CARDS.includes(c); const el = cardEl(c); el.style.cursor = pass ? '' : 'pointer'; el._tip = () => cardTip(c) + (pass ? '<p class="dim">A pass. It does not take a wallet slot.</p>' : '<p class="dim">Takes a wallet slot. Click twice to drop it for good.</p>'); el.classList.add('has-tip');
+        h('div', { class: 'inv', style: { alignItems: 'flex-end' } }, run.cards.map((c) => { const pass = D.PASS_CARDS.includes(c); const el = cardEl(c); el.style.cursor = pass ? '' : 'pointer'; el._tip = () => cardTip(c, R.rollerStats(run).v) + (pass ? '<p class="dim">A pass. It does not take a wallet slot.</p>' : '<p class="dim">Takes a wallet slot. Click twice to drop it for good.</p>'); el.classList.add('has-tip');
         el.onclick = () => { if (pass) return; if (!el._armed) { el._armed = true; el.classList.add('armed'); return toast(`Click ${D.CARDS[c].name} again to drop it.`, 'warn'); } if (!R.dropCard(run, c)) return toast('You need that one to get in.', 'warn'); closePanel(); rerender(); toast(`${D.CARDS[c].name} dropped.`); }; return el; }))),
       h('span', { class: 'cap', text: 'Position' }), h('p', { class: 'sub', text: `${st.dims.meterRows} Meter rows and ${st.dims.barRows} Bar rows of 5 spaces, stacks up to ${st.dims.stackMax} chips. Your Bar holds ${st.dims.barRows * 5 * st.dims.stackMax} chips.` }))));
 }
 
+// what you give up by dropping a card, in plain words
+function dropText(run, c) {
+  const card = D.CARDS[c], v = R.rollerStats(run).v;
+  if (!card.mods) return card.text + (c === 'royal' && run.floor >= 1 ? ' You are already in, so it does nothing more.' : '');
+  return Object.entries(card.mods).map(([k, n]) => `Drop it and ${D.STATS[k].name} goes ${v[k]} → ${v[k] - n}: you ${D.STATS[k].per(n).replace(/\bmore\b/, 'fewer')}.`).join(' ');
+}
 // a found card with no free slot: drop one or leave it
 function walletFullPanel() {
   const run = app.run, id = run.pendingCard, Wl = R.walletOf(run);
   const must = id === 'royal';
   const done = (drop) => { R.resolvePending(run, drop); closePanel(); rerender(); toast(drop ? `${D.CARDS[id].name} goes in your wallet.` : 'You leave it where it lies.'); };
-  openPanel(h('div', { class: 'col' }, h('h2', { text: `${must ? 'The doorman hands you a' : 'Found:'} ${D.CARDS[id].name}` }), h('p', { class: 'sub', text: D.CARDS[id].text }),
+  openPanel(h('div', { class: 'col' }, h('h2', { text: `${must ? 'The doorman hands you a' : 'Found:'} ${D.CARDS[id].name}` }), h('p', { class: 'sub', html: D.CARDS[id].mods ? Object.entries(D.CARDS[id].mods).map(([k, n]) => `Keep it and ${D.STATS[k].name} goes ${R.rollerStats(run).v[k]} → ${R.rollerStats(run).v[k] + n}: you ${D.STATS[k].per(n)}.`).join(' ') : D.CARDS[id].text }),
     h('p', { text: `Your ${Wl.name} wallet holds ${Wl.slots} card${Wl.slots > 1 ? 's' : ''} and it is full. ${must ? 'You need the Royal Card to walk in, so one of these has to go.' : 'Drop one to make room, or leave this one.'}` }),
-    h('div', { class: 'items' }, R.walletCards(run).map((c) => h('div', { class: 'item', tip: () => cardTip(c) }, h('div', { class: 'main' }, h('b', { text: D.CARDS[c].name }), h('small', { text: D.CARDS[c].text })), btn('Drop this', () => done(c), null, 'small danger')))),
+    h('div', { class: 'items' }, R.walletCards(run).map((c) => h('div', { class: 'item', tip: () => cardTip(c, R.rollerStats(run).v) }, cardEl(c), h('div', { class: 'main' }, h('b', { text: D.CARDS[c].name }), h('small', { html: dropText(run, c) })), btn('Drop this', () => done(c), null, 'small danger')))),
     must ? null : h('div', { class: 'row' }, btn('Leave the new card', () => done(null), null, ''))), must ? { modal: true } : undefined);
 }
 

@@ -93,3 +93,13 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
 43. Trick quality is drawn as a frame (Fine silver, Grand gold, Royal gold with a violet halo) and upgrades as a
     moving foil plus ▲. Die upgrades each have a badge (Accelerate +, Escalate ▲, Stabilize =). Are these the right
     marks, and what should the other 19 die upgrades look like?
+
+## Round 6 additions (floor path, hover detail, prizes, element chips)
+44. I do not have the workbook's chip list in this repo, so the new chips (Frozen, Lava, Orange, Fog, and the
+    Chill and Erupt tricks) are built on the element names it mentions (Cold, Heat, Fog). Please share the
+    **Chips** tab (or the rows you want first) so the next chips come straight from it.
+45. Tables 2 and 3 are a strict either/or. "Not without more time": what would let you fight both (a turn
+    limit, a fee, a card)?
+46. The prize bonus is 25% of the opponent's starting worth. Should it scale with the wager or the floor instead?
+47. Dice and bids stay editable until Play, but the opponent's bid is made against your table as it stood when
+    Bid opened. Should moving a die during Bid be visible to them, or cost something?

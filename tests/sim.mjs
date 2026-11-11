@@ -3,6 +3,7 @@ import * as R from '../js/run.js';
 import * as B from '../js/bout.js';
 import { autoTurn } from '../js/ai.js';
 import * as D from '../js/data.js';
+const assert = (ok, msg) => { if (!ok) { console.error('FAIL', msg); process.exit(1); } };
 
 function playBout(bout) {
   let steps = 0;
@@ -48,15 +49,18 @@ for (let seed = 1; seed <= 60; seed++) {
     R.buyDrink(run, run.fs.lounge.drinks[0].id); R.searchFloor(run);
     if (run.purse > 50) R.placeBet(run, run.fs.book.events[0].key, 0, run.fs.book.min);
     if (run.purse > 400) { R.unlockTier(run, 'challenge'); }
-    for (let i = 0; i < 3 && alive; i++) {
-      const prep = R.newPrep(run, 'table', i); prep.tilts.hazard = Math.min(2, R.tiltCap(run, 'hazard')); prep.tilts.creature = Math.min(1, R.tiltCap(run, 'creature'));
-      if (i === 1 && run.fs.lastWin) prep.dd = true;
+    const path = [0, 1 + (seed % 2)];
+    for (let k = 0; k < 2 && alive; k++) {
+      const i = path[k], prep = R.newPrep(run, 'table', i); prep.tilts.hazard = Math.min(2, R.tiltCap(run, 'hazard')); prep.tilts.creature = Math.min(1, R.tiltCap(run, 'creature'));
+      if (k === 1 && run.fs.lastWin) prep.dd = true;
       run.plan.counts = null;
       const res = fight(R.startTable(run, prep));
       if (!res.win && run.purse <= 0) alive = false;
-      if (!res.win && alive) i--; // try the table again
+      if (!res.win && alive) k--; // try the table again
+      else if (res.win) assert(k > 0 || (R.tableOpen(run, 1) && R.tableOpen(run, 2)), 'beating table 1 opens tables 2 and 3');
       if (guard++ > 400) throw new Error('stuck');
     }
+    if (alive) assert(run.fs.bossOpen && !R.tableOpen(run, 3 - path[1]), 'beating one of tables 2 and 3 closes the other and opens the High Roller');
     if (alive) { const res = fight(R.startTable(run, R.newPrep(run, 'boss'))); if (!res.win) alive = false; }
     if (alive && R.nextAfterBoss(run) === 'suite') { R.suiteOffer(run); R.goToBed(run, false); }
     if (alive) floors[f]++;

@@ -30,8 +30,8 @@ export function hud(place, sub) {
     const items = [
       { k: 'dice', text: `🎲 ${run.dice.length}`, tip: () => `<b>Pouch</b><p>${diceSummary(run.dice)}</p><ul>${run.dice.filter((d) => d.up.length).map((d) => `<li>${dieTip(d)}</li>`).join('')}</ul>` },
       { k: 'tricks', text: `📖 ${run.tricks.length}`, tip: () => `<b>Book</b><ul>${run.tricks.map((t) => `<li>${D.TRICKS[t.id].name} <span class="q">${pips(t)}</span> <span class="dim">${D.TYPES[D.TRICKS[t.id].type].name}</span></li>`).join('')}</ul>` },
-      { k: 'cards', text: `🃏 ${run.cards.length}`, tip: () => `<b>Wallet</b>${run.cards.map((c) => `<p>${cardTip(c)}</p>`).join('') || '<p>Empty.</p>'}` },
-      { k: 'jacket', text: `🧥 ${D.JACKETS[run.jacket].name}`, tip: () => jacketTip(run.jacket) },
+      { k: 'cards', text: `🃏 ${run.cards.length}`, tip: () => { const v = R.rollerStats(run).v; return `<b>Wallet</b>${run.cards.map((c) => `<div>${cardTip(c, v)}</div>`).join('') || '<p>Empty.</p>'}`; } },
+      { k: 'jacket', text: `🧥 ${D.JACKETS[run.jacket].name}`, tip: () => jacketTip(run.jacket, R.rollerStats(run).v) },
     ];
     if (run.drink) items.push({ k: 'drink', text: `🥤 ${run.drink.sips}`, tip: () => drinkTip(run.drink) });
     if (run.rest && run.rest.bouts > 0) items.push({ k: 'rest', text: `🛏 +${run.rest.amt}`, tip: () => `<b>Rested</b><p>+${run.rest.amt} ${D.STATS[D.CLASSES[run.cls].primary].name} for ${run.rest.bouts} more bout${run.rest.bouts > 1 ? 's' : ''}.</p>` });
