@@ -24,16 +24,17 @@ export const CLASSES = {
 };
 export const BASE_DIMS = { cols: 5, stackMax: 3, meterRows: 2, barRows: 3 };
 
+// `per`: what each point does, for hover text that says what a +1 or −1 actually changes
 export const STATS = {
-  trickery: { name: 'Trickery', short: 'Draw', text: 'Tricks you may draw from your Book each turn.' },
-  ingenuity: { name: 'Ingenuity', short: 'Bid', text: 'Chips you may bid on shown tricks each turn.' },
-  proficiency: { name: 'Proficiency', short: 'Roll', text: 'Dice you may roll each turn. A die shows its value first; you then choose which shown trick it goes on.' },
-  charisma: { name: 'Charisma', short: 'Steal', text: 'For each bid you leave unused, steal this many ¢ from the Stage onto your Meter.' },
-  cunning: { name: 'Cunning', short: 'Opportunity', text: 'For each roll you leave unused, gain this many Opportunity chips on your Meter.' },
-  conviction: { name: 'Conviction', short: 'Power', text: 'For each draw you leave unused, gain this much Power. Power is added to your next roll effect.' },
-  balance: { name: 'Balance', short: 'Stack height', text: 'Extra chips each space can hold (base 3).' },
-  versatility: { name: 'Versatility', short: 'Meter rows', text: 'Extra Meter rows (base 2). The Meter sits in front and only holds chips gained during the bout.' },
-  depth: { name: 'Depth', short: 'Bar rows', text: 'Extra Bar rows (base 3). The Bar holds the chips you commit before the bout.' },
+  trickery: { name: 'Trickery', short: 'Draw', text: 'Tricks you may draw from your Book each turn.', per: (n) => `draw ${n} more trick${n === 1 ? '' : 's'} from your Book each turn, so more tricks are on your Run to roll onto and bid on` },
+  ingenuity: { name: 'Ingenuity', short: 'Bid', text: 'Chips you may bid on shown tricks each turn.', per: (n) => `bid ${n} more chip${n === 1 ? '' : 's'} each turn, so more tricks play (or linger) each turn` },
+  proficiency: { name: 'Proficiency', short: 'Roll', text: 'Dice you may roll each turn. A die shows its value first; you then choose which shown trick it goes on.', per: (n) => `roll ${n} more ${n === 1 ? 'die' : 'dice'} (or flip ${n === 1 ? 'a chip' : 'chips'}) each turn, so bigger totals and more bonuses` },
+  charisma: { name: 'Charisma', short: 'Steal', text: 'For each bid you leave unused, steal this many ¢ from the Stage onto your Meter.', per: (n) => `steal ${n} more ¢ from the Stage for every bid you leave unused` },
+  cunning: { name: 'Cunning', short: 'Opportunity', text: 'For each roll you leave unused, gain this many Opportunity chips on your Meter.', per: (n) => `gain ${n} more Opportunity chip${n === 1 ? '' : 's'} for every roll you leave unused` },
+  conviction: { name: 'Conviction', short: 'Power', text: 'For each draw you leave unused, gain this much Power. Power is added to your next roll effect.', per: (n) => `gain ${n} more Power for every draw you leave unused` },
+  balance: { name: 'Balance', short: 'Stack height', text: 'Extra chips each space can hold (base 3).', per: (n) => `every space in your position holds ${n} more chip${n === 1 ? '' : 's'} (taller stacks in the Meter and the Bar)` },
+  versatility: { name: 'Versatility', short: 'Meter rows', text: 'Extra Meter rows (base 2). The Meter sits in front and only holds chips gained during the bout.', per: (n) => `${n} more Meter row${n === 1 ? '' : 's'}: more room for Blocks, Opportunity and recovered chips, and more cover in front of your Bar` },
+  depth: { name: 'Depth', short: 'Bar rows', text: 'Extra Bar rows (base 3). The Bar holds the chips you commit before the bout.', per: (n) => `${n} more Bar row${n === 1 ? '' : 's'}: room to put more chips on the table before the bout` },
 };
 
 // ---------- Dice ----------
@@ -120,6 +121,10 @@ export const TRICKS = {
     roll: { k: 'fee', text: 'Charge a fee equal to the total and leave a Poison chip.' }, bonus: { cond: 'under:4', k: 'double', text: 'The fee is doubled.' } },
   rig: { name: 'Rig', type: 'expense', cls: null, die: 'd8', count: 1, side: 'opp', approach: 'any', dist: 'hit', element: 'boom',
     roll: { k: 'fee', text: 'Charge a fee equal to the total and leave a Boom chip.' }, bonus: { cond: 'over:6', k: 'double', text: 'The fee is doubled.' } },
+  chill: { name: 'Chill', type: 'expense', cls: null, die: 'd6', count: 2, side: 'opp', approach: 'front', dist: 'hit', element: 'frozen',
+    roll: { k: 'fee', text: 'Charge a fee equal to the total and leave a Frozen chip: that stack cannot be bid or flipped.' }, bonus: { cond: 'evens', k: 'spread', text: 'Freezes the neighbouring stack too (Swipe).' } },
+  erupt: { name: 'Erupt', type: 'expense', cls: 'technician', die: 'd8', count: 2, side: 'opp', approach: 'body', dist: 'hit', element: 'lava',
+    roll: { k: 'fee', text: 'Charge a fee equal to the total on a Bar stack and leave a Lava chip.' }, bonus: { cond: 'over:12', k: 'double', text: 'The fee is doubled.' } },
   // --- Insurances ---
   block: { name: 'Block', type: 'insurance', cls: null, die: 'd6', count: 2, side: 'self', approach: 'meter', dist: 'hit',
     roll: { k: 'block', text: 'Add Block chips equal to the total to your Meter, starting at the target space.' }, bonus: { cond: 'evens', k: 'counter', text: 'They are Counter chips: each one also puts a Debt chip on the attacker.' } },
@@ -172,6 +177,8 @@ export const CHIPS = {
   corrupt: { name: 'Corrupting chip', text: 'Hazard. Each turn it puts 1¢ of Debt on its stack and has a 60% chance to spread to another stack. Fades after 3 turns.' },
   poison: { name: 'Poison chip', text: 'Hazard. Each turn it puts 1¢ of Debt on its stack. It lingers until the stack is gone or it is cleansed.' },
   boom: { name: 'Boom chip', text: 'Hazard. The turn after it lands it goes off: 5¢ of Debt on its stack and on every stack around it.' },
+  frozen: { name: 'Frozen chip', text: 'Hazard (Cold). Its stack is frozen solid: nothing on it can be bid or flipped. Thaws after 2 turns, or at once if a Burning or Lava chip reaches it.' },
+  lava: { name: 'Lava chip', text: 'Hazard (Heat). Each turn it melts the chip beneath it and spills a Burning chip onto a stack next to it. Cools after 2 turns.' },
 };
 // Chips no trick or table effect makes are sold at the Chip Exchange. Their price comes from a tier: how strong
 // the chip is, or how strong it is meant to feel until it has been tuned. Change a tier's price or floor here
@@ -189,8 +196,10 @@ export const CHIP_TIERS = [
 // `vars`: the numbers each effect reads, kept here so they can be tuned without touching the engine.
 // The chip object carries its shop id in `resist` (the field predates the specials).
 export const SHOP_CHIPS = {
-  burn: { name: 'Red chip', tier: 1, resist: 'burn', verb: 'extinguishes', glyph: '◆',
-    text: 'A stack holding one extinguishes Burning chips and cannot catch fire.' },
+  burn: { name: 'Red chip', tier: 1, resist: 'burn', also: ['lava'], verb: 'extinguishes', glyph: '◆',
+    text: 'A stack holding one extinguishes Burning and Lava chips and cannot catch fire.' },
+  frozen: { name: 'Orange chip', tier: 2, resist: 'frozen', verb: 'thaws', glyph: '◆',
+    text: 'A stack holding one thaws Frozen chips, so it can always be bid from.' },
   shock: { name: 'Blue chip', tier: 1, resist: 'shock', verb: 'absorbs', glyph: '◆',
     text: 'A stack holding one absorbs Shocking chips and is skipped by their Debt.' },
   acid: { name: 'Yellow chip', tier: 1, resist: 'acid', verb: 'neutralizes', glyph: '◆',
@@ -211,14 +220,18 @@ export const SHOP_CHIPS = {
     text: (v) => `Each fee on its stack sends ${v.reflect}¢ of Debt back to the attacker's front stack in the same lane. The fee is still charged.` },
   lucky: { name: 'Lucky chip', tier: 3, glyph: '✦', vars: { chance: 0.3 },
     text: (v) => `Each turn, a ${Math.round(v.chance * 100)}% chance to put an Opportunity chip on your Meter.` },
+  fog: { name: 'Fog chip', tier: 3, glyph: '☁',
+    text: () => 'Its stack is hidden: an opponent cannot aim a trick at it. Spreads, rain and hazards still reach it.' },
   crown: { name: 'Crown chip', tier: 4, glyph: '♛', vars: { turns: 3 },
     text: (v) => `Its stack starts the bout Hardened for ${v.turns} turns: each fee takes only one chip.` },
 };
+// the hazards a shop chip stops: its own `resist` plus any in `also`
+export const resistsOf = (id) => { const X = SHOP_CHIPS[id]; return X?.resist ? [X.resist, ...(X.also || [])] : []; };
 export const shopVars = (id) => SHOP_CHIPS[id].vars || {};
 export const shopText = (id) => { const X = SHOP_CHIPS[id]; return typeof X.text === 'function' ? X.text(shopVars(id)) : X.text; };
 export const shopPrice = (id) => SHOP_CHIPS[id].price ?? CHIP_TIERS[SHOP_CHIPS[id].tier].price;
 export const shopFloor = (id) => SHOP_CHIPS[id].floor ?? CHIP_TIERS[SHOP_CHIPS[id].tier].floor;
-export const HAZARD_KINDS = ['debt', 'burn', 'acid', 'shock', 'corrupt', 'poison', 'boom'];
+export const HAZARD_KINDS = ['debt', 'burn', 'acid', 'shock', 'corrupt', 'poison', 'boom', 'frozen', 'lava'];
 
 export const CREATURES = {
   ufo: { name: 'UFO', glyph: '🛸', text: 'Abducts the top chip of a random stack each turn, then flies home. Chips taken are lost.' },
@@ -237,6 +250,9 @@ export const CALAMITIES = {
 };
 
 // ---------- Wagers and tilts ----------
+// After a win you always keep the money; then pick one prize. `bonus` is the bonus money, as a share of the
+// opponent's starting worth, paid with the one-die prize.
+export const PRIZES = { bonus: 0.25 };
 export const WAGER_BASE = 1.5; export const WAGER_BOSS = 3; export const DD_MAX = 6;
 export const TILT_TIERS = [
   { inc: 0.01, challenge: 100, cheat: 500 }, { inc: 0.02, challenge: 1000, cheat: 5000 }, { inc: 0.05, challenge: 10000, cheat: 50000 },

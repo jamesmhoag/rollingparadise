@@ -28,6 +28,19 @@ function local(ev) { const r = $('stage').getBoundingClientRect(); return { x: (
 // an element's box in stage coordinates
 export function box(el) { const s = $('stage').getBoundingClientRect(), r = el.getBoundingClientRect(); return { x: (r.left - s.left) / scale, y: (r.top - s.top) / scale, w: r.width / scale, h: r.height / scale }; }
 
+// ---------- detail level ----------
+// Two levels for every hover and prompt: verbose (explains the rules) and concise (just the facts).
+// Right-click anywhere to switch. Markup: `.v` shows only when verbose, `.c` only when concise, and a
+// `p.dim` aside counts as verbose. Code can ask `detail.verbose` or use `vc(verbose, concise)`.
+const DETAIL_KEY = 'rollingparadise.detail.v1';
+export const detail = { verbose: (() => { try { return globalThis.localStorage?.getItem(DETAIL_KEY) !== 'concise'; } catch { return true; } })(), listeners: new Set() };
+export const vc = (verbose, concise) => (detail.verbose ? verbose : concise);
+export function setDetail(verbose) {
+  detail.verbose = verbose; try { globalThis.localStorage?.setItem(DETAIL_KEY, verbose ? 'verbose' : 'concise'); } catch { /* storage unavailable */ }
+  document.body.classList.toggle('concise', !verbose); T.el?.classList.toggle('verbose', verbose);
+  for (const fn of detail.listeners) fn(verbose);
+}
+
 // ---------- tooltips ----------
 // tip(el, 'html') or tip(el, () => 'html'). The tooltip fades in and glides after the pointer.
 const T = { el: null, cur: null, x: 0, y: 0, tx: 0, ty: 0, timer: 0, on: false };
@@ -45,7 +58,12 @@ function place(ev) {
 }
 function findTip(node) { while (node && node !== document.body) { if (node._tip) return node; node = node.parentNode; } return null; }
 export function initTips() {
-  T.el = $('tooltip');
+  T.el = $('tooltip'); setDetail(detail.verbose);
+  document.addEventListener('contextmenu', (ev) => {
+    ev.preventDefault(); setDetail(!detail.verbose);
+    toast(detail.verbose ? 'Verbose: hovers and prompts explain the rules. Right-click for concise.' : 'Concise: hovers and prompts show just the facts. Right-click for verbose.');
+    if (T.cur) { const el = T.cur, c = typeof el._tip === 'function' ? el._tip() : el._tip; if (c) { if (c.nodeType) T.el.replaceChildren(c); else T.el.innerHTML = c; } }
+  });
   document.addEventListener('mousemove', (ev) => {
     const el = findTip(ev.target);
     if (el !== T.cur) {
@@ -59,7 +77,7 @@ export function initTips() {
     }
     if (T.cur) place(ev);
   });
-  document.addEventListener('mousedown', () => { T.el.classList.remove('show'); T.cur = null; T.on = false; });
+  document.addEventListener('mousedown', (ev) => { if (ev.button === 2) return; T.el.classList.remove('show'); T.cur = null; T.on = false; });
   tipLoop();
 }
 export function refreshTip() { T.cur = null; }

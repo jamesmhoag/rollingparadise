@@ -64,7 +64,7 @@ function chipsTab(own) {
   for (const k of ['opp', 'block', 'counter', 'debt']) { const ch = { kind: k, value: k === 'opp' ? 1 : k === 'debt' ? 3 : 0 };
     out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), D.CHIPS[k].name, [D.CHIPS[k].text, dim(`Made by: ${BOUT_CHIPS[k]}`)])); }
   out.push(sec('Hazard chips', 'Left by Expenses with an element. A shop chip of the matching colour makes a stack immune.'));
-  for (const k of ['burn', 'acid', 'shock', 'corrupt', 'poison', 'boom']) { const ch = { kind: k, value: 0 }, by = leftBy(k), cure = Object.keys(D.SHOP_CHIPS).find((x) => D.SHOP_CHIPS[x].resist === k);
+  for (const k of ['burn', 'acid', 'shock', 'corrupt', 'poison', 'boom', 'frozen', 'lava']) { const ch = { kind: k, value: 0 }, by = leftBy(k), cure = Object.keys(D.SHOP_CHIPS).find((x) => D.resistsOf(x).includes(k));
     out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), D.CHIPS[k].name, [D.CHIPS[k].text, dim(`Left by: ${by.join(', ') || 'creatures and calamities'}${k === 'burn' ? ', the Dragon, Inferno and Volcano' : ''}.${cure ? ` Stopped by the ${D.SHOP_CHIPS[cure].name}.` : ''}`)])); }
   return out;
 }

@@ -133,22 +133,22 @@ export function resultScene(root, ctx, res) {
   const left = h('div', { class: 'col', style: { width: res.prizes ? '430px' : '560px' } },
     h('h1', { text: titles[ctx.kind] || (win ? `${opp.name} is broke` : 'You are broke') }), h('p', { class: 'sub', text: win ? `Settled after ${res.sm.turns} turn${res.sm.turns > 1 ? 's' : ''}${res.sm.timeout ? ' — last call' : ''}.` : D.FLOORS[run.floor]?.line && ctx.kind !== 'intro' ? 'Losing is not a reward. You lost; you deserve nothing.' : 'Sit back down and try again.' }),
     h('div', { class: 'box' }, lines, h('div', { class: 'row between', style: { marginTop: '10px' } }, h('span', { class: 'cap', text: 'Purse' }), totalEl)), newsEl, h('div', { class: 'row' }, cont));
-  root.append(h('div', { class: 'page', style: { top: 0, display: 'flex', gap: '24px', justifyContent: 'center', alignItems: 'center' } }, left, res.prizes ? h('div', { class: 'col', style: { width: '700px' } }, h('h2', { text: 'Choose your prize' }), h('p', { class: 'sub', text: 'Pick one offer, then what you want from it.' }), prizeBox, h('div', { class: 'row' }, h('span', { class: 'grow' }), claimBtn())) : null));
+  root.append(h('div', { class: 'page', style: { top: 0, display: 'flex', gap: '24px', justifyContent: 'center', alignItems: 'center' } }, left, res.prizes ? h('div', { class: 'col', style: { width: '700px' } }, h('h2', { text: 'Choose your prize' }), h('p', { class: 'sub', text: `Your winnings (${cents(res.winnings)}) are yours either way. Pick one prize on top, then what you want from it.` }), prizeBox, h('div', { class: 'row' }, h('span', { class: 'grow' }), claimBtn())) : null));
 
   function claimBtn() { const b = btn('Claim', () => { if (claimed) return; claimed = true; R.claimPrize(run, ctx, res, choice, picks); tween(totalEl, run.purse, cents, 900); prizeBox.classList.add('off'); b.classList.add('off'); cont.classList.remove('off'); toast('Prize claimed.'); }, null, 'go off'); claimBtn.el = b; return b; }
   const need = () => (choice === 'dice' ? 2 : 1);
   function renderPrizes() {
     const P = res.prizes, offers = [
-      { k: 'die', title: 'Winnings and a die', sub: `Keep the table winnings: ${cents(res.winnings)}. Take one of their dice.`, kind: 'dice' },
-      { k: 'dice', title: 'Two dice', sub: 'Take two of their dice and leave the table winnings behind.', kind: 'dice' },
-      { k: 'glean', title: 'Glean a trick', sub: 'Take no winnings and no dice. Learn one of their tricks.', kind: 'tricks' }];
+      { k: 'die', title: 'Bonus and a die', sub: `${cents(R.prizeBonus(ctx))} bonus on top of your winnings, and one of their dice.`, kind: 'dice' },
+      { k: 'dice', title: 'Two dice', sub: 'Two of their dice.', kind: 'dice' },
+      { k: 'glean', title: 'Glean a trick', sub: 'Learn one of their tricks.', kind: 'tricks' }];
     syncList(prizeBox, offers, (o) => o.k, (o) => { const opts = h('div', { class: 'row wrap', style: { minHeight: '38px' } });
       const el = h('div', { class: 'pick-card', onclick: () => { if (claimed || choice === o.k) return; choice = o.k; picks = []; renderPrizes(); } }, h('h3', { text: o.title }), h('p', { class: 'sub', text: o.sub }), opts);
       (o.kind === 'dice' ? P.dice : P.tricks).forEach((x, i) => { const e = o.kind === 'dice' ? dieEl(x) : trickTag(x, run.cls); if (o.kind === 'dice') { e._tip = () => dieTip(x); e.classList.add('has-tip'); } e.classList.add('clickable'); e.style.transition = 'transform .3s, box-shadow .3s, opacity .3s';
         e.onclick = (ev) => { if (claimed) return; ev.stopPropagation(); if (choice !== o.k) { choice = o.k; picks = []; } const at = picks.indexOf(i); if (at >= 0) picks.splice(at, 1); else { if (picks.length >= need()) picks.shift(); picks.push(i); } renderPrizes(); }; e._i = i; opts.append(e); });
       el._opts = opts; return el; },
     (el, o) => { el.classList.toggle('sel', choice === o.k); for (const e of el._opts.children) { const on = choice === o.k && picks.includes(e._i); e.style.transform = on ? 'translateY(-5px) scale(1.12)' : ''; e.style.boxShadow = on ? '0 0 0 3px var(--gold)' : ''; e.style.opacity = choice && choice !== o.k ? 0.45 : 1; } });
-    if (!claimed) { tween(totalEl, res.base + (choice === 'die' || !choice ? res.winnings : 0) + betPay, cents, 500); claimBtn.el?.classList.toggle('off', !choice || picks.length !== need()); }
+    if (!claimed) { tween(totalEl, res.base + res.winnings + (choice === 'die' ? R.prizeBonus(ctx) : 0) + betPay, cents, 500); claimBtn.el?.classList.toggle('off', !choice || picks.length !== need()); }
   }
   const betPay = res.prizes ? run.purse - ctx.committed - ctx.wager : 0;
   async function reveal() {

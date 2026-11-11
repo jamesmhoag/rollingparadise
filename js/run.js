@@ -54,6 +54,15 @@ export function newRun(cls, jacket = 'standard', seed = (Date.now() ^ (Math.rand
   return run;
 }
 
+// Where Balance, Versatility and Depth come from, for the position's hover text: [[source, amount], ...]
+export function dimsWhy(run, extra = {}) {
+  const K = D.CLASSES[run.cls], out = { balance: [], versatility: [], depth: [] };
+  const add = (src, mods) => { for (const k of Object.keys(out)) if (mods?.[k]) out[k].push([src, mods[k]]); };
+  add(`${K.name} class`, K.bvd); add(`${D.JACKETS[run.jacket]?.name} jacket`, D.JACKETS[run.jacket]?.mods);
+  for (const id of run.cards) add(D.CARDS[id]?.name, D.CARDS[id]?.mods);
+  const keys = Object.keys(out); for (let i = 0; i < (extra.position || 0); i++) add('Position tilt', { [keys[i % 3]]: 1 });
+  return out;
+}
 // effective attributes: class + jacket + cards + rest + cheat tilts
 export function rollerStats(run, extra = {}) {
   const K = D.CLASSES[run.cls], v = { ...K.tip, ...K.c, ...K.bvd };
@@ -73,7 +82,8 @@ export function genOpponent(run, floor, worthTarget, o = {}) {
   const rng = run.rng, cls = o.cls || rng.pick(Object.keys(D.CLASSES)), K = D.CLASSES[cls], f = clamp(floor, 1, 4);
   const tip = { ...K.tip }, c = { ...K.c }, bvd = { ...K.bvd };
   if (floor >= 2) tip.proficiency++; if (floor >= 3) tip.ingenuity++; if (floor >= 4) tip.trickery++;
-  if (o.boss) { if (floor === 2 || floor === 3) tip[K.primary]++; bvd.balance++; }
+  const why = { balance: [[`${K.name} class`, K.bvd.balance]].filter((x) => x[1]), versatility: [[`${K.name} class`, K.bvd.versatility]].filter((x) => x[1]), depth: [[`${K.name} class`, K.bvd.depth]].filter((x) => x[1]) };
+  if (o.boss) { if (floor === 2 || floor === 3) tip[K.primary]++; bvd.balance++; why.balance.push(['High Roller', 1]); }
   if (o.weak) { tip.trickery = 1; tip.proficiency = 1; tip.ingenuity = 1; }
   const dims = { cols: o.cols || 5, stackMax: 3 + bvd.balance, meterRows: 2 + bvd.versatility, barRows: 3 + bvd.depth };
   const pools = [null, ['d4', 'd6'], ['d6', 'd8'], ['d6', 'd8', 'd10'], ['d8', 'd8', 'd10', 'd10', 'd20']];
@@ -90,7 +100,8 @@ export function genOpponent(run, floor, worthTarget, o = {}) {
   if (big === 1) { petty = Math.min(W, cap); nBig = 0; }
   const groups = [{ value: big, count: nBig }, { value: 1, count: petty }].filter((g) => g.count > 0);
   if (K.deploy === 'end') groups.reverse();
-  return { name: o.name || rng.pick(D.OPPONENTS), title: o.title || '', cls, floor, boss: !!o.boss, ai: true, tip, c, dims, deploy: K.deploy, dice, tricks,
+  if (o.cols) why.note = 'A bar table: only three spaces wide.';
+  return { name: o.name || rng.pick(D.OPPONENTS), title: o.title || '', cls, floor, boss: !!o.boss, ai: true, tip, c, dims, why, deploy: K.deploy, dice, tricks,
     plan: { chips: groups, spacing: 'row', stacking: 'maxed' }, worth: nBig * big + petty };
 }
 
@@ -110,7 +121,19 @@ export function enterFloor(run, floor) {
   if (floor === 1 && !hasCard(run, 'royal')) addCard(run, 'royal'); // a full wallet has to drop a card for it
   return run.fs;
 }
-export const tablesLeft = (run) => run.fs.tables.filter((t) => !t.beaten).length;
+// The floor is a short path: table 1 first, then a choice between tables 2 and 3 (beating one closes the
+// other), then the High Roller.
+export const choiceMade = (run) => run.fs.tables.slice(1).some((t) => t.beaten);
+export function tableState(run, i) {
+  const t = run.fs.tables[i];
+  if (t.beaten) return 'beaten';
+  if (i === 0) return 'open';
+  if (!run.fs.tables[0].beaten) return 'later';
+  return choiceMade(run) ? 'passed' : 'open';
+}
+export const tableOpen = (run, i) => tableState(run, i) === 'open';
+// how many more tables stand between you and the High Roller
+export const tablesLeft = (run) => (run.fs.tables[0].beaten ? 0 : 1) + (choiceMade(run) ? 0 : 1);
 
 function genShelf(run) {
   const rng = run.rng, f = run.floor, out = [];
@@ -282,7 +305,7 @@ function planGroups(run, counts, resist) {
 // ---------- bouts ----------
 function playerSpec(run, counts, extra = {}, dimsOverride) {
   const st = rollerStats(run, extra), K = D.CLASSES[run.cls];
-  return { name: 'You', title: K.name, cls: run.cls, tip: st.tip, c: st.c, dims: dimsOverride || st.dims, deploy: K.deploy, tricks: run.tricks, dice: run.dice,
+  return { name: 'You', title: K.name, cls: run.cls, tip: st.tip, c: st.c, dims: dimsOverride || st.dims, why: dimsOverride ? { note: 'A bar table: one size smaller than your usual position in every direction.' } : dimsWhy(run, extra), deploy: K.deploy, tricks: run.tricks, dice: run.dice,
     plan: { chips: planGroups(run, counts, extra.resist), spacing: run.plan.spacing, stacking: run.plan.stacking }, drink: run.drink && run.drink.sips > 0 ? run.drink : null, ...extra.side };
 }
 const committed = (bout) => sum(bout.sides[0].grid.flat().flatMap((c) => c.chips).filter((ch) => ch.kind === 'std' && !ch.resist), (ch) => ch.value);
@@ -362,13 +385,14 @@ export function settle(run, ctx, bout) {
     lines.push(['Bids lost to the House', -(sm.bids - sm.pendingBids)]);
     if (sm.destroyed) lines.push(['Chips destroyed by hazards', -sm.destroyed]);
     entry.beaten = true; if (ctx.kind === 'boss' && run.floor >= 4 && !hasCard(run, 'paradise')) { run.cards.push('paradise'); res.news.push('The last High Roller hands over a Paradise Card. The Ascent is open to you.'); }
-    run.fs.tables.forEach((t, i) => { if (i <= ctx.idx + 1) t.seen = true; });
+    if (ctx.kind === 'table' && ctx.idx === 0) { run.fs.tables[1].seen = run.fs.tables[2].seen = true; res.news.push('Table 1 is closed. Tables 2 and 3 are open: pick one. Beat it and the other closes.'); }
+    else if (ctx.kind === 'table') { const other = run.fs.tables[3 - ctx.idx]; other.passed = true; res.news.push(`You chose table ${ctx.idx + 1}. ${other.opp.name} at table ${4 - ctx.idx} packs up.`); }
     res.base = base; res.winnings = winnings;
     res.prizes = { dice: rng.shuffle(ctx.opp.dice).slice(0, 3).map((d) => ({ ...d })), tricks: rng.shuffle(ctx.opp.tricks).slice(0, 2).map((t) => ({ ...t })) };
     if (ctx.kind === 'table') {
       if (ctx.prep.dd) { run.fs.ddStreak++; run.stats.dd++; run.fs.bossOpen = true; run.suiteKey = true; if (!hasCard(run, 'suite')) run.cards.push('suite'); res.news.push('Double Down won! A Suite Key Card is yours and the High Roller will see you now.'); }
       run.fs.lastWin = { tilts: { ...ctx.prep.tilts }, mult: ctx.mult };
-      if (!tablesLeft(run)) { run.fs.bossOpen = true; res.news.push('Every table is closed. The High Roller is waiting at the head table.'); }
+      if (!tablesLeft(run) && !run.fs.bossOpen) { run.fs.bossOpen = true; res.news.push('The High Roller is waiting at the head table.'); }
     } else { res.news.push(`${ctx.opp.name} is dethroned. The stairs are open.`); }
   } else {
     run.purse = 0;
@@ -382,10 +406,11 @@ export function settle(run, ctx, bout) {
   res.total = sm.win ? res.base + res.winnings : run.purse;
   return res;
 }
-// choice: 'die' (winnings + 1 die), 'dice' (2 dice, no winnings), 'glean' (a trick, no winnings)
+// You always keep the winnings. Then one prize: 'die' (bonus money and one die), 'dice' (two dice), 'glean' (a trick)
+export const prizeBonus = (ctx) => Math.round((ctx.opp?.worth || 0) * D.PRIZES.bonus);
 export function claimPrize(run, ctx, res, choice, picks) {
   const start = run.purse, bets = run.purse; // bets already paid into the purse by settle
-  let total = res.base + (choice === 'die' ? res.winnings : 0);
+  const total = res.base + res.winnings + (choice === 'die' ? prizeBonus(ctx) : 0);
   if (choice === 'glean') { const t = res.prizes.tricks[picks[0]]; run.tricks.push(mkTrick(run, t.id, t.q, t.up)); }
   else for (const i of picks.slice(0, choice === 'die' ? 1 : 2)) run.dice.push(mkDie(run, res.prizes.dice[i].type));
   // settle() left the pre-bout purse in place apart from bet payouts; replace the staked part with the result

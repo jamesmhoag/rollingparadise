@@ -7,7 +7,7 @@
 // effect type for both Rollers at once and yields a step after each visible change.
 // Fees go out as Debt first; the House then settles every stack that took Debt.
 import { RNG, sum, clone, clamp, order1D } from './util.js';
-import { TRICKS, TYPES, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, shopVars } from './data.js';
+import { TRICKS, TYPES, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, shopVars, resistsOf } from './data.js';
 
 export const PHASES = ['draw', 'roll', 'bid'];
 export const LAST_CALL = 8;
@@ -34,7 +34,8 @@ export function rearRow(s, c, payOnly) { for (let r = s.rows - 1; r >= 0; r--) i
 const bodyRow = (s, c, payOnly) => { for (let r = s.dims.meterRows; r < s.rows; r++) if (occupied(s.grid[r][c], payOnly)) return r; return -1; };
 const topSolid = (cell) => { for (let i = cell.chips.length - 1; i >= 0; i--) if (!isHazard(cell.chips[i])) return i; return -1; };
 const topPayableIdx = (cell) => { for (let i = cell.chips.length - 1; i >= 0; i--) if (isPayable(cell.chips[i])) return i; return -1; };
-const hasResist = (cell, el) => cell.chips.some((ch) => ch.resist === el);
+const hasResist = (cell, el) => cell.chips.some((ch) => ch.resist && resistsOf(ch.resist).includes(el));
+export const frozen = (cell) => cell.chips.some((ch) => ch.kind === 'frozen');
 // shop chips: `resist` holds the SHOP_CHIPS id
 export const shopCount = (cell, id) => cell.chips.filter((ch) => ch.resist === id).length;
 const anchored = (cell) => shopCount(cell, 'anchor') > 0;
@@ -44,7 +45,7 @@ export const tipOf = (s, k) => Math.max(0, s.tip[k] + (s.turnBonus[k] || 0));
 export const cOf = (s, k) => Math.max(0, s.c[k] + (s.turnBonus[k] || 0));
 
 function mkChip(b, kind, value = 0, extra = {}) { return { id: b.nextId++, kind, value, ...extra }; }
-const HAZARD_LIFE = { burn: 3, shock: 2, corrupt: 3, boom: 2, acid: 99, poison: 99 };
+const HAZARD_LIFE = { burn: 3, shock: 2, corrupt: 3, boom: 2, acid: 99, poison: 99, frozen: 2, lava: 2 };
 const mkHazard = (b, kind, life) => mkChip(b, kind, 0, { life: life ?? HAZARD_LIFE[kind] });
 // A stack carries at most one Debt marker, showing exactly what it owes. Make it total n (0 removes it).
 function setDebt(b, cell, n, how) {
@@ -122,7 +123,7 @@ export const barCapacity = (dims, holes = 0) => (dims.barRows * dims.cols - hole
 function mkSide(b, spec, idx) {
   const d = spec.dims, rows = d.meterRows + d.barRows;
   const s = {
-    idx, name: spec.name, cls: spec.cls, ai: !!spec.ai, title: spec.title || '', deploy: spec.deploy,
+    idx, name: spec.name, cls: spec.cls, ai: !!spec.ai, title: spec.title || '', deploy: spec.deploy, why: spec.why || null,
     tip: { ...spec.tip }, c: { ...spec.c }, dims: { ...d }, rows,
     grid: Array.from({ length: rows }, () => Array.from({ length: d.cols }, () => ({ chips: [], hole: false, hard: 0 }))),
     book: spec.tricks.map((t) => ({ ...t })), run: [], pouch: spec.dice.map((x) => ({ ...x, up: [...(x.up || [])] })),
@@ -304,12 +305,14 @@ export function flip(b, s, r, c) {
 const realType = realTypeOf;
 export const holderOf = (s, dieId) => s.run.find((e) => e.dice.some((d) => d.id === dieId)) || null;
 // a die on a trick can still be moved while the Roll phase is open, if it was rolled this turn
-export const canMove = (b, s, dieId) => { const e = holderOf(s, dieId); return b.phase === 'roll' && !!e && e.state === 'shown' && e.dice.find((d) => d.id === dieId).t === b.turn; };
+// Dice rolled this turn can be moved between tricks until the turn is played (through Roll and Bid).
+const editing = (b) => b.phase === 'roll' || b.phase === 'bid';
+export const canMove = (b, s, dieId) => { const e = holderOf(s, dieId); return editing(b) && !!e && e.state !== 'play' && e.dice.find((d) => d.id === dieId).t === b.turn; };
 export function canPlace(b, s, dieId, e) {
-  const gate = phaseGate(b, 'roll'); if (gate) return gate;
+  const gate = b.phase === 'bid' ? null : phaseGate(b, 'roll'); if (gate) return gate;
   const def = TRICKS[e.trick.id], d = s.tray.find((x) => x.id === dieId) || (canMove(b, s, dieId) ? holderOf(s, dieId).dice.find((x) => x.id === dieId) : null);
   if (!d) return s.pouch.some((x) => x.id === dieId) ? 'Roll the die first.' : 'That die is committed to its trick.';
-  if (e.state !== 'shown') return 'A trick that has been bid on cannot take more dice.';
+  if (e.state === 'play') return 'That trick is already in play.';
   if (e.dice.some((x) => x.id === dieId)) return 'That die is already there.';
   if (e.dice.length >= def.count) return `${def.name} holds at most ${def.count} dice.`;
   if (!d.chip && realType(e) && realType(e) !== d.type) return 'All dice on a trick must be the same type.';
@@ -327,7 +330,7 @@ export function place(b, s, dieId, e) {
 }
 export function unplace(b, s, dieId) { if (!canMove(b, s, dieId)) return null; const d = takeLoose(s, dieId); s.tray.push(d); return d; }
 export function bidChip(s, r, c) {
-  const cell = s.grid[r]?.[c]; if (!cell || !cell.chips.length) return null;
+  const cell = s.grid[r]?.[c]; if (!cell || !cell.chips.length || frozen(cell)) return null;
   const top = cell.chips[cell.chips.length - 1];
   return isPayable(top) && !top.gold ? top : null;
 }
@@ -356,7 +359,7 @@ export function targetSide(b, s, def) { return def.side === 'opp' ? b.sides[1 - 
 export function validTargets(b, s, e, payOnly) {
   const def = TRICKS[e.trick.id], t = targetSide(b, s, def), out = [];
   if (!t || def.approach === 'none') return out;
-  const C = t.dims.cols, m = t.dims.meterRows, push = (r, c) => { if (r >= 0) out.push(ref(t, r, c)); };
+  const C = t.dims.cols, m = t.dims.meterRows, hidden = t !== s, push = (r, c) => { if (r >= 0 && !(hidden && shopCount(t.grid[r][c], 'fog'))) out.push(ref(t, r, c)); };
   switch (def.approach) {
     case 'front': for (let c = 0; c < C; c++) push(frontRow(t, c, payOnly), c); break;
     case 'rear': for (let c = 0; c < C; c++) push(rearRow(t, c, payOnly), c); break;
@@ -694,7 +697,7 @@ function* ticks(b) {
   for (const s of b.sides) {
     b.ctx = { phase: 'house', who: s.idx };
     let burned = 0, boomed = 0; const touched = [];
-    const HZ = ['burn', 'acid', 'shock', 'corrupt', 'poison', 'boom'];
+    const HZ = ['burn', 'acid', 'shock', 'corrupt', 'poison', 'boom', 'frozen', 'lava'];
     for (const { r, c, cell } of allCells(s)) for (const h of cell.chips.filter((ch) => HZ.includes(ch.kind))) {
       if (!cell.chips.includes(h)) continue;
       const drop = () => { cell.chips.splice(cell.chips.indexOf(h), 1); b.fx[h.id] = 'void'; };
@@ -713,6 +716,10 @@ function* ticks(b) {
         }
         continue;
       }
+      if (h.kind === 'frozen') { // thaws with time, or at once next to heat
+        if (cell.chips.some((ch) => ch.kind === 'burn' || ch.kind === 'lava') || --h.life <= 0) drop();
+        continue;
+      }
       if (h.kind === 'boom') { // goes off the turn after it lands: 5¢ to its stack and every stack around it
         if (--h.life > 0) continue;
         drop(); boomed++;
@@ -721,6 +728,11 @@ function* ticks(b) {
       }
       const i = topSolid(cell);
       if (i >= 0) { const v = cell.chips.splice(i, 1)[0]; b.fx[v.id] = 'void'; if (isPayable(v)) { s.destroyed += v.value; burned += v.value; } }
+      if (h.kind === 'lava') { // spills a Burning chip next door, which also thaws a Frozen stack
+        const adj = allCells(s).filter((x) => Math.abs(x.r - r) + Math.abs(x.c - c) === 1 && solidCount(x.cell) && !hasResist(x.cell, 'burn') && !x.cell.chips.some((ch) => ch.kind === 'burn'));
+        if (adj.length) { const x = b.rng.pick(adj); x.cell.chips.push(mkHazard(b, 'burn', 2)); touched.push(ref(s, x.r, x.c)); }
+        if (--h.life <= 0) drop();
+      }
       if (h.kind === 'burn') {
         if (b.rng.chance(0.3)) { const adj = allCells(s).filter((x) => Math.abs(x.r - r) + Math.abs(x.c - c) === 1 && solidCount(x.cell) && !hasResist(x.cell, 'burn') && !x.cell.chips.some((ch) => ch.kind === 'burn'));
           if (adj.length) b.rng.pick(adj).cell.chips.push(mkHazard(b, 'burn', 2)); }

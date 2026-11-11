@@ -1,6 +1,6 @@
 // The table. Every chip, die, trick card and creature is one persistent element that is
 // moved, faded or flipped to follow the bout state, so nothing ever pops between states.
-import { h, tip, wait, tween, swapText, setOn, pulse, syncList, toast, btn, refreshTip, box } from './core.js';
+import { h, tip, wait, tween, swapText, setOn, pulse, syncList, toast, btn, refreshTip, box, vc, detail } from './core.js';
 import { chipSig, chipGlyph, chipName, chipText, dieTip, trickTip, pips, statTip, drinkTip, dieMarks, dieClass, trickLook, feltStyle } from './parts.js';
 import { openLibrary } from './library.js';
 import * as D from '../data.js';
@@ -49,9 +49,9 @@ export function boutScene(root, bout, ctx, onDone) {
   const badgeBox = [h('div', { class: 'badges' }), h('div', { class: 'badges right' })];
   // the three planning phases, shown as steps: the current one is lit, finished ones are dimmed
   const STEPS = [
-    ['draw', 'Draw', 'trickery', 'conviction', 'Click tricks in your Book to show them on your Run. Draw at least one, then lock in your draws. Rolling ends drawing for the turn.'],
-    ['roll', 'Roll', 'proficiency', 'cunning', 'Pick the dice to roll from your Pouch (and any top chips to flip), then press Roll: they all land in the roll together, once a turn. Put at least one on a trick, leave the rest, and lock in. Bidding ends rolling.'],
-    ['bid', 'Bid', 'ingenuity', 'charisma', 'Click one of your stacks to pick up its top chip, then click a trick to bid it. Repeat until you are out of bids; a trick can take several. Bid at least one chip, then press Play.']];
+    ['draw', 'Draw', 'trickery', 'conviction', 'Click tricks in your Book to show them on your Run. Draw at least one, then press Roll. Rolling ends drawing for the turn.'],
+    ['roll', 'Roll', 'proficiency', 'cunning', 'Pick the dice to roll from your Pouch (and any top chips to flip), then press Roll: they all land in the roll together, once a turn. Put at least one on a trick and leave the rest, then press Bid. You can still move these dice between tricks until you press Play.'],
+    ['bid', 'Bid', 'ingenuity', 'charisma', 'Click one of your stacks to pick up its top chip, then click a trick to bid it. Repeat until you are out of bids; a trick can take several. Bid at least one chip, then press Play. Until you press Play you can move this turn’s dice between tricks, and Undo takes back your bids.']];
   const pill = {}, pillEl = {};
   const pillTip = (k, c, what) => () => `${statTip(k, B.tipOf(me, k))}<p class="dim">Left unused: ${statTip(c, B.cOf(me, c)).replace(/<b>.*?<\/b>/, '')}</p><p>${what}</p><p class="dim">You see this part of ${opp.name}'s turn only after you lock in yours.</p>`;
   const header = h('div', { class: 'bout-head' },
@@ -100,11 +100,11 @@ export function boutScene(root, bout, ctx, onDone) {
   const undoBtn = btn('Undo', () => act(() => { B.resetPlan(bout, me); ui.sel.clear(); ui.flips = []; ui.chip = null; setMode(null); }),
     () => `<b>Undo</b><p>${bout.phase === 'draw' ? 'Put back the tricks you drew this turn.' : bout.phase === 'roll' ? (me.thrown ? 'Take the dice off your tricks and back into the roll. The throw itself stands: rolling is once a turn.' : 'Clear the dice and chips you picked to roll.') : 'Take back the bids you made this turn.'}</p>`, 'small');
   const speedBtn = btn('1×', () => { ui.speed = ui.speed === 1 ? 2 : ui.speed === 2 ? 4 : 1; swapText(speedBtn, `${ui.speed}×`); }, '<b>Speed</b><p>How fast the House works through a turn: 1×, 2× or 4×.</p>', 'small');
-  const commitBtn = btn('Lock in draws', () => commit(), () => commitTip(), 'big');
-  const trayBox = h('div', { class: 'tray-box', text: 'Lock in your draws, then pick dice below' });
+  const commitBtn = btn('Roll', () => commit(), () => commitTip(), 'big');
+  const trayBox = h('div', { class: 'tray-box', text: 'Draw, then press Roll' });
   const frameEls = [header, stageBox, feedEl, runEmpty,
     h('div', { class: 'zone-title', style: { left: '16px', top: '418px' }, tip: '<b>Book</b><p>Tricks you own. Click one to draw it onto your Run. Tricks return here once played.</p>', text: 'BOOK' }),
-    h('div', { class: 'zone-title', style: { left: '888px', top: '418px' }, tip: '<b>The roll</b><p>Everything you roll this turn lands here together, showing its value. Click a die, then the shown trick it should go on; click a die on a trick to take it back. At least one must go on a trick. Dice you leave here go back to your Pouch when you lock in your rolls.</p>', text: 'THE ROLL' }), trayBox,
+    h('div', { class: 'zone-title', style: { left: '888px', top: '418px' }, tip: '<b>The roll</b><p>Everything you roll this turn lands here together, showing its value. Click a die, then the shown trick it should go on; click a die on a trick to take it back. At least one must go on a trick. Dice you leave here go back to your Pouch when you press Bid.</p>', text: 'THE ROLL' }), trayBox,
     h('div', { class: 'zone-title', style: { left: '888px', top: '524px' }, tip: '<b>Pouch</b><p>Your dice. In the Roll phase, click dice to pick them (up to your Proficiency), then press Roll. You can also pick the top chip of a stack to flip: it lands as 0 or its worth, counts as a die of any type, and comes back to your Meter afterwards.</p>', text: 'POUCH' }),
     h('div', { class: 'zone-title', style: { left: '1082px', top: '418px' }, tip: `<b>${opp.name}'s Run</b><p>The tricks they are showing, with the dice and bids on them. You see what they draw, roll and bid each phase only once you have locked in the same phase: neither of you sees the other's move until both have made it.</p>`, text: 'THEIR RUN' }),
     h('div', { class: 'controls' }, sipBtn, undoBtn, speedBtn, commitBtn),
@@ -124,19 +124,36 @@ export function boutScene(root, bout, ctx, onDone) {
         els.cells[si][r][c] = el; root.insertBefore(el, layer);
       } }
     const m = s.dims.meterRows, x0 = cellPos(si, si === 0 ? m - 1 : 0, 0).x, x1 = cellPos(si, si === 0 ? s.rows - 1 : m, 0).x;
-    root.insertBefore(h('div', { class: 'zone-label', style: { left: x0 + 'px', width: m * cw[si] + 'px', top: TOP + 5 * CH + 4 + 'px' }, text: 'METER',
-      tip: '<b>Meter</b><p>The front rows. Only chips gained during the bout land here: Blocks, Opportunity chips and chips recovered from the Stage. Fees hit the front first.</p>' }), layer);
-    root.insertBefore(h('div', { class: 'zone-label', style: { left: x1 + 'px', width: s.dims.barRows * cw[si] + 'px', top: TOP + 5 * CH + 4 + 'px' }, text: 'BAR',
-      tip: '<b>Bar</b><p>The chips committed before the bout. They must survive to the end.</p>' }), layer);
+    root.insertBefore(h('div', { class: 'zone-label', style: { left: x0 + 'px', width: m * cw[si] + 'px', top: TOP + 5 * CH + 4 + 'px' }, text: 'METER', tip: () => positionTip(s, 'meter') }), layer);
+    root.insertBefore(h('div', { class: 'zone-label', style: { left: x1 + 'px', width: s.dims.barRows * cw[si] + 'px', top: TOP + 5 * CH + 4 + 'px' }, text: 'BAR', tip: () => positionTip(s, 'bar') }), layer);
   });
 
   // ---------- tooltips ----------
+  // How a position's size comes from its Roller's attributes. Depth runs away from the Stage (rows), width
+  // runs along it (lanes), height is how tall a stack may grow.
+  const BASE = D.BASE_DIMS;
+  function srcList(s, k) { const w = s.why?.[k] || []; return w.length ? w.map(([src, n]) => `${n > 0 ? '+' : ''}${n} ${src}`).join(', ') : 'no bonuses'; }
+  function positionTip(s, zone) {
+    const d = s.dims, who = s.idx ? s.name + "'s" : 'Your', bal = d.stackMax - BASE.stackMax, ver = d.meterRows - BASE.meterRows, dep = d.barRows - BASE.barRows;
+    const meter = zone === 'meter', rows = meter ? d.meterRows : d.barRows, base = meter ? BASE.meterRows : BASE.barRows, extra = meter ? ver : dep, stat = meter ? 'Versatility' : 'Depth', k = meter ? 'versatility' : 'depth';
+    const role = meter ? 'The front rows, nearest the Stage. Only chips gained during the bout land here: Blocks, Opportunity chips, recovered chips, flipped chips coming home. Fees hit the front first, so the Meter shields your Bar.'
+      : 'The back rows. The chips you committed before the bout, and they must survive to the end. Shop chips sit at the base of these stacks.';
+    const cap = rows * d.cols * d.stackMax;
+    return `<b>${who} ${meter ? 'Meter' : 'Bar'}</b> <span class="dim">${rows} deep × ${d.cols} wide × ${d.stackMax} high · holds ${cap}</span>
+      <p class="v">${role}</p>
+      <ul><li><b>Depth ${rows} rows</b> = ${base} base ${extra >= 0 ? '+' : '−'} ${Math.abs(extra)} ${stat}<span class="v"> (from ${srcList(s, k)})</span></li>
+      <li><b>Width ${d.cols} lanes</b><span class="v">: the same for every Roller. Each lane runs from the Stage to the edge; overkill only travels down its own lane.</span></li>
+      <li><b>Height ${d.stackMax} chips</b> = ${BASE.stackMax} base ${bal >= 0 ? '+' : '−'} ${Math.abs(bal)} Balance<span class="v"> (from ${srcList(s, 'balance')}). Shared by the Meter and the Bar.</span></li></ul>
+      ${s.why?.note ? `<p class="dim">${s.why.note}</p>` : ''}
+      <p class="dim">${meter ? `The Bar behind it is ${d.barRows} deep (${BASE.barRows} base + Depth).` : `The Meter in front is ${d.meterRows} deep (${BASE.meterRows} base + Versatility).`} Raise Balance, Versatility and Depth with your class, jacket, cards and the Position tilt.</p>`;
+  }
   function cellTip(si, r, c) {
     const s = bout.sides[si], cell = s.grid[r][c], zone = r < s.dims.meterRows ? 'Meter' : 'Bar';
     if (cell.black) return `<b>${D.CALAMITIES.blackhole.name}</b><p>${D.CALAMITIES.blackhole.text}</p>`;
     if (cell.volcano > 0) return `<b>${D.CALAMITIES.volcano.name}</b> <span class="dim">${cell.volcano} turn${cell.volcano > 1 ? 's' : ''} left</span><p>${D.CALAMITIES.volcano.text}</p>`;
     if (cell.hole) return `<b>Hole</b><p>Nothing can be placed here.</p>`;
-    if (!cell.chips.length) return `<b>Empty ${zone} space</b><p>Holds up to ${s.dims.stackMax} chips.</p>`;
+    const dimLine = `<p class="dim">${zone} row ${zone === 'Meter' ? r + 1 : r - s.dims.meterRows + 1} of ${zone === 'Meter' ? s.dims.meterRows : s.dims.barRows}, lane ${c + 1} of ${s.dims.cols}. Hover the ${zone.toUpperCase()} label for how the position's size is set.</p>`;
+    if (!cell.chips.length) return `<b>Empty ${zone} space</b><p>Holds up to ${s.dims.stackMax} chips (${D.BASE_DIMS.stackMax} + ${s.dims.stackMax - D.BASE_DIMS.stackMax} Balance).</p>${dimLine}`;
     const groups = []; for (let i = cell.chips.length - 1; i >= 0; i--) { const ch = cell.chips[i], g = groups[groups.length - 1]; if (g && g.sig === chipSig(ch)) g.n++; else groups.push({ sig: chipSig(ch), ch, n: 1 }); }
     const top = cell.chips[cell.chips.length - 1], debt = B.debtOf(cell), next = B.debtTarget(cell);
     return `<b>${zone} stack</b> <span class="dim">${B.solidCount(cell)}/${s.dims.stackMax} high · worth ${B.cellWorth(cell)}¢${debt ? ` · owes ${debt}¢` : ''}</span>
@@ -144,7 +161,7 @@ export function boutScene(root, bout, ctx, onDone) {
       ${debt && next ? `<p class="bad">Owes ${debt}¢. Debt only pays whole chips, so the ${next.value}¢ chip it sits on goes to the Stage once the Debt reaches ${next.value}¢: ${next.value - debt}¢ more, from any later fee or hazard.</p>` : ''}
       ${debt ? `<p class="dim">${DEBT_RULE}</p>` : ''}
       <ul class="stack">${groups.map((g) => `<li><span class="chip static mini ${g.sig}"><i>${chipGlyph(g.ch)}</i></span> ${g.n} × ${chipName(g.ch)}</li>`).join('')}</ul>
-      <p class="dim">Top: ${chipText(top)}</p>`;
+      <p class="dim">Top: ${chipText(top)}</p>${dimLine}`;
   }
   const DEBT_RULE = 'How Debt works: a fee is paid from the top of the stack it lands on, one whole chip at a time. What cannot cover the next chip stays on that stack as Debt and already counts against Worth. If the stack runs out of chips, the rest (overkill) moves to the next stack behind it in the same lane (the line of stacks running from the Stage to the edge of the table). It never spreads to another lane, and with no stack behind it is wasted.';
   function cardTip(uid) {
@@ -233,7 +250,7 @@ export function boutScene(root, bout, ctx, onDone) {
     els.flipFrom = null;
     for (const [id, el] of els.dice) if (!wantDice.has(id)) { el.style.opacity = '0'; els.dice.delete(id); setTimeout(() => el.remove(), 500); }
     trayBox.classList.toggle('has', me.tray.length > 0); trayBox.classList.toggle('ready', bout.phase === 'roll' && !me.thrown);
-    swapText(trayBox, bout.phase === 'draw' ? 'Lock in your draws, then pick dice below' : bout.phase === 'roll' && !me.thrown ? (selCount() ? `${selCount()} picked: press Roll` : `Pick up to ${B.tipOf(me, 'proficiency')} dice below, then Roll`) : me.tray.length ? '' : bout.phase === 'roll' ? 'All placed' : 'Rolled for this turn');
+    swapText(trayBox, bout.phase === 'draw' ? 'Draw, then press Roll' : bout.phase === 'roll' && !me.thrown ? (selCount() ? `${selCount()} picked: press Roll` : `Pick up to ${B.tipOf(me, 'proficiency')} dice below, then Roll`) : me.tray.length ? '' : bout.phase === 'roll' ? 'All placed' : 'Rolled for this turn');
 
     // chips
     const want = new Map();
@@ -301,13 +318,14 @@ export function boutScene(root, bout, ctx, onDone) {
   }
   const selCount = () => ui.sel.size + ui.flips.length;
   const throwing = () => bout.phase === 'roll' && !me.thrown && B.canAct(bout, me);
-  const commitLabel = () => (bout.phase === 'draw' ? 'Lock in draws' : bout.phase === 'roll' ? (throwing() ? `Roll${selCount() ? ' ' + selCount() : ''}` : 'Lock in rolls') : 'Play');
+  // the button names the next action: Roll (end drawing), Roll n (throw), Bid (end rolling), Play (end the turn)
+  const commitLabel = () => (bout.phase === 'draw' ? 'Roll' : bout.phase === 'roll' ? (throwing() ? `Roll${selCount() ? ' ' + selCount() : ''}` : 'Bid') : 'Play');
   const commitReady = () => (throwing() ? selCount() > 0 : !B.needOf(bout, me));
   function commitTip() {
     const need = throwing() ? (selCount() ? null : 'Pick at least one die (or a top chip to flip) first.') : B.needOf(bout, me);
-    const what = bout.phase === 'draw' ? 'Close drawing for this turn and move on to rolling.' : throwing() ? 'Roll every picked die (and flip every picked chip) at once. You roll once a turn.'
-      : bout.phase === 'roll' ? 'Close rolling for this turn and move on to bidding. Dice left in the roll go back to your Pouch.' : 'Close bidding. The House collects every bid and plays the turn.';
-    return `<b>${commitLabel()}</b><p>${what}</p>${need ? `<p class="bad">${need}</p>` : `<p class="dim">Then you see what ${opp.name} did in this phase.</p>`}`;
+    const what = bout.phase === 'draw' ? ['Done drawing: move on to rolling.', 'Done drawing'] : throwing() ? ['Roll every picked die (and flip every picked chip) at once. You roll once a turn.', 'Throw the picked dice'] 
+      : bout.phase === 'roll' ? ['Done rolling: move on to bidding. Dice left in the roll go back to your Pouch. Dice on tricks can still be moved until you press Play.', 'Done rolling'] : ['Commit the turn. The House collects every bid and plays it. Until now you could move dice and take back bids.', 'Commit the turn'];
+    return `<b>${commitLabel()}</b><p>${vc(...what)}</p>${need ? `<p class="bad keep">${need}</p>` : `<p class="dim">Then you see what ${opp.name} did in this phase.</p>`}`;
   }
   // Debt tags: what each stack owes against the chip it is working towards
   const tagEls = new Map();
@@ -392,12 +410,14 @@ export function boutScene(root, bout, ctx, onDone) {
     const sel = ui.mode === 'die' ? me.tray.find((d) => d.id === ui.die) : null, left = B.tipOf(me, 'ingenuity') - me.used.bid;
     const chip = ui.chip && B.bidChip(me, ui.chip.r, ui.chip.c);
     let text;
-    if (bout.phase === 'draw') text = !B.canAct(bout, me) ? 'Nothing to draw. Lock in your draws to move on.' : me.used.draw ? `Draw more, or lock in your draws. Rolling ends drawing.` : 'Step 1 · Draw: click a trick in your Book to show it on your Run.';
-    else if (bout.phase === 'roll' && !me.thrown) text = !B.canAct(bout, me) ? 'Nothing you can roll onto. Lock in your rolls to move on.' : selCount() ? `${selCount()} picked. Pick more (up to ${B.tipOf(me, 'proficiency')}) or press Roll: they all land in the roll together.` : 'Step 2 · Roll: pick dice from your Pouch (or a glowing top chip to flip), then press Roll. You roll once a turn.';
-    else if (bout.phase === 'roll') text = ui.mode === 'die' ? `You rolled ${sel ? sel.value : 'it'}. Click a shown trick to put it on, or click another die.` : !B.placedThisTurn(bout, me) && B.canAct(bout, me) ? 'Put at least one die from the roll on a trick. Click a die, then the trick.' : 'Move dice between tricks, or lock in your rolls. Dice left in the roll go back to your Pouch.';
-    else if (ui.mode === 'target') text = `Pick where ${name} lands, or keep the marked space.${fcNow ? ' Forecast: ' + fcSummary(fcNow) : ''}`;
-    else if (chip) text = `Picked up a ${chip.value}¢ chip. Click a trick to bid it — one that already has a bid can take another.`;
-    else text = left <= 0 ? 'Out of bids. Press Play.' : me.used.bid ? `Bid again (${left} left): click a stack, then a trick. Or press Play.` : 'Step 3 · Bid: click one of your stacks to pick up its top chip, then click a trick.';
+    const say = (v, c) => vc(v, c);
+    if (bout.phase === 'draw') text = !B.canAct(bout, me) ? say('Nothing to draw. Press Roll to move on.', 'Nothing to draw: Roll.') : me.used.draw ? say('Draw more, or press Roll. Rolling ends drawing.', 'Draw more, or Roll.') : say('Step 1 · Draw: click a trick in your Book to show it on your Run.', 'Draw a trick.');
+    else if (bout.phase === 'roll' && !me.thrown) text = !B.canAct(bout, me) ? say('Nothing you can roll onto. Press Bid to move on.', 'Nothing to roll onto: Bid.') : selCount() ? say(`${selCount()} picked. Pick more (up to ${B.tipOf(me, 'proficiency')}) or press Roll: they all land in the roll together.`, `${selCount()}/${B.tipOf(me, 'proficiency')} picked: Roll.`) : say('Step 2 · Roll: pick dice from your Pouch (or a glowing top chip to flip), then press Roll. You roll once a turn.', `Pick up to ${B.tipOf(me, 'proficiency')} dice.`);
+    else if (ui.mode === 'die') text = say(`${sel ? `You rolled ${sel.value}. ` : ''}Click a shown trick to put it on, or click another die.${bout.phase === 'bid' ? ' Dice left in the roll go back to your Pouch when you press Play.' : ''}`, `${sel ? sel.value + ': ' : ''}pick a trick.`);
+    else if (bout.phase === 'roll') text = !B.placedThisTurn(bout, me) && B.canAct(bout, me) ? say('Put at least one die from the roll on a trick. Click a die, then the trick.', 'Put a die on a trick.') : say('Move dice between tricks, or press Bid. Dice left in the roll go back to your Pouch.', 'Move dice, or Bid.');
+    else if (ui.mode === 'target') text = say(`Pick where ${name} lands, or keep the marked space.${fcNow ? ' Forecast: ' + fcSummary(fcNow) : ''}`, `Aim ${name}.`);
+    else if (chip) text = say(`Picked up a ${chip.value}¢ chip. Click a trick to bid it — one that already has a bid can take another.`, `${chip.value}¢ chip: pick a trick.`);
+    else text = left <= 0 ? say('Out of bids. Move dice if you like, then press Play.', 'Out of bids: Play.') : me.used.bid ? say(`Bid again (${left} left): click a stack, then a trick. You can still move this turn's dice. Or press Play.`, `${left} bid${left > 1 ? 's' : ''} left, or Play.`) : say('Step 3 · Bid: click one of your stacks to pick up its top chip, then click a trick. Until you press Play you can still move this turn\'s dice between tricks.', 'Bid a chip on a trick.');
     setPrompt(text);
   }
   function setMode(mode, v) { ui.mode = mode; ui.die = mode === 'die' ? v : null; ui.entry = mode === 'target' ? v : null; }
@@ -409,11 +429,12 @@ export function boutScene(root, bout, ctx, onDone) {
     if (ui.locked) return;
     const e = me.run.find((x) => x.uid === uid), el = els.cards.get(uid);
     if (!e) { const why = B.canDraw(bout, me, uid); if (why) return nope(why, el); return act(() => B.draw(bout, me, uid)); }
-    if (bout.phase === 'draw') return nope('That trick is already on your Run. Lock in your draws to start rolling.', el);
+    if (bout.phase === 'draw') return nope('That trick is already on your Run. Press Roll to start rolling.', el);
     if (bout.phase === 'roll') {
       if (ui.mode === 'die') { const why = B.canPlace(bout, me, ui.die, e); if (why) return nope(why, el); return act(() => { B.place(bout, me, ui.die, e); const next = me.tray[0]; setMode(next ? 'die' : null, next?.id); }); }
       return nope(me.thrown ? 'Click a die in the roll first, then the trick.' : 'Pick dice from your Pouch and roll them first.', el);
     }
+    if (ui.mode === 'die') { const why = B.canPlace(bout, me, ui.die, e); if (why) return nope(why, el); return act(() => { B.place(bout, me, ui.die, e); setMode(null); }); }
     if (ev.target.dataset.act === 'target' && e.state === 'bid') return act(() => { ui.chip = null; setMode('target', uid); });
     if (e.state === 'play') return nope('That trick is already in play.', el);
     if (!ui.chip) return nope(me.used.bid >= B.tipOf(me, 'ingenuity') ? 'No bids left this turn (Ingenuity). Press Play.' : 'Pick up a chip first: click one of your stacks, then this trick.', el);
@@ -424,14 +445,14 @@ export function boutScene(root, bout, ctx, onDone) {
     if (ui.locked) return;
     const el = els.dice.get(id);
     if (me.pouch.some((d) => d.id === id)) { // pick it for the throw
-      if (bout.phase !== 'roll' || me.thrown) return nope(bout.phase === 'draw' ? 'Lock in your draws first, then pick the dice to roll.' : me.thrown ? 'You have rolled this turn. Rolling is one throw.' : 'Rolling is over for this turn.', el);
+      if (bout.phase !== 'roll' || me.thrown) return nope(bout.phase === 'draw' ? 'Press Roll first, then pick the dice to roll.' : me.thrown ? 'You have rolled this turn. Rolling is one throw.' : 'Rolling is over for this turn.', el);
       if (ui.sel.has(id)) return act(() => ui.sel.delete(id));
       if (selCount() >= B.tipOf(me, 'proficiency')) return nope(`You can roll ${B.tipOf(me, 'proficiency')} this turn (Proficiency).`, el);
       return act(() => ui.sel.add(id));
     }
     if (me.tray.some((d) => d.id === id)) return act(() => setMode(ui.mode === 'die' && ui.die === id ? null : 'die', id));
-    if (!B.canMove(bout, me, id)) return nope(bout.phase === 'bid' ? 'Rolling is over: dice stay where they are.' : 'That die was placed on an earlier turn and stays on its trick.', el);
-    act(() => { B.unplace(bout, me, id); setMode('die', id); });
+    if (!B.canMove(bout, me, id)) return nope(B.holderOf(me, id)?.state === 'play' ? 'That trick is in play: its dice stay until it has played.' : 'That die was placed on an earlier turn and stays on its trick.', el);
+    act(() => { ui.chip = null; B.unplace(bout, me, id); setMode('die', id); });
   }
   function clickCell(si, r, c) {
     if (ui.locked) return;
@@ -464,6 +485,7 @@ export function boutScene(root, bout, ctx, onDone) {
   function hoverCell(si, r, c) { hover = r < 0 ? null : { side: si, r, c }; if (ui.mode === 'target') { marks(); hint(); } }
   const onKey = (ev) => { if (ev.key === 'Escape' && (ui.mode || ui.chip)) act(() => { setMode(null); ui.chip = null; }); };
   document.addEventListener('keydown', onKey);
+  const onDetail = () => { if (root.isConnected) hint(); else detail.listeners.delete(onDetail); }; detail.listeners.add(onDetail);
 
   // ---------- committing a phase ----------
   // Rolling is one throw: the commit button throws first, then locks the rolls in.
