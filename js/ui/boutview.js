@@ -4,7 +4,7 @@ import { h, tip, wait, tween, swapText, setOn, pulse, syncList, toast, btn, refr
 import { chipSig, chipGlyph, chipName, chipText, dieTip, trickTip, pips, statTip, drinkTip } from './parts.js';
 import * as D from '../data.js';
 import * as B from '../bout.js';
-import { planTurn } from '../ai.js';
+import { planPhase } from '../ai.js';
 import { sum } from '../util.js';
 
 const TOP = 100, CH = 50, PX = 590, OX = 690, CHIP = 32;
@@ -14,7 +14,8 @@ const fmtX = (m) => '×' + (m % 1 ? m.toFixed(2).replace(/0$/, '') : m);
 export function boutScene(root, bout, ctx, onDone) {
   const [me, opp] = bout.sides;
   const cw = bout.sides.map((s) => Math.min(52, Math.floor(540 / s.rows)));
-  const ui = { mode: null, die: null, entry: null, locked: false, speed: globalThis.RP_FAST || 1, first: true }; // RP_FAST: set by automated playthroughs
+  const ui = { mode: null, die: null, entry: null, locked: false, speed: globalThis.RP_FAST || 1, first: true, sel: new Set(), flips: [], chip: null, card: null }; // RP_FAST: set by automated playthroughs
+  // sel: Pouch dice picked for the throw · flips: stacks whose top chip is picked to flip · chip: the stack picked to bid from · card: trick under the pointer
   const els = { chips: new Map(), dice: new Map(), cards: new Map(), cells: [[], []], creatures: new Map(), stage: new Map() };
   const layer = h('div', { class: 'bout-layer' });
   root.classList.add('bout');
@@ -30,28 +31,34 @@ export function boutScene(root, bout, ctx, onDone) {
     return out;
   }
   const dieSlot = (cl, i) => ({ x: cl.x + 7 + (i % 3) * 36, y: cl.y + 50 + Math.floor(i / 3) * 36 });
-  const pouchSlot = (i, n) => { const per = n > 20 ? 6 : 5, st = n > 20 ? 30 : 36; return { x: 888 + (i % per) * st, y: 506 + Math.floor(i / per) * st }; };
-  const traySlot = (i, n) => ({ x: 890 + i * Math.min(36, Math.floor(150 / Math.max(1, n - 1))), y: 442 });
+  const pouchSlot = (i, n) => { const per = n > 15 ? 6 : 5, st = n > 15 ? 30 : 36; return { x: 888 + (i % per) * st, y: 544 + Math.floor(i / per) * st }; };
+  const traySlot = (i) => ({ x: 892 + (i % 5) * 36, y: 442 + Math.floor(i / 5) * 36 }); // the roll: room for two rows of dice
   // the Stage: what each Roller has paid, stacked in front of the House
   const stageDenoms = (si) => { let n = bout.stage.paid[si]; const out = []; for (const v of [10, 5, 2, 1]) while (n >= v && out.length < 16) { out.push(v); n -= v; } return out; };
   const stageSlot = (si, k, n) => ({ x: (n > 8 ? 606 : 624) + Math.floor(k / 8) * 36, y: STAGE[si].y - (k % 8) * 5, z: 10 + k });
 
   // ---------- static frame ----------
   const worthEl = [h('b', { class: 'num' }), h('b', { class: 'num' })], stageEl = [h('b', { class: 'num' }), h('b', { class: 'num' })];
+  const owesEl = [h('span', { class: 'owes-t' }), h('span', { class: 'owes-t' })];
+  const owedBy = (s) => sum(s.grid.flat(), B.debtOf);
+  const worthTip = (s) => () => `<b>Worth ${B.worth(s)}¢</b><p>The chips in ${s.idx ? 'their' : 'your'} position, less any Debt on them. Reach zero and the bout is lost.</p>${owedBy(s) ? `<p class="bad">${owedBy(s)}¢ of Debt is waiting on ${s.idx ? 'their' : 'your'} stacks. It is already taken off Worth; the chips go to the Stage once each stack's Debt covers its top chip.</p>` : ''}`;
   const badgeBox = [h('div', { class: 'badges' }), h('div', { class: 'badges right' })];
-  const pill = { draw: h('span'), roll: h('span'), bid: h('span') };
-  const pillTip = (k, c, what) => () => `${statTip(k, B.tipOf(me, k))}<p class="dim">Left unused: ${statTip(c, B.cOf(me, c)).replace(/<b>.*?<\/b>/, '')}</p><p>${what}</p>`;
+  // the three planning phases, shown as steps: the current one is lit, finished ones are dimmed
+  const STEPS = [
+    ['draw', 'Draw', 'trickery', 'conviction', 'Click tricks in your Book to show them on your Run. Draw at least one, then lock in your draws. Rolling ends drawing for the turn.'],
+    ['roll', 'Roll', 'proficiency', 'cunning', 'Pick the dice to roll from your Pouch (and any top chips to flip), then press Roll: they all land in the roll together, once a turn. Put at least one on a trick, leave the rest, and lock in. Bidding ends rolling.'],
+    ['bid', 'Bid', 'ingenuity', 'charisma', 'Click one of your stacks to pick up its top chip, then click a trick to bid it. Repeat until you are out of bids; a trick can take several. Bid at least one chip, then press Play.']];
+  const pill = {}, pillEl = {};
+  const pillTip = (k, c, what) => () => `${statTip(k, B.tipOf(me, k))}<p class="dim">Left unused: ${statTip(c, B.cOf(me, c)).replace(/<b>.*?<\/b>/, '')}</p><p>${what}</p><p class="dim">You see this part of ${opp.name}'s turn only after you lock in yours.</p>`;
   const header = h('div', { class: 'bout-head' },
     h('div', { class: 'who me' }, h('div', { class: 'name' }, h('b', { text: 'You' }), h('span', { class: 'dim', text: ` ${D.CLASSES[me.cls].name}` })),
-      h('div', { class: 'worth', tip: '<b>Worth</b><p>The value of the chips in your position, less any Debt. Reach zero and you are broke: the bout is lost.</p>' }, 'Worth ', worthEl[0], '¢'),
-      h('div', { class: 'pills' },
-        h('span', { class: 'pill', tip: pillTip('trickery', 'conviction', 'Click a trick in your Book to draw it onto your Run.') }, 'Draw ', pill.draw),
-        h('span', { class: 'pill', tip: pillTip('proficiency', 'cunning', 'Click a die in your Pouch to roll it. It shows its value in the Rolled tray. Then click the shown trick you want it on.') }, 'Roll ', pill.roll),
-        h('span', { class: 'pill', tip: pillTip('ingenuity', 'charisma', 'Click the Bid slot on a shown trick, then one of your stacks.') }, 'Bid ', pill.bid))),
+      h('div', { class: 'worth', tip: worthTip(me) }, 'Worth ', worthEl[0], '¢', owesEl[0]),
+      h('div', { class: 'pills steps' }, STEPS.map(([k, name, stat, reward, what], i) => (pillEl[k] = h('span', { class: 'pill step', tip: pillTip(stat, reward, what) },
+        h('em', { text: String(i + 1) }), ` ${name} `, (pill[k] = h('span'))))))),
     h('div', { class: 'mid' }, h('div', { class: 'turn', tip: () => `<b>Turn ${bout.turn}</b><p>Both Rollers plan, then every effect plays in order: Investments, Insurances, Expenses, Corrections.</p><p>Last call: from turn ${B.LAST_CALL + 1} every Expense is multiplied, more each turn. At turn ${bout.rules.maxTurns} the most Worth wins.</p>` }, 'Turn ', h('b', { class: 'num turn-n', text: '1' })),
       h('div', { class: 'house', tip: '<b>The House</b><p>Every chip you bid is paid to the House and is gone for good.</p>', text: 'THE HOUSE' })),
     h('div', { class: 'who them' }, h('div', { class: 'name' }, h('b', { text: opp.name }), h('span', { class: 'dim', text: ` ${opp.title || ''} · ${D.CLASSES[opp.cls].name}` })),
-      h('div', { class: 'worth' }, 'Worth ', worthEl[1], '¢'),
+      h('div', { class: 'worth', tip: worthTip(opp) }, 'Worth ', worthEl[1], '¢', owesEl[1]),
       h('div', { class: 'pills' }, ['trickery', 'proficiency', 'ingenuity', 'charisma', 'cunning', 'conviction'].map((k) =>
         h('span', { class: 'pill small', tip: () => statTip(k, k in opp.tip ? B.tipOf(opp, k) : B.cOf(opp, k)) }, `${D.STATS[k].short} `, h('b', { text: k in opp.tip ? opp.tip[k] : opp.c[k] }))))));
   const stageBox = h('div', { class: 'stage-box' },
@@ -85,21 +92,22 @@ export function boutScene(root, bout, ctx, onDone) {
   function setCalling(parts) { const next = parts.map(callEl).filter(Boolean); for (const el of calling) if (!next.includes(el)) el.classList.remove('calling'); for (const el of next) el.classList.add('calling'); calling = next; }
   function trickPoint(st) { if (st.uid == null) return null; if (st.who === 0) { const cl = cardLayout().get(st.uid); return cl ? { x: cl.x + cl.w / 2, y: cl.y + 12 } : null; } const el = [...oppRun.children].find((x) => x._key === st.uid); if (!el) return null; const bx = box(el); return { x: bx.x + 8, y: bx.y + bx.h / 2 }; }
   const runEmpty = h('div', { class: 'run-empty', tip: '<b>Run</b><p>Tricks you have shown. They stay until you bid on them and they finish playing.</p>', text: 'Your Run. Click a trick in your Book to draw it here.' });
-  const flipBtn = btn('Flip', () => act(() => setMode(ui.mode === 'flip' ? null : 'flip')), '<b>Flip a chip</b><p>Flip a standard chip from the top of one of your stacks. It lands as 0 or its worth and waits in the Rolled tray as a die of any type. Place it on a shown trick like any die. It uses a roll, and the chip returns to your Meter afterwards.</p>', 'small');
   const sipBtn = btn('Sip', () => act(() => { if (B.sip(bout, me)) toast(`You sip your ${me.drink.name}.`); }), () => (me.drink ? drinkTip(me.drink) : ''), 'small');
-  const undoBtn = btn('Undo', () => act(() => { B.resetPlan(bout, me); setMode(null); }), '<b>Undo</b><p>Take back everything you planned this turn. Dice keep the values they rolled.</p>', 'small');
+  const undoBtn = btn('Undo', () => act(() => { B.resetPlan(bout, me); ui.sel.clear(); ui.flips = []; ui.chip = null; setMode(null); }),
+    () => `<b>Undo</b><p>${bout.phase === 'draw' ? 'Put back the tricks you drew this turn.' : bout.phase === 'roll' ? (me.thrown ? 'Take the dice off your tricks and back into the roll. The throw itself stands: rolling is once a turn.' : 'Clear the dice and chips you picked to roll.') : 'Take back the bids you made this turn.'}</p>`, 'small');
   const speedBtn = btn('1×', () => { ui.speed = ui.speed === 1 ? 2 : ui.speed === 2 ? 4 : 1; swapText(speedBtn, `${ui.speed}×`); }, '<b>Speed</b><p>How fast the House works through a turn: 1×, 2× or 4×.</p>', 'small');
-  const playBtn = btn('Pass', () => playTurn(), () => `<b>${planned() ? 'Play' : 'Pass'}</b><p>End your planning. ${planned() ? 'Every bid trick plays.' : 'Nothing is bid, so you only collect rewards for unused actions.'}</p>`, 'big');
-  const trayBox = h('div', { class: 'tray-box', text: 'Click a die below to roll it' });
+  const commitBtn = btn('Lock in draws', () => commit(), () => commitTip(), 'big');
+  const trayBox = h('div', { class: 'tray-box', text: 'Lock in your draws, then pick dice below' });
   const frameEls = [header, stageBox, feedEl, runEmpty,
     h('div', { class: 'zone-title', style: { left: '16px', top: '418px' }, tip: '<b>Book</b><p>Tricks you own. Click one to draw it onto your Run. Tricks return here once played.</p>', text: 'BOOK' }),
-    h('div', { class: 'zone-title', style: { left: '888px', top: '418px' }, tip: '<b>Rolled</b><p>Dice you have rolled this turn, showing their values. Click one, then click the shown trick it should go on. You can move a die between tricks until its trick is bid. Dice left here when you press Play go back to your Pouch.</p>', text: 'ROLLED' }), trayBox,
-    h('div', { class: 'zone-title', style: { left: '888px', top: '484px' }, tip: '<b>Pouch</b><p>Your dice. Click one to roll it: it uses one of your rolls and lands in the Rolled tray showing its value. A die on a bid trick stays there until the trick has played.</p>', text: 'POUCH' }),
-    h('div', { class: 'zone-title', style: { left: '1082px', top: '418px' }, tip: `<b>${opp.name}'s Run</b><p>The tricks they are showing, with the dice and bids on them. Plan around it.</p>`, text: 'THEIR RUN' }),
-    h('div', { class: 'controls' }, sipBtn, flipBtn, undoBtn, speedBtn, playBtn)];
+    h('div', { class: 'zone-title', style: { left: '888px', top: '418px' }, tip: '<b>The roll</b><p>Everything you roll this turn lands here together, showing its value. Click a die, then the shown trick it should go on; click a die on a trick to take it back. At least one must go on a trick. Dice you leave here go back to your Pouch when you lock in your rolls.</p>', text: 'THE ROLL' }), trayBox,
+    h('div', { class: 'zone-title', style: { left: '888px', top: '524px' }, tip: '<b>Pouch</b><p>Your dice. In the Roll phase, click dice to pick them (up to your Proficiency), then press Roll. You can also pick the top chip of a stack to flip: it lands as 0 or its worth, counts as a die of any type, and comes back to your Meter afterwards.</p>', text: 'POUCH' }),
+    h('div', { class: 'zone-title', style: { left: '1082px', top: '418px' }, tip: `<b>${opp.name}'s Run</b><p>The tricks they are showing, with the dice and bids on them. You see what they draw, roll and bid each phase only once you have locked in the same phase: neither of you sees the other's move until both have made it.</p>`, text: 'THEIR RUN' }),
+    h('div', { class: 'controls' }, sipBtn, undoBtn, speedBtn, commitBtn)];
   const oppRun = h('div', { class: 'opp-run' });
   const banner = h('div', { class: 'banner' });
-  root.append(...frameEls, oppRun, layer, arms[0].el, arms[1].el, phaseCall, banner);
+  const fcLayer = h('div', { class: 'fc-layer' }); // fee forecasts and Debt tags over the stacks
+  root.append(...frameEls, oppRun, layer, fcLayer, arms[0].el, arms[1].el, phaseCall, banner);
 
   // cells
   bout.sides.forEach((s, si) => {
@@ -125,19 +133,24 @@ export function boutScene(root, bout, ctx, onDone) {
     if (cell.hole) return `<b>Hole</b><p>Nothing can be placed here.</p>`;
     if (!cell.chips.length) return `<b>Empty ${zone} space</b><p>Holds up to ${s.dims.stackMax} chips.</p>`;
     const groups = []; for (let i = cell.chips.length - 1; i >= 0; i--) { const ch = cell.chips[i], g = groups[groups.length - 1]; if (g && g.sig === chipSig(ch)) g.n++; else groups.push({ sig: chipSig(ch), ch, n: 1 }); }
-    const top = cell.chips[cell.chips.length - 1];
-    return `<b>${zone} stack</b> <span class="dim">${B.solidCount(cell)}/${s.dims.stackMax} high · worth ${B.cellWorth(cell)}¢${B.debtOf(cell) ? ` · owes ${B.debtOf(cell)}¢` : ''}</span>
+    const top = cell.chips[cell.chips.length - 1], debt = B.debtOf(cell), next = B.debtTarget(cell);
+    return `<b>${zone} stack</b> <span class="dim">${B.solidCount(cell)}/${s.dims.stackMax} high · worth ${B.cellWorth(cell)}¢${debt ? ` · owes ${debt}¢` : ''}</span>
       ${cell.hard > 0 ? `<p class="good">Hardened for ${cell.hard} more turn${cell.hard > 1 ? 's' : ''}: each fee takes only one chip.</p>` : ''}
+      ${debt && next ? `<p class="bad">Owes ${debt}¢. Debt only pays whole chips, so the ${next.value}¢ chip it sits on goes to the Stage once the Debt reaches ${next.value}¢: ${next.value - debt}¢ more, from any later fee or hazard.</p>` : ''}
+      ${debt ? `<p class="dim">${DEBT_RULE}</p>` : ''}
       <ul class="stack">${groups.map((g) => `<li><span class="chip static mini ${g.sig}"><i>${chipGlyph(g.ch)}</i></span> ${g.n} × ${chipName(g.ch)}</li>`).join('')}</ul>
       <p class="dim">Top: ${chipText(top)}</p>`;
   }
+  const DEBT_RULE = 'How Debt works: a fee is paid from the top of the stack it lands on, one whole chip at a time. What cannot cover the next chip stays on that stack as Debt and already counts against Worth. If the stack runs out of chips, the rest (overkill) moves to the next stack behind it in the same lane (the line of stacks running from the Stage to the edge of the table). It never spreads to another lane, and with no stack behind it is wasted.';
   function cardTip(uid) {
     const e = me.run.find((x) => x.uid === uid), t = e ? e.trick : me.book.find((x) => x.uid === uid); if (!t) return '';
     let live = '';
     if (e) { const def = D.TRICKS[t.id];
       live = `<p class="live">${e.dice.length ? `Dice ${e.dice.map((d) => d.value).join(' + ')} → roll total <b>${B.previewTotal(me, e)}</b>${B.bonusMet(me, e) ? ' · <span class="good">bonus met</span>' : ''}` : 'No dice yet: a bid plays the Trait only.'}
-        ${e.state === 'play' ? `<br>In play${e.lingerLeft ? `, roll effect in ${e.lingerLeft} turn${e.lingerLeft > 1 ? 's' : ''}` : ''}.` : e.bidValue > 1 ? `<br>A ${e.bidValue}¢ bid lingers ${e.bidValue - 1} turn${e.bidValue > 2 ? 's' : ''}: +${(e.bidValue - 1) * Math.max(1, e.dice.length)} to the roll.` : ''}</p>`;
-      if (!e.dice.length && def.type !== 'expense') live += ''; }
+        ${e.state === 'play' ? `<br>In play${e.lingerLeft ? `, roll effect in ${e.lingerLeft} turn${e.lingerLeft > 1 ? 's' : ''}` : ''}.` : e.bidValue > 1 ? `<br>A ${e.bidValue}¢ bid lingers ${e.bidValue - 1} turn${e.bidValue > 2 ? 's' : ''}: +${(e.bidValue - 1) * Math.max(1, e.dice.length)} to the roll.` : ''}
+        ${e.state !== 'play' ? '<br><span class="dim">It can take more bids this turn: each 1¢ over the first adds a turn of linger.</span>' : ''}</p>`;
+      const fc = e.target ? B.forecastFee(bout, me, e, e.target) : null;
+      if (fc && def.type === 'expense') live += `<p class="live">At the marked target, as the table stands now: ${fcSummary(fc)}</p>`; }
     return trickTip(t, me.cls, live);
   }
 
@@ -154,13 +167,13 @@ export function boutScene(root, bout, ctx, onDone) {
   }
   function mkCard(t) {
     const def = D.TRICKS[t.id], T = D.TYPES[def.type];
-    const el = h('div', { class: 'tcard', style: { '--tc': T.color }, onclick: (ev) => clickCard(t.uid, ev) },
+    const el = h('div', { class: 'tcard', style: { '--tc': T.color }, onclick: (ev) => clickCard(t.uid, ev), onmouseenter: () => { ui.card = t.uid; marks(); }, onmouseleave: () => { if (ui.card === t.uid) { ui.card = null; marks(); } } },
       h('div', { class: 'c-compact' }, h('b', { text: def.name }), h('span', { class: 'req', text: `${def.count}${def.die}` }), h('span', { class: 'q', html: pips(t) })),
       h('div', { class: 'c-open' },
         h('div', { class: 'c-name' }, h('b', { text: def.name }), h('span', { class: 'q', html: pips(t) })),
-        h('div', { class: 'c-type' }, T.name, h('span', { class: `xm ${t.up ? 'up' : ''}`, text: ` ${fmtX(B.multOf(t))}${'▲'.repeat(t.up || 0)}` })),
+        h('div', { class: 'c-type' }, T.name, h('span', { class: `xm ${t.up ? 'up' : ''}`, text: ` ${fmtX(B.multOf(t))}${'▲'.repeat(t.up || 0)}` }), h('span', { class: 'tgt', text: 'aim', 'data-act': 'target', tip: '<b>Aim</b><p>Change where this trick lands. While aiming, each stack shows what the fee would pay (gold), leave as Debt (red) and carry to the stack behind (pink).</p>' })),
         h('div', { class: 'c-slots' }, Array.from({ length: def.count }, () => h('span', { class: 'slot', text: def.die }))),
-        h('div', { class: 'c-bid' }, h('span', { class: 'bidslot', text: 'BID', 'data-act': 'bid' }), h('span', { class: 'tgt', text: 'target', 'data-act': 'target' })),
+        h('div', { class: 'c-bid' }, h('span', { class: 'bidslot', text: 'BID', 'data-act': 'bid' })),
         h('div', { class: 'c-text' }, h('p', {}, h('em', { text: 'Roll ' }), def.roll.text), h('p', { class: 'bonus' }, h('em', { text: 'Bonus ' }), def.bonus.text)),
         h('div', { class: 'c-total' }, h('span', { class: 'state' }), h('b', { class: 'num' }))));
     tip(el, () => cardTip(t.uid)); layer.append(el); return el;
@@ -183,13 +196,16 @@ export function boutScene(root, bout, ctx, onDone) {
       const e = cl.e; el.classList.toggle('narrow', cl.open && cl.w < 104);
       el.classList.toggle('bid', !!e && e.state === 'bid'); el.classList.toggle('inplay', !!e && e.state === 'play');
       el.classList.toggle('can', !e ? !ui.locked && !B.canDraw(bout, me, uid) : false);
-      el.classList.toggle('pick', !!e && ui.mode === 'die' && !B.canPlace(bout, me, ui.die, e));
+      el.classList.toggle('pick', !!e && (ui.mode === 'die' ? !B.canPlace(bout, me, ui.die, e) : !!ui.chip && !B.canBid(bout, me, e, ui.chip.r, ui.chip.c)));
       el.classList.toggle('active', !!e && ui.entry === e.uid && (ui.mode === 'bid' || ui.mode === 'target'));
       if (e) {
         const def = D.TRICKS[t.id], met = B.bonusMet(me, e);
         el.querySelector('.bonus').classList.toggle('met', met); el.querySelector('.bonus').classList.toggle('na', !!def.cls && def.cls !== me.cls);
         el.querySelector('.tgt').classList.toggle('on', e.state === 'bid' && B.needsTarget(e));
-        swapText(el.querySelector('.state'), e.state === 'play' ? (e.lingerLeft ? `lingers ${e.lingerLeft}` : 'in play') : e.state === 'bid' ? (e.bidValue > 1 ? `lingers ${e.bidValue - 1}` : 'plays now') : e.dice.length ? 'needs a bid' : 'shown');
+        swapText(el.querySelector('.state'), e.state === 'play' ? (e.lingerLeft ? `lingers ${e.lingerLeft}` : 'in play') : e.state === 'bid' ? `${e.bidValue}¢ bid · ${e.bidValue > 1 ? `lingers ${e.bidValue - 1}` : 'plays now'}` : e.dice.length ? 'needs a bid' : 'shown');
+        // bids sit in a row; the slot after them stays open so another chip can join (each 1¢ more lingers a turn longer)
+        const slot = el.querySelector('.bidslot'), nb = e.bid.length;
+        slot.style.marginLeft = nb ? `${10 * nb + 26}px` : '0px'; swapText(slot, nb ? '+' : 'BID');
         tween(el.querySelector('.c-total .num'), B.previewTotal(me, e), (n) => (e.dice.length ? '= ' + Math.round(n) : ''));
         [...el.querySelectorAll('.slot')].forEach((sl, i) => sl.classList.toggle('full', i < e.dice.length));
       }
@@ -197,12 +213,12 @@ export function boutScene(root, bout, ctx, onDone) {
     for (const [uid, el] of els.cards) if (!cards.has(uid)) { el.style.opacity = '0'; els.cards.delete(uid); setTimeout(() => el.remove(), 500); }
 
     // dice: Pouch (unrolled), Rolled tray (value showing, not placed yet), or on a trick
-    const wantDice = new Map(); me.pouch.forEach((d, i) => wantDice.set(d.id, { ...pouchSlot(i, me.pouch.length), d }));
-    me.tray.forEach((d, i) => wantDice.set(d.id, { ...traySlot(i, me.tray.length), d, value: d.value, rolled: true }));
+    const wantDice = new Map(); me.pouch.forEach((d, i) => { const p = pouchSlot(i, me.pouch.length); wantDice.set(d.id, { ...p, y: p.y - (ui.sel.has(d.id) ? 7 : 0), d, picked: ui.sel.has(d.id) }); });
+    me.tray.forEach((d, i) => wantDice.set(d.id, { ...traySlot(i), d, value: d.value, rolled: true }));
     for (const e of me.run) { const cl = cards.get(e.uid); e.dice.forEach((d, i) => wantDice.set(d.id, { ...dieSlot(cl, i), d, value: d.value, rolled: true, on: true })); }
     for (const [id, w] of wantDice) {
-      let el = els.dice.get(id); if (!el) { el = mkDie(w.d); els.dice.set(id, el); const from = w.d.chip && els.flipFrom ? els.flipFrom : { x: w.x, y: w.y - 16 }; spawn(el, from.x, from.y, 'scale(.4)'); }
-      el.style.opacity = '1'; place(el, w.x, w.y); el.style.zIndex = w.on ? 6 : 4; el.classList.toggle('on', !!w.on); el.classList.toggle('rolled', !!w.rolled); el.classList.toggle('sel', ui.mode === 'die' && ui.die === id);
+      let el = els.dice.get(id); if (!el) { el = mkDie(w.d); els.dice.set(id, el); const from = (w.d.chip && els.flipFrom?.get(id)) || { x: w.x, y: w.y - 16 }; spawn(el, from.x, from.y, 'scale(.4)'); }
+      el.style.opacity = '1'; place(el, w.x, w.y); el.style.zIndex = w.on ? 6 : 4; el.classList.toggle('on', !!w.on); el.classList.toggle('rolled', !!w.rolled); el.classList.toggle('sel', (ui.mode === 'die' && ui.die === id) || !!w.picked);
       el.classList.toggle('fixed', !!w.on && !B.canMove(bout, me, id));
       const label = el.firstChild, text = w.rolled ? String(w.value) : w.d.type.slice(1);
       if (w.rolled && !el._rolled) { el.classList.add('rolling'); let n = 0; const f = D.DICE[w.d.type].faces; const iv = setInterval(() => { label.textContent = w.d.chip ? (Math.random() < 0.5 ? 0 : w.d.chip.value) : 1 + Math.floor(Math.random() * f); if (++n > 7) { clearInterval(iv); label.textContent = el._text; el.classList.remove('rolling'); } }, 55); }
@@ -211,12 +227,14 @@ export function boutScene(root, bout, ctx, onDone) {
     }
     els.flipFrom = null;
     for (const [id, el] of els.dice) if (!wantDice.has(id)) { el.style.opacity = '0'; els.dice.delete(id); setTimeout(() => el.remove(), 500); }
-    trayBox.classList.toggle('has', me.tray.length > 0);
+    trayBox.classList.toggle('has', me.tray.length > 0); trayBox.classList.toggle('ready', bout.phase === 'roll' && !me.thrown);
+    swapText(trayBox, bout.phase === 'draw' ? 'Lock in your draws, then pick dice below' : bout.phase === 'roll' && !me.thrown ? (selCount() ? `${selCount()} picked: press Roll` : `Pick up to ${B.tipOf(me, 'proficiency')} dice below, then Roll`) : me.tray.length ? '' : bout.phase === 'roll' ? 'All placed' : 'Rolled for this turn');
 
     // chips
     const want = new Map();
     bout.sides.forEach((s, si) => { for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) s.grid[r][c].chips.forEach((ch, lvl) => want.set(ch.id, { ...chipPos(si, r, c, lvl), ch, side: si })); });
-    for (const e of me.run) { const cl = cards.get(e.uid); e.bid.forEach((ch, i) => want.set(ch.id, { x: cl.x + 9 + i * 12, y: cl.y + 87, z: 900 + i, ch, side: 0 })); }
+    for (const e of me.run) { const cl = cards.get(e.uid); e.bid.forEach((ch, i) => want.set(ch.id, { x: cl.x + 9 + i * 10, y: cl.y + 87, z: 900 + i, ch, side: 0 })); }
+    const flipIds = new Set(ui.flips.map(({ r, c }) => B.bidChip(me, r, c)?.id)), bidId = ui.chip && B.bidChip(me, ui.chip.r, ui.chip.c)?.id;
     const ostep = Math.min(48, Math.floor(216 / Math.max(1, opp.run.length))); oppRun.style.setProperty('--oh', `${ostep - 6}px`);
     opp.run.forEach((e, k) => e.bid.forEach((ch, i) => want.set(ch.id, { x: 1226 - i * 10, y: 446 + k * ostep + (ostep - 6) / 2 - 16, z: 900 + i, ch, side: 1, s: Math.min(0.7, (ostep - 8) / 32) })));
     let n = 0;
@@ -228,6 +246,7 @@ export function boutScene(root, bout, ctx, onDone) {
         else if (ui.first) spawn(el, w.x, w.y - 46, '', Math.min(900, n * 5));
         else spawn(el, w.x, w.y, 'scale(.1)'); n++; }
       el._side = w.side; el.style.opacity = '1'; el.style.zIndex = w.z; place(el, w.x, w.y, extra);
+      el.classList.toggle('flipsel', flipIds.has(id)); el.classList.toggle('bidsel', bidId === id);
       const sig = chipSig(w.ch);
       if (el._sig !== sig) { el._sig = sig; pulse(el, 'mutate'); setTimeout(() => { el.className = `chip ${sig} mutate`; el.firstChild.textContent = chipGlyph(w.ch); }, 170); }
     }
@@ -252,7 +271,10 @@ export function boutScene(root, bout, ctx, onDone) {
     for (const [key, el] of els.stage) if (!wantStage.has(key)) { el.style.opacity = '0'; const m = /translate\(([-\d.]+)px, ([-\d.]+)px\)/.exec(el.style.transform); place(el, +m[1], +m[2] - 8, 'scale(.2)'); els.stage.delete(key); setTimeout(() => el.remove(), 620); }
 
     // cells, creatures, numbers
-    bout.sides.forEach((s, si) => { for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const el = els.cells[si][r][c], cell = s.grid[r][c]; el.classList.toggle('hole', !!cell.hole); el.classList.toggle('hard', cell.hard > 0); el.classList.toggle('black', !!cell.black); el.classList.toggle('volcano', cell.volcano > 0); el.classList.toggle('owes', B.debtOf(cell) > 0); } });
+    const tags = [];
+    bout.sides.forEach((s, si) => { for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const el = els.cells[si][r][c], cell = s.grid[r][c], debt = B.debtOf(cell); el.classList.toggle('hole', !!cell.hole); el.classList.toggle('hard', cell.hard > 0); el.classList.toggle('black', !!cell.black); el.classList.toggle('volcano', cell.volcano > 0); el.classList.toggle('owes', debt > 0);
+      if (debt) { const next = B.debtTarget(cell); tags.push({ k: `${si}:${r}:${c}`, si, r, c, text: next ? `${debt} of ${next.value}¢` : `owes ${debt}` }); } } });
+    syncTags(tags);
     for (const cr of bout.creatures) {
       let el = els.creatures.get(cr.id); const s = bout.sides[cr.side];
       const p = cr.r >= 0 ? cellPos(cr.side, cr.r, cr.c) : { x: cr.side === 0 ? 300 : 960, y: 44, w: 40 };
@@ -260,18 +282,36 @@ export function boutScene(root, bout, ctx, onDone) {
       if (cr.gone) { el.style.opacity = '0'; place(el, p.x + (cr.side === 0 ? -200 : 200), -60); els.creatures.delete(cr.id); setTimeout(() => el.remove(), 800); continue; }
       void s; el.style.opacity = '1'; place(el, p.x + p.w / 2 - 16, p.y - 14);
     }
-    bout.sides.forEach((s, si) => { tween(worthEl[si], B.worth(s)); tween(stageEl[si], bout.stage.paid[si]); syncList(badgeBox[si], badges(s), (x) => x.k, (x) => h('span', { class: `badge ${x.cls || ''}`, tip: x.tip }), (el, x) => swapText(el, x.text)); });
+    bout.sides.forEach((s, si) => { const owed = owedBy(s); swapText(owesEl[si], owed ? ` · owes ${owed}¢` : ''); tween(worthEl[si], B.worth(s)); tween(stageEl[si], bout.stage.paid[si]); syncList(badgeBox[si], badges(s), (x) => x.k, (x) => h('span', { class: `badge ${x.cls || ''}`, tip: x.tip }), (el, x) => swapText(el, x.text)); });
     swapText(root.querySelector('.turn-n'), String(bout.turn));
-    for (const [k, stat] of [['draw', 'trickery'], ['roll', 'proficiency'], ['bid', 'ingenuity']]) swapText(pill[k], `${Math.max(0, B.tipOf(me, stat) - me.used[k])}/${B.tipOf(me, stat)}`);
+    const at = B.PHASES.indexOf(bout.phase);
+    STEPS.forEach(([k, , stat], i) => { swapText(pill[k], `${Math.max(0, B.tipOf(me, stat) - me.used[k])}/${B.tipOf(me, stat)}`); pillEl[k].classList.toggle('now', i === at && !ui.locked); pillEl[k].classList.toggle('done', at < 0 || i < at); });
     syncList(oppRun, opp.run, (e) => e.uid, (e) => { const def = D.TRICKS[e.trick.id]; return h('div', { class: 'orow', style: { '--tc': D.TYPES[def.type].color }, tip: () => trickTip(e.trick, opp.cls, `<p class="live">${e.dice.length ? `Dice ${e.dice.map((d) => d.value).join(' + ')} → roll total <b>${B.previewTotal(opp, e)}</b>` : 'No dice on it.'}${e.state === 'bid' ? '<br>Bid on: it plays this turn.' : e.state === 'play' ? '<br>In play.' : '<br>Shown, not bid.'}</p>`) }, h('b', { text: def.name }), h('span', { class: 'odice' }), h('span', { class: 'ostate' })); },
       (el, e) => { swapText(el.querySelector('.odice'), e.dice.map((d) => d.value).join(' ')); swapText(el.querySelector('.ostate'), e.state === 'bid' ? 'bid' : e.state === 'play' ? (e.lingerLeft ? `lingers ${e.lingerLeft}` : 'in play') : 'shown'); el.classList.toggle('bid', e.state !== 'shown'); });
     setOn(sipBtn, !ui.locked && !!me.drink && me.drink.sips > 0 && !me.sipped); sipBtn.classList.toggle('gone', !me.drink);
-    runEmpty.style.opacity = me.run.length ? 0 : 1; setOn(flipBtn, !ui.locked && me.used.roll < B.tipOf(me, 'proficiency')); flipBtn.classList.toggle('on', ui.mode === 'flip');
-    setOn(undoBtn, !ui.locked && (me.used.draw + me.used.roll + me.used.bid > 0)); setOn(playBtn, !ui.locked);
-    swapText(playBtn, planned() ? 'Play' : 'Pass'); playBtn.classList.toggle('go', planned());
+    runEmpty.style.opacity = me.run.length ? 0 : 1;
+    setOn(undoBtn, !ui.locked && (bout.phase === 'draw' ? me.used.draw > 0 : bout.phase === 'roll' ? selCount() > 0 || B.placedThisTurn(bout, me) : me.used.bid > 0));
+    setOn(commitBtn, !ui.locked); swapText(commitBtn, commitLabel()); commitBtn.classList.toggle('go', commitReady()); commitBtn.classList.toggle('wait', !commitReady());
     marks(); refreshTip();
   }
-  const planned = () => me.run.some((e) => e.state === 'bid');
+  const selCount = () => ui.sel.size + ui.flips.length;
+  const throwing = () => bout.phase === 'roll' && !me.thrown && B.canAct(bout, me);
+  const commitLabel = () => (bout.phase === 'draw' ? 'Lock in draws' : bout.phase === 'roll' ? (throwing() ? `Roll${selCount() ? ' ' + selCount() : ''}` : 'Lock in rolls') : 'Play');
+  const commitReady = () => (throwing() ? selCount() > 0 : !B.needOf(bout, me));
+  function commitTip() {
+    const need = throwing() ? (selCount() ? null : 'Pick at least one die (or a top chip to flip) first.') : B.needOf(bout, me);
+    const what = bout.phase === 'draw' ? 'Close drawing for this turn and move on to rolling.' : throwing() ? 'Roll every picked die (and flip every picked chip) at once. You roll once a turn.'
+      : bout.phase === 'roll' ? 'Close rolling for this turn and move on to bidding. Dice left in the roll go back to your Pouch.' : 'Close bidding. The House collects every bid and plays the turn.';
+    return `<b>${commitLabel()}</b><p>${what}</p>${need ? `<p class="bad">${need}</p>` : `<p class="dim">Then you see what ${opp.name} did in this phase.</p>`}`;
+  }
+  // Debt tags: what each stack owes against the chip it is working towards
+  const tagEls = new Map();
+  function syncTags(tags) {
+    const keep = new Set(tags.map((t) => t.k));
+    for (const [k, el] of tagEls) if (!keep.has(k)) { el.remove(); tagEls.delete(k); }
+    for (const t of tags) { let el = tagEls.get(t.k); if (!el) { el = h('div', { class: 'debt-tag' }); fcLayer.append(el); tagEls.set(t.k, el); }
+      const p = cellPos(t.si, t.r, t.c); el.style.left = p.x + 'px'; el.style.top = p.y + CH - 12 + 'px'; el.style.width = p.w + 'px'; el.textContent = t.text; }
+  }
   function badges(s) {
     const out = [], st = s.status, add = (k, text, t, cls) => out.push({ k, text, tip: t, cls });
     if (s.heat > 1 && s.idx === 0) add('heat', `Last call ×${s.heat.toFixed(2)}`, `<b>Last call</b><p>From turn ${B.LAST_CALL + 1} the House raises the stakes: every Expense is multiplied, and the multiplier grows each turn.</p>`, 'bad');
@@ -293,35 +333,69 @@ export function boutScene(root, bout, ctx, onDone) {
   // board highlights for the current mode
   let hover = null;
   function marks() {
-    const cls = ['ok', 'aff', 'tgt', 'origin']; for (const side of els.cells) for (const rowEls of side) for (const el of rowEls) el.classList.remove(...cls);
+    const cls = ['ok', 'aff', 'tgt', 'origin', 'sel', 'soft']; for (const side of els.cells) for (const rowEls of side) for (const el of rowEls) el.classList.remove(...cls);
     const mark = (si, r, c, k) => els.cells[si][r]?.[c]?.classList.add(k);
     for (const e of me.run) if (e.state === 'bid' && B.needsTarget(e) && e.target) {
       const def = D.TRICKS[e.trick.id], t = bout.sides[e.target.side];
       for (const x of B.affected(bout, t, def, e.target, e.dice.length)) mark(t.idx, x.r, x.c, 'tgt'); mark(t.idx, e.target.r, e.target.c, 'origin');
     }
     const e = me.run.find((x) => x.uid === ui.entry);
-    if (ui.mode === 'flip') { for (let r = 0; r < me.rows; r++) for (let c = 0; c < me.dims.cols; c++) if (B.bidChip(me, r, c)?.kind === 'std') mark(0, r, c, 'ok'); }
-    if (ui.mode === 'bid') { for (let r = 0; r < me.rows; r++) for (let c = 0; c < me.dims.cols; c++) if (B.bidChip(me, r, c)) mark(0, r, c, 'ok'); }
+    if (!ui.locked && bout.phase === 'roll' && !me.thrown) { for (const f of B.flippable(me)) mark(0, f.r, f.c, 'soft'); for (const f of ui.flips) mark(0, f.r, f.c, 'sel'); }
+    if (!ui.locked && bout.phase === 'bid' && ui.mode !== 'target') { for (const f of B.biddable(me)) mark(0, f.r, f.c, ui.chip ? 'soft' : 'ok'); if (ui.chip) mark(0, ui.chip.r, ui.chip.c, 'sel'); }
+    let fc = null;
     if (ui.mode === 'target' && e) {
       const valid = B.validTargets(bout, me, e); for (const v of valid) mark(v.side, v.r, v.c, 'ok');
-      if (hover && valid.some((v) => v.side === hover.side && v.r === hover.r && v.c === hover.c)) for (const x of B.affected(bout, bout.sides[hover.side], D.TRICKS[e.trick.id], hover, e.dice.length)) mark(hover.side, x.r, x.c, 'aff');
+      const at = hover && valid.some((v) => v.side === hover.side && v.r === hover.r && v.c === hover.c) ? hover : e.target;
+      if (at) { for (const x of B.affected(bout, bout.sides[at.side], D.TRICKS[e.trick.id], at, e.dice.length)) mark(at.side, x.r, x.c, 'aff'); fc = B.forecastFee(bout, me, e, at); }
+    } else if (!ui.locked) { // hovering a trick that is bid and aimed: show what its fee would do
+      const he = me.run.find((x) => x.uid === ui.card);
+      if (he && he.state === 'bid' && he.target) fc = B.forecastFee(bout, me, he, he.target);
     }
-    root.classList.toggle('m-bid', ui.mode === 'bid' || ui.mode === 'flip'); root.classList.toggle('m-target', ui.mode === 'target'); root.classList.toggle('m-die', ui.mode === 'die');
+    showForecast(fc);
+    root.classList.toggle('m-bid', bout.phase === 'bid' && !ui.locked && ui.mode !== 'target'); root.classList.toggle('m-target', ui.mode === 'target'); root.classList.toggle('m-die', ui.mode === 'die');
+  }
+  // fee forecast: over each stack it touches, what is paid, what stays as Debt, and what carries down the lane
+  const fcEls = new Map(); let fcNow = null;
+  function showForecast(list) {
+    fcNow = list; const keep = new Set((list || []).map((x) => `${x.r}:${x.c}`));
+    for (const [k, el] of fcEls) if (!keep.has(k)) { el.remove(); fcEls.delete(k); }
+    for (const x of list || []) {
+      const k = `${x.r}:${x.c}`; let el = fcEls.get(k); if (!el) { el = h('div', { class: 'fc' }); fcLayer.append(el); fcEls.set(k, el); }
+      const p = cellPos(1, x.r, x.c), bits = [];
+      if (x.paid) bits.push(`<b class="paid">−${x.paid}</b>`);
+      if (x.blocked) bits.push(`<b class="blk">${x.blocked}▣</b>`);
+      if (x.owed) bits.push(`<b class="owed">${x.owed} owed</b>`);
+      if (x.carryOut) bits.push(`<b class="carry">${x.carryOut}→</b>`);
+      if (x.lost) bits.push(`<b class="miss">${x.lost} wasted</b>`);
+      if (!bits.length) bits.push(`<b class="miss">${x.fee ? '0' : '—'}</b>`);
+      el.classList.toggle('in', !!x.carryIn && !x.fee);
+      el.style.left = p.x + 'px'; el.style.top = p.y + 'px'; el.style.width = p.w + 'px'; el.innerHTML = bits.join('');
+    }
+  }
+  function fcSummary(list) {
+    const fee = sum(list, (x) => x.fee), paid = sum(list, (x) => x.paid), chips = list.flatMap((x) => x.paidChips), owed = sum(list, (x) => x.owed), carried = sum(list, (x) => x.carryOut), blocked = sum(list, (x) => x.blocked), lost = sum(list, (x) => x.lost);
+    const bits = [`${paid}¢ paid${chips.length ? ` (${chips.join(' + ')})` : ''}`];
+    if (blocked) bits.push(`${blocked} blocked`);
+    if (carried) bits.push(`${carried}¢ overkill carried down the lane`);
+    if (owed) bits.push(`${owed}¢ left as Debt`);
+    if (lost) bits.push(`${lost}¢ overkill wasted (no stack behind)`);
+    return `a ${fee}¢ fee: ${bits.join(', ')}.`;
   }
   function hint() {
     if (ui.locked) return;
     const e = me.run.find((x) => x.uid === ui.entry), name = e ? D.TRICKS[e.trick.id].name : '';
-    const sel = ui.mode === 'die' ? me.tray.find((d) => d.id === ui.die) : null;
-    setPrompt(ui.mode === 'die' ? (me.run.some((x) => x.state === 'shown') ? `You rolled ${sel ? sel.value : 'it'}. Click the shown trick to put it on, or roll another die first.` : `You rolled ${sel ? sel.value : 'it'}. Draw a trick to put it on.`)
-      : ui.mode === 'flip' ? 'Click one of your stacks to flip its top chip: it lands as 0 or its worth and counts as a die.'
-      : ui.mode === 'bid' ? `Click one of your stacks to bid its top chip on ${name}. A 1¢ chip plays it now; bigger chips linger.`
-      : ui.mode === 'target' ? `Pick where ${name} lands, or keep the marked space.`
-      : me.tray.length ? 'Click a rolled die, then the shown trick it should go on. Unplaced dice go back to your Pouch.'
-      : !me.run.length ? 'Draw a trick from your Book, or roll a die to see what you have.'
-      : me.run.some((x) => x.state === 'shown' && x.dice.length) ? 'A loaded trick still needs a bid to play.'
-      : planned() ? 'Ready. Press Play, or keep planning.' : 'Roll dice from your Pouch, place them on a shown trick, then bid a chip on it.');
+    const sel = ui.mode === 'die' ? me.tray.find((d) => d.id === ui.die) : null, left = B.tipOf(me, 'ingenuity') - me.used.bid;
+    const chip = ui.chip && B.bidChip(me, ui.chip.r, ui.chip.c);
+    let text;
+    if (bout.phase === 'draw') text = !B.canAct(bout, me) ? 'Nothing to draw. Lock in your draws to move on.' : me.used.draw ? `Draw more, or lock in your draws. Rolling ends drawing.` : 'Step 1 · Draw: click a trick in your Book to show it on your Run.';
+    else if (bout.phase === 'roll' && !me.thrown) text = !B.canAct(bout, me) ? 'Nothing you can roll onto. Lock in your rolls to move on.' : selCount() ? `${selCount()} picked. Pick more (up to ${B.tipOf(me, 'proficiency')}) or press Roll: they all land in the roll together.` : 'Step 2 · Roll: pick dice from your Pouch (or a glowing top chip to flip), then press Roll. You roll once a turn.';
+    else if (bout.phase === 'roll') text = ui.mode === 'die' ? `You rolled ${sel ? sel.value : 'it'}. Click a shown trick to put it on, or click another die.` : !B.placedThisTurn(bout, me) && B.canAct(bout, me) ? 'Put at least one die from the roll on a trick. Click a die, then the trick.' : 'Move dice between tricks, or lock in your rolls. Dice left in the roll go back to your Pouch.';
+    else if (ui.mode === 'target') text = `Pick where ${name} lands, or keep the marked space.${fcNow ? ' Forecast: ' + fcSummary(fcNow) : ''}`;
+    else if (chip) text = `Picked up a ${chip.value}¢ chip. Click a trick to bid it — one that already has a bid can take another.`;
+    else text = left <= 0 ? 'Out of bids. Press Play.' : me.used.bid ? `Bid again (${left} left): click a stack, then a trick. Or press Play.` : 'Step 3 · Bid: click one of your stacks to pick up its top chip, then click a trick.';
+    setPrompt(text);
   }
-  function setMode(mode, v) { ui.mode = mode; ui.die = mode === 'die' ? v : null; ui.entry = mode === 'bid' || mode === 'target' ? v : null; }
+  function setMode(mode, v) { ui.mode = mode; ui.die = mode === 'die' ? v : null; ui.entry = mode === 'target' ? v : null; }
   function act(fn) { if (ui.locked) return; fn(); sync(); hint(); }
   const nope = (msg, el) => { toast(msg, 'warn'); if (el) pulse(el, 'shake'); };
 
@@ -330,51 +404,102 @@ export function boutScene(root, bout, ctx, onDone) {
     if (ui.locked) return;
     const e = me.run.find((x) => x.uid === uid), el = els.cards.get(uid);
     if (!e) { const why = B.canDraw(bout, me, uid); if (why) return nope(why, el); return act(() => B.draw(bout, me, uid)); }
-    if (ui.mode === 'die') { const why = B.canPlace(bout, me, ui.die, e); if (why) return nope(why, el); return act(() => { B.place(bout, me, ui.die, e); const next = me.tray[0]; setMode(next ? 'die' : null, next?.id); }); }
-    if (ev.target.dataset.act === 'target' && e.state === 'bid') return act(() => setMode('target', uid));
+    if (bout.phase === 'draw') return nope('That trick is already on your Run. Lock in your draws to start rolling.', el);
+    if (bout.phase === 'roll') {
+      if (ui.mode === 'die') { const why = B.canPlace(bout, me, ui.die, e); if (why) return nope(why, el); return act(() => { B.place(bout, me, ui.die, e); const next = me.tray[0]; setMode(next ? 'die' : null, next?.id); }); }
+      return nope(me.thrown ? 'Click a die in the roll first, then the trick.' : 'Pick dice from your Pouch and roll them first.', el);
+    }
+    if (ev.target.dataset.act === 'target' && e.state === 'bid') return act(() => { ui.chip = null; setMode('target', uid); });
     if (e.state === 'play') return nope('That trick is already in play.', el);
-    if (me.used.bid >= B.tipOf(me, 'ingenuity')) { if (e.state === 'bid' && B.needsTarget(e)) return act(() => setMode('target', uid)); return nope('No bids left this turn (Ingenuity).', el); }
-    act(() => setMode(ui.mode === 'bid' && ui.entry === uid ? null : 'bid', uid));
+    if (!ui.chip) return nope(me.used.bid >= B.tipOf(me, 'ingenuity') ? 'No bids left this turn (Ingenuity). Press Play.' : 'Pick up a chip first: click one of your stacks, then this trick.', el);
+    const { r, c } = ui.chip, why = B.canBid(bout, me, e, r, c); if (why) return nope(why, el);
+    act(() => { const first = e.state === 'shown'; B.bid(bout, me, e, r, c); ui.chip = null; setMode(first && B.needsTarget(e) && B.validTargets(bout, me, e).length > 1 ? 'target' : null, e.uid); });
   }
   function clickDie(id) {
     if (ui.locked) return;
     const el = els.dice.get(id);
-    if (me.pouch.some((d) => d.id === id)) { // roll it out: the value shows before it is placed anywhere
-      const why = B.canRollOut(bout, me, id); if (why) return nope(why, el);
-      return act(() => { B.rollOut(bout, me, id); setMode('die', id); });
+    if (me.pouch.some((d) => d.id === id)) { // pick it for the throw
+      if (bout.phase !== 'roll' || me.thrown) return nope(bout.phase === 'draw' ? 'Lock in your draws first, then pick the dice to roll.' : me.thrown ? 'You have rolled this turn. Rolling is one throw.' : 'Rolling is over for this turn.', el);
+      if (ui.sel.has(id)) return act(() => ui.sel.delete(id));
+      if (selCount() >= B.tipOf(me, 'proficiency')) return nope(`You can roll ${B.tipOf(me, 'proficiency')} this turn (Proficiency).`, el);
+      return act(() => ui.sel.add(id));
     }
     if (me.tray.some((d) => d.id === id)) return act(() => setMode(ui.mode === 'die' && ui.die === id ? null : 'die', id));
-    if (!B.canMove(bout, me, id)) return nope(B.holderOf(me, id)?.state === 'shown' ? 'That die was placed on an earlier turn and stays on its trick.' : 'That die is committed: its trick has been bid.', el);
+    if (!B.canMove(bout, me, id)) return nope(bout.phase === 'bid' ? 'Rolling is over: dice stay where they are.' : 'That die was placed on an earlier turn and stays on its trick.', el);
     act(() => { B.unplace(bout, me, id); setMode('die', id); });
   }
   function clickCell(si, r, c) {
     if (ui.locked) return;
-    if (ui.mode === 'flip') {
-      if (si !== 0) return nope('Flip a chip from your own position.');
-      if (B.bidChip(me, r, c)?.kind !== 'std') return nope('Only an uncovered standard chip on top of a stack can be flipped.', els.cells[si][r][c]);
-      if (B.worth(me) - B.bidChip(me, r, c).value <= 0) return nope('That is your last chip.', els.cells[si][r][c]);
-      const why = B.canFlip(bout, me, r, c); if (why) return nope(why, els.cells[si][r][c]);
-      return act(() => { const lvl = me.grid[r][c].chips.length - 1; els.flipFrom = chipPos(0, r, c, lvl); const d = B.flip(bout, me, r, c); setMode('die', d.id); });
+    const cellEl = els.cells[si][r][c], e = me.run.find((x) => x.uid === ui.entry);
+    if (ui.mode === 'target' && e) {
+      if (B.setTarget(bout, me, e, { side: si, r, c })) return act(() => setMode(null));
+      if (si !== 0 || !B.bidChip(me, r, c)) return nope('Not a valid target for that trick.', cellEl);
+      setMode(null); // a click on your own stack picks up a chip instead
     }
-    const e = me.run.find((x) => x.uid === ui.entry);
-    if (ui.mode === 'bid' && e) {
-      if (si !== 0) return nope('Bid a chip from your own position.');
-      const why = B.canBid(bout, me, e, r, c); if (why) return nope(why, els.cells[si][r][c]);
-      if (B.worth(me) - B.bidChip(me, r, c).value <= 0) return nope('That is your last chip. Bid it and you are broke.', els.cells[si][r][c]);
-      return act(() => { B.bid(bout, me, e, r, c); setMode(B.needsTarget(e) && B.validTargets(bout, me, e).length > 1 ? 'target' : null, e.uid); });
+    if (bout.phase === 'roll' && !me.thrown) {
+      if (si !== 0) return;
+      const k = ui.flips.findIndex((f) => f.r === r && f.c === c);
+      if (k >= 0) return act(() => ui.flips.splice(k, 1));
+      const ch = B.bidChip(me, r, c);
+      if (ch?.kind !== 'std') return nope('Only an uncovered standard chip on top of a stack can be flipped.', cellEl);
+      if (B.worth(me) - ch.value - sum(ui.flips, (f) => B.bidChip(me, f.r, f.c).value) <= 0) return nope('That is your last chip.', cellEl);
+      if (selCount() >= B.tipOf(me, 'proficiency')) return nope(`You can roll ${B.tipOf(me, 'proficiency')} this turn (Proficiency). A flip uses a roll.`, cellEl);
+      return act(() => ui.flips.push({ r, c }));
     }
-    if (ui.mode === 'target' && e) { if (!B.setTarget(bout, me, e, { side: si, r, c })) return nope('Not a valid target for that trick.', els.cells[si][r][c]); return act(() => setMode(null)); }
+    if (bout.phase === 'bid') {
+      if (si !== 0) return nope('Bid a chip from your own position.', cellEl);
+      if (ui.chip && ui.chip.r === r && ui.chip.c === c) return act(() => { ui.chip = null; });
+      const ch = B.bidChip(me, r, c);
+      if (!ch) return nope('Only an uncovered standard or Opportunity chip on top of a stack can be bid.', cellEl);
+      if (me.used.bid >= B.tipOf(me, 'ingenuity')) return nope('No bids left this turn (Ingenuity).', cellEl);
+      if (B.worth(me) - ch.value <= 0) return nope('That is your last chip. Bid it and you are broke.', cellEl);
+      return act(() => { ui.chip = { r, c }; });
+    }
   }
-  function hoverCell(si, r, c) { hover = r < 0 ? null : { side: si, r, c }; if (ui.mode === 'target') marks(); }
-  const onKey = (ev) => { if (ev.key === 'Escape' && ui.mode) act(() => setMode(null)); };
+  function hoverCell(si, r, c) { hover = r < 0 ? null : { side: si, r, c }; if (ui.mode === 'target') { marks(); hint(); } }
+  const onKey = (ev) => { if (ev.key === 'Escape' && (ui.mode || ui.chip)) act(() => { setMode(null); ui.chip = null; }); };
   document.addEventListener('keydown', onKey);
+
+  // ---------- committing a phase ----------
+  // Rolling is one throw: the commit button throws first, then locks the rolls in.
+  function doThrow() {
+    const ids = [...ui.sel], flips = ui.flips.slice(), why = B.canThrow(bout, me, ids, flips);
+    if (why) return nope(why, commitBtn);
+    els.flipFrom = new Map(flips.map(({ r, c }) => { const ch = B.bidChip(me, r, c); return ['c' + ch.id, chipPos(0, r, c, me.grid[r][c].chips.indexOf(ch))]; }));
+    act(() => { B.throwDice(bout, me, ids, flips); ui.sel.clear(); ui.flips = []; const first = me.tray.find((d) => me.run.some((x) => !B.canPlace(bout, me, d.id, x))); setMode(first ? 'die' : null, first?.id); });
+  }
+  // Lock in this phase. Only now does the opponent make the same move, blind to yours (it sees your table as
+  // it was when the phase opened), and only then are both shown.
+  async function commit() {
+    if (ui.locked || bout.over) return;
+    if (throwing()) return doThrow();
+    const why = B.needOf(bout, me); if (why) return nope(why, commitBtn);
+    ui.locked = true; setMode(null); ui.chip = null; ui.sel.clear(); ui.flips = []; prompt = ''; renderFeed();
+    const phase = bout.phase, before = new Set(opp.run.map((e) => e.uid));
+    planPhase(bout, opp);
+    if (!B.advance(bout)) B.advance(bout, true);
+    sync(); reveal(phase, before);
+    await wait(420 / ui.speed);
+    ui.locked = false;
+    if (bout.phase === 'resolve') return playTurn();
+    sync(); hint();
+  }
+  const names = (list) => (list.length < 2 ? list.join('') : `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`);
+  function reveal(phase, before) {
+    const tn = (e) => D.TRICKS[e.trick.id].name; let text;
+    if (phase === 'draw') { const fresh = opp.run.filter((e) => !before.has(e.uid)).map(tn); text = fresh.length ? `${opp.name} draws ${names(fresh)}.` : `${opp.name} draws nothing.`; }
+    else if (phase === 'roll') { const on = opp.run.map((e) => ({ e, ds: e.dice.filter((d) => d.t === bout.turn) })).filter((x) => x.ds.length); text = on.length ? `${opp.name} rolls ${names(on.map((x) => `${x.ds.map((d) => d.value).join(' + ')} onto ${tn(x.e)}`))}.` : `${opp.name} rolls nothing onto a trick.`; }
+    else { const bids = opp.run.filter((e) => e.state === 'bid'); text = bids.length ? `${opp.name} bids ${names(bids.map((e) => `${e.bidValue}¢ on ${tn(e)}`))}.` : `${opp.name} bids nothing.`; }
+    feedPush(text, 1);
+    for (const el of oppRun.children) if (!el._leaving) pulse(el, 'reveal');
+  }
 
   // ---------- resolution ----------
   // The House works through the turn one call at a time: it names the phase, points the stick
   // at the trick being played, then at where it lands, and only then does the table change.
   async function playTurn() {
     if (ui.locked || bout.over) return;
-    ui.locked = true; setMode(null); me.ready = true; prompt = ''; renderFeed(); sync();
+    ui.locked = true; setMode(null); prompt = ''; renderFeed(); sync();
     let n = 0; const pace = (ms) => wait(ms / ui.speed / (n > 40 ? 1.6 : 1));
     const flash = (st) => { for (const x of st.cells) { const el = els.cells[x.side][x.r]?.[x.c]; if (el) pulse(el, st.kind === 'miss' ? 'flash-miss' : st.kind === 'play' ? 'flash-aim' : st.kind === 'debt' ? 'flash-miss' : 'flash-hit'); } };
     const cellPoint = (x) => { const p = cellPos(x.side, x.r, x.c); return { x: p.x + p.w / 2, y: p.y + CH / 2 }; };
@@ -406,7 +531,7 @@ export function boutScene(root, bout, ctx, onDone) {
     }
     setCalling([]); setPhase(null); both((a) => a.rest());
     if (bout.over) return finish();
-    planTurn(bout, opp); ui.locked = false; sync(); hint();
+    ui.locked = false; sync(); hint();
   }
   async function finish() {
     document.removeEventListener('keydown', onKey);
@@ -417,7 +542,6 @@ export function boutScene(root, bout, ctx, onDone) {
     requestAnimationFrame(() => requestAnimationFrame(() => banner.classList.add('in')));
   }
 
-  planTurn(bout, opp);
   requestAnimationFrame(() => { sync(); hint(); });
   void ctx; void sum;
 }

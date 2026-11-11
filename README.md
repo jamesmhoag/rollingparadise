@@ -27,8 +27,9 @@ Hover anything — every chip, die, trick, number and button explains itself.
 3. **Each floor**: walk the floor plan to the Diesmith, Trick Trader, Chip Exchange, Lounge and Sports Book, then
    sit at a table.
 4. **Commit**: tilt the bout, lay out your position, and wager everything you left off the table.
-5. **Bout**: draw tricks, roll dice or flip chips onto them, bid chips to play them. Both Rollers plan, then the
-   House calls each phase and resolves every trick in order.
+5. **Bout**: each turn has three steps, taken by both Rollers together. **Draw** tricks onto your Run, **roll** dice
+   (or flip chips) in one throw and put them on tricks, then **bid** chips to play them. You see each of your
+   opponent's steps only after you lock in your own. Then the House calls each effect type and resolves every trick.
 6. **Settle**: take winnings and a die, two dice, or glean a trick. Close three tables (or win a Double Down) to
    face the High Roller and take the stairs.
 7. **After floor 4**: the Penthouse, then the Paradise Ascent, a ladder of remnant builds with no shops or wagers.
@@ -43,7 +44,7 @@ Hover anything — every chip, die, trick, number and button explains itself.
 | `js/ai.js` | The automated Roller, planning through the same API the player uses |
 | `js/run.js` | Everything between bouts: floors, shops, wagers, settlement, the Ascent, saving |
 | `js/ui/` | Screens. `core.js` has the transition helpers every screen uses |
-| `tests/` | Headless simulations: whole runs, balance by floor, Ascent bouts |
+| `tests/` | Headless simulations: whole runs, balance by floor, Ascent bouts, the phased turn and Debt forecasts |
 | `docs/DESIGN.md` | How the design workbook was turned into rules, and what is not built yet |
 | `docs/OPEN-QUESTIONS.md` | What is still needed from the designer to build the remaining systems |
 | `assets/` | The neon sign, split into its pink, cyan and dice tubes so each can flicker on its own |

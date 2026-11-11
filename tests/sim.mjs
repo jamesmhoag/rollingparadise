@@ -1,13 +1,13 @@
 // Headless checks: AI-vs-AI bouts on every floor, then whole runs played by the AI.
 import * as R from '../js/run.js';
 import * as B from '../js/bout.js';
-import { planTurn } from '../js/ai.js';
+import { autoTurn } from '../js/ai.js';
 import * as D from '../js/data.js';
 
 function playBout(bout) {
   let steps = 0;
   while (!bout.over) {
-    for (const s of bout.sides) planTurn(bout, s);
+    autoTurn(bout);
     for (const st of B.resolve(bout)) { steps++; if (steps > 20000) throw new Error('runaway bout'); }
     check(bout);
   }
