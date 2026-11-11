@@ -159,6 +159,7 @@ export function resultScene(root, ctx, res) {
   }
   function next() {
     if (!claimed) return;
+    if (run.purse > D.PURSE_LIMIT) { run.phase = 'ripped'; return app.nav.summary(); } // the purse rips
     if (ctx.kind === 'intro') { if (!win) return app.nav.intro(); R.enterFloor(run, 1); return app.nav.hub(); }
     if (ctx.kind === 'lounge') return app.nav.hub();
     if (ctx.kind === 'ascent') return run.phase === 'ascent' ? app.nav.ascent() : app.nav.summary();

@@ -1,7 +1,7 @@
 // Suites, the Gift Shop exit, the Paradise Ascent and the end of a run.
-import { h, syncList, toast, btn, tween, pulse } from './core.js';
+import { h, syncList, toast, btn, tween, pulse, wait } from './core.js';
 import { app, hud, oppTip, trickTag } from './app.js';
-import { jacketTip, trickTip, pips } from './parts.js';
+import { jacketTip, trickTip, pips, cardTip, dieTip } from './parts.js';
 import { planner } from './prep.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
@@ -14,6 +14,16 @@ function jacketList(onPick, forSale) {
     syncList(box, ids, (id) => id, (id) => { const J = D.JACKETS[id]; const el = h('div', { class: 'item', tip: () => jacketTip(id) }, h('div', { class: 'main' }, h('b', { text: `🧥 ${J.name}` }), h('small', { text: J.effect })), h('span', { class: 'price' }), btn(forSale ? 'Buy' : 'Wear', () => onPick(id, el), null, 'small')); return el; },
       (el, id) => { const J = D.JACKETS[id]; el.querySelector('.price').textContent = forSale ? (R.jacketAvailable(run, id) ? cents(J.price) : `Reach floor ${J.level + 1}`) : run.jacket === id ? 'Wearing' : '';
         el.classList.toggle('sel', !forSale && run.jacket === id); el.lastChild.classList.toggle('off', forSale ? !R.jacketAvailable(run, id) || run.purse + (meta.debit ? meta.atm : 0) < J.price : run.jacket === id); });
+  }
+  render(); return { el: box, render };
+}
+
+export const walletTip = (id) => { const Wl = D.WALLETS[id]; return `<b>${Wl.name} wallet</b><p>Holds <b>${Wl.slots}</b> card${Wl.slots > 1 ? 's' : ''}. Passes (Royal, Membership, Suite Key, Punch) do not take a slot.</p><p>When the run ends in the alley, two of your best dice must total <b>${Wl.keep}+</b> to keep its cards for your next run.</p>`; };
+function walletList(onBuy) {
+  const run = app.run, meta = app.meta, box = h('div', { class: 'items list' });
+  function render() {
+    syncList(box, Object.keys(D.WALLETS).filter((id) => D.WALLETS[id].price > 0 && !meta.wallets.includes(id)), (id) => id, (id) => { const Wl = D.WALLETS[id]; const el = h('div', { class: 'item', tip: () => walletTip(id) }, h('div', { class: 'main' }, h('b', { text: `👛 ${Wl.name}` }), h('small', { text: `${Wl.slots} slot${Wl.slots > 1 ? 's' : ''} · keeps cards on ${Wl.keep}+` })), h('span', { class: 'price' }), btn('Buy', () => onBuy(id, el), null, 'small')); return el; },
+      (el, id) => { const Wl = D.WALLETS[id], ok = R.walletAvailable(run, meta, id); el.querySelector('.price').textContent = ok ? cents(Wl.price) : Wl.crown && !meta.crowns ? 'After a royal victory' : `Reach floor ${Wl.level + 1}`; el.lastChild.classList.toggle('off', !ok || run.purse + (meta.debit ? meta.atm : 0) < Wl.price); });
   }
   render(); return { el: box, render };
 }
@@ -39,13 +49,15 @@ export function giftScene(root) {
   const run = app.run, meta = app.meta, H = hud('Gift Shop', 'The exit is this way');
   const atm = h('p', { class: 'sub fade-t' }), depBtn = btn('Deposit everything', () => { const n = R.deposit(run, meta); if (!n) return toast('Nothing to deposit.', 'warn'); toast(`${cents(n)} deposited for a future run.`); sync(); }, '<b>ATM</b><p>With a Debit Card, chips you deposit here can pay for Gift Shop unlocks on later runs. They can never go back to the tables.</p>', 'small');
   const J = jacketList((id, el) => { if (!R.buyJacket(run, meta, id)) { toast('You cannot afford that.', 'warn'); return pulse(el, 'shake'); } toast(`${D.JACKETS[id].name} jacket unlocked for every future run.`); sync(); }, true);
-  function sync() { H.update(); J.render(); const has = meta.debit || R.hasCard(run, 'debit'); atm.textContent = has ? `ATM balance: ${cents(meta.atm)}. It tops up Gift Shop purchases automatically.` : 'You never found a Debit Card, so the ATM will not talk to you. Search the floors next time.'; depBtn.classList.toggle('off', !has || run.purse <= 0); }
+  const Wl = walletList((id, el) => { if (!R.buyWallet(run, meta, id)) { toast('You cannot afford that.', 'warn'); return pulse(el, 'shake'); } toast(`${D.WALLETS[id].name} wallet unlocked for every future run.`); sync(); });
+  function sync() { H.update(); J.render(); Wl.render(); const has = meta.debit || R.hasCard(run, 'debit'); atm.textContent = has ? `ATM balance: ${cents(meta.atm)}. It tops up Gift Shop purchases automatically.` : 'You never found a Debit Card, so the ATM will not talk to you. Search the floors next time.'; depBtn.classList.toggle('off', !has || run.purse <= 0); }
   sync();
-  root.append(H.el, h('div', { class: 'page cols2' },
+  root.append(H.el, h('div', { class: 'page cols3' },
     h('div', { class: 'box col scroll' }, h('h2', { text: 'Jackets' }), h('p', { class: 'sub', text: 'Unlocked for good. Choose one at the start of any run, or change in a Suite.' }), J.el),
+    h('div', { class: 'box col scroll' }, h('h2', { text: 'Wallets' }), h('p', { class: 'sub', text: 'More slots hold more cards. A lower number makes them easier to keep when the run ends.' }), Wl.el),
     h('div', { class: 'col' }, h('div', { class: 'box col' }, h('h2', { text: 'ATM' }), atm, h('div', { class: 'row' }, depBtn)),
       h('div', { class: 'box col' }, h('h2', { text: 'The Alley' }), h('p', { class: 'sub', text: 'Once you step outside, frenzied Rollers looking for a way back in will take every chip and all the gear you carry. At least you escape with your life, and another shot at the top, one day.' }),
-        h('div', { class: 'row' }, btn('Leave through the alley', () => app.nav.summary(), null, 'big danger'))))));
+        h('div', { class: 'row' }, btn('Leave through the alley', () => app.nav.alley(), null, 'big danger'))))));
 }
 
 export function ascentScene(root) {
@@ -63,9 +75,31 @@ export function ascentScene(root) {
   P.update();
 }
 
+// The alley: robbed of everything, with one roll to hold on to the wallet.
+export function alleyScene(root) {
+  const run = app.run, roll = R.alleyRoll(run), Wl = R.walletOf(run);
+  const dice = roll.dice.map((d) => h('span', { class: `die static big ${d.type}`, tip: () => dieTip(d) }, h('i', { text: '?' })));
+  const total = h('span', { class: 'total num', text: '—' }), verdict = h('h2', { class: 'fade-t', style: { opacity: 0 } }), kept = h('div', { class: 'inv list' });
+  const cont = btn('Continue', () => { app.kept = roll.kept ? roll.cards : []; app.nav.summary(); }, null, 'big go off');
+  root.append(h('div', { class: 'page', style: { top: 0, display: 'grid', placeItems: 'center' } }, h('div', { class: 'col', style: { width: '620px', textAlign: 'center', alignItems: 'center', gap: '14px' } },
+    h('h1', { class: 'neon-p', text: 'The Alley' }),
+    h('p', { class: 'sub', text: 'Frenzied Rollers looking for a way back inside take your chips, your dice and your book. You get one roll to keep hold of your wallet.' }),
+    h('div', { class: 'box col', style: { alignItems: 'center', width: '100%' }, tip: () => walletTip(run.wallet) }, h('span', { class: 'cap', text: `${Wl.name} wallet · ${roll.cards.length} card${roll.cards.length === 1 ? '' : 's'} inside · needs ${roll.need}+` }),
+      h('div', { class: 'row', style: { gap: '18px', margin: '10px 0' } }, dice, h('span', { class: 'dim', text: '=' }), total), verdict, kept), cont)));
+  (async () => {
+    await wait(900);
+    if (!roll.cards.length) { verdict.textContent = 'Your wallet is empty. Nothing to hold on to.'; verdict.style.opacity = 1; return cont.classList.remove('off'); }
+    for (let i = 0; i < dice.length; i++) { const el = dice[i], d = roll.dice[i], f = D.DICE[d.type].faces; el.classList.add('rolling'); for (let n = 0; n < 12; n++) { el.firstChild.textContent = 1 + Math.floor(Math.random() * f); await wait(70); } el.classList.remove('rolling'); el.firstChild.textContent = d.value; pulse(el); await wait(420); }
+    total._v = 0; tween(total, roll.total, undefined, 700); await wait(900);
+    verdict.textContent = roll.kept ? 'You keep your grip on the wallet.' : 'They get the wallet too.'; verdict.className = `fade-t ${roll.kept ? 'neon-c' : 'neon-p'}`; verdict.style.opacity = 1;
+    if (roll.kept) syncList(kept, roll.cards, (c) => c, (c) => h('span', { class: 'tag-t', tip: () => cardTip(c), text: D.CARDS[c].name }));
+    await wait(500); cont.classList.remove('off');
+  })();
+}
+
 export function summaryScene(root) {
-  const run = app.run, phase = run.phase, sum = R.endRun(run, app.meta); app.run = null;
-  const head = phase === 'paradise' ? ['Paradise', 'There are no more Rollers. You are the best.'] : phase === 'fallen' ? ['The long way down', 'Your build stays on the steps, waiting for the next Roller.'] : ['The alley', 'They took the chips, the dice and the book. You kept your life.'];
+  const run = app.run, phase = run.phase, sum = R.endRun(run, app.meta, 'You', app.kept || []); app.run = null; app.kept = null;
+  const head = phase === 'ripped' ? ['Crushing defeat', 'Your purse held 999 trillion and then it did not. It ripped, and every last chip spilled across the floor. A unique form of victory.'] : phase === 'paradise' ? ['Paradise', 'There are no more Rollers. You are the best.'] : phase === 'fallen' ? ['The long way down', 'Your build stays on the steps, waiting for the next Roller.'] : ['The alley', 'They took the chips, the dice and the book. You kept your life.'];
   const worth = h('span', { class: 'total num' });
   const s = sum.stats, list = h('div', { class: 'scroll', style: { maxHeight: '300px' } }, sum.ledger.slice(-40).reverse().map((l) => h('div', { class: 'line' }, h('span', { text: `${l.floor ? 'F' + Math.min(l.floor, 4) + ' · ' : ''}${l.label}` }), h('span', { class: `amt ${l.amt >= 0 ? 'pos' : 'neg'}`, text: `${l.amt >= 0 ? '+' : '−'}${cents(Math.abs(l.amt))}` }))));
   root.append(h('div', { class: 'page', style: { top: 0, display: 'grid', placeItems: 'center' } }, h('div', { class: 'col', style: { width: '760px' } },
