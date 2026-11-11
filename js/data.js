@@ -45,12 +45,36 @@ export const DICE = {
   d10: { faces: 10, forge: { dice: 5, chips: 2000, floor: 2 }, sell: 200 },
   d20: { faces: 20, forge: { dice: 20, chips: 5000, floor: 2 }, sell: 500 },
 };
+// The workbook's 22 dice upgrades. A die has faces (1 to n to start); most upgrades change them when bought,
+// a few change how the die rolls. `target`: the buyer picks a face. `roll`: works when the die is rolled, so it
+// cannot be taken twice. `mark`/`color`: the badge the die wears. `floor`: the Diesmith offers it from this floor.
+// Numbers the rules read are in DIE_VARS. Faces that change with use (Rig, Enchant, Encase) reset each bout.
+export const DIE_VARS = { bump: 2, rig: 2, enchant: 3, encaseStep: 2, rebalance: 2, gamble: 2, curse: 3 };
 export const DIE_UPGRADES = {
-  // mark/color: the badge an upgraded die wears, one per upgrade
-  accelerate: { name: 'Accelerate', text: 'Shift every face value up by 1.', mark: '+', color: '#7dffb5', stacks: true },
-  escalate: { name: 'Escalate', text: 'Weighted to the highest face: roll twice, keep the higher.', mark: '▲', color: '#ffd76a' },
-  stabilize: { name: 'Stabilize', text: 'Faces averaged toward the mean: never rolls below half its top face.', mark: '=', color: '#63c4ff' },
+  accelerate: { name: 'Accelerate', text: 'Shift every face up by 1.', mark: '+', color: '#7dffb5', floor: 1 },
+  deccelerate: { name: 'Deccelerate', text: 'Shift every face down by 1 (not below 0). Good for tricks that want a low total.', mark: '−', color: '#9fb0d8', floor: 1 },
+  scatter: { name: 'Scatter', text: 'Empty the target face and share its value evenly over the other faces.', mark: '∴', color: '#ff9f5a', target: true, floor: 1 },
+  raise: { name: 'Raise', text: 'Empty the target face into the highest face.', mark: '⤒', color: '#ffd76a', target: true, floor: 1 },
+  vow: { name: 'Vow', text: 'Empty the target face into the lowest face.', mark: '⤓', color: '#c9a0ff', target: true, floor: 1 },
+  divide: { name: 'Divide', text: 'Fill the target face evenly: every other face gives it 1.', mark: '÷', color: '#63c4ff', target: true, floor: 1 },
+  gift: { name: 'Gift', text: 'Fill the target face from the highest: the highest face gives it half its value.', mark: '↑', color: '#ffb3e6', target: true, floor: 1 },
+  devour: { name: 'Devour', text: 'Fill the target face from the lowest: the lowest face gives it everything.', mark: '↓', color: '#ff7096', target: true, floor: 1 },
+  boost: { name: 'Boost', text: (v) => `Bump the target face up by ${v.bump}.`, mark: '▴', color: '#7dffb5', target: true, floor: 1 },
+  bonk: { name: 'Bonk', text: (v) => `Bump the target face down by ${v.bump} (not below 0).`, mark: '▾', color: '#9fb0d8', target: true, floor: 1 },
+  stabilize: { name: 'Stabilize', text: 'Pull every face halfway toward the average.', mark: '=', color: '#63c4ff', floor: 1 },
+  temper: { name: 'Temper', text: 'Weighted to the lowest: roll twice, keep the lower.', mark: '▼', color: '#9fb0d8', roll: true, floor: 1 },
+  escalate: { name: 'Escalate', text: 'Weighted to the highest: roll twice, keep the higher.', mark: '▲', color: '#ffd76a', roll: true, floor: 1 },
+  emphasize: { name: 'Emphasize', text: 'Weight the target face: it comes up twice as often.', mark: '!', color: '#ff86ea', target: true, floor: 2 },
+  rig: { name: 'Rig', text: (v) => `The target face is worth ×${v.rig}, but it is spent (0) after it comes up once in a bout.`, mark: '×', color: '#ff5a4a', target: true, floor: 2 },
+  enchant: { name: 'Enchant', text: (v) => `The target face is worth ×${v.enchant}, dwindling by 1 each time it comes up in a bout.`, mark: '✧', color: '#b08cff', target: true, floor: 2 },
+  encase: { name: 'Encase', text: (v) => `The target face starts each bout at 0 but grows by ${v.encaseStep} each time it comes up.`, mark: '▣', color: '#c9d3e0', target: true, floor: 2 },
+  rebalance: { name: 'Rebalance', text: (v) => `The target face is worth ×${v.rebalance}; the opposite face becomes 0.`, mark: '⇅', color: '#ffd76a', target: true, floor: 2 },
+  gamble: { name: 'Gamble', text: (v) => `Each roll a random face is worth ×${v.gamble}.`, mark: '?', color: '#7df3ff', roll: true, floor: 2 },
+  curse: { name: 'Curse', text: (v) => `Each roll one random face is worth ×${v.curse} and every other face is 0.`, mark: '☠', color: '#b3261e', roll: true, floor: 3 },
+  mirror: { name: 'Mirror', text: 'Copy the target face onto a random other face.', mark: '⧉', color: '#eef2f7', target: true, floor: 2 },
+  reflect: { name: 'Reflect', text: 'Change the target face into a copy of a random other face.', mark: '↻', color: '#ff86ea', target: true, floor: 2 },
 };
+export const upgradeText = (u) => { const t = DIE_UPGRADES[u].text; return typeof t === 'function' ? t(DIE_VARS) : t; };
 
 // ---------- Tricks ----------
 export const TYPES = {
@@ -121,10 +145,8 @@ export const TRICKS = {
     roll: { k: 'fee', text: 'Charge a fee equal to the total and leave a Poison chip.' }, bonus: { cond: 'under:4', k: 'double', text: 'The fee is doubled.' } },
   rig: { name: 'Rig', type: 'expense', cls: null, die: 'd8', count: 1, side: 'opp', approach: 'any', dist: 'hit', element: 'boom',
     roll: { k: 'fee', text: 'Charge a fee equal to the total and leave a Boom chip.' }, bonus: { cond: 'over:6', k: 'double', text: 'The fee is doubled.' } },
-  chill: { name: 'Chill', type: 'expense', cls: null, die: 'd6', count: 2, side: 'opp', approach: 'front', dist: 'hit', element: 'frozen',
-    roll: { k: 'fee', text: 'Charge a fee equal to the total and leave a Frozen chip: that stack cannot be bid or flipped.' }, bonus: { cond: 'evens', k: 'spread', text: 'Freezes the neighbouring stack too (Swipe).' } },
-  erupt: { name: 'Erupt', type: 'expense', cls: 'technician', die: 'd8', count: 2, side: 'opp', approach: 'body', dist: 'hit', element: 'lava',
-    roll: { k: 'fee', text: 'Charge a fee equal to the total on a Bar stack and leave a Lava chip.' }, bonus: { cond: 'over:12', k: 'double', text: 'The fee is doubled.' } },
+  fuse: { name: 'Fuse', type: 'expense', cls: 'technician', die: 'd8', count: 2, side: 'opp', approach: 'body', dist: 'hit', plant: 'dynamite',
+    roll: { k: 'fee', text: 'Charge a fee equal to the total on a Bar stack, then light a stack of Dynamite on the nearest empty space: one stick burns down each turn, then it destroys every chip around it.' }, bonus: { cond: 'over:12', k: 'double', text: 'The fee is doubled.' } },
   // --- Insurances ---
   block: { name: 'Block', type: 'insurance', cls: null, die: 'd6', count: 2, side: 'self', approach: 'meter', dist: 'hit',
     roll: { k: 'block', text: 'Add Block chips equal to the total to your Meter, starting at the target space.' }, bonus: { cond: 'evens', k: 'counter', text: 'They are Counter chips: each one also puts a Debt chip on the attacker.' } },
@@ -136,6 +158,10 @@ export const TRICKS = {
     roll: { k: 'evade', text: 'Evade: this turn, any fee larger than the total misses you entirely. Roll low.' }, bonus: { cond: 'under:4', k: 'extend', text: 'Lasts through next turn as well.' } },
   shine: { name: 'Shine', type: 'insurance', cls: 'rascal', die: 'd6', count: 2, side: 'none', approach: 'none', dist: 'hit',
     roll: { k: 'reflect', text: 'Reflect: up to the total of the next fee charged to you this turn is sent back at the attacker.' }, bonus: { cond: 'evens', k: 'extend', text: 'Reflects every fee this turn, not just the first.' } },
+  chill: { name: 'Chill', type: 'insurance', cls: null, die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'hit',
+    roll: { k: 'freeze', text: 'Freeze up to the total chips of the target stack into one Frozen chip worth their sum. It cannot be bid, burned, corrupted or shocked, and a fee smaller than it only leaves Debt.' }, bonus: { cond: 'evens', k: 'spread', text: 'Freezes the neighbouring stack too (Swipe).' } },
+  float: { name: 'Float', type: 'insurance', cls: 'rascal', die: 'd4', count: 2, side: 'self', approach: 'any', dist: 'hit',
+    roll: { k: 'feather', text: 'Turn the top chip of the target stack into a Feather chip for 1 turn per 3 rolled (at least 1): any fee larger than that stack\'s worth misses it.' }, bonus: { cond: 'match', k: 'spread', text: 'Feathers the neighbouring stacks too (Swipe).' } },
   // --- Investments ---
   stir: { name: 'Stir', type: 'investment', cls: null, die: 'd6', count: 1, side: 'none', approach: 'none', dist: 'hit',
     roll: { k: 'boost', text: 'Boost: your other roll effects this turn gain the total.' }, bonus: { cond: 'over:5', k: 'extend', text: 'Also grants that much Power for next turn.' } },
@@ -166,7 +192,7 @@ export const TRICK_IDS = Object.keys(TRICKS);
 // ---------- Chips ----------
 export const DENOMS = [ { value: 1, floor: 1 }, { value: 2, floor: 2 }, { value: 5, floor: 2 }, { value: 10, floor: 3 } ];
 export const CHIPS = {
-  std: { name: 'Royale Paradise chip', text: 'Standard chip. Pays fees up to its value; a smaller fee leaves Debt chips on top instead. Can be bid.' },
+  std: { name: 'Royal Paradise chip', type: 'Basic', text: 'Basic value chip. Pays fees up to its value; a smaller fee leaves Debt chips on top instead. Can be bid.' },
   opp: { name: 'Opportunity chip', text: 'Earned during a bout for unused rolls. Worth 1¢ and can be bid. Fragile: lost at the end, but each one left pays a bonus chip if you win.' },
   block: { name: 'Block chip', text: 'Deterrent. Absorbs 1¢ of a fee and breaks. No worth. Fragile.' },
   counter: { name: 'Counter chip', text: 'Deterrent. Absorbs 1¢ of a fee and puts a Debt chip on the attacker. No worth. Fragile.' },
@@ -177,8 +203,14 @@ export const CHIPS = {
   corrupt: { name: 'Corrupting chip', text: 'Hazard. Each turn it puts 1¢ of Debt on its stack and has a 60% chance to spread to another stack. Fades after 3 turns.' },
   poison: { name: 'Poison chip', text: 'Hazard. Each turn it puts 1¢ of Debt on its stack. It lingers until the stack is gone or it is cleansed.' },
   boom: { name: 'Boom chip', text: 'Hazard. The turn after it lands it goes off: 5¢ of Debt on its stack and on every stack around it.' },
-  frozen: { name: 'Frozen chip', text: 'Hazard (Cold). Its stack is frozen solid: nothing on it can be bid or flipped. Thaws after 2 turns, or at once if a Burning or Lava chip reaches it.' },
-  lava: { name: 'Lava chip', text: 'Hazard (Heat). Each turn it melts the chip beneath it and spills a Burning chip onto a stack next to it. Cools after 2 turns.' },
+  // conversions and growth from the workbook's chip list. Instance shields take a whole fee each, not 1¢.
+  frozen: { name: 'Frozen chip', text: 'Several Royal Paradise chips frozen into one, worth their sum. It cannot be bid or flipped, and cannot be burned, corrupted, shocked or turned into another chip. A fee smaller than it only leaves Debt.' },
+  feather: { name: 'Feather chip', text: 'A chip turned light for a few turns: any fee larger than its stack\'s worth misses the stack.' },
+  flower: { name: 'Flower chip', text: 'Grown from a Seed. Each turn it blooms a Petal on the stacks around it, one per chip it is rooted in (up to 8). Takes one fee to break.' },
+  petal: { name: 'Petal chip', text: 'Bloomed by a Flower. Takes one whole fee and breaks. Wilts after 2 turns.' },
+  clay: { name: 'Clay chip', text: 'Takes a whole fee and cracks; it breaks after its count of fees. Fire bakes it into Brick.' },
+  brick: { name: 'Brick chip', text: 'Baked Clay. Takes twice as many fees as the clay did before it breaks.' },
+  dynamite: { name: 'Dynamite', text: 'A stack of sticks on an empty space. One burns down each turn; when the last goes, every chip on the stacks around it is destroyed. Cleansing removes it.' },
 };
 // Chips no trick or table effect makes are sold at the Chip Exchange. Their price comes from a tier: how strong
 // the chip is, or how strong it is meant to feel until it has been tuned. Change a tier's price or floor here
@@ -194,12 +226,12 @@ export const CHIP_TIERS = [
 // Shop chips are worth 1¢ like any other chip, are deployed at the base of your stacks, are not wagered,
 // and come back to you after a win if they survive. `resist`: the hazard a stack holding one is immune to.
 // `vars`: the numbers each effect reads, kept here so they can be tuned without touching the engine.
-// The chip object carries its shop id in `resist` (the field predates the specials).
+// The chip object carries its shop id in `resist` (the field predates the specials) and in `shop`.
+// `kind`: a shop chip that is not a value chip (default: a 1¢ Royal Paradise chip). `place`: 'top' puts it on
+// top of a stack instead of at the base. `list`: its row in docs/CHIP-LIST.tsv.
 export const SHOP_CHIPS = {
-  burn: { name: 'Red chip', tier: 1, resist: 'burn', also: ['lava'], verb: 'extinguishes', glyph: '◆',
-    text: 'A stack holding one extinguishes Burning and Lava chips and cannot catch fire.' },
-  frozen: { name: 'Orange chip', tier: 2, resist: 'frozen', verb: 'thaws', glyph: '◆',
-    text: 'A stack holding one thaws Frozen chips, so it can always be bid from.' },
+  burn: { name: 'Red chip', tier: 1, resist: 'burn', verb: 'extinguishes', glyph: '◆',
+    text: 'A stack holding one extinguishes Burning chips and cannot catch fire.' },
   shock: { name: 'Blue chip', tier: 1, resist: 'shock', verb: 'absorbs', glyph: '◆',
     text: 'A stack holding one absorbs Shocking chips and is skipped by their Debt.' },
   acid: { name: 'Yellow chip', tier: 1, resist: 'acid', verb: 'neutralizes', glyph: '◆',
@@ -210,18 +242,33 @@ export const SHOP_CHIPS = {
     text: 'A stack holding one cures Poison chips.' },
   boom: { name: 'Black chip', tier: 3, resist: 'boom', verb: 'defuses', glyph: '◆',
     text: 'A stack holding one defuses Boom chips before they go off. It still takes Debt from a blast next door.' },
-  bumper: { name: 'Bumper chip', tier: 2, glyph: '◎', vars: { absorb: 1 },
+  reducer: { name: 'Reducer chip', tier: 2, glyph: '◎', vars: { absorb: 1 }, list: 'Reducer Chip',
     text: (v) => `Every fee that lands on its stack is ${v.absorb}¢ smaller. Pierce goes straight through it.` },
-  anchor: { name: 'Anchor chip', tier: 2, glyph: '⚓',
+  anchor: { name: 'Anchor chip', tier: 2, glyph: '⚓', list: 'Anchor Chip',
     text: () => 'Creatures, Scatter, the Tornado and the Black Hole cannot take chips from its stack.' },
   nest: { name: 'Nest Egg chip', tier: 2, glyph: '◒', vars: { payout: 15 },
     text: (v) => `If it is still on the table when you win, it pays ${v.payout}¢ on top of your winnings.` },
-  mirror: { name: 'Mirror chip', tier: 3, glyph: '◐', vars: { reflect: 2 },
+  rebound: { name: 'Rebound chip', tier: 3, glyph: '◐', vars: { reflect: 2 },
     text: (v) => `Each fee on its stack sends ${v.reflect}¢ of Debt back to the attacker's front stack in the same lane. The fee is still charged.` },
   lucky: { name: 'Lucky chip', tier: 3, glyph: '✦', vars: { chance: 0.3 },
     text: (v) => `Each turn, a ${Math.round(v.chance * 100)}% chance to put an Opportunity chip on your Meter.` },
-  fog: { name: 'Fog chip', tier: 3, glyph: '☁',
-    text: () => 'Its stack is hidden: an opponent cannot aim a trick at it. Spreads, rain and hazards still reach it.' },
+  transpara: { name: 'Transpara-Chip', tier: 3, glyph: '◌', list: 'Transpara-Chip',
+    text: () => 'Its stack cannot be aimed at by your opponent. Spreads, rain and hazards (fire, shock, corruption) still reach it.' },
+  // from the workbook's chip list
+  seed: { name: 'Seed chip', tier: 2, glyph: '❀', place: 'top', list: 'Seed p¢ Chip',
+    text: () => 'Goes on top of a stack. If the stack has at least 2 chips when the bout starts, it sprouts into a Flower chip that blooms Petals around it each turn. Each Petal takes a whole fee.' },
+  clay: { name: 'Clay chip', tier: 2, glyph: '▤', kind: 'clay', place: 'top', vars: { hits: 2 }, list: 'Clay Chip',
+    text: (v) => `Goes on top of a stack. Takes ${v.hits} whole fees, then breaks. Fire on its stack bakes it into a Brick chip that takes twice as many. No worth.` },
+  harmony: { name: 'Harmony chip', tier: 3, glyph: '☯', vars: { per: 1 }, list: 'Harmony Chip',
+    text: (v) => `Each turn it clears ${v.per} hazard chip or ¢ of Debt from its stack or the stacks around it. A hazard chip it clears is replaced by a 1¢ chip if there is room.` },
+  power: { name: 'Power chip', tier: 2, glyph: '⚡︎', vars: { boost: 1, turns: 4 }, list: 'Power Chip',
+    text: (v) => `Each turn, your roll effects gain ${v.boost}. After ${v.turns} turns it settles into a plain 1¢ chip.` },
+  control: { name: 'Control chip', tier: 2, glyph: '⊘', vars: { enfeeble: 1, turns: 4 }, list: 'Control Chip',
+    text: (v) => `Each turn, your opponent's roll effects lose ${v.enfeeble}. After ${v.turns} turns it settles into a plain 1¢ chip.` },
+  ward: { name: 'Ward chip', tier: 4, glyph: '⛨', vars: { per: 1 }, list: 'Ward Chip',
+    text: (v) => `Each turn the House cancels the ${v.per > 1 ? v.per + ' largest fees' : 'largest fee'} charged to your position.` },
+  shadow: { name: 'Shadow chip', tier: 2, glyph: '◗', list: 'Shadow Chip',
+    text: () => 'Its stack cannot be aimed at while the stack in front of it in the lane is taller.' },
   crown: { name: 'Crown chip', tier: 4, glyph: '♛', vars: { turns: 3 },
     text: (v) => `Its stack starts the bout Hardened for ${v.turns} turns: each fee takes only one chip.` },
 };
@@ -231,7 +278,11 @@ export const shopVars = (id) => SHOP_CHIPS[id].vars || {};
 export const shopText = (id) => { const X = SHOP_CHIPS[id]; return typeof X.text === 'function' ? X.text(shopVars(id)) : X.text; };
 export const shopPrice = (id) => SHOP_CHIPS[id].price ?? CHIP_TIERS[SHOP_CHIPS[id].tier].price;
 export const shopFloor = (id) => SHOP_CHIPS[id].floor ?? CHIP_TIERS[SHOP_CHIPS[id].tier].floor;
-export const HAZARD_KINDS = ['debt', 'burn', 'acid', 'shock', 'corrupt', 'poison', 'boom', 'frozen', 'lava'];
+export const HAZARD_KINDS = ['debt', 'burn', 'acid', 'shock', 'corrupt', 'poison', 'boom'];
+// shields that take a whole fee per hit (`hits` on the chip), not 1¢ like Block
+export const INSTANCE_SHIELDS = ['flower', 'petal', 'clay', 'brick'];
+// renamed shop chips, for saves made before the rename
+export const SHOP_RENAMES = { bumper: 'reducer', mirror: 'rebound', fog: 'transpara', frozen: null };
 
 export const CREATURES = {
   ufo: { name: 'UFO', glyph: '🛸', text: 'Abducts the top chip of a random stack each turn, then flies home. Chips taken are lost.' },

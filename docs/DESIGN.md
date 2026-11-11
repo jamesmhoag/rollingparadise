@@ -86,22 +86,36 @@ How this is shown:
   (1 + 5 + 5) to the Stage: 3¢ overkill carries to the stack behind."
 
 ### Chips (**Chips**, **Shop**)
-- Royale Paradise chips of 1, 2, 5 and 10¢, unlocked by floor as in the Chip Exchange table.
+The chip list from the workbook is kept in `docs/CHIP-LIST.tsv`; chips built from it name their row (`list`).
+- Royal Paradise chips (the basic value chips) of 1, 2, 5 and 10¢, unlocked by floor as in the Chip Exchange table.
 - Debt, Block, Counter, Opportunity, Gold, Burning, Acid, Shocking, Corrupting, Poison and Boom chips, and Holes.
-  Three new Expenses leave the new hazards: Infect (Corrupting), Envenom (Poison) and Rig (Boom). The names are
+  Three Expenses leave the newer hazards: Infect (Corrupting), Envenom (Poison) and Rig (Boom). The trick names are
   placeholders.
-- Shop chips, sold at the Chip Exchange because no trick or table effect makes them. Each is worth 1¢, goes at the
-  base of a stack, is not wagered, and comes back after a win if it survives. Their price comes from a tier
-  (`CHIP_TIERS`: Common, Uncommon, Rare, Epic, Royal), which also sets the floor they are sold from:
-  - resists: Red (Burning), Blue (Shocking), Yellow (Acid), and new Violet (Corrupting), Green (Poison), Black (Boom);
-  - Bumper (each fee on its stack is 1¢ smaller), Anchor (creatures, Scatter, Tornado and Black Hole cannot take
-    from its stack), Nest Egg (pays 15¢ if it survives a win), Mirror (2¢ of Debt back to the attacker per fee),
-    Lucky (30% a turn to make an Opportunity chip), Crown (stack starts Hardened for 3 turns).
-  The numbers each effect reads are in `SHOP_CHIPS[id].vars`.
-- Two element hazards: Frozen (Cold; its stack cannot be bid or flipped, thaws in 2 turns or next to heat), left
-  by Chill; Lava (Heat; melts the chip beneath and spills Burning next door, cools in 2 turns), left by Erupt
-  (Technician). The Orange chip thaws Frozen; the Red chip now stops Lava too. The Fog chip hides its stack from
-  the opponent's aim.
+- From the chip list, made at the table:
+  - **Frozen**: Chill (Insurance) freezes up to the roll total of a stack's chips into one chip worth their sum. It
+    cannot be bid or flipped, and cannot be burned, corrupted, shocked or turned into another chip.
+  - **Feather**: Float (Insurance, Rascal) feathers the top chip of a stack for a few turns; a fee larger than the
+    stack's worth misses it.
+  - **Flower** and **Petal**: a Seed on a stack of two or more sprouts into a Flower, which blooms a Petal a turn
+    on the stacks around it (one per chip it is rooted in, up to 8). A Petal or a Flower takes one whole fee.
+  - **Clay** and **Brick**: Clay takes whole fees (2) and breaks; fire bakes it into Brick with twice the hits.
+  - **Dynamite**: Fuse (Expense, Technician) lights a stack of sticks on an empty space near its target. One burns
+    down each turn; then every chip on the stacks around it is destroyed. Cleansing removes it.
+- Shop chips, sold at the Chip Exchange because no trick or table effect makes them. Each is worth 1¢ (Clay: 0),
+  is not wagered, and comes back after a win if it survives. Most go at the base of a stack; Seed and Clay go on
+  top. Their price comes from a tier (`CHIP_TIERS`: Common, Uncommon, Rare, Epic, Royal), which also sets the floor
+  they are sold from:
+  - resists: Red (Burning), Blue (Shocking), Yellow (Acid), Violet (Corrupting), Green (Poison), Black (Boom);
+  - from the chip list: Reducer (each fee on its stack is 1¢ smaller), Anchor (creatures, Scatter, Tornado and Black
+    Hole cannot take from its stack), Transpara-Chip (the opponent cannot aim at its stack), Seed, Clay, Harmony
+    (clears a hazard nearby each turn, leaving a 1¢ chip), Power and Control (+1 to your roll effects / −1 to theirs
+    each turn, for 4 turns), Ward (cancels the largest fee each turn), Shadow (cannot be aimed at behind a taller
+    stack);
+  - not on the list (mine, kept until replaced): Nest Egg (pays 15¢ if it survives a win), Rebound (2¢ of Debt back
+    to the attacker per fee), Lucky (30% a turn to make an Opportunity chip), Crown (stack starts Hardened for 3
+    turns).
+  The numbers each effect reads are in `SHOP_CHIPS[id].vars`. Old saves carry Bumper, Mirror and Fog over to
+  Reducer, Rebound and Transpara.
 - Creatures (UFO, Fairy, Dragon, Mole, and from the 5¢ and 10¢ floors Unicorn and Mothership), Familiars, Spawners
   and Calamities (Inferno, House Audit, Black Hole, Volcano, Tornado), used by the tilts.
 - Dice are drawn as their solids (d4 triangle, d6 square, d8 diamond, d10 hexagon, d20 octagon) and chips as discs
@@ -111,6 +125,13 @@ How this is shown:
   upgrade adds a ▲ and a moving foil; a gilded chip turns gold.
 - Each table has a felt (`FELTS`) that colours the bout table and the table on the floor plan. The High Roller
   plays on Royal, the doorman and the barfly on House, the Ascent on Paradise. Felts have no board effect yet.
+
+### Dice and upgrades
+A die has faces, 1 to n to start. The Diesmith sells the workbook's 22 upgrades (from floor 1; Emphasize, Rig,
+Enchant, Encase, Rebalance, Gamble, Mirror and Reflect from floor 2; Curse from floor 3). Most change the faces when
+bought, on a target face you pick, and the panel previews the faces each one leaves. Temper, Escalate, Gamble and
+Curse change how the die rolls. Up to 2 per die; the roll-time ones cannot be taken twice. A die's hover shows its
+faces and each upgrade's badge; the rules are in `js/dice.js`.
 
 ### Hover detail
 Right-click anywhere to switch every hover and the table prompts between verbose (rules spelled out) and concise
@@ -171,7 +192,7 @@ what you own, carry or wear is marked.
 | When tilt tiers are bought | Unlocked once per floor, then free to use for every bout on it. |
 | How a bout ends if neither side breaks | "Last call" is an addition: from turn 9 every Expense is multiplied by a factor that grows each turn. At turn 40 the most Worth wins. |
 | Debt (the **Debt** tab's five concepts) | "Knocked out by debt": reaching zero Worth loses the bout. |
-| Dice upgrades | Three of the 22 listed: Accelerate, Escalate, Stabilize. |
+| Dice upgrades | All 22 from the workbook. Readings: "fill" moves value into the target (Divide: 1 from every face; Gift: half the highest; Devour: all of the lowest), Boost/Bonk ±2, Rig/Enchant/Encase change with use and reset each bout, Gamble ×2 and Curse ×3 on a random face each roll. Numbers in `DIE_VARS`. |
 | Which cards take a wallet slot | Benefit cards and the Royal Card do (Collectables C80: with no room for the Royal Card you drop one of your two starters). Membership, Suite Key, Punch and Paradise are passes and do not. Cards can be dropped from the kit at any time, except the Royal Card before floor 1. |
 | Membership Card discount | "Also gives the discount": 10% off at the Trick Trader, not stacking with a Trader Discount Card. |
 | Debt chip values | One Debt marker per stack showing the exact amount owed (it used to be split into 5, 2 and 1¢ chips, which read like money). |

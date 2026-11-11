@@ -3,7 +3,8 @@
 // and the bout. During a run, what you own is marked.
 import { h, openPanel, closePanel, btn } from './core.js';
 import { app } from './app.js';
-import { chipEl, chipTip, dieEl, dieTip, trickTip, pips, trickLook, upInfo, cardEl, cardTip, walletEl, jacketEl, jacketTip, drinkEl, feltEl } from './parts.js';
+import { upgrade as upgradeFaces, suggestFace } from '../dice.js';
+import { chipEl, chipTip, dieEl, dieTip, faceStrip, trickTip, pips, trickLook, upInfo, cardEl, cardTip, walletEl, jacketEl, jacketTip, drinkEl, feltEl } from './parts.js';
 import * as D from '../data.js';
 import { multOf, traitOf } from '../bout.js';
 import { cents } from '../util.js';
@@ -45,26 +46,34 @@ const BOUT_CHIPS = {
   block: 'Every Insurance trick\'s Trait adds them; Block adds them by the roll; Settle and Fence bonuses add two; the Shield tilt starts you with a stack.',
   counter: 'Block\'s bonus (every die even) makes them instead of Block chips.',
   debt: 'Every Expense: fees go out as Debt first, then the House settles.',
+  flower: 'A Seed chip on a stack of 2 or more sprouts into one when the bout starts.',
+  petal: 'Bloomed by a Flower each turn.',
+  clay: 'Bought at the Chip Exchange.',
+  brick: 'Fire on a Clay chip bakes it.',
+  dynamite: 'Fuse (Technician) lights a stack of it on an empty space near its target.',
 };
 
 function chipsTab(own) {
-  const out = [sec('Standard chips', 'Royale Paradise chips. Your purse is changed into these when you set your position.')];
+  const out = [sec('Royal Paradise chips', 'The basic value chips. Your purse is changed into these when you set your position.')];
   for (const d of D.DENOMS) { const ch = { kind: 'std', value: d.value };
     out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), `${d.value}¢ chip`, [`Dealt from floor ${d.floor}.`, d.value > 1 ? `Bid it and the trick lingers ${d.value - 1} turn${d.value > 2 ? 's' : ''}.` : 'Bids without lingering.', dim(d.value > 1 ? `A fee under ${d.value}¢ leaves Debt on it instead of paying it.` : 'Any fee of 1¢ or more pays it.')])); }
   out.push(sec('Chip upgrades', 'Changes made to a chip on the table, drawn on the chip.'));
   const gold = { kind: 'std', value: 5, gold: true };
   out.push(entry([chipEl({ kind: 'std', value: 5 }), h('span', { class: 'dim', text: '→' }), tipped(chipEl(gold), () => chipTip(gold))], 'Gold', ['Made by Gild (and sometimes a Fairy). Glows gold.', 'Cannot be bid. Pays double if it survives the bout.']));
+  const frz = { kind: 'std', value: 7, frozen: true }, fea = { kind: 'std', value: 2, feather: 2 };
+  out.push(entry([chipEl({ kind: 'std', value: 5 }), chipEl({ kind: 'std', value: 2 }), h('span', { class: 'dim', text: '→' }), tipped(chipEl(frz), () => chipTip(frz))], 'Frozen', ['Made by Chill: chips frozen into one, worth their sum.', D.CHIPS.frozen.text]));
+  out.push(entry([chipEl({ kind: 'std', value: 2 }), h('span', { class: 'dim', text: '→' }), tipped(chipEl(fea), () => chipTip(fea))], 'Feather', ['Made by Float, for a few turns.', D.CHIPS.feather.text]));
   out.push(sec('Shop chips', `Sold at the Chip Exchange because no trick or table effect makes them. Priced by tier: ${D.CHIP_TIERS.slice(1).map((t) => `<span class="tier" style="--tc:${t.color}">${t.name}</span> ${cents(t.price)}${t.floor > 1 ? ` from floor ${t.floor}` : ''}`).join(' ')}. Each is worth 1¢, goes at the base of a stack, is not wagered, and comes back after a win if it survives.`));
   for (const id of Object.keys(D.SHOP_CHIPS).sort((a, b) => D.SHOP_CHIPS[a].tier - D.SHOP_CHIPS[b].tier)) {
     const X = D.SHOP_CHIPS[id], T = D.CHIP_TIERS[X.tier], ch = { kind: 'std', value: 1, resist: id }, vars = Object.entries(X.vars || {});
     out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), `${X.name} <span class="tier" style="--tc:${T.color}">${T.name}</span>`,
-      [D.shopText(id), `${cents(D.shopPrice(id))} · from floor ${D.shopFloor(id)}`, vars.length ? dim(`Tuning: ${vars.map(([k, v]) => `${k} ${v}`).join(', ')}`) : null], { own: own.shop(id) ? `Own ${own.shop(id)}` : null }));
+      [D.shopText(id), `${cents(D.shopPrice(id))} · from floor ${D.shopFloor(id)}${X.place === 'top' ? ' · goes on top' : ''}`, vars.length ? dim(`Tuning: ${vars.map(([k, v]) => `${k} ${v}`).join(', ')}`) : null, X.list ? dim(`From the chip list: ${X.list}`) : null], { own: own.shop(id) ? `Own ${own.shop(id)}` : null }));
   }
   out.push(sec('Chips made at the table', 'They appear during a bout and are gone when it ends.'));
-  for (const k of ['opp', 'block', 'counter', 'debt']) { const ch = { kind: k, value: k === 'opp' ? 1 : k === 'debt' ? 3 : 0 };
+  for (const k of ['opp', 'block', 'counter', 'debt', 'flower', 'petal', 'clay', 'brick', 'dynamite']) { const ch = { kind: k, value: k === 'opp' ? 1 : k === 'debt' ? 3 : 0 };
     out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), D.CHIPS[k].name, [D.CHIPS[k].text, dim(`Made by: ${BOUT_CHIPS[k]}`)])); }
   out.push(sec('Hazard chips', 'Left by Expenses with an element. A shop chip of the matching colour makes a stack immune.'));
-  for (const k of ['burn', 'acid', 'shock', 'corrupt', 'poison', 'boom', 'frozen', 'lava']) { const ch = { kind: k, value: 0 }, by = leftBy(k), cure = Object.keys(D.SHOP_CHIPS).find((x) => D.resistsOf(x).includes(k));
+  for (const k of ['burn', 'acid', 'shock', 'corrupt', 'poison', 'boom']) { const ch = { kind: k, value: 0 }, by = leftBy(k), cure = Object.keys(D.SHOP_CHIPS).find((x) => D.resistsOf(x).includes(k));
     out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), D.CHIPS[k].name, [D.CHIPS[k].text, dim(`Left by: ${by.join(', ') || 'creatures and calamities'}${k === 'burn' ? ', the Dragon, Inferno and Volcano' : ''}.${cure ? ` Stopped by the ${D.SHOP_CHIPS[cure].name}.` : ''}`)])); }
   return out;
 }
@@ -91,13 +100,14 @@ function diceTab(own) {
   const out = [sec('Dice', 'Each die is drawn as its solid. Forge one at the Diesmith by melting your smallest dice.')];
   for (const [type, X] of Object.entries(D.DICE)) { const d = { type, up: [] }, n = own.die(type);
     out.push(entry(tipped(dieEl(d), () => dieTip(d)), type, [`Rolls 1–${X.faces}.`, `Forge: ${X.forge.dice} ${X.forge.dice > 1 ? 'dice' : 'die'} + ${cents(X.forge.chips)}, from floor ${X.forge.floor}.`, dim(`Sells for ${cents(X.sell)}.`)], { own: n ? `In your pouch ×${n}` : null })); }
-  out.push(sec('Upgrades', `Each upgrade puts its own badge on the die, so you can read a die's upgrades at a glance. Up to ${D.DIE_UPGRADE_MAX} per die; Accelerate can be taken twice. Cost: 100¢ × floor × (1 + upgrades it already has).`));
-  for (const [u, U] of Object.entries(D.DIE_UPGRADES)) { const d = { type: 'd6', up: [u] };
-    out.push(entry([dieEl({ type: 'd6', up: [] }), h('span', { class: 'dim', text: '→' }), tipped(dieEl(d), () => dieTip(d))], `${U.name} <span style="color:${U.color}">${U.mark}</span>`, [U.text])); }
-  for (const ups of [['accelerate', 'accelerate'], ['escalate', 'stabilize'], ['accelerate', 'escalate']]) { const d = { type: 'd8', up: ups };
-    out.push(entry(tipped(dieEl(d), () => dieTip(d)), ups.map((u) => D.DIE_UPGRADES[u].name).join(' + '), ['Two upgrades: two badges.'])); }
+  out.push(sec('Upgrades', `The workbook's ${Object.keys(D.DIE_UPGRADES).length} upgrades. Most change the faces when you buy them; ▲▼?☠ change how the die rolls. Each puts its own badge on the die. Up to ${D.DIE_UPGRADE_MAX} per die. Cost: 100¢ × floor × (1 + upgrades it already has). Faces shown on a d6, before → after (target face marked).`));
+  const d6 = { type: 'd6', up: [] };
+  for (const [u, U] of Object.entries(D.DIE_UPGRADES)) {
+    const t = U.target ? suggestFace(d6, u) : 0, d = upgradeFaces({ type: 'd6', up: [] }, u, t, { int: () => 0 });
+    out.push(entry([dieEl(d6), h('span', { class: 'dim', text: '→' }), tipped(dieEl(d), () => dieTip(d))], `<span style="color:${U.color}">${U.mark}</span> ${U.name}${U.floor > 1 ? ` <span class="dim">floor ${U.floor}+</span>` : ''}`,
+      [D.upgradeText(u), `<span class="faces">${faceStrip(d6)}</span> → <span class="faces">${faceStrip(d)}</span>${U.target ? dim(` target face ${t + 1}`) : U.roll ? dim(' faces unchanged; works when rolled') : ''}`])); }
   const held = (own.run?.dice || []).filter((d) => d.up.length);
-  if (held.length) { out.push(sec('Your upgraded dice')); for (const d of held) out.push(entry(tipped(dieEl(d), () => dieTip(d)), d.type, [d.up.map((u) => D.DIE_UPGRADES[u].name).join(', ')], { own: true })); }
+  if (held.length) { out.push(sec('Your upgraded dice')); for (const d of held) out.push(entry(tipped(dieEl(d), () => dieTip(d)), d.type, [d.up.map((u) => D.DIE_UPGRADES[u].name).join(', '), `<span class="faces">${faceStrip(d)}</span>`], { own: true })); }
   return out;
 }
 

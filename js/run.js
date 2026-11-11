@@ -2,7 +2,8 @@
 // floors, opponents, shops, the lounge, the sports book, wagers and tilts, winnings and the Ascent.
 import { RNG, sum, clamp } from './util.js';
 import * as D from './data.js';
-import { createBout, summary, barCapacity, rollDie } from './bout.js';
+import { createBout, summary, barCapacity } from './bout.js';
+import { rollDie, boutCopy, upgrade as upgradeFaces, canUpgrade } from './dice.js';
 
 const META_KEY = 'rollingparadise.meta.v1', RUN_KEY = 'rollingparadise.run.v1';
 const store = () => { try { return globalThis.localStorage || null; } catch { return null; } };
@@ -13,8 +14,13 @@ export function loadMeta() {
 export const saveMeta = (m) => { try { store()?.setItem(META_KEY, JSON.stringify(m)); } catch { /* storage unavailable */ } };
 export const saveRun = (run) => { try { store()?.setItem(RUN_KEY, JSON.stringify({ ...run, rng: run.rng.s })); } catch { /* storage unavailable */ } };
 export const clearRun = () => { try { store()?.removeItem(RUN_KEY); } catch { /* storage unavailable */ } };
+// shop chips renamed after the workbook's chip list: carry owned counts over to the new ids
+function migrate(run) {
+  for (const box of [run.chips, run.plan?.resist]) { if (!box) continue;
+    for (const [old, now] of Object.entries(D.SHOP_RENAMES)) if (old in box) { if (now) box[now] = (box[now] || 0) + box[old]; delete box[old]; } }
+}
 export function loadRun() {
-  try { const raw = store()?.getItem(RUN_KEY); if (!raw) return null; const run = JSON.parse(raw); const s = run.rng; run.rng = new RNG(0); run.rng.s = s; return run; } catch { return null; }
+  try { const raw = store()?.getItem(RUN_KEY); if (!raw) return null; const run = JSON.parse(raw); const s = run.rng; run.rng = new RNG(0); run.rng.s = s; migrate(run); return run; } catch { return null; }
 }
 
 const mkTrick = (run, id, q = 1, up = 0) => ({ uid: run.nextId++, id, q, up });
@@ -192,9 +198,17 @@ export function sellDie(run, id) {
   const v = D.DICE[run.dice[i].type].sell; ledger(run, `Sold a ${run.dice[i].type}`, v); run.dice.splice(i, 1); run.purse += v; return true;
 }
 export const dieUpgradeCost = (run, d) => price(run, 'diesmith', 100 * Math.max(1, run.floor) * (1 + d.up.length));
-export function upgradeDie(run, id, up) {
-  const d = run.dice.find((x) => x.id === id); if (!d || d.up.length >= 2 || (up !== 'accelerate' && d.up.includes(up))) return false;
-  if (!spend(run, dieUpgradeCost(run, d), `${D.DIE_UPGRADES[up].name} on a ${d.type}`)) return false; d.up.push(up); return true;
+// why an upgrade cannot go on a die right now, or null
+export function dieUpgradeBlock(run, d, up) {
+  const U = D.DIE_UPGRADES[up]; if (!U) return 'No such upgrade.';
+  if (run.floor < (U.floor || 1)) return `The Diesmith offers ${U.name} from floor ${U.floor}.`;
+  return canUpgrade(d, up, D.DIE_UPGRADE_MAX);
+}
+// `face`: the target face for upgrades that take one
+export function upgradeDie(run, id, up, face = 0) {
+  const d = run.dice.find((x) => x.id === id); if (!d || dieUpgradeBlock(run, d, up)) return false;
+  if (!spend(run, dieUpgradeCost(run, d), `${D.DIE_UPGRADES[up].name} on a ${d.type}`)) return false;
+  upgradeFaces(d, up, face, run.rng); return true;
 }
 // Chip Exchange: shop chips are priced by their tier (D.CHIP_TIERS) and unlocked by the tier's floor
 export const owned = (run, id) => run.chips[id] || 0;
@@ -279,8 +293,9 @@ export function unlockTier(run, kind) {
   if (!spend(run, D.TILT_TIERS[n][kind], `${kind === 'challenge' ? 'Challenge' : 'Cheat'} tilt tier ${n + 1}`)) return false; run.fs.tiers[kind]++; return true;
 }
 // default chip mix: fill the Bar with the best chips the purse affords, keeping some 1¢ chips to bid with
-export function autoCounts(run, dims, purse = run.purse) {
-  const cap = barCapacity(dims), denoms = D.DENOMS.filter((d) => d.floor <= Math.max(1, run.floor)).map((d) => d.value).sort((a, b) => b - a);
+// `reserve`: spaces kept for shop chips
+export function autoCounts(run, dims, purse = run.purse, reserve = 0) {
+  const cap = Math.max(0, barCapacity(dims) - reserve), denoms = D.DENOMS.filter((d) => d.floor <= Math.max(1, run.floor)).map((d) => d.value).sort((a, b) => b - a);
   const counts = { 1: 0, 2: 0, 5: 0, 10: 0 }; let slots = cap, money = purse;
   const ones = Math.min(slots, money, Math.max(6, Math.round(cap * 0.15))); counts[1] = ones; slots -= ones; money -= ones;
   for (const v of denoms) { if (v === 1) continue; const n = Math.min(slots, Math.floor(money / v)); counts[v] += n; slots -= n; money -= n * v; }
@@ -289,9 +304,9 @@ export function autoCounts(run, dims, purse = run.purse) {
 }
 // the saved chip mix, or a fresh one if it no longer fits the purse or the position
 export function validCounts(run, dims) {
-  const c = run.plan.counts;
-  if (c && planWorth(c) <= run.purse && sum(Object.values(c)) <= barCapacity(dims) && planWorth(c) > 0) return c;
-  return autoCounts(run, dims);
+  const c = run.plan.counts, shop = sum(Object.entries(run.plan.resist || {}), ([k, n]) => Math.min(n, owned(run, k)));
+  if (c && planWorth(c) <= run.purse && sum(Object.values(c)) + shop <= barCapacity(dims) && planWorth(c) > 0) return c;
+  return autoCounts(run, dims, run.purse, shop);
 }
 export const planWorth = (counts) => sum(Object.entries(counts), ([v, n]) => v * n);
 export const planCount = (counts, resist) => sum(Object.values(counts)) + sum(Object.values(resist || {}));
@@ -435,7 +450,7 @@ export function buildAscent(run, meta) {
     opp: genOpponent(run, 4, worths[i], { boss: i >= 3, name, title: ['Millionaire', 'Millionaire', 'Billionaire', 'Billionaire', 'Trillionaire'][i], q: 4, up: Math.floor(i / 2), maxDenom: 10 }) }));
   for (const bld of meta.ladder || []) {
     const opp = genOpponent(run, 4, clamp(bld.worth, 600, 2000), { cls: bld.cls, name: bld.name, title: 'Remnant Roller', q: 4, maxDenom: 10 });
-    opp.tricks = bld.tricks.map((t) => mkTrick(run, t.id, t.q, t.up)); opp.dice = bld.dice.map((d) => ({ ...mkDie(run, d.type), up: d.up || [] }));
+    opp.tricks = bld.tricks.map((t) => mkTrick(run, t.id, t.q, t.up)); opp.dice = bld.dice.map((d) => ({ ...mkDie(run, d.type), up: d.up || [], faces: d.faces }));
     ladder.push({ name: bld.name, networth: bld.networth, legend: false, opp });
   }
   ladder.sort((a, b) => a.networth - b.networth);
@@ -460,7 +475,7 @@ export function buyWallet(run, meta, id) {
 }
 // In the alley you are robbed. Two of your best dice decide whether you hold on to your wallet and its cards.
 export function alleyRoll(run) {
-  const dice = run.dice.slice().sort((a, b) => D.DICE[b.type].faces - D.DICE[a.type].faces).slice(0, 2).map((d) => ({ type: d.type, up: d.up, value: rollDie(run.rng, d) }));
+  const dice = run.dice.slice().sort((a, b) => D.DICE[b.type].faces - D.DICE[a.type].faces).slice(0, 2).map((d) => ({ type: d.type, up: d.up, faces: d.faces, value: rollDie(run.rng, boutCopy(d)) }));
   const total = dice.reduce((n, d) => n + d.value, 0), need = walletOf(run).keep, cards = walletCards(run);
   return { dice, total, need, kept: total >= need && cards.length > 0, cards };
 }
@@ -472,7 +487,7 @@ export function endRun(run, meta, name = 'You', kept = []) {
   const reached = run.phase === 'paradise' || run.phase === 'fallen' || run.phase === 'ascent';
   if (run.phase === 'paradise') meta.crowns++;
   if (reached) {
-    meta.ladder.push({ name: `${name} #${meta.runs}`, cls: run.cls, networth: netWorth(run), worth: Math.min(2000, Math.max(600, run.purse)), tricks: run.tricks.map(({ id, q, up }) => ({ id, q, up })), dice: run.dice.map(({ type, up }) => ({ type, up })) });
+    meta.ladder.push({ name: `${name} #${meta.runs}`, cls: run.cls, networth: netWorth(run), worth: Math.min(2000, Math.max(600, run.purse)), tricks: run.tricks.map(({ id, q, up }) => ({ id, q, up })), dice: run.dice.map(({ type, up, faces }) => ({ type, up, faces })) });
     if (meta.ladder.length > 12) meta.ladder.shift();
   }
   saveMeta(meta); clearRun();
