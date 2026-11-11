@@ -1,0 +1,280 @@
+	Trick Attributes														
+	Modifier	Trait Requirement		bid required		trait is available to all Roller classes for  tricks of the same type									
+		Trait Effect		does not scale	repeats based on value of bid										
+	Action	Roll Requirement		at least one roll of required dice type		action is available to all Roller classes									
+		Roll Effect		scales with dice rolls	repeats based on value of bid										
+	Bonus	Trick Requirement		count and requirement matching		bonus is available to only the matching Roller class									
+		Trick Effect		scales with dice rolls	is unaffected by the value of bid										
+															
+		Trick is extended while in play and cannot be used													
+		Trait effect can only effect other tricks when bid on without a roll played on it otherwise that trait modifies just the associated action 													
+															
+	effects	type	definition												
+trait effect		Modifier	Bid on Trick with no dice		temporarily (round) modifies chips 		can effect either (or all) players		single trait effect instance		Can not be actively targeted at a chip, stack or row			Effects only one chip or spot	
+roll effect		Action	Bid on Trick with at least one dice		while chips are in a position		can effect either (or all) players		single roll effect instance		Must be actively targeted at a chip, stack or row			Can effect more than one chip	
+trick effect		Bonus	Bid on Trick with roll requirement met		while chips are in a position		can effect either (or all) players		multiple roll effect instances		Must be actively targeted at a chip, stack or row			Can effect more than one chip	
+															
+															
+															
+		Trait Types	generic trick modifiers												
+		<>	Approach	about targeting part of position											
+		<>	Initiation	about when the effect occurs after played											
+		<>	Distribution	about where the effect goes in relation to the target											
+		<>	Presentation	about effect instancing of played rolls											
+		/\	Invest	about effects only to investments											
+		/\	Insure	about effects only to insurances											
+		/\	Expense	about effects only to expenses											
+		/\	Correct	about effects only to corrections											
+															
+		Trick Types	special trick modifiers												
+			Imbue	about chip elements											
+			Pattern	about how an effect is repeated											
+			Raze	about space effects											
+			Manifest	about creating 											
+															
+															
+		Trait Effects	general effect tratis that can be used to enhance other played tricks												
+															
+			Targeting		modifies the targeting limits of the played trick										
+				None (front)											
+				Rear	targets that back line of the position										
+				Flank	targets either column at the edge of the position										
+				Body	targets front row of the Bar instead of Meter										
+				Heart	targets the center most stack or all the chips around it										
+				Any Stack	targets any stack with capacity										
+				Any Space	targets any space with capacity										
+															
+			Timing												
+					makes effect occur the turn after the trick completes										
+					makes effect happen before other types										
+					makes effect happen after other types										
+					makes effect occur in reaction to another										
+					makes effect occur when a condition is met										
+			Overflow/Overkill												
+				none	Chips do not manifest										
+				stable	Chips stack higher										
+				tumble	Chips fall to random adjacent free space										
+				replaces	Chips that are in the way are unmanifested										
+				fumble	Chips fall to opposing position availble space										
+				pass	Chips increase effect value of the next played effect										
+				penetrates	Chips go back to space the next row										
+															
+															
+															
+															
+															
+															
+															
+			investing												
+				None (base)	makes effect temporary for the next turn										
+					makes effect permanent										
+					makes effect toggle on and off each turn										
+					makes effect able to cross sections of position										
+					makes effect target opponent with negative effect										
+					makes effect target both Rollers with opposite effect										
+															
+															
+			expensing		modifies chips, stacks created by the Trick										
+				None (base)											
+				Burning	makes enflamed										
+				Shocking	makes electrified										
+				Melting	makes acidified										
+															
+			insuring		modifies target chips, stacks, or spaces of the Trick										
+				None	makes effect target Shield										
+				Fluttering	makes alerted (evasive)										
+					makes hardened										
+					makes reflective										
+					makes thorny										
+					makes effect target Bar										
+					makes effect target position										
+															
+			correcting												
+				none	makes effect permanent										
+					makes effect temporary for the next turn										
+					makes effect toggle on and off each turn										
+					makes effect able to cross sections of position										
+															
+															
+															
+															
+			Performing		modifies the use of the dice rolled for the played trick										
+				None (accumulated)	total effect of all rolls										
+				Separating	effect of each roll has multiple instances										
+				Pacing	effect of each roll over multiple turns										
+				Dividing	effect of each roll at different targets										
+															
+															
+															
+															
+															
+															
+		Roll Effects													
+			Standard effect that can not enhance other played tricks												
+															
+			investing		effect total is placed on the top chip or space targeted in single -1¢ chips										
+					effect total is placed on target in a single chip										
+					effect total is placed on target in a stack maxing chip										
+					effect total is placed on bottom of stack targeted										
+					effect total replaces the target with single -1¢ chips										
+					effect total is placed on target in a single chip										
+			insuring		effect total replaces target stack with a max stack										
+					effect total replaces bottom chip of stack targeted										
+															
+															
+															
+															
+															
+			expensing												
+				None	effect total is placed on the top chip or space targeted in single -1¢ chips										
+				Chip	effect total is placed on target in a single chip										
+				Press	effect total is placed on target in a stack maxing chip										
+				Sweep	effect total is placed on bottom of stack targeted										
+				Spread	effect total replaces the target with single -1¢ chips										
+				Swap	effect total is placed on target in a single chip										
+				Hold	effect total replaces target stack/chips with solid stack										
+				Inject	effect total replaces bottom chip of stack targeted										
+			correcting												
+															
+															
+															
+															
+															
+															
+															
+															
+															
+		Trick Effects													
+			Special traits that can not enchance other played tricks												
+															
+															
+			Exacerbating												
+				None											
+				mutplying	repeats the effect on the same turn										
+				repeating	repeats the effect on sequential turn										
+				amplfying	increases effect value by a multiple										
+															
+			Manifesting		generates a chip or stack on the target space or stack										
+				None 	generates the standard type for the Trick										
+				Creature	dangerous nuetrals										
+				Hazard	dangerous objects										
+				Vehicle	helpful objects										
+				Obstacle	defense objects										
+				Familiar	helpful nuetrals										
+															
+			Developing		Effects that create generative sources of other effects										
+				None											
+				Spawner	creates nuetrals of various types										
+				Factory	Builds vehicles and other useful chips										
+				Plant	Green growing plant that creates chips with the right conditions										
+				Contraption	generates hazards and obstacles with the right conditions										
+			Overriding		Defy the fundamental rules and logic itself										
+				None											
+				Calamity	dangerous condition										
+				Blessing	helpful condition										
+				Intervention	helpful effect on debt										
+				Diety	helpful nuetrals of unfathomable scale and power										
+				Devil	dangerous nuetrals of unfathomable scale and power										
+				Plague	dangerous effect that causes debt										
+															
+															
+			Spreading												
+				None											
+				swiping	effect is distrbuted latterally										
+				poking	effect is distributed vertically										
+				bursting	effect is distributed 										
+				blasting	effect is distributed 										
+															
+															
+needs rework into  new chip based systems															
+															
+															
+															
+															
+	Starting Tricks		4-6				Shop + Rewards		30		Book Max 9? 20?				
+							will be good ->	1 class specific	3 others	<- maybe good	None?				
+		Charge	Place debt chips on a target stack			All Classes			eliminate restock						
+		Block	Place block chips in your barrier			All Classes	will be good ->	1 secret class (+1)							
+		Stir	Place influence chips in your barrier			All Classes	will be good ->	1 secret gen (+2)							
+		Retreat	Push all chips up to the front of your position			Rogue			6	<- High Cost					
+		Advance	Pull all chips back to the back of your position			Brute and Rogue									
+		Special Trick	Trick unique to the selected class			Class specific		sell tricks you don't need anymore							
+															
+															
+															
+	Starting Conditional														
+			Nobilities												
+		Rest			if no tricks are played or dice rolled gain attributes for the next turn										
+															
+															
+			all action types	class bonus											
+		Roll Execution	roll condition	bonus type	characterisic										
+		Instances					Instances of effect for each dice used on that turn when played								
+		Accumulation					Instances of effect for each targeted unit when played								
+		Successions					Instances of effect for each dice in successive turns when played								
+		Targets					Instances of effect for each dice are split between targets								
+			Evens/Odds												
+			Matching/Linked												
+			Over/Under												
+				Spreading			Bonus value dice effect a second target								
+				Repeating			Bonus value dice repeat the trick effect on successive turns								
+				Multiplying			Bonus value dice trick effects are doubled								
+				Duplicating			Bonus value dice effect twice								
+															
+					Nuanced		Returns played dice to purse								
+					Familiar		Returns played trick to hand								
+					Inconspicuous		Does not Cost Ante to play								
+					Simple		Does not have a Dice cost to play								
+															
+															
+															
+															
+															
+															
+															
+class	trick type	name	effect type	modifier type	Trait										
+generic															
+	Influences														
+			Touch				Modifies the effect of target's played actions								
+			Plant				Effect that triggers once a specific type of trick is played								
+			Bend				Roll replaces all other rolls of the target's played tricks								
+				Reverse			Amount of influence reflected back at caster or target								
+				Saturate			Amount of Influence amplified while all other forms of influence are subdued								
+				Control			Amount of recovered or depleted chips for buffs or debuffs respectively								
+					Superior		Gain conviction for each influenced target								
+					Exhaustive		Repeated influence from this trick on the same target increases draw 								
+					Elaborate		Requires an additional dice per trick in hand								
+					Liberating		Target's exposed tricks have no dice requirement or limitations								
+	Deterants														
+			Block				cost of attacks are blocked by block chips in the target's pile removing them from play								
+			Endure				Take no more than defense roll on that turn								
+			Defer				cost of attack is paid on a subsequent turn possibly by another target								
+				Resist			reduces cost of any attack								
+				Evasion			cost of attacks that do not meet the hit qualfications are avoided entirely								
+				Retaliation			cost of incoming damage that is reflected back at the attacker								
+					Nimble		is played before influence tricks								
+					Tough		Increase draw bonus for each hit that cost chips								
+					Radiant		Increase visibility of Rollers that targeted you								
+					Solid		Gain conviction for each targeted hit that's cost is entirely detered								
+	Hits														
+			Buy				cost of attack is taken from target and placed in graveyard								
+			Invest				Cost of attack accrues interest from the target based on the investment								
+			Tax				cost of attack is a percentage of targets targeted pile								
+				Pierce			cost of attack that can not be reduced by defenses								
+				Vengence			cost of attack is increased on rollers targeting you								
+				Glean			cost of attack that is taken directly by the attacker								
+					Swift		is played before deterant tricks								
+					Strong		breaks target's attack if targeted at you								
+					Magical		Each hit that causes the target to lost chips grants reroll								
+					Fierce		Repeated hits on the same target increases Conviction for the rest of the turn								
+	Manipulations														
+			Draw				number of game pieces that can be recovered for the table								
+			Split				Limit tricks that can be played with rolls greater than the roll effect								
+			Gaze				increase awareness revealing hidden information								
+				Focus			Change targeting parameters to play tricks								
+				Ante			increase number of chips target tricks cost to play								
+				Conceal			Reduces rollers visibility gradually reducing the information opponents can see								
+					Deft		Gain a reroll next turn for each trick played this turn								
+					Resisliant		Gain draw for each effect targeted at you that turn								
+					Sly		Trick appears to be a random attack from your book until the played								
+					Blatant		Tricks targeted at you next turn will have an increased ante								

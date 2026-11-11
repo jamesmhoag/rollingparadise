@@ -147,6 +147,14 @@ export const TRICKS = {
     roll: { k: 'fee', text: 'Charge a fee equal to the total and leave a Boom chip.' }, bonus: { cond: 'over:6', k: 'double', text: 'The fee is doubled.' } },
   fuse: { name: 'Fuse', type: 'expense', cls: 'technician', die: 'd8', count: 2, side: 'opp', approach: 'body', dist: 'hit', plant: 'dynamite',
     roll: { k: 'fee', text: 'Charge a fee equal to the total on a Bar stack, then light a stack of Dynamite on the nearest empty space: one stick burns down each turn, then it destroys every chip around it.' }, bonus: { cond: 'over:12', k: 'double', text: 'The fee is doubled.' } },
+  frost: { name: 'Frost', type: 'expense', cls: null, die: 'd6', count: 2, side: 'opp', approach: 'front', dist: 'hit', element: 'frost',
+    roll: { k: 'fee', text: 'Charge a fee equal to the total and leave a Frost chip: that stack cannot be bid or flipped.' }, bonus: { cond: 'evens', k: 'spread', text: 'Frosts the neighbouring stack too (Swipe).' } },
+  erupt: { name: 'Erupt', type: 'expense', cls: 'technician', die: 'd8', count: 2, side: 'opp', approach: 'body', dist: 'hit', element: 'lava',
+    roll: { k: 'fee', text: 'Charge a fee equal to the total on a Bar stack and leave a Lava chip.' }, bonus: { cond: 'over:12', k: 'double', text: 'The fee is doubled.' } },
+  ambush: { name: 'Ambush', type: 'expense', cls: 'hustler', die: 'd6', count: 2, side: 'opp', approach: 'front', dist: 'hit', early: 'investment',
+    roll: { k: 'fee', text: 'Swift: plays with the Investments, before any Insurance this turn is up. Charge a fee equal to the total.' }, bonus: { cond: 'match', k: 'pierce', text: 'Ignores Block chips, Resist and Hardened stacks.' } },
+  vengeance: { name: 'Vengeance', type: 'expense', cls: null, die: 'd6', count: 2, side: 'opp', approach: 'front', dist: 'hit', vengeance: true,
+    roll: { k: 'fee', text: 'Charge a fee equal to the total plus every ¢ you paid in fees last turn.' }, bonus: { cond: 'over:8', k: 'glean', text: 'Chips paid go to your Meter instead of the Stage.' } },
   // --- Insurances ---
   block: { name: 'Block', type: 'insurance', cls: null, die: 'd6', count: 2, side: 'self', approach: 'meter', dist: 'hit',
     roll: { k: 'block', text: 'Add Block chips equal to the total to your Meter, starting at the target space.' }, bonus: { cond: 'evens', k: 'counter', text: 'They are Counter chips: each one also puts a Debt chip on the attacker.' } },
@@ -175,6 +183,8 @@ export const TRICKS = {
     roll: { k: 'press', text: 'Press: your Expenses this turn gain the total and ignore Block chips, Resist and Hardened stacks.' }, bonus: { cond: 'over:6', k: 'extend', text: 'Also grants half that much Power for next turn.' } },
   parlay: { name: 'Parlay', type: 'investment', cls: 'hustler', die: 'd6', count: 1, side: 'none', approach: 'none', dist: 'hit',
     roll: { k: 'parlay', text: 'Gamble: on an even roll your other roll effects this turn are doubled. On an odd roll they are halved.' }, bonus: { cond: 'over:6', k: 'none', text: 'A six is always even. Nothing more to add.' } },
+  saturate: { name: 'Saturate', type: 'investment', cls: 'rascal', die: 'd6', count: 2, side: 'none', approach: 'none', dist: 'hit',
+    roll: { k: 'saturate', text: 'Your other roll effects this turn gain the total, and your opponent\'s boosts this turn are subdued to nothing.' }, bonus: { cond: 'match', k: 'extend', text: 'Their Power is drained to nothing as well.' } },
   // --- Corrections ---
   settle: { name: 'Settle', type: 'correction', cls: null, die: 'd6', count: 1, side: 'none', approach: 'none', dist: 'hit',
     roll: { k: 'settle', text: 'Remove Debt and hazard chips from your position up to the total, then organize your Bar into full stacks.' }, bonus: { cond: 'over:5', k: 'blocks', text: 'Also adds 2 Block chips to your Meter.' } },
@@ -184,6 +194,28 @@ export const TRICKS = {
     roll: { k: 'scatter', text: 'Scatter chips from the front of your opponent\'s position, up to the total, to random spaces. Chips with nowhere to land fall to the Stage.' }, bonus: { cond: 'match', k: 'double', text: 'Scatters twice as many.' } },
   sweep: { name: 'Sweep', type: 'correction', cls: 'technician', die: 'd8', count: 1, side: 'none', approach: 'none', dist: 'hit',
     roll: { k: 'sweep', text: 'Sweep Block, Counter and Opportunity chips off your opponent\'s Meter, up to the total.' }, bonus: { cond: 'over:6', k: 'unharden', text: 'Also removes Hardened from every stack.' } },
+  // Arrangements: corrections that move chips around a position. `arrange` names the move (see ARRANGE).
+  // Lanes run from the Stage to the edge; forward is toward the Stage. They act on the lanes (or, for Lift and
+  // Sink, the rows) their spread covers. Anchored stacks, Holes and Dynamite stay put; Debt and hazards stay
+  // on their space, or move to the nearest stack in the lane if their space ends up empty.
+  retreat: { name: 'Retreat', type: 'correction', cls: 'rascal', die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'swipe', arrange: 'front',
+    roll: { k: 'arrange', text: 'Push every chip in the target lanes forward, toward the Stage.' }, bonus: { cond: 'match', k: 'aura', text: 'Pushes your whole position forward.' } },
+  advance: { name: 'Advance', type: 'correction', cls: 'hustler', die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'swipe', arrange: 'back',
+    roll: { k: 'arrange', text: 'Pull every chip in the target lanes back, away from the Stage.' }, bonus: { cond: 'match', k: 'aura', text: 'Pulls your whole position back.' } },
+  lift: { name: 'Lift', type: 'correction', cls: null, die: 'd4', count: 2, side: 'self', approach: 'any', dist: 'wave', arrange: 'up',
+    roll: { k: 'arrange', text: 'Shift every stack in the target rows up to the top lane, closing the gaps.' }, bonus: { cond: 'evens', k: 'aura', text: 'Shifts every row.' } },
+  sink: { name: 'Sink', type: 'correction', cls: null, die: 'd4', count: 2, side: 'self', approach: 'any', dist: 'wave', arrange: 'down',
+    roll: { k: 'arrange', text: 'Shift every stack in the target rows down to the bottom lane, closing the gaps.' }, bonus: { cond: 'evens', k: 'aura', text: 'Shifts every row.' } },
+  bulwark: { name: 'Bulwark', type: 'correction', cls: 'technician', die: 'd8', count: 2, side: 'self', approach: 'any', dist: 'swipe', arrange: 'shields',
+    roll: { k: 'arrange', text: 'Defensive: in the target lanes, Block, Counter, Petal and Clay chips move to the front, on top, and your value chips fall in behind them.' }, bonus: { cond: 'over:10', k: 'aura', text: 'Arranges your whole position.' } },
+  stackup: { name: 'Stack Up', type: 'correction', cls: null, die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'swipe', arrange: 'value-front',
+    roll: { k: 'arrange', text: 'In the target lanes, sort chips by value with the biggest at the front: small fees only leave Debt on them.' }, bonus: { cond: 'match', k: 'aura', text: 'Sorts your whole position.' } },
+  stash: { name: 'Stash', type: 'correction', cls: null, die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'swipe', arrange: 'value-back',
+    roll: { k: 'arrange', text: 'In the target lanes, sort chips by value with the biggest at the back, behind the small ones.' }, bonus: { cond: 'match', k: 'aura', text: 'Sorts your whole position.' } },
+  expose: { name: 'Expose', type: 'correction', cls: 'rascal', die: 'd6', count: 2, side: 'opp', approach: 'any', dist: 'swipe', arrange: 'opp-value-front',
+    roll: { k: 'arrange', text: 'Aggressive: in your opponent\'s target lanes, drag their biggest chips to the front where your fees land first.' }, bonus: { cond: 'evens', k: 'aura', text: 'Drags their whole position.' } },
+  rout: { name: 'Rout', type: 'correction', cls: 'technician', die: 'd8', count: 2, side: 'opp', approach: 'any', dist: 'swipe', arrange: 'opp-shields-back',
+    roll: { k: 'arrange', text: 'Aggressive: in your opponent\'s target lanes, push their Block, Counter, Petal and Clay chips to the back, out of the way.' }, bonus: { cond: 'over:10', k: 'aura', text: 'Routs their whole position.' } },
   fence: { name: 'Fence', type: 'correction', cls: 'hustler', die: 'd4', count: 2, side: 'none', approach: 'none', dist: 'hit',
     roll: { k: 'fence', text: 'Convert Debt chips on your position, up to the total, into Opportunity chips on your Meter.' }, bonus: { cond: 'match', k: 'blocks', text: 'Also adds 2 Block chips to your Meter.' } },
 };
@@ -205,10 +237,12 @@ export const CHIPS = {
   boom: { name: 'Boom chip', text: 'Hazard. The turn after it lands it goes off: 5¢ of Debt on its stack and on every stack around it.' },
   // conversions and growth from the workbook's chip list. Instance shields take a whole fee each, not 1¢.
   frozen: { name: 'Frozen chip', text: 'Several Royal Paradise chips frozen into one, worth their sum. It cannot be bid or flipped, and cannot be burned, corrupted, shocked or turned into another chip. A fee smaller than it only leaves Debt.' },
+  frost: { name: 'Frost chip', text: 'Hazard (Cold). Its stack is frosted over: nothing on it can be bid or flipped. Thaws after 2 turns, or at once if a Burning or Lava chip reaches it.' },
+  lava: { name: 'Lava chip', text: 'Hazard (Heat). Each turn it melts the chip beneath it and spills a Burning chip onto a stack next to it. Cools after 2 turns.' },
   feather: { name: 'Feather chip', text: 'A chip turned light for a few turns: any fee larger than its stack\'s worth misses the stack.' },
-  flower: { name: 'Flower chip', text: 'Grown from a Seed. Each turn it blooms a Petal on the stacks around it, one per chip it is rooted in (up to 8). Takes one fee to break.' },
-  petal: { name: 'Petal chip', text: 'Bloomed by a Flower. Takes one whole fee and breaks. Wilts after 2 turns.' },
-  clay: { name: 'Clay chip', text: 'Takes a whole fee and cracks; it breaks after its count of fees. Fire bakes it into Brick.' },
+  flower: { name: 'Flower chip', text: 'Grown from a Seed. Each turn it blooms a Petal on the stacks around it, one per chip it is rooted in (up to 8). Blocks one entire fee and breaks.' },
+  petal: { name: 'Petal chip', text: 'Bloomed by a Flower. Blocks one entire fee, however big, and breaks: fee instance defence, where a Block chip only takes 1¢ of a fee\'s cost. Wilts after 2 turns.' },
+  clay: { name: 'Clay chip', text: 'Blocks entire fees, one per hit, and breaks after its count of hits. Fire bakes it into Brick.' },
   brick: { name: 'Brick chip', text: 'Baked Clay. Takes twice as many fees as the clay did before it breaks.' },
   dynamite: { name: 'Dynamite', text: 'A stack of sticks on an empty space. One burns down each turn; when the last goes, every chip on the stacks around it is destroyed. Cleansing removes it.' },
 };
@@ -230,8 +264,10 @@ export const CHIP_TIERS = [
 // `kind`: a shop chip that is not a value chip (default: a 1¢ Royal Paradise chip). `place`: 'top' puts it on
 // top of a stack instead of at the base. `list`: its row in docs/CHIP-LIST.tsv.
 export const SHOP_CHIPS = {
-  burn: { name: 'Red chip', tier: 1, resist: 'burn', verb: 'extinguishes', glyph: '◆',
-    text: 'A stack holding one extinguishes Burning chips and cannot catch fire.' },
+  burn: { name: 'Red chip', tier: 1, resist: 'burn', also: ['lava'], verb: 'extinguishes', glyph: '◆',
+    text: 'A stack holding one extinguishes Burning and Lava chips and cannot catch fire.' },
+  frost: { name: 'Orange chip', tier: 2, resist: 'frost', verb: 'thaws', glyph: '◆',
+    text: 'A stack holding one thaws Frost chips, so it can always be bid from.' },
   shock: { name: 'Blue chip', tier: 1, resist: 'shock', verb: 'absorbs', glyph: '◆',
     text: 'A stack holding one absorbs Shocking chips and is skipped by their Debt.' },
   acid: { name: 'Yellow chip', tier: 1, resist: 'acid', verb: 'neutralizes', glyph: '◆',
@@ -258,7 +294,7 @@ export const SHOP_CHIPS = {
   seed: { name: 'Seed chip', tier: 2, glyph: '❀', place: 'top', list: 'Seed p¢ Chip',
     text: () => 'Goes on top of a stack. If the stack has at least 2 chips when the bout starts, it sprouts into a Flower chip that blooms Petals around it each turn. Each Petal takes a whole fee.' },
   clay: { name: 'Clay chip', tier: 2, glyph: '▤', kind: 'clay', place: 'top', vars: { hits: 2 }, list: 'Clay Chip',
-    text: (v) => `Goes on top of a stack. Takes ${v.hits} whole fees, then breaks. Fire on its stack bakes it into a Brick chip that takes twice as many. No worth.` },
+    text: (v) => `Goes on top of a stack. Blocks ${v.hits} entire fees, one per hit, then breaks. Fire on its stack bakes it into a Brick chip that takes twice as many. No worth.` },
   harmony: { name: 'Harmony chip', tier: 3, glyph: '☯', vars: { per: 1 }, list: 'Harmony Chip',
     text: (v) => `Each turn it clears ${v.per} hazard chip or ¢ of Debt from its stack or the stacks around it. A hazard chip it clears is replaced by a 1¢ chip if there is room.` },
   power: { name: 'Power chip', tier: 2, glyph: '⚡︎', vars: { boost: 1, turns: 4 }, list: 'Power Chip',
@@ -278,11 +314,11 @@ export const shopVars = (id) => SHOP_CHIPS[id].vars || {};
 export const shopText = (id) => { const X = SHOP_CHIPS[id]; return typeof X.text === 'function' ? X.text(shopVars(id)) : X.text; };
 export const shopPrice = (id) => SHOP_CHIPS[id].price ?? CHIP_TIERS[SHOP_CHIPS[id].tier].price;
 export const shopFloor = (id) => SHOP_CHIPS[id].floor ?? CHIP_TIERS[SHOP_CHIPS[id].tier].floor;
-export const HAZARD_KINDS = ['debt', 'burn', 'acid', 'shock', 'corrupt', 'poison', 'boom'];
+export const HAZARD_KINDS = ['debt', 'burn', 'acid', 'shock', 'corrupt', 'poison', 'boom', 'frost', 'lava'];
 // shields that take a whole fee per hit (`hits` on the chip), not 1¢ like Block
 export const INSTANCE_SHIELDS = ['flower', 'petal', 'clay', 'brick'];
 // renamed shop chips, for saves made before the rename
-export const SHOP_RENAMES = { bumper: 'reducer', mirror: 'rebound', fog: 'transpara', frozen: null };
+export const SHOP_RENAMES = { bumper: 'reducer', mirror: 'rebound', fog: 'transpara', frozen: 'frost' };
 
 export const CREATURES = {
   ufo: { name: 'UFO', glyph: '🛸', text: 'Abducts the top chip of a random stack each turn, then flies home. Chips taken are lost.' },

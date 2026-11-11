@@ -86,19 +86,25 @@ How this is shown:
   (1 + 5 + 5) to the Stage: 3¢ overkill carries to the stack behind."
 
 ### Chips (**Chips**, **Shop**)
-The chip list from the workbook is kept in `docs/CHIP-LIST.tsv`; chips built from it name their row (`list`).
+The chip list from the workbook is kept in `docs/CHIP-LIST.tsv`; chips built from it name their row (`list`). The list
+is additive: chips the game had that are not on it stay in the game.
 - Royal Paradise chips (the basic value chips) of 1, 2, 5 and 10¢, unlocked by floor as in the Chip Exchange table.
 - Debt, Block, Counter, Opportunity, Gold, Burning, Acid, Shocking, Corrupting, Poison and Boom chips, and Holes.
   Three Expenses leave the newer hazards: Infect (Corrupting), Envenom (Poison) and Rig (Boom). The trick names are
   placeholders.
+- Element hazards (not on the list, kept): **Frost** (Cold; its stack cannot be bid or flipped; thaws in 2 turns or
+  next to heat), left by Frost; **Lava** (Heat; melts the chip beneath and spills Burning next door; cools in 2
+  turns), left by Erupt (Technician). The Orange chip thaws Frost; the Red chip also stops Lava.
 - From the chip list, made at the table:
   - **Frozen**: Chill (Insurance) freezes up to the roll total of a stack's chips into one chip worth their sum. It
     cannot be bid or flipped, and cannot be burned, corrupted, shocked or turned into another chip.
   - **Feather**: Float (Insurance, Rascal) feathers the top chip of a stack for a few turns; a fee larger than the
     stack's worth misses it.
   - **Flower** and **Petal**: a Seed on a stack of two or more sprouts into a Flower, which blooms a Petal a turn
-    on the stacks around it (one per chip it is rooted in, up to 8). A Petal or a Flower takes one whole fee.
-  - **Clay** and **Brick**: Clay takes whole fees (2) and breaks; fire bakes it into Brick with twice the hits.
+    on the stacks around it (one per chip it is rooted in, up to 8).
+  - **Clay** and **Brick**: Clay blocks 2 fees and breaks; fire bakes it into Brick with twice the hits.
+  - Petals, Flowers, Clay and Brick are **fee instance** defence: on top of a stack, each blocks one entire fee
+    when it lands, however big. Block and Counter chips are **fee cost** defence: each takes 1¢ of a fee.
   - **Dynamite**: Fuse (Expense, Technician) lights a stack of sticks on an empty space near its target. One burns
     down each turn; then every chip on the stacks around it is destroyed. Cleansing removes it.
 - Shop chips, sold at the Chip Exchange because no trick or table effect makes them. Each is worth 1¢ (Clay: 0),
@@ -111,11 +117,11 @@ The chip list from the workbook is kept in `docs/CHIP-LIST.tsv`; chips built fro
     (clears a hazard nearby each turn, leaving a 1¢ chip), Power and Control (+1 to your roll effects / −1 to theirs
     each turn, for 4 turns), Ward (cancels the largest fee each turn), Shadow (cannot be aimed at behind a taller
     stack);
-  - not on the list (mine, kept until replaced): Nest Egg (pays 15¢ if it survives a win), Rebound (2¢ of Debt back
+  - not on the list, kept: Orange (thaws Frost), Nest Egg (pays 15¢ if it survives a win), Rebound (2¢ of Debt back
     to the attacker per fee), Lucky (30% a turn to make an Opportunity chip), Crown (stack starts Hardened for 3
     turns).
   The numbers each effect reads are in `SHOP_CHIPS[id].vars`. Old saves carry Bumper, Mirror and Fog over to
-  Reducer, Rebound and Transpara.
+  Reducer, Rebound and Transpara, and the old Orange chip to the new one.
 - Creatures (UFO, Fairy, Dragon, Mole, and from the 5¢ and 10¢ floors Unicorn and Mothership), Familiars, Spawners
   and Calamities (Inferno, House Audit, Black Hole, Volcano, Tornado), used by the tilts.
 - Dice are drawn as their solids (d4 triangle, d6 square, d8 diamond, d10 hexagon, d20 octagon) and chips as discs
@@ -125,6 +131,26 @@ The chip list from the workbook is kept in `docs/CHIP-LIST.tsv`; chips built fro
   upgrade adds a ▲ and a moving foil; a gilded chip turns gold.
 - Each table has a felt (`FELTS`) that colours the bout table and the table on the floor plan. The High Roller
   plays on Royal, the doorman and the barfly on House, the Ascent on Paradise. Felts have no board effect yet.
+
+### Arrangements and the newer tricks (**Trick Attributes**, kept in `docs/TRICK-ATTRIBUTES.tsv`)
+Corrections that move chips around a position. Forward is toward the Stage, along a lane; up and down are across
+lanes. Each acts on the lanes (or rows, for Lift and Sink) its spread covers, and on the whole position with its
+bonus. Anchored stacks, Holes, Black Holes, Volcanoes and Dynamite stay put; Debt and hazards stay on their space,
+or follow the chips to the nearest stack in the lane, so moving chips never sheds Debt.
+
+| Trick | Class | Moves |
+| --- | --- | --- |
+| Retreat | Rascal | every chip forward (the workbook's Retreat: "push all chips up to the front") |
+| Advance | Hustler | every chip back (the workbook's Advance: "pull all chips back") |
+| Lift / Sink | any | whole stacks along a row to the top / bottom lane, closing gaps |
+| Bulwark | Technician | defensive: shields (Block, Counter, Petal, Clay) to the front, on top; value behind |
+| Stack Up / Stash | any | by value: biggest at the front (small fees only leave Debt) / biggest at the back |
+| Expose | Rascal | aggressive, on the opponent: their biggest chips to their front |
+| Rout | Technician | aggressive, on the opponent: their shields to the back |
+
+From the attribute sheet's ideas: **Ambush** (Expense, Hustler) is *Swift* and plays with the Investments, before
+this turn's Insurance is up; **Vengeance** (Expense) adds every ¢ you paid in fees last turn; **Saturate**
+(Investment, Rascal) boosts your other effects and subdues the opponent's boosts (and drains their Power on a match).
 
 ### Dice and upgrades
 A die has faces, 1 to n to start. The Diesmith sells the workbook's 22 upgrades (from floor 1; Emphasize, Rig,
