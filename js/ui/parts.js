@@ -6,16 +6,17 @@ import { multOf, traitOf } from '../bout.js';
 
 const GLYPH = { opp: '★', block: '▣', counter: '✸', burn: '🔥', acid: '☣', shock: '⚡', corrupt: '☠', poison: '☘', boom: '💣' };
 export const chipSig = (ch) => `k-${ch.kind} v${ch.value}${ch.gold ? ' gold' : ''}${ch.resist ? ' r-' + ch.resist : ''}`;
-export const chipGlyph = (ch) => (ch.kind === 'std' ? (ch.resist ? '◆' : String(ch.value)) : ch.kind === 'debt' ? '−' + ch.value : GLYPH[ch.kind] || '');
+export const chipGlyph = (ch) => (ch.kind === 'std' ? (ch.resist ? D.SHOP_CHIPS[ch.resist]?.glyph || '◆' : String(ch.value)) : ch.kind === 'debt' ? '−' + ch.value : GLYPH[ch.kind] || '');
 export function chipName(ch) {
   if (ch.kind === 'debt') return `${ch.value}¢ Debt chip`;
   if (ch.kind !== 'std') return D.CHIPS[ch.kind].name;
-  if (ch.resist) return D.RESIST[ch.resist].name;
+  if (ch.resist) return D.SHOP_CHIPS[ch.resist]?.name || 'Shop chip';
   return `${ch.gold ? 'Gold ' : ''}${ch.value}¢ chip`;
 }
 export function chipText(ch) {
   if (ch.kind !== 'std') return D.CHIPS[ch.kind].text;
-  if (ch.resist) return `Worth 1¢. A stack holding it ${D.RESIST[ch.resist].verb} ${cap(D.CHIPS[ch.resist].name)}s. Deployed at the base of your stacks.`;
+  if (ch.resist) { const X = D.SHOP_CHIPS[ch.resist]; if (!X) return 'Worth 1¢.';
+    return `${D.shopText(ch.resist)} Worth 1¢, deployed at the base of your stacks, not wagered. ${D.CHIP_TIERS[X.tier].name} tier.`; }
   if (ch.gold) return `Gold. Cannot be bid, but pays double (${ch.value * 2}¢) if it survives the bout.`;
   return ch.value === 1 ? 'Standard chip. Bid it to play a trick this turn.' : `Standard chip. A fee under ${ch.value}¢ leaves Debt on top of it instead of paying it. Bid it and the trick lingers ${ch.value - 1} turn${ch.value > 2 ? 's' : ''}, growing as it waits.`;
 }
@@ -26,7 +27,10 @@ export function dieTip(d, extra = '') {
   const f = D.DICE[d.type].faces, ups = (d.up || []).map((u) => `<li><b>${D.DIE_UPGRADES[u].name}</b> — ${D.DIE_UPGRADES[u].text}</li>`).join('');
   return `<b>${d.type}</b> <span class="dim">rolls 1–${f}</span>${ups ? `<ul>${ups}</ul>` : ''}${extra ? `<p>${extra}</p>` : ''}`;
 }
-export const dieEl = (d, value, cls = '') => h('span', { class: `die static ${d.type} ${(d.up || []).length ? 'upg' : ''} ${cls}` }, h('i', { text: value ?? d.type.slice(1) }));
+// one badge per upgrade, so every upgrade a die carries can be read off the die itself
+export const dieMarks = (d) => ((d.up || []).length ? h('span', { class: 'ups' }, d.up.map((u) => h('b', { class: `u-${u}`, style: { '--uc': D.DIE_UPGRADES[u].color }, text: D.DIE_UPGRADES[u].mark }))) : null);
+export const dieClass = (d) => `${(d.up || []).length ? 'upg' : ''} ${(d.up || []).map((u) => 'u-' + u).join(' ')}`;
+export const dieEl = (d, value, cls = '') => h('span', { class: `die static ${d.type} ${dieClass(d)} ${cls}` }, h('i', { text: value ?? d.type.slice(1) }), dieMarks(d));
 
 const fx = (m) => '×' + (m % 1 ? m.toFixed(2).replace(/0$/, '') : m);
 // what a trick's quality and upgrades do, spelled out
@@ -40,6 +44,8 @@ export function upInfo(t) {
   else s += '<p class="dim">Fully upgraded (2 of 2).</p>';
   return s;
 }
+// quality and upgrades are drawn on the trick itself: q1–q4 frames, u1–u2 foil
+export const trickLook = (t) => `q${t.q} u${t.up || 0}`;
 export const pips = (t) => '●'.repeat(t.q) + (t.up ? `<span class="up">${'▲'.repeat(t.up)}</span>` : '');
 export function trickTip(t, viewerCls, live) {
   const def = D.TRICKS[t.id], T = D.TYPES[def.type], mi = traitOf(t);
@@ -68,3 +74,33 @@ export function jacketTip(id) {
   const J = D.JACKETS[id], mods = Object.entries(J.mods).map(([k, n]) => `${n > 0 ? '+' : ''}${n} ${D.STATS[k].name}`).join(', ') || 'No modifiers';
   return `<b>${J.name} jacket</b> <span class="dim">${J.effect}</span><p>${mods}</p>`;
 }
+
+// ---------- gear visuals ----------
+// Each kind of gear has a small drawn piece. The library and the coat check show them.
+const CARD_LOOK = (id) => {
+  if (id.startsWith('discount_')) return { c: '#2aa7c4', g: '%', k: 'Discount' };
+  if (id.startsWith('business_')) { const st = Object.keys(D.CARDS[id].mods || {})[0]; return { c: '#ffd76a', g: '+1', k: D.STATS[st]?.short || 'Business' }; }
+  if (id.startsWith('note')) return { c: '#f4efe2', g: '✉', k: 'Note', ink: '#3a2c14' };
+  const m = { royal: ['#7a2d7a', '♛', 'Royal'], paradise: ['#d4a52a', '✺', 'Paradise'], membership: ['#b08cff', 'M', 'Pass'], suite: ['#ff86ea', '⚿', 'Pass'], punch: ['#ff9f3a', '●●', 'Pass'], debit: ['#3c7fc4', '$', 'Debit'], trading: ['#7dffb5', '✧', 'Trading'] }[id] || ['#93a3c8', '?', 'Card'];
+  return { c: m[0], g: m[1], k: m[2] };
+};
+export function cardEl(id, cls = '') {
+  const L = CARD_LOOK(id), pass = D.PASS_CARDS.includes(id);
+  return h('span', { class: `gcard ${pass ? 'pass' : ''} ${cls}`, style: { '--gc': L.c, '--ink': L.ink || '#fff' } }, h('em', { text: L.k }), h('b', { text: L.g }), h('small', { text: D.CARDS[id].name.replace(/^.*?: /, '') }));
+}
+export function walletEl(id, cls = '') {
+  const Wl = D.WALLETS[id];
+  return h('span', { class: `gwallet ${Wl.crown ? 'crown' : ''} ${cls}`, style: { '--wc': Wl.color || '#8d8478' } }, h('i', { class: 'flap' }),
+    h('span', { class: 'slots' }, Array.from({ length: Wl.slots }, () => h('i'))), h('b', { text: Wl.keep }));
+}
+export function jacketEl(id, cls = '') {
+  const J = D.JACKETS[id];
+  return h('span', { class: `gjacket ${cls}`, style: { '--jc': J.color || '#5b6378' } }, h('i', { class: 'body' }), h('i', { class: 'lapel' }),
+    h('span', { class: 'mods' }, Object.entries(J.mods).map(([k, n]) => h('b', { class: n > 0 ? 'p' : 'n', text: `${n > 0 ? '+' : ''}${n}` }))));
+}
+// sips left are shown as how full the glass is
+export function drinkEl(d, sips = d.sips, max = d.max || d.sips, cls = '') {
+  return h('span', { class: `gdrink ${cls}`, style: { '--dk': d.color || '#ff86ea', '--fill': `${Math.round(100 * Math.max(0, sips) / Math.max(1, max))}%` } }, h('i', { class: 'liquid' }), h('b', { text: sips }));
+}
+export function feltEl(id, cls = '') { const F = D.feltOf(id); return h('span', { class: `gfelt ${cls}`, style: { '--fa': F.a, '--fb': F.b, '--fr': F.rim } }); }
+export const feltStyle = (id) => { const F = D.feltOf(id); return { '--fa': F.a, '--fb': F.b, '--fr': F.rim }; };

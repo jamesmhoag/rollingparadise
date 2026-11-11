@@ -6,6 +6,7 @@ import { hubScene } from './ui/floor.js';
 import { prepScene, resultScene } from './ui/prep.js';
 import { suiteScene, giftScene, ascentScene, summaryScene, alleyScene, walletTip } from './ui/endgame.js';
 import { boutScene } from './ui/boutview.js';
+import { openLibrary } from './ui/library.js';
 import * as D from './data.js';
 import * as R from './run.js';
 import { cents } from './util.js';
@@ -37,7 +38,8 @@ function titleScene(root) {
     h('div', { class: 'menu' },
       resume ? btn('Continue', () => { app.run = saved; saved.phase === 'ascent' ? nav.ascent() : nav.hub(); }, `<b>Continue</b><p>${D.CLASSES[saved.cls].name}, ${saved.phase === 'ascent' ? 'on the Paradise Ascent' : `floor ${saved.floor}`}, ${cents(saved.purse)} in the purse.</p>`, 'sign-btn') : null,
       btn('New run', () => nav.select(), resume ? '<b>New run</b><p>Starts over. Your saved run is replaced once the new one reaches the first floor.</p>' : null, resume ? 'sign-btn p' : 'sign-btn'),
-      btn('How to play', () => howTo(), null, 'sign-btn p')),
+      btn('How to play', () => howTo(), null, 'sign-btn p'),
+      btn('Library', () => openLibrary(null, { title: true }), '<b>Library</b><p>Every chip, trick, die, card, drink, wallet, jacket and felt in the game, and the upgrades for each.</p>', 'sign-btn')),
     h('div', { class: 'stats records' },
       [['Runs', meta.runs, 'Runs you have finished.'], ['Best floor', meta.best > 4 ? 'Ascent' : meta.best || '—', 'The highest floor any of your Rollers reached.'], ['Crowns', meta.crowns, 'Times you reached the top step of the Paradise Ascent.'], ['Jackets', meta.jackets.length, 'Jackets unlocked in the Gift Shop.'], ['Wallets', (meta.wallets || []).length, 'Wallets unlocked in the Gift Shop.'], ['ATM', cents(meta.atm), 'Chips banked for Gift Shop purchases.']]
         .map(([a, b, t]) => h('span', { class: 'stat', tip: `<b>${a}</b><p>${t}</p>` }, h('em', { text: a }), h('b', { text: b })))))));

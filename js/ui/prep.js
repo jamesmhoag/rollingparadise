@@ -37,8 +37,11 @@ export function planner(getExtra, onChange) {
     change(() => { c[v] += k; }); }
   function update() {
     const d = dims(), extra = getExtra(); let c = run.plan.counts;
-    for (const k of Object.keys(run.plan.resist)) run.plan.resist[k] = Math.min(run.plan.resist[k], run.chips[k]);
-    if (!c || R.planWorth(c) > run.purse || total() > barCapacity(d)) { run.plan.resist = { burn: 0, shock: 0, acid: 0 }; c = run.plan.counts = R.autoCounts(run, d); }
+    for (const k of Object.keys(run.plan.resist)) run.plan.resist[k] = Math.min(run.plan.resist[k] || 0, R.owned(run, k));
+    if (!c || R.planWorth(c) > run.purse || total() > barCapacity(d)) { // a fresh mix that leaves room for the shop chips you placed
+      c = run.plan.counts = R.autoCounts(run, d);
+      for (const v of [1, 2, 5, 10]) { const over = total() - barCapacity(d); if (over <= 0) break; c[v] -= Math.min(c[v], over); }
+      if (total() > barCapacity(d)) run.plan.resist = {}; }
     const side = R.previewPosition(run, c, { position: extra.position, resist: run.plan.resist });
     // cells
     const rows = side.rows, m = side.dims.meterRows, want = new Set(); CW = Math.max(34, Math.min(56, Math.floor(400 / rows))); board.style.width = `${rows * CW}px`;
@@ -61,11 +64,11 @@ export function planner(getExtra, onChange) {
     syncList(denomBox, denoms, (x) => x.value, (x) => { const n = h('b', { class: 'num' }); const row = h('div', { class: 'row' }, chipEl({ kind: 'std', value: x.value }), h('span', { class: 'grow', text: `${x.value}¢ chips` }),
       h('div', { class: 'stepper' }, btn('−', (ev) => bump(x.value, -1, ev), null, 'small'), n, btn('+', (ev) => bump(x.value, 1, ev), null, 'small'))); row._n = n; row._tip = () => `${chipTip({ kind: 'std', value: x.value })}<p class="dim">Hold Shift to change by 10.</p>`; row.classList.add('has-tip'); return row; },
     (row, x) => tween(row._n, c[x.value] || 0, undefined, 250));
-    const owned = Object.keys(D.RESIST).filter((k) => run.chips[k] > 0);
+    const owned = Object.keys(D.SHOP_CHIPS).filter((k) => R.owned(run, k) > 0);
     syncList(resistBox, owned, (k) => k, (k) => { const n = h('b', { class: 'num' }); const row = h('div', { class: 'row' }, chipEl({ kind: 'std', value: 1, resist: k }), h('span', { class: 'grow' }),
-      h('div', { class: 'stepper' }, btn('−', () => change(() => { run.plan.resist[k] = Math.max(0, run.plan.resist[k] - 1); }), null, 'small'), n,
-        btn('+', () => { if (run.plan.resist[k] >= run.chips[k]) return toast('You have no more of those.', 'warn'); if (total() >= barCapacity(dims())) return toast('Your Bar is full.', 'warn'); change(() => { run.plan.resist[k]++; }); }, null, 'small'))); row._n = n; row._tip = () => chipTip({ kind: 'std', value: 1, resist: k }); row.classList.add('has-tip'); return row; },
-    (row, k) => { row.children[1].textContent = `${D.RESIST[k].name}s (own ${run.chips[k]})`; tween(row._n, run.plan.resist[k], undefined, 250); });
+      h('div', { class: 'stepper' }, btn('−', () => change(() => { run.plan.resist[k] = Math.max(0, (run.plan.resist[k] || 0) - 1); }), null, 'small'), n,
+        btn('+', () => { if ((run.plan.resist[k] || 0) >= R.owned(run, k)) return toast('You have no more of those.', 'warn'); if (total() >= barCapacity(dims())) return toast('Your Bar is full.', 'warn'); change(() => { run.plan.resist[k] = (run.plan.resist[k] || 0) + 1; }); }, null, 'small'))); row._n = n; row._tip = () => chipTip({ kind: 'std', value: 1, resist: k }); row.classList.add('has-tip'); return row; },
+    (row, k) => { row.children[1].textContent = `${D.SHOP_CHIPS[k].name}s (own ${R.owned(run, k)})`; tween(row._n, run.plan.resist[k] || 0, undefined, 250); });
     spacing._sync(); stacking._sync();
     tween(worthEl, R.planWorth(c), cents, 300); tween(countEl, total(), (n) => `${Math.round(n)}/${barCapacity(d)}`, 300);
     onChange?.();
@@ -84,7 +87,7 @@ function oppBox(opp, label) {
 export function prepScene(root, kind, idx) {
   const run = app.run, fs = run.fs, entry = kind === 'boss' ? fs.boss : fs.tables[idx], opp = entry.opp, prep = R.newPrep(run, kind, idx);
   entry.seen = true;
-  const H = hud(D.FLOORS[run.floor].name, kind === 'boss' ? 'Head table · High Roller' : `Table ${idx + 1} · ${entry.felt} felt`);
+  const H = hud(D.FLOORS[run.floor].name, kind === 'boss' ? 'Head table · High Roller' : `Table ${idx + 1} · ${D.feltOf(entry.felt).name} felt`);
   const multEl = h('div', { class: 'mult num' }), wagerEl = h('b', { class: 'num gold-t' }), winEl = h('b', { class: 'num good' }), posEl = h('b', { class: 'num' });
   const tiltBox = h('div', { class: 'col' }), tierBox = h('div', { class: 'row wrap' });
   const P = planner(() => ({ position: prep.tilts.position }), sync);

@@ -1,0 +1,165 @@
+// The Library: every chip, trick, die, card, drink, wallet, jacket and felt in the game, with its numbers,
+// how it looks on the table, and its upgrades. Opens from the title screen, the floor, the commitment screen
+// and the bout. During a run, what you own is marked.
+import { h, openPanel, closePanel, btn } from './core.js';
+import { app } from './app.js';
+import { chipEl, chipTip, dieEl, dieTip, trickTip, pips, trickLook, upInfo, cardEl, cardTip, walletEl, jacketEl, jacketTip, drinkEl, feltEl } from './parts.js';
+import * as D from '../data.js';
+import { multOf, traitOf } from '../bout.js';
+import { cents } from '../util.js';
+
+const TABS = [['chips', 'Chips'], ['tricks', 'Tricks'], ['dice', 'Dice'], ['cards', 'Cards'], ['drinks', 'Drinks'], ['wallets', 'Wallets'], ['jackets', 'Jackets'], ['felts', 'Felts']];
+let tab = 'chips';
+
+const sec = (title, sub) => h('div', { class: 'lib-sec' }, h('h3', { text: title }), sub ? h('p', { class: 'sub', html: sub }) : null);
+// one entry: the piece as it looks, then its data
+function entry(vis, name, lines, o = {}) {
+  return h('div', { class: `lib-e ${o.own ? 'own' : ''} ${o.wide ? 'wide' : ''}`, tip: o.tip },
+    h('div', { class: 'vis' }, vis), h('div', { class: 'txt' }, h('b', { html: name }), ...lines.filter(Boolean).map((l) => h('p', { html: l })), o.own ? h('span', { class: 'own-t', text: typeof o.own === 'string' ? o.own : 'Owned' }) : null));
+}
+const dim = (t) => `<span class="dim">${t}</span>`;
+const fx = (m) => '×' + (m % 1 ? m.toFixed(2).replace(/0$/, '') : m);
+const tagOf = (t) => h('span', { class: `tag-t trick ${trickLook(t)}`, style: { '--tc': D.TYPES[D.TRICKS[t.id].type].color } }, D.TRICKS[t.id].name, h('span', { class: 'q', html: pips(t) }));
+const tipped = (el, fn) => { el._tip = fn; el.classList.add('has-tip'); return el; };
+const noUpgrades = (what) => sec('Upgrades', `${what} have no upgrades yet. When they do, they will be drawn on the piece itself, the way dice and tricks are.`);
+
+// what the current run (or the saved profile) has
+function ownership(noRun) {
+  const run = noRun ? null : app.run, meta = app.meta || { jackets: [], wallets: [] };
+  return {
+    run, meta,
+    trick: (id) => (run ? run.tricks.filter((t) => t.id === id).length : 0),
+    die: (type) => (run ? run.dice.filter((d) => d.type === type).length : 0),
+    card: (id) => !!run && run.cards.includes(id),
+    shop: (id) => (run ? run.chips[id] || 0 : 0),
+    jacket: (id) => (meta.jackets || []).includes(id), jacketOn: (id) => !!run && run.jacket === id,
+    wallet: (id) => (meta.wallets || []).includes(id), walletOn: (id) => !!run && run.wallet === id,
+    drink: (id) => !!run && run.drink?.id === id,
+  };
+}
+
+// which tricks leave each hazard
+const leftBy = (el) => Object.values(D.TRICKS).filter((t) => t.element === el).map((t) => t.name);
+const BOUT_CHIPS = {
+  opp: 'Earned for each roll you leave unused (Cunning). Fence turns Debt into them.',
+  block: 'Every Insurance trick\'s Trait adds them; Block adds them by the roll; Settle and Fence bonuses add two; the Shield tilt starts you with a stack.',
+  counter: 'Block\'s bonus (every die even) makes them instead of Block chips.',
+  debt: 'Every Expense: fees go out as Debt first, then the House settles.',
+};
+
+function chipsTab(own) {
+  const out = [sec('Standard chips', 'Royale Paradise chips. Your purse is changed into these when you set your position.')];
+  for (const d of D.DENOMS) { const ch = { kind: 'std', value: d.value };
+    out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), `${d.value}¢ chip`, [`Dealt from floor ${d.floor}.`, d.value > 1 ? `Bid it and the trick lingers ${d.value - 1} turn${d.value > 2 ? 's' : ''}.` : 'Bids without lingering.', dim(d.value > 1 ? `A fee under ${d.value}¢ leaves Debt on it instead of paying it.` : 'Any fee of 1¢ or more pays it.')])); }
+  out.push(sec('Chip upgrades', 'Changes made to a chip on the table, drawn on the chip.'));
+  const gold = { kind: 'std', value: 5, gold: true };
+  out.push(entry([chipEl({ kind: 'std', value: 5 }), h('span', { class: 'dim', text: '→' }), tipped(chipEl(gold), () => chipTip(gold))], 'Gold', ['Made by Gild (and sometimes a Fairy). Glows gold.', 'Cannot be bid. Pays double if it survives the bout.']));
+  out.push(sec('Shop chips', `Sold at the Chip Exchange because no trick or table effect makes them. Priced by tier: ${D.CHIP_TIERS.slice(1).map((t) => `<span class="tier" style="--tc:${t.color}">${t.name}</span> ${cents(t.price)}${t.floor > 1 ? ` from floor ${t.floor}` : ''}`).join(' ')}. Each is worth 1¢, goes at the base of a stack, is not wagered, and comes back after a win if it survives.`));
+  for (const id of Object.keys(D.SHOP_CHIPS).sort((a, b) => D.SHOP_CHIPS[a].tier - D.SHOP_CHIPS[b].tier)) {
+    const X = D.SHOP_CHIPS[id], T = D.CHIP_TIERS[X.tier], ch = { kind: 'std', value: 1, resist: id }, vars = Object.entries(X.vars || {});
+    out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), `${X.name} <span class="tier" style="--tc:${T.color}">${T.name}</span>`,
+      [D.shopText(id), `${cents(D.shopPrice(id))} · from floor ${D.shopFloor(id)}`, vars.length ? dim(`Tuning: ${vars.map(([k, v]) => `${k} ${v}`).join(', ')}`) : null], { own: own.shop(id) ? `Own ${own.shop(id)}` : null }));
+  }
+  out.push(sec('Chips made at the table', 'They appear during a bout and are gone when it ends.'));
+  for (const k of ['opp', 'block', 'counter', 'debt']) { const ch = { kind: k, value: k === 'opp' ? 1 : k === 'debt' ? 3 : 0 };
+    out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), D.CHIPS[k].name, [D.CHIPS[k].text, dim(`Made by: ${BOUT_CHIPS[k]}`)])); }
+  out.push(sec('Hazard chips', 'Left by Expenses with an element. A shop chip of the matching colour makes a stack immune.'));
+  for (const k of ['burn', 'acid', 'shock', 'corrupt', 'poison', 'boom']) { const ch = { kind: k, value: 0 }, by = leftBy(k), cure = Object.keys(D.SHOP_CHIPS).find((x) => D.SHOP_CHIPS[x].resist === k);
+    out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), D.CHIPS[k].name, [D.CHIPS[k].text, dim(`Left by: ${by.join(', ') || 'creatures and calamities'}${k === 'burn' ? ', the Dragon, Inferno and Volcano' : ''}.${cure ? ` Stopped by the ${D.SHOP_CHIPS[cure].name}.` : ''}`)])); }
+  return out;
+}
+
+function tricksTab(own) {
+  const out = [];
+  for (const [type, T] of Object.entries(D.TYPES)) {
+    out.push(sec(`${T.name}s`, `${T.text} Trait when bid with no dice: ${T.traitText(1)}`));
+    for (const [id, def] of Object.entries(D.TRICKS)) { if (def.type !== type) continue;
+      const t = { id, q: 1, up: 0 }, n = own.trick(id);
+      out.push(entry(tipped(tagOf(t), () => trickTip(t, own.run?.cls)), def.name,
+        [`${def.cls ? D.CLASSES[def.cls].name : 'Any class'} · ${def.count}${def.die} · ${def.approach === 'none' ? 'no target' : `${def.approach}, ${D.DIST[def.dist].name}`}`, `<span class="k">Roll</span> ${def.roll.text}`, `<span class="k">Bonus</span> ${D.condText(def.bonus.cond)}: ${def.bonus.text}`], { own: n ? (n > 1 ? `In your book ×${n}` : 'In your book') : null }));
+    }
+  }
+  out.push(sec('Upgrades', `Quality (Common to Royal) sets the multiplier and is drawn as the frame; each of the ${D.TRICK_UPGRADE_MAX} Trick Trader upgrades adds +0.25 and a ▲, and gives the trick a moving foil. Upgrade cost: 100¢ × (1 + quality × (upgrades + 1)). Two upgrades per floor.`));
+  const steps = [{ q: 1, up: 0 }, { q: 2, up: 0 }, { q: 3, up: 0 }, { q: 4, up: 0 }, { q: 4, up: 1 }, { q: 4, up: 2 }].map((x) => ({ id: 'charge', ...x }));
+  for (const t of steps) out.push(entry(tipped(tagOf(t), () => trickTip(t, own.run?.cls)), `${D.QNAME[t.q]}${t.up ? ` · ${'▲'.repeat(t.up)} upgraded ${t.up}/${D.TRICK_UPGRADE_MAX}` : ''}`,
+    [`Roll total ${fx(multOf(t))} · Trait ${traitOf(t)}`, dim(`Investments: ${fx(multOf({ ...t, id: 'stir' }))}. Upgrade from here: ${t.up < D.TRICK_UPGRADE_MAX ? cents(100 * (1 + t.q * (t.up + 1))) : 'maxed'}.`)]));
+  out.push(entry(tagOf({ id: 'charge', q: 3, up: 1 }), 'What an upgrade says', [upInfo({ id: 'charge', q: 3, up: 1 })], { wide: true }));
+  return out;
+}
+
+function diceTab(own) {
+  const out = [sec('Dice', 'Each die is drawn as its solid. Forge one at the Diesmith by melting your smallest dice.')];
+  for (const [type, X] of Object.entries(D.DICE)) { const d = { type, up: [] }, n = own.die(type);
+    out.push(entry(tipped(dieEl(d), () => dieTip(d)), type, [`Rolls 1–${X.faces}.`, `Forge: ${X.forge.dice} ${X.forge.dice > 1 ? 'dice' : 'die'} + ${cents(X.forge.chips)}, from floor ${X.forge.floor}.`, dim(`Sells for ${cents(X.sell)}.`)], { own: n ? `In your pouch ×${n}` : null })); }
+  out.push(sec('Upgrades', `Each upgrade puts its own badge on the die, so you can read a die's upgrades at a glance. Up to ${D.DIE_UPGRADE_MAX} per die; Accelerate can be taken twice. Cost: 100¢ × floor × (1 + upgrades it already has).`));
+  for (const [u, U] of Object.entries(D.DIE_UPGRADES)) { const d = { type: 'd6', up: [u] };
+    out.push(entry([dieEl({ type: 'd6', up: [] }), h('span', { class: 'dim', text: '→' }), tipped(dieEl(d), () => dieTip(d))], `${U.name} <span style="color:${U.color}">${U.mark}</span>`, [U.text])); }
+  for (const ups of [['accelerate', 'accelerate'], ['escalate', 'stabilize'], ['accelerate', 'escalate']]) { const d = { type: 'd8', up: ups };
+    out.push(entry(tipped(dieEl(d), () => dieTip(d)), ups.map((u) => D.DIE_UPGRADES[u].name).join(' + '), ['Two upgrades: two badges.'])); }
+  const held = (own.run?.dice || []).filter((d) => d.up.length);
+  if (held.length) { out.push(sec('Your upgraded dice')); for (const d of held) out.push(entry(tipped(dieEl(d), () => dieTip(d)), d.type, [d.up.map((u) => D.DIE_UPGRADES[u].name).join(', ')], { own: true })); }
+  return out;
+}
+
+// the Gift Shop stocks gear of level n once you leave from floor n + 1 or higher
+const shopFrom = (level) => (!level ? '' : level >= 4 ? ', leaving from the Ascent' : `, leaving from floor ${level + 1} or higher`);
+const cardKind = (id) => (D.PASS_CARDS.includes(id) ? 'Pass: does not take a wallet slot' : D.STARTER_CARDS.includes(id) ? 'Starter: two are dealt into your wallet' : D.FIND_CARDS.includes(id) ? 'Found in the dodgy corner' : 'Takes a wallet slot');
+function cardsTab(own) {
+  const out = [sec('Cards', 'Benefit cards ride in your wallet; passes clip to your lanyard.')];
+  for (const id of Object.keys(D.CARDS)) out.push(entry(tipped(cardEl(id), () => cardTip(id)), D.CARDS[id].name, [D.CARDS[id].text, dim(cardKind(id))], { own: own.card(id) ? 'In your wallet' : null }));
+  out.push(noUpgrades('Cards'));
+  return out;
+}
+
+const DRINK_STAT = { random: 'one random attribute, chosen when it is poured', tip: 'three random attributes, chosen when it is poured', all: 'every attribute' };
+function drinksTab(own) {
+  const out = [sec('Drinks', 'Sip one before a turn for its bonus that turn. The glass empties as you sip.')];
+  for (const d of D.DRINKS) {
+    const stat = D.STATS[d.stat] ? D.STATS[d.stat].name : DRINK_STAT[d.stat];
+    out.push(entry([drinkEl(d), d.sips > 1 ? drinkEl(d, Math.ceil(d.sips / 2), d.sips) : null, drinkEl(d, 0, d.sips)], `${d.name} <span class="dim">${d.verb}</span>`,
+      [`+${d.amt} ${stat} per sip · ${d.sips} sip${d.sips > 1 ? 's' : ''}`, dim(`${cents(d.cost)} (a fifth of that on floor 1, half in happy hour).`)], { own: own.drink(d.id) ? `In your hand, ${own.run.drink.sips} left` : null }));
+  }
+  out.push(noUpgrades('Drinks'));
+  return out;
+}
+
+function walletsTab(own) {
+  const out = [sec('Wallets', 'The slots are drawn on the front; the number is what your two biggest dice must roll in the alley to keep its cards for your next run.')];
+  for (const [id, Wl] of Object.entries(D.WALLETS)) out.push(entry(walletEl(id), Wl.name,
+    [`${Wl.slots} slot${Wl.slots > 1 ? 's' : ''} · keep on ${Wl.keep}+`, Wl.price ? `${cents(Wl.price)} in the Gift Shop${shopFrom(Wl.level)}${Wl.crown ? ', once you hold a Crown' : ''}.` : 'Free from the start.'],
+    { own: own.walletOn(id) ? 'Carrying' : own.wallet(id) ? 'Unlocked' : null }));
+  out.push(noUpgrades('Wallets'));
+  return out;
+}
+
+function jacketsTab(own) {
+  const out = [sec('Jackets', 'A jacket shifts your attributes for the whole run. Its trade-off is printed on the hem.')];
+  for (const [id, J] of Object.entries(D.JACKETS)) out.push(entry(tipped(jacketEl(id), () => jacketTip(id)), `${J.name} <span class="dim">${J.effect}</span>`,
+    [Object.entries(J.mods).map(([k, n]) => `${n > 0 ? '+' : ''}${n} ${D.STATS[k].name}`).join(', ') || 'No modifiers', J.price ? `${cents(J.price)} in the Gift Shop${shopFrom(J.level)}.` : 'Free from the start.'],
+    { own: own.jacketOn(id) ? 'Wearing' : own.jacket(id) ? 'Unlocked' : null }));
+  out.push(noUpgrades('Jackets'));
+  return out;
+}
+
+function feltsTab(own) {
+  const out = [sec('Felts', 'Each table on a floor is dealt a felt. For now a felt only colours the table; board effects come later.')];
+  const here = new Set(own.run?.fs ? own.run.fs.tables.map((t) => D.feltId(t.felt)) : []);
+  for (const [id, F] of Object.entries(D.FELTS)) out.push(entry(feltEl(id), F.name, [F.line, dim(F.pool === false ? 'Not dealt to random tables.' : 'Dealt to random tables.'), dim('Board effect: none yet.')], { own: here.has(id) ? 'On this floor' : null }));
+  out.push(noUpgrades('Felts'));
+  return out;
+}
+
+const BUILD = { chips: chipsTab, tricks: tricksTab, dice: diceTab, cards: cardsTab, drinks: drinksTab, wallets: walletsTab, jackets: jacketsTab, felts: feltsTab };
+
+// o.title: opened from the title screen, so no run is in progress and only unlocked gear is marked
+export function openLibrary(start, o = {}) {
+  if (start) tab = start;
+  const body = h('div', { class: 'lib-body' }), tabs = h('div', { class: 'lib-tabs' });
+  const own = ownership(o.title);
+  const tabBtns = TABS.map(([k, name]) => { const b = btn(name, () => { tab = k; render(); }, null, 'small'); b._k = k; return b; });
+  tabs.append(...tabBtns);
+  function render() { for (const b of tabBtns) b.classList.toggle('on', b._k === tab); body.replaceChildren(...BUILD[tab](own)); body.parentElement?.parentElement?.scrollTo?.({ top: 0 }); }
+  render();
+  openPanel(h('div', { class: 'lib' }, h('div', { class: 'row between' }, h('div', {}, h('h2', { text: 'Library' }),
+    h('p', { class: 'sub', text: own.run ? 'Everything in the game, as it looks on the table. What you own is marked in green.' : 'Everything in the game, as it looks on the table. Hover any piece for its full text.' })), btn('Close', () => closePanel(), null, 'small')), tabs, body), { wide: true });
+}

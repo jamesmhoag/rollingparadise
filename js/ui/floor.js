@@ -1,7 +1,7 @@
 // The floor: a map of places to visit between bouts, each opening as a panel.
 import { h, syncList, openPanel, closePanel, toast, btn, tween, pulse, swapText } from './core.js';
 import { app, hud, oppTip, trickTag, diceSummary } from './app.js';
-import { dieEl, dieTip, trickTip, pips, drinkTip, cardTip, chipEl, chipTip, upInfo } from './parts.js';
+import { dieEl, dieTip, trickTip, pips, drinkTip, cardTip, chipEl, chipTip, upInfo, cardEl, walletEl, jacketEl, drinkEl, feltStyle } from './parts.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
 import { cents } from '../util.js';
@@ -65,12 +65,12 @@ export function hubScene(root) {
 
   function tiles() {
     const out = [];
-    fs.tables.forEach((t, i) => out.push({ k: 't' + i, unseen: !t.seen, cls: `table ${t.beaten ? 'done' : ''}`, ico: '🎴', name: t.seen ? t.opp.name : `Table ${i + 1}`, tag: `${t.felt} felt`,
+    fs.tables.forEach((t, i) => out.push({ k: 't' + i, unseen: !t.seen, cls: `table ${t.beaten ? 'done' : ''}`, ico: '🎴', name: t.seen ? t.opp.name : `Table ${i + 1}`, tag: `${D.feltOf(t.felt).name} felt`, felt: t.felt,
       sub: t.beaten ? 'Beaten.' : t.seen ? `${D.CLASSES[t.opp.cls].name} · ${cents(t.opp.worth)} on the table` : 'A stranger. Sit down to find out.',
       tip: () => (t.seen ? oppTip(t.opp) : '<b>Unknown Roller</b><p>You have not seen this table play. Their name, gear and attributes stay hidden until you sit down, or until you close the table before it.</p>'),
       on: () => { if (t.beaten) return toast('That table is closed.'); if (run.purse < MIN_BUYIN) return toast(`You need at least ${cents(MIN_BUYIN)} to sit down.`, 'warn'); app.nav.prep('table', i); } }));
     const b = fs.boss;
-    out.push({ k: 'boss', cls: `boss ${fs.bossOpen ? '' : 'locked'} ${b.beaten ? 'done' : ''}`, ico: '👑', name: b.opp.name, tag: 'Head table', sub: fs.bossOpen ? `High Roller · ${cents(b.opp.worth)} on the table · wager ×${D.WAGER_BOSS}` : `Close ${R.tablesLeft(run)} more table${R.tablesLeft(run) === 1 ? '' : 's'} first.`,
+    out.push({ k: 'boss', felt: b.felt || 'royal', cls: `boss ${fs.bossOpen ? '' : 'locked'} ${b.beaten ? 'done' : ''}`, ico: '👑', name: b.opp.name, tag: 'Head table', sub: fs.bossOpen ? `High Roller · ${cents(b.opp.worth)} on the table · wager ×${D.WAGER_BOSS}` : `Close ${R.tablesLeft(run)} more table${R.tablesLeft(run) === 1 ? '' : 's'} first.`,
       tip: () => (fs.bossOpen ? oppTip(b.opp) : `<b>${b.opp.name}</b> <span class="dim">High Roller</span><p>Visible at the head table, but only their name. Close every table, or win a Double Down, and they will see you. Beat them to take the stairs to the next floor.</p>`),
       on: () => { if (!fs.bossOpen) return toast('The High Roller will not see you yet.', 'warn'); if (run.purse < MIN_BUYIN) return toast(`You need at least ${cents(MIN_BUYIN)} to sit down.`, 'warn'); app.nav.prep('boss', 0); } });
     out.push({ k: 'smith', ico: '⚒️', name: 'Diesmith', sub: 'Forge, upgrade and sell dice.', tip: '<b>Diesmith</b><p>Melts several small dice into one bigger die, upgrades dice, and buys the ones you no longer need.</p>', on: () => smithPanel() });
@@ -93,6 +93,7 @@ export function hubScene(root) {
     for (const t of tiles()) { const el = rooms[t.k]; if (!el) continue;
       for (const c of ['done', 'locked']) el.classList.toggle(c, (t.cls || '').split(' ').includes(c));
       const [, nm, sub, tag] = el.children; swapText(nm, t.name); swapText(sub, t.sub); if (t.tag) tag.textContent = t.tag; tag.style.opacity = t.tag ? 1 : 0;
+      if (t.felt) for (const [p, v] of Object.entries(feltStyle(t.felt))) el.style.setProperty(p, v);
       el.classList.toggle('unseen', !!t.unseen); el.onclick = () => visit(t.k, t.on); el._tip = t.tip; el.classList.add('has-tip'); }
     syncList(news, run.news.slice(-7).map((text, i) => ({ text, k: run.news.length - Math.min(7, run.news.length) + i })).reverse(), (n) => n.k, (n) => h('li', { text: n.text }));
     syncList(book, run.tricks, (t) => t.uid + ':' + t.q + ':' + t.up, (t) => trickTag(t, run.cls));
@@ -165,16 +166,19 @@ function traderPanel() {
 function exchangePanel() {
   const run = app.run, list = h('div', { class: 'items list' });
   const done = after(render);
+  const ids = Object.keys(D.SHOP_CHIPS).sort((a, b) => D.SHOP_CHIPS[a].tier - D.SHOP_CHIPS[b].tier);
   function render() {
-    syncList(list, Object.keys(D.RESIST), (k) => k, (k) => { const X = D.RESIST[k], el = item(); el.prepend(chipEl({ kind: 'std', value: 1, resist: k })); el.append(btn('Buy', () => { tryDo(R.buyResist(run, k), el); done(); }, null, 'small')); el._tip = () => chipTip({ kind: 'std', value: 1, resist: k }); el.classList.add('has-tip'); void X; return el; },
-      (el, k) => { const X = D.RESIST[k]; setItem(el, `${X.name} <span class="dim">· you own ${run.chips[k]}</span>`, `A stack holding one ${X.verb} ${D.CHIPS[k].name}s.`, cents(X.price)); el.lastChild.classList.toggle('off', run.purse < X.price); });
+    syncList(list, ids, (k) => k, (k) => { const el = item(); el.prepend(chipEl({ kind: 'std', value: 1, resist: k })); el.append(btn('Buy', () => { tryDo(R.buyShopChip(run, k), el, !R.shopChipOpen(run, k) ? `Sold from floor ${D.shopFloor(k)}.` : null); done(); }, null, 'small')); el._tip = () => chipTip({ kind: 'std', value: 1, resist: k }) + (R.shopChipOpen(run, k) ? '' : `<p class="bad">Sold from floor ${D.shopFloor(k)}.</p>`); el.classList.add('has-tip'); return el; },
+      (el, k) => { const X = D.SHOP_CHIPS[k], T = D.CHIP_TIERS[X.tier], open = R.shopChipOpen(run, k);
+        setItem(el, `${X.name} <span class="tier" style="--tc:${T.color}">${T.name}</span> <span class="dim">· you own ${R.owned(run, k)}</span>`, D.shopText(k), open ? cents(D.shopPrice(k)) : `floor ${D.shopFloor(k)}`);
+        el.classList.toggle('locked', !open); el.lastChild.classList.toggle('off', !open || run.purse < D.shopPrice(k)); });
   }
   render();
   openPanel(h('div', {}, head('Chip Exchange', 'Your purse is changed into table chips when you set your position.'),
     h('span', { class: 'cap', text: 'Standard chips on this floor' }),
     h('div', { class: 'row wrap', style: { margin: '8px 0 14px' } }, D.DENOMS.map((d) => h('div', { class: `box row ${run.floor < d.floor ? 'off' : ''}`, tip: () => `${chipTip({ kind: 'std', value: d.value })}${run.floor < d.floor ? `<p class="bad">Dealt from floor ${d.floor}.</p>` : ''}` }, chipEl({ kind: 'std', value: d.value }), h('span', {}, `${d.value}¢`, h('small', { class: 'dim', text: run.floor < d.floor ? `  floor ${d.floor}` : '' }))))),
     h('p', { class: 'sub', style: { marginBottom: '12px' }, text: 'A big chip pays a big fee in one go, and a fee smaller than the chip only leaves Debt on top of it. Small chips bid fast; a bigger chip bid on a trick makes it linger and grow.' }),
-    h('span', { class: 'cap', text: 'Colourful chips — deployed at the base of your stacks' }), list));
+    h('span', { class: 'cap', tip: `<b>Shop chip tiers</b><p>Priced by tier: ${D.CHIP_TIERS.slice(1).map((t) => `${t.name} ${cents(t.price)}${t.floor > 1 ? ` (floor ${t.floor}+)` : ''}`).join(' · ')}.</p><p class="dim">Each is worth 1¢, goes at the base of a stack, is not wagered, and comes back after a win if it survives.</p>`, text: 'Shop chips — deployed at the base of your stacks, priced by tier' }), list), { wide: true });
 }
 
 function loungePanel() {
@@ -220,8 +224,10 @@ function kitPanel() {
   openPanel(h('div', {}, head(`${D.CLASSES[run.cls].name}`, D.CLASSES[run.cls].blurb),
     h('div', { class: 'col' }, h('span', { class: 'cap', text: 'Book' }), h('div', { class: 'inv' }, run.tricks.map((t) => trickTag(t, run.cls))),
       h('span', { class: 'cap', text: 'Pouch' }), h('div', { class: 'dicebox' }, run.dice.map((d) => { const el = dieEl(d); el._tip = () => dieTip(d); el.classList.add('has-tip'); return el; })),
-      h('span', { class: 'cap', text: `${R.walletOf(run).name} wallet — ${R.walletCards(run).length}/${R.walletOf(run).slots} slots · passes do not take a slot · click a card twice to drop it` }), h('div', { class: 'inv' }, run.cards.map((c) => { const pass = D.PASS_CARDS.includes(c); const el = h('span', { class: 'tag-t', style: { '--tc': pass ? 'var(--pink)' : 'var(--gold)', cursor: pass ? '' : 'pointer' }, tip: () => cardTip(c) + (pass ? '<p class="dim">A pass. It does not take a wallet slot.</p>' : '<p class="dim">Takes a wallet slot. Click twice to drop it for good.</p>'), text: D.CARDS[c].name });
-        el.onclick = () => { if (pass) return; if (!el._armed) { el._armed = true; el.classList.add('armed'); return toast(`Click ${D.CARDS[c].name} again to drop it.`, 'warn'); } if (!R.dropCard(run, c)) return toast('You need that one to get in.', 'warn'); closePanel(); rerender(); toast(`${D.CARDS[c].name} dropped.`); }; return el; })),
+      h('span', { class: 'cap', text: `${R.walletOf(run).name} wallet — ${R.walletCards(run).length}/${R.walletOf(run).slots} slots · passes do not take a slot · click a card twice to drop it` }),
+      h('div', { class: 'row wrap', style: { alignItems: 'flex-end' } }, walletEl(run.wallet), jacketEl(run.jacket), run.drink ? drinkEl(run.drink, run.drink.sips, run.drink.max) : null,
+        h('div', { class: 'inv', style: { alignItems: 'flex-end' } }, run.cards.map((c) => { const pass = D.PASS_CARDS.includes(c); const el = cardEl(c); el.style.cursor = pass ? '' : 'pointer'; el._tip = () => cardTip(c) + (pass ? '<p class="dim">A pass. It does not take a wallet slot.</p>' : '<p class="dim">Takes a wallet slot. Click twice to drop it for good.</p>'); el.classList.add('has-tip');
+        el.onclick = () => { if (pass) return; if (!el._armed) { el._armed = true; el.classList.add('armed'); return toast(`Click ${D.CARDS[c].name} again to drop it.`, 'warn'); } if (!R.dropCard(run, c)) return toast('You need that one to get in.', 'warn'); closePanel(); rerender(); toast(`${D.CARDS[c].name} dropped.`); }; return el; }))),
       h('span', { class: 'cap', text: 'Position' }), h('p', { class: 'sub', text: `${st.dims.meterRows} Meter rows and ${st.dims.barRows} Bar rows of 5 spaces, stacks up to ${st.dims.stackMax} chips. Your Bar holds ${st.dims.barRows * 5 * st.dims.stackMax} chips.` }))));
 }
 

@@ -73,3 +73,23 @@ comes from and the specific gaps.
     (spill to a neighbouring lane, go to the House, pay Power to the attacker)?
 36. The required draw, roll and bid each cost something every turn, so the AI now clears floor 1 less often in the
     simulations. Should the rewards for unused actions or opponent strength be retuned around the requirements?
+
+## Round 5 additions (Library, shop chips, felts)
+Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].vars`, `FELTS`), so a change is one edit.
+37. Shop chip tiers and prices: Common 20¢, Uncommon 120¢, Rare 600¢ (floor 2+), Epic 3,000¢ (floor 3+),
+    Royal 15,000¢ (floor 4+). The tier a chip sits in is my read of how strong it feels. Should tiers follow the
+    **Chips** tab's rarity column instead, and should the Chip Exchange stock rotate like the Trick Trader's shelf?
+38. The six new shop chips and their numbers: Bumper (−1¢ off each fee on its stack), Anchor (creatures, Scatter,
+    Tornado and Black Hole cannot take from its stack), Nest Egg (15¢ if it survives a win), Mirror (2¢ of Debt back
+    per fee), Lucky (30% a turn for an Opportunity chip), Crown (stack Hardened for the first 3 turns). Do several
+    of the same chip on one stack stack up? Now they do.
+39. The three new resist chips (Violet for Corrupting, Green for Poison, Black for Boom). Should a Black chip also
+    shield its stack from a blast next door? Now it only defuses a Boom chip sitting on its own stack.
+40. Should opponents ever bring shop chips, and should a Fairy or Unicorn be able to make one?
+41. Felts: each table now has a felt id with colours. What board effect should each felt have (Frosty slows
+    hazards, Molten feeds Burning chips, Satin moves chips, and so on)? The `effect` slot is empty.
+42. Upgrades for cards, drinks, wallets, jackets and felts: there are none in the workbook. The Library shows an
+    empty Upgrades section for each so they have a home when they are designed.
+43. Trick quality is drawn as a frame (Fine silver, Grand gold, Royal gold with a violet halo) and upgrades as a
+    moving foil plus ▲. Die upgrades each have a badge (Accelerate +, Escalate ▲, Stabilize =). Are these the right
+    marks, and what should the other 19 die upgrades look like?

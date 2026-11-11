@@ -87,11 +87,29 @@ How this is shown:
 - Debt, Block, Counter, Opportunity, Gold, Burning, Acid, Shocking, Corrupting, Poison and Boom chips, and Holes.
   Three new Expenses leave the new hazards: Infect (Corrupting), Envenom (Poison) and Rig (Boom). The names are
   placeholders.
-- Red, Blue and Yellow chips that extinguish, absorb and neutralize hazards on their stack.
+- Shop chips, sold at the Chip Exchange because no trick or table effect makes them. Each is worth 1¢, goes at the
+  base of a stack, is not wagered, and comes back after a win if it survives. Their price comes from a tier
+  (`CHIP_TIERS`: Common, Uncommon, Rare, Epic, Royal), which also sets the floor they are sold from:
+  - resists: Red (Burning), Blue (Shocking), Yellow (Acid), and new Violet (Corrupting), Green (Poison), Black (Boom);
+  - Bumper (each fee on its stack is 1¢ smaller), Anchor (creatures, Scatter, Tornado and Black Hole cannot take
+    from its stack), Nest Egg (pays 15¢ if it survives a win), Mirror (2¢ of Debt back to the attacker per fee),
+    Lucky (30% a turn to make an Opportunity chip), Crown (stack starts Hardened for 3 turns).
+  The numbers each effect reads are in `SHOP_CHIPS[id].vars`.
 - Creatures (UFO, Fairy, Dragon, Mole, and from the 5¢ and 10¢ floors Unicorn and Mothership), Familiars, Spawners
   and Calamities (Inferno, House Audit, Black Hole, Volcano, Tornado), used by the tilts.
 - Dice are drawn as their solids (d4 triangle, d6 square, d8 diamond, d10 hexagon, d20 octagon) and chips as discs
   with an edge.
+- Upgrades are drawn on the upgraded thing: each die upgrade puts its own badge on the die (Accelerate +, Escalate
+  ▲, Stabilize =); trick quality is the card's frame (Fine silver, Grand gold, Royal gold with a halo) and each
+  upgrade adds a ▲ and a moving foil; a gilded chip turns gold.
+- Each table has a felt (`FELTS`) that colours the bout table and the table on the floor plan. The High Roller
+  plays on Royal, the doorman and the barfly on House, the Ascent on Paradise. Felts have no board effect yet.
+
+### The Library
+Opens from the title screen, the HUD on the floor and the commitment screen, and the bout table. Tabs for chips,
+tricks, dice, cards, drinks, wallets, jackets and felts show each piece as it is drawn in the game, with its
+numbers, where it comes from, and its upgrades (an empty Upgrades section where none exist yet). During a run,
+what you own, carry or wear is marked.
 
 ### Between bouts (**Shop**, **Lounge**, **Gamble**, **Commitment**, **Floor**, **Floors**)
 - Four floors with three tables and a High Roller each. Unseen tables hide their Roller until you sit down.
@@ -141,6 +159,8 @@ How this is shown:
 | Which dice make the alley roll ("2dn") | Your two largest dice. Big dice are worth keeping for it. |
 | Wallet prices | Stats come from the **Gear** tab and prices from the **Gift Shop** tab, matched in order where the names differ. |
 | What a flip costs | One roll. The chip is not spent: it comes back to the Meter. |
+| Which chips the shop sells | Those no trick, bonus or table effect makes. Chips a trick makes (Gold, Block, Counter, the hazards) are not sold. |
+| What a shop chip costs | Its tier's price; the tier is how strong it is meant to feel until it has been tuned. |
 | Opponent strength | Generated per floor from the class tables; quality and dice improve each floor. |
 
 ## Not built yet
@@ -148,7 +168,7 @@ How this is shown:
 - Artifacts and the jacket pocket limits.
 - Gift, Identification, Collectable, Roller, High Roller and Ascended cards (Paradise and five Notes are built); cosmetics; the music player.
 - Play-by-play sports. Games are settled by a weighted draw from the posted odds. No hedges.
-- Themes per opponent, table felts beyond a name, encounter modifiers.
+- Themes per opponent, felt board effects, encounter modifiers.
 - Most of the 400-entry chip list, the **Effects** element table, Splitting, the Rest conditional.
 - Online ladder. The Ascent uses generated legends and your own past builds on this device.
 - Saving in the middle of a bout. A reload returns you to the floor before it.
