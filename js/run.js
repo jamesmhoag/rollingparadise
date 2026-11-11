@@ -41,9 +41,9 @@ export const price = (run, shop, base) => Math.max(1, Math.round(base * (hasCard
 function spend(run, amt, label) { if (run.purse < amt) return false; run.purse -= amt; run.stats.spent += amt; ledger(run, label, -amt); return true; }
 
 export function newRun(cls, jacket = 'standard', seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0, gear = {}) {
-  const run = { v: 1, rng: new RNG(seed), seed, cls, jacket, wallet: gear.wallet || 'worn_cloth', pendingCard: null, floor: 0, purse: 0, nextId: 1, dice: [], tricks: [], chips: { burn: 0, shock: 0, acid: 0 },
+  const run = { v: 1, rng: new RNG(seed), seed, cls, jacket, wallet: gear.wallet || 'worn_cloth', pendingCard: null, floor: 0, purse: 0, nextId: 1, dice: [], tricks: [], chips: {},
     drink: null, cards: [], punches: 0, rest: null, suiteKey: false, phase: 'intro', fs: null, bets: [], news: [], ledger: [], ascent: null,
-    plan: { spacing: 'row', stacking: 'maxed', counts: null, resist: { burn: 0, shock: 0, acid: 0 } },
+    plan: { spacing: 'row', stacking: 'maxed', counts: null, resist: {} },
     stats: { bouts: 0, wins: 0, losses: 0, spent: 0, won: 0, turns: 0, dd: 0 } };
   const K = D.CLASSES[cls];
   for (const [type, n] of Object.entries(K.dice)) for (let i = 0; i < n; i++) run.dice.push(mkDie(run, type));
@@ -99,8 +99,8 @@ export function enterFloor(run, floor) {
   const rng = run.rng, F = D.FLOORS[floor], names = rng.shuffle(D.OPPONENTS);
   run.floor = floor; run.phase = 'floor'; run.suiteKey = false;
   run.fs = {
-    tables: F.worth.map((w, i) => ({ opp: genOpponent(run, floor, Math.round(w * (0.9 + rng.next() * 0.2)), { name: names[i] }), beaten: false, seen: i === 0, felt: rng.pick(D.TABLES) })),
-    boss: { opp: genOpponent(run, floor, F.boss, { boss: true, name: rng.pick(D.BOSSES[floor]), title: 'High Roller' }), beaten: false },
+    tables: F.worth.map((w, i) => ({ opp: genOpponent(run, floor, Math.round(w * (0.9 + rng.next() * 0.2)), { name: names[i] }), beaten: false, seen: i === 0, felt: rng.pick(D.FELT_POOL) })),
+    boss: { opp: genOpponent(run, floor, F.boss, { boss: true, name: rng.pick(D.BOSSES[floor]), title: 'High Roller' }), beaten: false, felt: 'royal' },
     bossOpen: false, lastWin: null, ddStreak: 0, tiers: { challenge: 0, cheat: 0 },
     shop: null, restocks: 0, bought: 0, upgrades: 2, secret: null,
     lounge: genLounge(run, floor), book: genBook(run, floor), searched: false,
@@ -173,8 +173,14 @@ export function upgradeDie(run, id, up) {
   const d = run.dice.find((x) => x.id === id); if (!d || d.up.length >= 2 || (up !== 'accelerate' && d.up.includes(up))) return false;
   if (!spend(run, dieUpgradeCost(run, d), `${D.DIE_UPGRADES[up].name} on a ${d.type}`)) return false; d.up.push(up); return true;
 }
-// Chip Exchange
-export function buyResist(run, el) { if (run.floor < D.RESIST[el].floor || !spend(run, D.RESIST[el].price, `Bought a ${D.RESIST[el].name}`)) return false; run.chips[el]++; return true; }
+// Chip Exchange: shop chips are priced by their tier (D.CHIP_TIERS) and unlocked by the tier's floor
+export const owned = (run, id) => run.chips[id] || 0;
+export const shopChipOpen = (run, id) => run.floor >= D.shopFloor(id);
+export function buyShopChip(run, id) {
+  if (!D.SHOP_CHIPS[id] || !shopChipOpen(run, id) || !spend(run, D.shopPrice(id), `Bought a ${D.SHOP_CHIPS[id].name}`)) return false;
+  run.chips[id] = owned(run, id) + 1; return true;
+}
+export const buyResist = buyShopChip;
 
 // ---------- lounge ----------
 function drinkMods(run, d) {
@@ -285,17 +291,17 @@ export function startIntro(run) {
   const opp = genOpponent(run, 1, 18, { weak: true, name: 'Low Ball', title: 'Doorman', cls: 'technician' });
   const st = rollerStats(run); const n = Math.min(30, barCapacity(st.dims));
   const bout = createBout({ seed: run.rng.int(2 ** 31), a: playerSpec(run, { 1: n, 2: 0, 5: 0, 10: 0 }), b: opp, rules: { maxDenom: 1 } });
-  return { bout, ctx: { kind: 'intro', opp, wager: 0, mult: 1, committed: n } };
+  return { bout, ctx: { kind: 'intro', opp, felt: 'house', wager: 0, mult: 1, committed: n } };
 }
 export function startTable(run, prep) {
   const entry = prep.kind === 'boss' ? run.fs.boss : run.fs.tables[prep.idx], t = prep.tilts;
   const extra = { position: t.position, resist: { ...run.plan.resist }, side: { holes: t.hazard, creatures: t.creature, spawners: t.spawner, shields: t.shield, familiars: t.familiar, interventions: t.intervention,
     calamities: Array.from({ length: t.calamity }, () => run.rng.pick(Object.keys(D.CALAMITIES))) } };
   const st = rollerStats(run, extra); const counts = validCounts(run, st.dims);
-  for (const el of Object.keys(extra.resist)) extra.resist[el] = Math.min(extra.resist[el], run.chips[el]);
+  for (const el of Object.keys(extra.resist)) extra.resist[el] = Math.min(extra.resist[el], owned(run, el));
   const bout = createBout({ seed: run.rng.int(2 ** 31), a: playerSpec(run, counts, extra), b: entry.opp, rules: { maxDenom: maxDenom(run.floor) } });
   const com = committed(bout);
-  return { bout, ctx: { kind: prep.kind, idx: prep.idx, opp: entry.opp, prep, wager: Math.max(0, run.purse - com), mult: multiplier(run, prep), committed: com, resist: extra.resist } };
+  return { bout, ctx: { kind: prep.kind, idx: prep.idx, opp: entry.opp, felt: prep.kind === 'boss' ? 'royal' : D.feltId(entry.felt), prep, wager: Math.max(0, run.purse - com), mult: multiplier(run, prep), committed: com, resist: extra.resist } };
 }
 export function startLounge(run, drinkId) {
   const L = run.fs.lounge, st = rollerStats(run), d = L.drinks.find((x) => x.id === drinkId);
@@ -304,13 +310,13 @@ export function startLounge(run, drinkId) {
   counts[1] = Math.min(4, n); counts[md] += n - counts[1]; // house chips: a few 1¢ to bid with, the rest in the floor's biggest chip
   const bout = createBout({ seed: run.rng.int(2 ** 31), a: playerSpec(run, counts, {}, dims), b: L.challenger, rules: { maxDenom: md, maxTurns: 20 } });
   L.challenged = true;
-  return { bout, ctx: { kind: 'lounge', opp: L.challenger, drink: d, wager: 0, mult: 1, committed: 0 } };
+  return { bout, ctx: { kind: 'lounge', opp: L.challenger, felt: 'house', drink: d, wager: 0, mult: 1, committed: 0 } };
 }
 export function startAscent(run) {
   const A = run.ascent, opp = A.ladder[A.step].opp, st = rollerStats(run); const counts = validCounts(run, st.dims);
   const bout = createBout({ seed: run.rng.int(2 ** 31), a: playerSpec(run, counts, { resist: { ...run.plan.resist } }), b: opp, rules: { maxDenom: 10, maxTurns: 50 } });
   const com = committed(bout);
-  return { bout, ctx: { kind: 'ascent', opp, wager: 0, mult: 1, committed: com, resist: run.plan.resist } };
+  return { bout, ctx: { kind: 'ascent', opp, felt: 'paradise', wager: 0, mult: 1, committed: com, resist: run.plan.resist } };
 }
 
 // Turn a finished bout into chips. Returns the breakdown and, on a win, the prizes on offer.
@@ -329,13 +335,13 @@ export function settle(run, ctx, bout) {
     else { const cost = Math.min(run.purse, price(run, 'lounge', d.cost)); run.purse -= cost; ledger(run, 'Lost a bar bout', -cost); lines.push([`You buy ${ctx.opp.name} a ${d.name}`, -cost]); }
     res.total = run.purse; return res;
   }
-  for (const [el, n] of Object.entries(ctx.resist || {})) run.chips[el] = Math.max(0, run.chips[el] - n + (sm.win ? sm.resist[el] || 0 : 0));
+  for (const [el, n] of Object.entries(ctx.resist || {})) run.chips[el] = Math.max(0, owned(run, el) - n + (sm.win ? sm.resist[el] || 0 : 0));
   if (run.rest && run.rest.bouts > 0) run.rest.bouts--;
   const start = run.purse;
   if (ctx.kind === 'ascent') {
     const safe = run.purse - ctx.committed;
-    if (sm.win) { run.purse = safe + sm.survivors + sm.gold + sm.ownFees + sm.pendingBids + sm.oppFees + sm.opportunity;
-      lines.push(['Chips kept off the table', safe], ['Chips left in your position', sm.survivors], ['Your fees, restored', sm.ownFees + sm.pendingBids], [`${ctx.opp.name}'s fees`, sm.oppFees], ['Gold and Opportunity bonus', sm.gold + sm.opportunity], ['Bids lost to the House', -sm.bids + sm.pendingBids]);
+    if (sm.win) { run.purse = safe + sm.survivors + sm.gold + sm.ownFees + sm.pendingBids + sm.oppFees + sm.opportunity + sm.nest;
+      lines.push(['Chips kept off the table', safe], ['Chips left in your position', sm.survivors], ['Your fees, restored', sm.ownFees + sm.pendingBids], [`${ctx.opp.name}'s fees`, sm.oppFees], ['Gold, Opportunity and Nest Egg bonus', sm.gold + sm.opportunity + sm.nest], ['Bids lost to the House', -sm.bids + sm.pendingBids]);
       run.ascent.step++; if (run.ascent.step >= run.ascent.ladder.length) run.phase = 'paradise';
     } else { run.purse = safe; lines.push(['Chips kept off the table', safe], ['Position lost', -ctx.committed]); run.phase = 'fallen'; }
     res.total = run.purse; ledger(run, sm.win ? `Ascent: beat ${ctx.opp.name}` : `Ascent: lost to ${ctx.opp.name}`, run.purse - start); return res;
@@ -344,11 +350,12 @@ export function settle(run, ctx, bout) {
   const entry = ctx.kind === 'boss' ? run.fs.boss : run.fs.tables[ctx.idx];
   const wager = sm.intervened ? Math.floor(ctx.wager / 2) : ctx.wager;
   if (sm.win) {
-    const base = sm.survivors + sm.gold + sm.ownFees + sm.pendingBids + sm.opportunity + wager;
+    const base = sm.survivors + sm.gold + sm.ownFees + sm.pendingBids + sm.opportunity + sm.nest + wager;
     const winnings = sm.oppFees + Math.round(wager * (ctx.mult - 1));
     lines.push(['Chips left in your position', sm.survivors], ['Your fees, restored from the Stage', sm.ownFees + sm.pendingBids]);
     if (sm.gold) lines.push(['Gold chips pay double', sm.gold]);
     if (sm.opportunity) lines.push(['A chip for every Opportunity chip', sm.opportunity]);
+    if (sm.nest) lines.push(['Nest Egg chips hatch', sm.nest]);
     lines.push(['Wager returned', wager]);
     if (sm.intervened) lines.push(['Intervention took half your wager', -(ctx.wager - wager)]);
     lines.push([`Fees ${ctx.opp.name} paid to the table`, sm.oppFees], [`Wager winnings ×${ctx.mult}`, Math.round(wager * (ctx.mult - 1))]);

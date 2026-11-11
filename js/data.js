@@ -45,9 +45,10 @@ export const DICE = {
   d20: { faces: 20, forge: { dice: 20, chips: 5000, floor: 2 }, sell: 500 },
 };
 export const DIE_UPGRADES = {
-  accelerate: { name: 'Accelerate', text: 'Shift every face value up by 1.' },
-  escalate: { name: 'Escalate', text: 'Weighted to the highest face: roll twice, keep the higher.' },
-  stabilize: { name: 'Stabilize', text: 'Faces averaged toward the mean: never rolls below half its top face.' },
+  // mark/color: the badge an upgraded die wears, one per upgrade
+  accelerate: { name: 'Accelerate', text: 'Shift every face value up by 1.', mark: '+', color: '#7dffb5', stacks: true },
+  escalate: { name: 'Escalate', text: 'Weighted to the highest face: roll twice, keep the higher.', mark: '▲', color: '#ffd76a' },
+  stabilize: { name: 'Stabilize', text: 'Faces averaged toward the mean: never rolls below half its top face.', mark: '=', color: '#63c4ff' },
 };
 
 // ---------- Tricks ----------
@@ -63,6 +64,7 @@ export const TYPES = {
 };
 export const QMULT = [0, 1, 2, 3, 4];
 export const QNAME = ['', 'Common', 'Fine', 'Grand', 'Royal'];
+export const TRICK_UPGRADE_MAX = 2; export const DIE_UPGRADE_MAX = 2;
 
 export const APPROACH = {
   front: 'the front-most stack of a column',
@@ -171,11 +173,51 @@ export const CHIPS = {
   poison: { name: 'Poison chip', text: 'Hazard. Each turn it puts 1¢ of Debt on its stack. It lingers until the stack is gone or it is cleansed.' },
   boom: { name: 'Boom chip', text: 'Hazard. The turn after it lands it goes off: 5¢ of Debt on its stack and on every stack around it.' },
 };
-export const RESIST = {
-  burn: { color: 'red', name: 'Red chip', verb: 'extinguishes', price: 20, floor: 1 },
-  shock: { color: 'blue', name: 'Blue chip', verb: 'absorbs', price: 20, floor: 1 },
-  acid: { color: 'yellow', name: 'Yellow chip', verb: 'neutralizes', price: 20, floor: 1 },
+// Chips no trick or table effect makes are sold at the Chip Exchange. Their price comes from a tier: how strong
+// the chip is, or how strong it is meant to feel until it has been tuned. Change a tier's price or floor here
+// and every chip in it follows. A chip can set its own `price` to step outside its tier.
+export const CHIP_TIERS = [
+  null,
+  { name: 'Common', price: 20, floor: 1, color: '#c9d3e0' },
+  { name: 'Uncommon', price: 120, floor: 1, color: '#7dffb5' },
+  { name: 'Rare', price: 600, floor: 2, color: '#63c4ff' },
+  { name: 'Epic', price: 3000, floor: 3, color: '#b08cff' },
+  { name: 'Royal', price: 15000, floor: 4, color: '#ffd76a' },
+];
+// Shop chips are worth 1¢ like any other chip, are deployed at the base of your stacks, are not wagered,
+// and come back to you after a win if they survive. `resist`: the hazard a stack holding one is immune to.
+// `vars`: the numbers each effect reads, kept here so they can be tuned without touching the engine.
+// The chip object carries its shop id in `resist` (the field predates the specials).
+export const SHOP_CHIPS = {
+  burn: { name: 'Red chip', tier: 1, resist: 'burn', verb: 'extinguishes', glyph: '◆',
+    text: 'A stack holding one extinguishes Burning chips and cannot catch fire.' },
+  shock: { name: 'Blue chip', tier: 1, resist: 'shock', verb: 'absorbs', glyph: '◆',
+    text: 'A stack holding one absorbs Shocking chips and is skipped by their Debt.' },
+  acid: { name: 'Yellow chip', tier: 1, resist: 'acid', verb: 'neutralizes', glyph: '◆',
+    text: 'A stack holding one neutralizes Acid chips.' },
+  corrupt: { name: 'Violet chip', tier: 2, resist: 'corrupt', verb: 'purifies', glyph: '◆',
+    text: 'A stack holding one purifies Corrupting chips and cannot be corrupted.' },
+  poison: { name: 'Green chip', tier: 2, resist: 'poison', verb: 'cures', glyph: '◆',
+    text: 'A stack holding one cures Poison chips.' },
+  boom: { name: 'Black chip', tier: 3, resist: 'boom', verb: 'defuses', glyph: '◆',
+    text: 'A stack holding one defuses Boom chips before they go off. It still takes Debt from a blast next door.' },
+  bumper: { name: 'Bumper chip', tier: 2, glyph: '◎', vars: { absorb: 1 },
+    text: (v) => `Every fee that lands on its stack is ${v.absorb}¢ smaller. Pierce goes straight through it.` },
+  anchor: { name: 'Anchor chip', tier: 2, glyph: '⚓',
+    text: () => 'Creatures, Scatter, the Tornado and the Black Hole cannot take chips from its stack.' },
+  nest: { name: 'Nest Egg chip', tier: 2, glyph: '◒', vars: { payout: 15 },
+    text: (v) => `If it is still on the table when you win, it pays ${v.payout}¢ on top of your winnings.` },
+  mirror: { name: 'Mirror chip', tier: 3, glyph: '◐', vars: { reflect: 2 },
+    text: (v) => `Each fee on its stack sends ${v.reflect}¢ of Debt back to the attacker's front stack in the same lane. The fee is still charged.` },
+  lucky: { name: 'Lucky chip', tier: 3, glyph: '✦', vars: { chance: 0.3 },
+    text: (v) => `Each turn, a ${Math.round(v.chance * 100)}% chance to put an Opportunity chip on your Meter.` },
+  crown: { name: 'Crown chip', tier: 4, glyph: '♛', vars: { turns: 3 },
+    text: (v) => `Its stack starts the bout Hardened for ${v.turns} turns: each fee takes only one chip.` },
 };
+export const shopVars = (id) => SHOP_CHIPS[id].vars || {};
+export const shopText = (id) => { const X = SHOP_CHIPS[id]; return typeof X.text === 'function' ? X.text(shopVars(id)) : X.text; };
+export const shopPrice = (id) => SHOP_CHIPS[id].price ?? CHIP_TIERS[SHOP_CHIPS[id].tier].price;
+export const shopFloor = (id) => SHOP_CHIPS[id].floor ?? CHIP_TIERS[SHOP_CHIPS[id].tier].floor;
 export const HAZARD_KINDS = ['debt', 'burn', 'acid', 'shock', 'corrupt', 'poison', 'boom'];
 
 export const CREATURES = {
@@ -229,19 +271,40 @@ export const BOSSES = [null,
   ['ATM Machine', 'Pile of Cash', 'Exotic Animal', 'Antique Clock'], ['Gold Bar', 'Uncut Gem', 'Luxury Vehicle', 'Lucrative Deal'],
   ['Sunken Treasure', 'Endangered Species', 'Vested 401k', 'Project Funding'], ['Trust Fund', 'The Vault', 'Priceless Painting', 'Ancient Artifact']];
 export const ASCENT_NAMES = ['Shop Keeper', 'Veteran Hustler', 'Golden Parachute', 'Diamond Hands', 'The House'];
-export const TABLES = ['Felt', 'Satin', 'Buffet', 'Earthen', 'Frosty', 'Urban', 'Oceanic', 'Molten', 'Lunar', 'Polar', 'Galactic'];
+// Table felts. For now a felt only colours the table (a: centre, b: edge, rim: the rail). `effect` is where a
+// board effect will go; none is wired yet. `pool: false` felts are not dealt to random tables.
+export const FELTS = {
+  felt: { name: 'Felt', a: '#1f8a63', b: '#0a3326', rim: '#c9f7df', line: 'Classic green baize.' },
+  satin: { name: 'Satin', a: '#a3366f', b: '#3d0c28', rim: '#ffc2e4', line: 'Slick and shiny. Chips slide a little.' },
+  buffet: { name: 'Buffet', a: '#b8742a', b: '#4a2808', rim: '#ffe0a8', line: 'Somebody spilled the gravy.' },
+  earthen: { name: 'Earthen', a: '#7a5a35', b: '#2c1d0d', rim: '#e6cba4', line: 'Packed clay and old roots.' },
+  frosty: { name: 'Frosty', a: '#7fbfe0', b: '#1d4a66', rim: '#f0fbff', line: 'Cold to the touch. Breath fogs over it.' },
+  urban: { name: 'Urban', a: '#5b5f6b', b: '#1b1c22', rim: '#cfd3dd', line: 'Asphalt grey with a painted line.' },
+  oceanic: { name: 'Oceanic', a: '#1f7fa8', b: '#06263d', rim: '#9fe8ff', line: 'Deep blue, with a tide to it.' },
+  molten: { name: 'Molten', a: '#d9531f', b: '#3d0a02', rim: '#ffd36a', line: 'Still warm from the forge.' },
+  lunar: { name: 'Lunar', a: '#8d8aa3', b: '#25233a', rim: '#ecebff', line: 'Pale and cratered.' },
+  polar: { name: 'Polar', a: '#d8e6f0', b: '#5d7488', rim: '#ffffff', line: 'Snow white and blinding.' },
+  galactic: { name: 'Galactic', a: '#5a2fa8', b: '#0d0526', rim: '#d9c2ff', line: 'Stars in the weave.' },
+  royal: { name: 'Royal', a: '#7a2d7a', b: '#22082b', rim: '#ffd76a', line: 'The High Roller\'s own cloth.', pool: false },
+  house: { name: 'House', a: '#2b2f6b', b: '#0b0b26', rim: '#7df3ff', line: 'The doorman and the barfly play on this.', pool: false },
+  paradise: { name: 'Paradise', a: '#d4a52a', b: '#3a2604', rim: '#fff3bf', line: 'Gold thread. For the Ascent.', pool: false },
+};
+export const FELT_POOL = Object.keys(FELTS).filter((k) => FELTS[k].pool !== false);
+// a table saved before felts had ids stored the felt's name
+export const feltOf = (x) => FELTS[x] || Object.values(FELTS).find((f) => f.name === x) || FELTS.felt;
+export const feltId = (x) => (FELTS[x] ? x : Object.keys(FELTS).find((k) => FELTS[k].name === x) || 'felt');
 
 // ---------- Lounge ----------
 export const DRINKS = [
-  { id: 'soda', name: 'Soda Pop', verb: 'tickles', stat: 'trickery', amt: 1, cost: 500, sips: 5 },
-  { id: 'water', name: 'Spring Water', verb: 'refreshes', stat: 'proficiency', amt: 1, cost: 500, sips: 5 },
-  { id: 'coffee', name: 'Iced Coffee', verb: 'focuses', stat: 'ingenuity', amt: 1, cost: 500, sips: 5 },
-  { id: 'milk', name: 'Warm Milk', verb: 'comforts', stat: 'conviction', amt: 1, cost: 500, sips: 5 },
-  { id: 'tea', name: 'Hot Tea', verb: 'calms', stat: 'cunning', amt: 1, cost: 500, sips: 5 },
-  { id: 'juice', name: 'Fruit Juice', verb: 'brightens', stat: 'charisma', amt: 1, cost: 500, sips: 5 },
-  { id: 'special', name: 'Paradise Special', verb: 'strengthens', stat: 'random', amt: 2, cost: 10000, sips: 3 },
-  { id: 'royal', name: 'Royal Blend', verb: 'empowers', stat: 'tip', amt: 1, cost: 10000, sips: 3 },
-  { id: 'diamond', name: 'Diamond Drop', verb: 'enlightens', stat: 'all', amt: 2, cost: 200000, sips: 1 },
+  { id: 'soda', color: '#ff86ea', name: 'Soda Pop', verb: 'tickles', stat: 'trickery', amt: 1, cost: 500, sips: 5 },
+  { id: 'water', color: '#9fe8ff', name: 'Spring Water', verb: 'refreshes', stat: 'proficiency', amt: 1, cost: 500, sips: 5 },
+  { id: 'coffee', color: '#8a5a35', name: 'Iced Coffee', verb: 'focuses', stat: 'ingenuity', amt: 1, cost: 500, sips: 5 },
+  { id: 'milk', color: '#f4efe2', name: 'Warm Milk', verb: 'comforts', stat: 'conviction', amt: 1, cost: 500, sips: 5 },
+  { id: 'tea', color: '#c98a2e', name: 'Hot Tea', verb: 'calms', stat: 'cunning', amt: 1, cost: 500, sips: 5 },
+  { id: 'juice', color: '#ff9f3a', name: 'Fruit Juice', verb: 'brightens', stat: 'charisma', amt: 1, cost: 500, sips: 5 },
+  { id: 'special', color: '#7dffb5', name: 'Paradise Special', verb: 'strengthens', stat: 'random', amt: 2, cost: 10000, sips: 3 },
+  { id: 'royal', color: '#b08cff', name: 'Royal Blend', verb: 'empowers', stat: 'tip', amt: 1, cost: 10000, sips: 3 },
+  { id: 'diamond', color: '#e6fbff', name: 'Diamond Drop', verb: 'enlightens', stat: 'all', amt: 2, cost: 200000, sips: 1 },
 ];
 
 // ---------- Sports book ----------
@@ -264,17 +327,17 @@ export const RACER_WORDS = ['Lucky Seven', 'Hard Eight', 'Loose Change', 'Double
 
 // ---------- Gear ----------
 export const JACKETS = {
-  standard: { name: 'Standard', effect: 'Functional', mods: {}, price: 0, level: 0 },
-  long: { name: 'Long', effect: 'Concealing · Awkward', mods: { depth: 1, conviction: -1 }, price: 200, level: 0 },
-  leather: { name: 'Leather', effect: 'Rebellious · Inappropriate', mods: { versatility: 1, charisma: -1 }, price: 200, level: 0 },
-  bomber: { name: 'Bomber', effect: 'Confident · Brutish', mods: { balance: 1, cunning: -1 }, price: 200, level: 0 },
-  rain: { name: 'Rain', effect: 'Practical · Unnecessary', mods: { cunning: 2, versatility: -1 }, price: 20000, level: 1 },
-  sports: { name: 'Sports', effect: 'Fashionable · Expected', mods: { charisma: 2, depth: -1 }, price: 20000, level: 1 },
-  suede: { name: 'Suede', effect: 'Luxurious · Uncomfortable', mods: { conviction: 2, balance: -1 }, price: 20000, level: 1 },
-  down: { name: 'Down', effect: 'Comfortable · Fluffy', mods: { versatility: 2, conviction: -1 }, price: 2000000, level: 2 },
-  reading: { name: 'Reading', effect: 'Thoughtful · Tattered', mods: { depth: 2, cunning: -1 }, price: 2000000, level: 2 },
-  denim: { name: 'Denim', effect: 'Unique · Convoluted', mods: { balance: 2, charisma: -1 }, price: 2000000, level: 2 },
-  regal: { name: 'Regal', effect: 'Royal · Privileged', mods: { balance: 2, versatility: 2, depth: 2 }, price: 20000000000, level: 4 },
+  standard: { name: 'Standard', color: '#5b6378', effect: 'Functional', mods: {}, price: 0, level: 0 },
+  long: { name: 'Long', color: '#4b3a2a', effect: 'Concealing · Awkward', mods: { depth: 1, conviction: -1 }, price: 200, level: 0 },
+  leather: { name: 'Leather', color: '#1d1d22', effect: 'Rebellious · Inappropriate', mods: { versatility: 1, charisma: -1 }, price: 200, level: 0 },
+  bomber: { name: 'Bomber', color: '#5d6b3a', effect: 'Confident · Brutish', mods: { balance: 1, cunning: -1 }, price: 200, level: 0 },
+  rain: { name: 'Rain', color: '#e2c21c', effect: 'Practical · Unnecessary', mods: { cunning: 2, versatility: -1 }, price: 20000, level: 1 },
+  sports: { name: 'Sports', color: '#c8463d', effect: 'Fashionable · Expected', mods: { charisma: 2, depth: -1 }, price: 20000, level: 1 },
+  suede: { name: 'Suede', color: '#a8744a', effect: 'Luxurious · Uncomfortable', mods: { conviction: 2, balance: -1 }, price: 20000, level: 1 },
+  down: { name: 'Down', color: '#e8edf5', effect: 'Comfortable · Fluffy', mods: { versatility: 2, conviction: -1 }, price: 2000000, level: 2 },
+  reading: { name: 'Reading', color: '#6b3f6b', effect: 'Thoughtful · Tattered', mods: { depth: 2, cunning: -1 }, price: 2000000, level: 2 },
+  denim: { name: 'Denim', color: '#3c5f9e', effect: 'Unique · Convoluted', mods: { balance: 2, charisma: -1 }, price: 2000000, level: 2 },
+  regal: { name: 'Regal', color: '#7a2d7a', effect: 'Royal · Privileged', mods: { balance: 2, versatility: 2, depth: 2 }, price: 20000000000, level: 4 },
 };
 export const CARDS = {
   discount_diesmith: { name: 'Discount Card: Diesmith', text: '10% off at the Diesmith.' },
@@ -302,17 +365,17 @@ export const CARDS = {
 };
 // Wallets hold the cards that grant benefits. `keep` is the total two of your dice must reach in the alley to retain them.
 export const WALLETS = {
-  worn_cloth: { name: 'Worn Cloth', slots: 2, keep: 14, price: 0, level: 0 },
-  duct_tape: { name: 'Duct Tape', slots: 1, keep: 10, price: 0, level: 0 },
-  silver_clip: { name: 'Silver Clip', slots: 4, keep: 14, price: 1000, level: 0 },
-  chained_snap: { name: 'Chained Snap', slots: 2, keep: 7, price: 1000, level: 0 },
-  neon_zip: { name: 'Neon Zip', slots: 1, keep: 6, price: 1000, level: 0 },
-  worn_leather: { name: 'Worn Leather', slots: 3, keep: 10, price: 1000, level: 0 },
-  diamond_clip: { name: 'Diamond Clip', slots: 3, keep: 7, price: 100000, level: 2 },
-  magnetic_snap: { name: 'Magnetic Snap', slots: 1, keep: 4, price: 100000, level: 2 },
-  velvet_zip: { name: 'Velvet Zip', slots: 2, keep: 6, price: 100000, level: 2 },
-  fine_leather: { name: 'Fine Leather', slots: 4, keep: 12, price: 100000, level: 2 },
-  royal_luxury: { name: 'Royal Luxury', slots: 4, keep: 7, price: 10000000, level: 4, crown: true },
+  worn_cloth: { name: 'Worn Cloth', color: '#8d8478', slots: 2, keep: 14, price: 0, level: 0 },
+  duct_tape: { name: 'Duct Tape', color: '#b5b8bd', slots: 1, keep: 10, price: 0, level: 0 },
+  silver_clip: { name: 'Silver Clip', color: '#d6dde6', slots: 4, keep: 14, price: 1000, level: 0 },
+  chained_snap: { name: 'Chained Snap', color: '#5a5f6b', slots: 2, keep: 7, price: 1000, level: 0 },
+  neon_zip: { name: 'Neon Zip', color: '#ff86ea', slots: 1, keep: 6, price: 1000, level: 0 },
+  worn_leather: { name: 'Worn Leather', color: '#7a4b2a', slots: 3, keep: 10, price: 1000, level: 0 },
+  diamond_clip: { name: 'Diamond Clip', color: '#bff3ff', slots: 3, keep: 7, price: 100000, level: 2 },
+  magnetic_snap: { name: 'Magnetic Snap', color: '#3c4a6b', slots: 1, keep: 4, price: 100000, level: 2 },
+  velvet_zip: { name: 'Velvet Zip', color: '#8a2d5a', slots: 2, keep: 6, price: 100000, level: 2 },
+  fine_leather: { name: 'Fine Leather', color: '#4a2412', slots: 4, keep: 12, price: 100000, level: 2 },
+  royal_luxury: { name: 'Royal Luxury', color: '#ffd76a', slots: 4, keep: 7, price: 10000000, level: 4, crown: true },
 };
 // passes are clipped to your lanyard and do not take a wallet slot. The Royal Card does take one (Collectables C80).
 export const PASS_CARDS = ['membership', 'suite', 'punch', 'paradise'];

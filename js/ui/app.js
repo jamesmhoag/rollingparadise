@@ -1,6 +1,7 @@
 // Shared state for the screens: the current run, the saved profile, and navigation.
-import { h, tween, syncList } from './core.js';
-import { statTip, dieTip, trickTip, cardTip, jacketTip, drinkTip, pips } from './parts.js';
+import { h, tween, syncList, btn } from './core.js';
+import { openLibrary } from './library.js';
+import { statTip, dieTip, trickTip, cardTip, jacketTip, drinkTip, pips, trickLook } from './parts.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
 import { cents } from '../util.js';
@@ -9,7 +10,7 @@ export const app = { run: null, meta: null, nav: {} };
 
 const KEYS6 = ['trickery', 'ingenuity', 'proficiency', 'charisma', 'cunning', 'conviction'];
 export const diceSummary = (dice) => { const m = {}; for (const d of dice) m[d.type] = (m[d.type] || 0) + 1; return Object.entries(m).sort((a, b) => a[0].slice(1) - b[0].slice(1)).map(([t, n]) => `${n}${t}`).join(' · '); };
-export const trickTag = (t, cls) => h('span', { class: 'tag-t', style: { '--tc': D.TYPES[D.TRICKS[t.id].type].color }, tip: () => trickTip(t, cls) }, D.TRICKS[t.id].name, h('span', { class: 'q', html: pips(t) }));
+export const trickTag = (t, cls) => h('span', { class: `tag-t trick ${trickLook(t)}`, style: { '--tc': D.TYPES[D.TRICKS[t.id].type].color }, tip: () => trickTip(t, cls) }, D.TRICKS[t.id].name, h('span', { class: 'q', html: pips(t) }));
 export function oppTip(o) {
   return `<b>${o.name}</b> <span class="dim">${o.title ? o.title + ' · ' : ''}${D.CLASSES[o.cls].name}</span>
     <p>Worth <b>${cents(o.worth)}</b> on the table. Position ${o.dims.meterRows} Meter + ${o.dims.barRows} Bar rows, stacks ${o.dims.stackMax} high.</p>
@@ -21,6 +22,7 @@ export function oppTip(o) {
 export function hud(place, sub) {
   const run = app.run, purse = h('b', { class: 'num' }), stats = h('div', { class: 'stats' }), gear = h('div', { class: 'gear list' });
   const el = h('div', { class: 'hud' }, h('div', { class: 'place' }, h('b', { text: place }), h('span', { class: 'cap', text: sub })), stats, gear,
+    btn('Library', () => openLibrary(), '<b>Library</b><p>Every chip, trick, die, card, drink, wallet, jacket and felt, with the upgrades for each. What you own is marked.</p>', 'small'),
     h('div', { class: 'purse', tip: '<b>Purse</b><p>Chips you carry between bouts. Spend them in the shops, bet them at the Sports Book, then put them on the table: whatever you do not place in your position is wagered on the bout.</p>' }, h('span', { class: 'cap', text: 'Purse' }), purse));
   function update() {
     const st = R.rollerStats(run).v;
