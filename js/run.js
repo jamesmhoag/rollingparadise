@@ -35,7 +35,9 @@ export function resolvePending(run, dropId) {
   const id = run.pendingCard; run.pendingCard = null; if (!id || !dropId) return;
   run.cards = run.cards.filter((x) => x !== dropId); run.cards.push(id);
 }
-export const price = (run, shop, base) => Math.max(1, Math.round(base * (hasCard(run, `discount_${shop}`) ? 0.9 : 1)));
+export function dropCard(run, id) { if (!hasCard(run, id) || D.PASS_CARDS.includes(id) || (id === 'royal' && run.floor < 1)) return false; run.cards = run.cards.filter((x) => x !== id); return true; }
+// the Membership Card carries the Trader's discount as well; the two do not stack
+export const price = (run, shop, base) => Math.max(1, Math.round(base * (hasCard(run, `discount_${shop}`) || (shop === 'trader' && hasCard(run, 'membership')) ? 0.9 : 1)));
 function spend(run, amt, label) { if (run.purse < amt) return false; run.purse -= amt; run.stats.spent += amt; ledger(run, label, -amt); return true; }
 
 export function newRun(cls, jacket = 'standard', seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0, gear = {}) {
@@ -105,7 +107,7 @@ export function enterFloor(run, floor) {
   };
   run.fs.shop = genShelf(run);
   run.news = [`Floor ${floor}: ${F.name}. ${F.line}`];
-  if (!hasCard(run, 'royal')) run.cards.push('royal');
+  if (floor === 1 && !hasCard(run, 'royal')) addCard(run, 'royal'); // a full wallet has to drop a card for it
   return run.fs;
 }
 export const tablesLeft = (run) => run.fs.tables.filter((t) => !t.beaten).length;
@@ -352,7 +354,8 @@ export function settle(run, ctx, bout) {
     lines.push([`Fees ${ctx.opp.name} paid to the table`, sm.oppFees], [`Wager winnings ×${ctx.mult}`, Math.round(wager * (ctx.mult - 1))]);
     lines.push(['Bids lost to the House', -(sm.bids - sm.pendingBids)]);
     if (sm.destroyed) lines.push(['Chips destroyed by hazards', -sm.destroyed]);
-    entry.beaten = true; run.fs.tables.forEach((t, i) => { if (i <= ctx.idx + 1) t.seen = true; });
+    entry.beaten = true; if (ctx.kind === 'boss' && run.floor >= 4 && !hasCard(run, 'paradise')) { run.cards.push('paradise'); res.news.push('The last High Roller hands over a Paradise Card. The Ascent is open to you.'); }
+    run.fs.tables.forEach((t, i) => { if (i <= ctx.idx + 1) t.seen = true; });
     res.base = base; res.winnings = winnings;
     res.prizes = { dice: rng.shuffle(ctx.opp.dice).slice(0, 3).map((d) => ({ ...d })), tricks: rng.shuffle(ctx.opp.tricks).slice(0, 2).map((t) => ({ ...t })) };
     if (ctx.kind === 'table') {

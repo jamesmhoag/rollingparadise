@@ -55,3 +55,11 @@ comes from and the specific gaps.
     player's device has.
 28. Whether the House should be a visible character at the table, or stay as the sign and the stick.
 29. Music and sound.
+
+## Round 3 additions
+30. Names and numbers for the three new hazard tricks (Infect, Envenom, Rig) and the hazard lifetimes: Corrupting
+    3 turns with a 60% spread, Poison until cleansed, Boom goes off the turn after it lands for 5¢ around it.
+31. Unicorn, Mothership, Black Hole, Volcano and Tornado follow the Chips tab text; the numbers (Volcano for four
+    turns, Tornado throws stacks under 3 chips, Black Hole takes one chip a turn) are mine.
+32. Should Debt that does not cover the chip beneath it ever collect on its own? Now it waits until it reaches the
+    chip's value, from any further fees.

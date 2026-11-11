@@ -27,7 +27,7 @@ export const BASE_DIMS = { cols: 5, stackMax: 3, meterRows: 2, barRows: 3 };
 export const STATS = {
   trickery: { name: 'Trickery', short: 'Draw', text: 'Tricks you may draw from your Book each turn.' },
   ingenuity: { name: 'Ingenuity', short: 'Bid', text: 'Chips you may bid on shown tricks each turn.' },
-  proficiency: { name: 'Proficiency', short: 'Roll', text: 'Dice you may roll onto shown tricks each turn.' },
+  proficiency: { name: 'Proficiency', short: 'Roll', text: 'Dice you may roll each turn. A die shows its value first; you then choose which shown trick it goes on.' },
   charisma: { name: 'Charisma', short: 'Steal', text: 'For each bid you leave unused, steal this many ¢ from the Stage onto your Meter.' },
   cunning: { name: 'Cunning', short: 'Opportunity', text: 'For each roll you leave unused, gain this many Opportunity chips on your Meter.' },
   conviction: { name: 'Conviction', short: 'Power', text: 'For each draw you leave unused, gain this much Power. Power is added to your next roll effect.' },
@@ -57,9 +57,9 @@ export const TYPES = {
   insurance: { name: 'Insurance', order: 1, color: '#4aa3c7', text: 'Resolves second. Prevents, reduces or mitigates expenses.',
     trait: 'Block chip', traitText: (m) => `Add ${m} Block chip${m > 1 ? 's' : ''} to your Meter.` },
   expense: { name: 'Expense', order: 2, color: '#d9564a', text: 'Resolves third. Charges fees that move chips from a position to the Stage.',
-    trait: 'Debt chip', traitText: (m) => `Place ${m} Debt chip${m > 1 ? 's' : ''} on a random front stack of your opponent.` },
+    trait: 'Debt chip', traitText: (m) => `Place ${m}¢ of Debt on a random front stack of your opponent.` },
   correction: { name: 'Correction', order: 3, color: '#5bb174', text: 'Resolves last. Adjusts the placement and state of chips.',
-    trait: 'Cleanse', traitText: (m) => `Remove ${m} Debt or hazard chip${m > 1 ? 's' : ''} from your position.` },
+    trait: 'Cleanse', traitText: (m) => `Remove ${m}¢ of Debt or ${m} hazard chip${m > 1 ? 's' : ''} from your position.` },
 };
 export const QMULT = [0, 1, 2, 3, 4];
 export const QNAME = ['', 'Common', 'Fine', 'Grand', 'Royal'];
@@ -112,6 +112,12 @@ export const TRICKS = {
     roll: { k: 'fee', text: 'Charge a fee equal to the total and leave an Acid chip.' }, bonus: { cond: 'under:4', k: 'double', text: 'The fee is doubled.' } },
   collapse: { name: 'Collapse', type: 'expense', cls: null, die: 'd8', count: 3, side: 'opp', approach: 'body', dist: 'drop',
     roll: { k: 'fee', text: 'Charge a fee equal to the total, shared across the Bar spaces hit.' }, bonus: { cond: 'over:14', k: 'pierce', text: 'Ignores Block chips, Resist and Hardened stacks.' } },
+  infect: { name: 'Infect', type: 'expense', cls: null, die: 'd6', count: 2, side: 'opp', approach: 'any', dist: 'hit', element: 'corrupt',
+    roll: { k: 'fee', text: 'Charge a fee equal to the total and leave a Corrupting chip.' }, bonus: { cond: 'odds', k: 'spread', text: 'Hits the neighbouring stack too (Swipe).' } },
+  envenom: { name: 'Envenom', type: 'expense', cls: null, die: 'd4', count: 2, side: 'opp', approach: 'rear', dist: 'hit', element: 'poison',
+    roll: { k: 'fee', text: 'Charge a fee equal to the total and leave a Poison chip.' }, bonus: { cond: 'under:4', k: 'double', text: 'The fee is doubled.' } },
+  rig: { name: 'Rig', type: 'expense', cls: null, die: 'd8', count: 1, side: 'opp', approach: 'any', dist: 'hit', element: 'boom',
+    roll: { k: 'fee', text: 'Charge a fee equal to the total and leave a Boom chip.' }, bonus: { cond: 'over:6', k: 'double', text: 'The fee is doubled.' } },
   // --- Insurances ---
   block: { name: 'Block', type: 'insurance', cls: null, die: 'd6', count: 2, side: 'self', approach: 'meter', dist: 'hit',
     roll: { k: 'block', text: 'Add Block chips equal to the total to your Meter, starting at the target space.' }, bonus: { cond: 'evens', k: 'counter', text: 'They are Counter chips: each one also puts a Debt chip on the attacker.' } },
@@ -157,26 +163,35 @@ export const CHIPS = {
   opp: { name: 'Opportunity chip', text: 'Earned during a bout for unused rolls. Worth 1¢ and can be bid. Fragile: lost at the end, but each one left pays a bonus chip if you win.' },
   block: { name: 'Block chip', text: 'Deterrent. Absorbs 1¢ of a fee and breaks. No worth. Fragile.' },
   counter: { name: 'Counter chip', text: 'Deterrent. Absorbs 1¢ of a fee and puts a Debt chip on the attacker. No worth. Fragile.' },
-  debt: { name: 'Debt chip', text: 'Worth −1¢. Blocks bidding from this stack. When the Debt on a stack reaches the value of the chip beneath, that chip is paid to the Stage.' },
+  debt: { name: 'Debt chip', text: 'A fee waiting to be paid: worth minus its value. It blocks bidding from this stack. When the House settles, Debt takes chips from the top while it covers their value. What is left stays until it reaches the value of the chip beneath.' },
   burn: { name: 'Burning chip', text: 'Hazard. Each turn it destroys the chip beneath it and has a 30% chance to spread to a neighbouring stack. Burns out after 3 turns.' },
   acid: { name: 'Acid chip', text: 'Hazard. Each turn it destroys the chip beneath it. When it reaches the table it leaves a Hole.' },
-  shock: { name: 'Shocking chip', text: 'Hazard. Each turn it charges a 1¢ fee to two random stacks. Fades after 2 turns.' },
+  shock: { name: 'Shocking chip', text: 'Hazard. Each turn it puts 1¢ of Debt on two other stacks. Fades after 2 turns.' },
+  corrupt: { name: 'Corrupting chip', text: 'Hazard. Each turn it puts 1¢ of Debt on its stack and has a 60% chance to spread to another stack. Fades after 3 turns.' },
+  poison: { name: 'Poison chip', text: 'Hazard. Each turn it puts 1¢ of Debt on its stack. It lingers until the stack is gone or it is cleansed.' },
+  boom: { name: 'Boom chip', text: 'Hazard. The turn after it lands it goes off: 5¢ of Debt on its stack and on every stack around it.' },
 };
 export const RESIST = {
   burn: { color: 'red', name: 'Red chip', verb: 'extinguishes', price: 20, floor: 1 },
   shock: { color: 'blue', name: 'Blue chip', verb: 'absorbs', price: 20, floor: 1 },
   acid: { color: 'yellow', name: 'Yellow chip', verb: 'neutralizes', price: 20, floor: 1 },
 };
-export const HAZARD_KINDS = ['debt', 'burn', 'acid', 'shock'];
+export const HAZARD_KINDS = ['debt', 'burn', 'acid', 'shock', 'corrupt', 'poison', 'boom'];
 
 export const CREATURES = {
   ufo: { name: 'UFO', glyph: '🛸', text: 'Abducts the top chip of a random stack each turn, then flies home. Chips taken are lost.' },
   fairy: { name: 'Fairy', glyph: '🧚', text: 'Converts the top chip of a random stack into a random chip. Chaos reigns!' },
   dragon: { name: 'Dragon', glyph: '🐉', text: 'Breathes a Burning chip onto a random stack each turn.' },
+  mole: { name: 'Mole', glyph: '🐭', text: 'Digs up a random empty space and leaves a Hole.' },
+  unicorn: { name: 'Unicorn', glyph: '🦄', text: 'Converts every chip in a random stack into random chips. Chaos reigns!' },
+  mothership: { name: 'Mothership', glyph: '👾', text: 'Hovers over one stack and beams up a chip every turn until the stack is gone. Chips taken are lost.' },
 };
 export const CALAMITIES = {
   inferno: { name: 'Inferno', text: 'Really, really hot. A Burning chip lands on one of your stacks every turn.' },
   audit: { name: 'House Audit', text: 'Every second turn, each of your front stacks is charged a 1¢ fee.' },
+  blackhole: { name: 'Black Hole', text: 'Takes one of your Bar spaces. Every turn it pulls in a chip from a stack next to it, and that chip is lost.' },
+  volcano: { name: 'Volcano', text: 'Takes one of your Bar spaces. For four turns it launches a Burning chip at one of your stacks, then goes dormant and frees the space.' },
+  tornado: { name: 'Tornado', text: 'Every turn it hits one of your stacks. A stack under 3 chips high is thrown about, and some of its chips may be lost.' },
 };
 
 // ---------- Wagers and tilts ----------
@@ -271,12 +286,18 @@ export const CARDS = {
   business_charisma: { name: 'Business Card: Agent', text: '+1 Charisma.', mods: { charisma: 1 } },
   business_cunning: { name: 'Business Card: Fixer', text: '+1 Cunning.', mods: { cunning: 1 } },
   business_conviction: { name: 'Business Card: Closer', text: '+1 Conviction.', mods: { conviction: 1 } },
-  royal: { name: 'Royal Card', text: 'Received after winning your first bout. Required to access the casino.' },
-  membership: { name: 'Membership Card', text: 'Earned by buying 5 tricks on one floor. Opens the Trick Trader\'s Secret Shelf.' },
+  royal: { name: 'Royal Card', text: 'Received after winning your first bout. You need it in your wallet to walk into the casino. Once you are on the floor it does nothing more, and you can drop it to free the slot.' },
+  paradise: { name: 'Paradise Card', text: 'Earned by beating the last High Roller. It opens the Paradise Ascent.' },
+  membership: { name: 'Membership Card', text: 'Earned by buying 5 tricks on one floor. Opens the Trick Trader\'s Secret Shelf and takes 10% off everything the Trader sells.' },
   suite: { name: 'Suite Key Card', text: 'Earned by winning a Double Down. Opens a Suite after you beat the High Roller.' },
   debit: { name: 'Debit Card', text: 'Found by searching the floor. Lets you use the ATM in the Gift Shop, which keeps chips between runs.' },
   punch: { name: 'Punch Card', text: 'One punch per drink bought. Five punches and the next drink is free.' },
-  note: { name: 'Note', text: '"Small chips bid fast. Big chips linger. Keep a stack of 1¢ chips at the back."' },
+  note: { name: 'Note: on bidding', text: '"Small chips bid fast. Big chips linger. Keep a stack of 1¢ chips at the back."' },
+  note_dice: { name: 'Note: on dice', text: '"Roll first, look, then place. A low roll is not wasted: some bonuses want a small total, and a pair of anything is a match."' },
+  note_debt: { name: 'Note: on Debt', text: '"Debt only takes a chip it can cover. A 5¢ chip on top shrugs off a 4¢ fee, but the Debt stays and the next fee finishes it."' },
+  note_house: { name: 'Note: on the House', text: '"Both arms move at once. What you play this phase cannot change what they play this phase. Insure a turn early, not the same turn."' },
+  note_hold: { name: 'Note: on holding back', text: '"A turn with nothing worth playing still pays. Every draw, roll and bid you leave unused earns Power, Opportunity or chips off the Stage."' },
+  note_flip: { name: 'Note: on flips', text: '"Out of dice? Flip a chip. It lands on nothing or its worth, fits any trick, and comes back to your Meter afterwards."' },
   trading: { name: "Trading Card: Children of Ae'a", text: 'From a super popular card game. Does not seem to do anything here.' },
 };
 // Wallets hold the cards that grant benefits. `keep` is the total two of your dice must reach in the alley to retain them.
@@ -293,10 +314,10 @@ export const WALLETS = {
   fine_leather: { name: 'Fine Leather', slots: 4, keep: 12, price: 100000, level: 2 },
   royal_luxury: { name: 'Royal Luxury', slots: 4, keep: 7, price: 10000000, level: 4, crown: true },
 };
-// passes are clipped to your lanyard and do not take a wallet slot
-export const PASS_CARDS = ['royal', 'membership', 'suite', 'punch'];
+// passes are clipped to your lanyard and do not take a wallet slot. The Royal Card does take one (Collectables C80).
+export const PASS_CARDS = ['membership', 'suite', 'punch', 'paradise'];
 export const PURSE_LIMIT = 999e12;
 export const STARTER_CARDS = ['discount_diesmith', 'discount_trader', 'discount_lounge', 'business_trickery', 'business_ingenuity', 'business_proficiency',
   'business_charisma', 'business_cunning', 'business_conviction'];
-export const FIND_CARDS = ['debit', 'note', 'trading', 'punch'];
+export const FIND_CARDS = ['debit', 'note', 'note_dice', 'note_debt', 'note_house', 'note_hold', 'note_flip', 'trading', 'punch'];
 export const WALLET_SLOTS = 4;

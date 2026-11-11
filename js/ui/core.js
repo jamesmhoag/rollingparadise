@@ -75,9 +75,9 @@ export async function go(build) {
   await wait(old ? 520 : 420); old?.remove(); busy = false;
 }
 let panel = null;
-export async function openPanel(node, { wide } = {}) {
+export async function openPanel(node, { wide, modal } = {}) {
   if (panel) await closePanel();
-  const wrap = h('div', { class: 'panel-wrap' }, h('div', { class: 'backdrop', onclick: () => closePanel() }), h('div', { class: 'panel' + (wide ? ' wide' : '') }, node));
+  const wrap = h('div', { class: 'panel-wrap' }, h('div', { class: 'backdrop', onclick: () => { if (!modal) closePanel(); } }), h('div', { class: 'panel' + (wide ? ' wide' : '') }, node));
   $('overlay-layer').append(wrap); panel = wrap; await frame(); wrap.classList.add('in');
 }
 export async function closePanel(now) {

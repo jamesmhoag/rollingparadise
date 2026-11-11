@@ -47,11 +47,12 @@ function howTo() {
   const p = (t, s) => h('div', {}, h('h3', { text: t }), h('p', { class: 'sub', text: s }));
   openPanel(h('div', { class: 'col' }, h('div', { class: 'row between' }, h('h2', { text: 'How to play' }), btn('Got it', () => closePanel(), null, 'small go')),
     p('The goal', 'Deplete your opponent\'s Worth before they deplete yours. Worth is the chips in your position. Reach zero and you are broke.'),
-    p('Your turn', 'Draw tricks from your Book onto your Run. Click a die in your Pouch to roll it onto a shown trick, or Flip a chip onto it as a coin-toss die. Click a trick\'s BID slot, then one of your own stacks, to pay a chip and play it. Then press Play.'),
-    p('The House runs the table', 'Both Rollers plan at once. The House then calls each phase in order, Investments, Insurances, Expenses, Corrections, and points its stick at every trick as it plays. The feed under the table keeps the last calls on screen.'),
+    p('Your turn', 'Draw tricks from your Book onto your Run. Click a die in your Pouch to roll it. It lands in the Rolled tray showing its value, and only then do you choose which shown trick it goes on. Flip a chip to use it as a coin-toss die. Click a trick\'s BID slot, then one of your own stacks, to pay a chip and play it. Then press Play.'),
+    p('The House runs the table', 'Both Rollers plan at once. The House then calls each phase in order: Investments, Insurances, Expenses, Corrections. It has two arms, one for each Roller, and plays both sides of a phase together, so nothing you play changes what your opponent plays in the same phase. The feed under the table posts both calls.'),
     p('Tricks', 'A bid with no dice plays only the small Trait. A bid with dice plays the Roll effect, scaled by the total. Fill the trick with the right dice and meet its condition for the Bonus. You can load dice over several turns before bidding.'),
     p('Holding back pays', 'Each draw, roll and bid you leave unused earns something: Power for your next roll, Opportunity chips, or chips stolen from the Stage.'),
-    p('The Stage', 'Fees move chips from a position to the Stage. The winner takes everything on it. Bids go to the House and are gone.'),
+    p('Debt', 'An Expense goes out as Debt chips on the target stack. When every Expense is out, the House settles: Debt takes chips from the top while it covers their value, and whatever is left stays on the stack.'),
+    p('The Stage', 'Settled fees are stacked on the Stage in front of the House. The winner takes everything on it. Bids go to the House and are gone.'),
     p('Between bouts', 'Shop, drink, place bets, then set your position. Every chip you do not put on the table is wagered on the bout and comes back multiplied if you win.'),
     p('Anything unclear?', 'Hover it. Every chip, die, trick, number and button explains itself.')));
 }
