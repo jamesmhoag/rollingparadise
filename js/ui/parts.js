@@ -5,9 +5,9 @@ import { cents, cap } from '../util.js';
 import { multOf, traitOf } from '../bout.js';
 import { facesOf, faceValue } from '../dice.js';
 
-const GLYPH = { opp: '★', block: '▣', counter: '✸', burn: '🔥', acid: '☣', shock: '⚡', corrupt: '☠', poison: '☘', boom: '💣', frost: '❄', lava: '🌋', flower: '✿', petal: '❀', clay: '▤', brick: '▦', dynamite: '🧨' };
+const GLYPH = { opp: '★', block: '▣', counter: '✸', burn: '🔥', acid: '☣', shock: '⚡', corrupt: '☠', poison: '☘', boom: '💣', frost: '❄', lava: '🌋', flower: '✿', petal: '❀', clay: '▤', brick: '▦', dynamite: '🧨', tree: '🌳', wood: '▥' };
 export const chipSig = (ch) => `k-${ch.kind} v${ch.value}${ch.gold ? ' gold' : ''}${ch.frozen ? ' frozen' : ''}${ch.feather > 0 ? ' feather' : ''}${ch.resist ? ' r-' + ch.resist : ''}`;
-export const chipGlyph = (ch) => (ch.kind === 'std' ? (ch.resist ? D.SHOP_CHIPS[ch.resist]?.glyph || '◆' : ch.frozen ? `❄${ch.value}` : String(ch.value)) : ch.kind === 'debt' ? '−' + ch.value : GLYPH[ch.kind] || '');
+export const chipGlyph = (ch) => (ch.kind === 'std' ? (ch.resist ? (D.SHOP_CHIPS[ch.resist]?.seq ? `${D.SHOP_CHIPS[ch.resist].glyph}${ch.value}` : D.SHOP_CHIPS[ch.resist]?.glyph || '◆') : ch.frozen ? `❄${ch.value}` : String(ch.value)) : ch.kind === 'debt' ? '−' + ch.value : GLYPH[ch.kind] || '');
 export function chipName(ch) {
   if (ch.kind === 'debt') return `${ch.value}¢ Debt chip`;
   if (ch.kind !== 'std') return D.CHIPS[ch.kind].name;
@@ -19,7 +19,7 @@ export function chipText(ch) {
   const hits = ch.hits != null && ch.kind !== 'std' ? ` <span class="dim keep">${ch.hits} fee${ch.hits === 1 ? '' : 's'} left in it.</span>` : '';
   if (ch.kind !== 'std') return D.CHIPS[ch.kind].text + hits + (ch.shop && D.SHOP_CHIPS[ch.shop] ? ` ${D.CHIP_TIERS[D.SHOP_CHIPS[ch.shop].tier].name} shop chip.` : '');
   if (ch.resist) { const X = D.SHOP_CHIPS[ch.resist]; if (!X) return 'Worth 1¢.';
-    return `${D.shopText(ch.resist)} Worth 1¢, ${X.place === 'top' ? 'goes on top of a stack' : 'deployed at the base of your stacks'}, not wagered.${ch.life != null ? ` ${ch.life} turn${ch.life === 1 ? '' : 's'} left.` : ''} ${D.CHIP_TIERS[X.tier].name} tier.`; }
+    return `${D.shopText(ch.resist)} Worth ${X.seq ? ch.value : 1}¢${ch.n > 1 ? ` (merged from ${ch.n})` : ''}, ${X.place === 'top' ? 'goes on top of a stack' : 'deployed at the base of your stacks'}, not wagered.${ch.life != null ? ` ${ch.life} turn${ch.life === 1 ? '' : 's'} left.` : ''} ${D.CHIP_TIERS[X.tier].name} tier.`; }
   if (ch.frozen) return D.CHIPS.frozen.text;
   const feather = ch.feather > 0 ? ` Feathered for ${ch.feather} more turn${ch.feather > 1 ? 's' : ''}: ${D.CHIPS.feather.text.replace(/^A chip turned light for a few turns: /, '')}` : '';
   if (ch.gold) return `Gold. Cannot be bid, but pays double (${ch.value * 2}¢) if it survives the bout.${feather}`;

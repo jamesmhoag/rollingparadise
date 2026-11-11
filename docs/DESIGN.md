@@ -88,6 +88,12 @@ How this is shown:
 ### Chips (**Chips**, **Shop**)
 The chip list from the workbook is kept in `docs/CHIP-LIST.tsv`; chips built from it name their row (`list`). The list
 is additive: chips the game had that are not on it stay in the game.
+The Library's **Chip list** tab shows all 97 rows with a status (built, partly built, needs detail) and, for
+the ones that cannot be built yet, what is missing; `docs/CHIP-STATUS.md` is the same list as a document.
+- Also from the list, sold at the Chip Exchange: **Tree** (Rare; planted on an empty space, grows a chip a turn,
+  seeds Flowers around it at full height, and a fee fells it into **Wood** chips that block two fees each), **Sun**
+  (Rare; Flowers bloom twice as many Petals, Trees grow twice as fast), **Fibonacci** and **Prime** (Rare; go on top,
+  two on each other merge into the next number in the sequence after the larger; the growth is paid on a win).
 - Royal Paradise chips (the basic value chips) of 1, 2, 5 and 10¢, unlocked by floor as in the Chip Exchange table.
 - Debt, Block, Counter, Opportunity, Gold, Burning, Acid, Shocking, Corrupting, Poison and Boom chips, and Holes.
   Three Expenses leave the newer hazards: Infect (Corrupting), Envenom (Poison) and Rig (Boom). The trick names are

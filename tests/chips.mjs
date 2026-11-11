@@ -289,6 +289,40 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
   assert(opp.mods.boost === 0 && me.mods.boost > 0 && opp.power === 0, 'Saturate boosts you and subdues their boosts (and Power on a match)');
 }
 
+// ---------- Tree, Wood, Sun, Fibonacci, Prime ----------
+{
+  const { bout, me, opp } = table({ tree: 1 });
+  const t = me.grid.flatMap((row, r) => row.map((cell, c) => ({ r, c, cell }))).find((y) => y.cell.chips.length && y.cell.chips.every((ch) => ch.kind === 'tree'));
+  assert(t, 'a Tree is planted on an empty space');
+  for (const row of me.grid) for (const cell of row) if (cell !== t.cell && cell.chips.length > 2 && cell.chips[cell.chips.length - 1].kind === 'std') cell.chips.pop();
+  for (let k = 0; k < me.dims.stackMax; k++) drain(ticks(bout));
+  assert(t.cell.chips.length === me.dims.stackMax && t.cell.chips[0].seeded, 'a Tree grows a chip a turn to full height');
+  const g = engage(bout, opp, me, t.r, t.c, 40, {});
+  assert(g.placed === 0 && !t.cell.chips.some((ch) => ch.kind === 'tree') && me.grid.flat().some((cell) => cell.chips.some((ch) => ch.kind === 'wood')), 'a fee fells the Tree into Wood and is blocked');
+}
+{
+  const { bout, me } = table({ tree: 1, sun: 1 });
+  const t = me.grid.flat().find((cell) => cell.chips.length && cell.chips.every((ch) => ch.kind === 'tree'));
+  drain(ticks(bout)); assert(t.chips.length === Math.min(3, me.dims.stackMax), 'the Sun makes a Tree grow twice as fast');
+}
+{
+  const { bout, me } = table({ fib: 3 });
+  const f = me.grid.flat().flatMap((cell) => cell.chips).filter((ch) => ch.shop === 'fib');
+  assert(f.length === 1 && f[0].value === 3 && f[0].n === 3, 'three Fibonacci chips on one stack merge 1+1 → 2, then 2+1 → 3');
+  assert(B.summary(bout, 0).resist.fib === 3, 'merged chips still come back as the chips that made them');
+}
+{
+  const { bout, me } = table({ prime: 4 });
+  const f = me.grid.flat().flatMap((cell) => cell.chips).filter((ch) => ch.shop === 'prime');
+  assert(f.length === 1 && f[0].value === 5 && B.summary(bout, 0).seq === 1, 'four Prime chips merge to 5 and pay the 1¢ they grew');
+}
+{ // every chip on the list has a status, and built ones render
+  const { CHIP_LIST } = await import('../js/chiplist.js');
+  assert(CHIP_LIST.length === 97 && CHIP_LIST.every((x) => ['built', 'partial', 'needs'].includes(x.status) && x.note), 'every chip on the list has a status and a note');
+  for (const x of CHIP_LIST) if (x.show) assert(x.show.kind === 'std' || D.CHIPS[x.show.kind], `${x.name} renders`);
+  for (const x of CHIP_LIST) if (x.show?.resist) assert(D.SHOP_CHIPS[x.show.resist], `${x.name} is sold`);
+}
+
 // ---------- dice upgrades ----------
 {
   const { RNG } = await import('../js/util.js'); const X = await import('../js/dice.js');

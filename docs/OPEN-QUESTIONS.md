@@ -122,3 +122,9 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
     fumble, penetrate, separating, pacing, dividing) would work best as Trader upgrades that bolt onto a trick.
     Should trick upgrades become choices like that instead of the flat +0.25?
 55. Workbook classes Rogue and Brute map to Rascal and Hustler here for Retreat and Advance. Right mapping?
+
+## Round 9 additions (the whole chip list)
+56. 50 chips on the list need detail before they can be built. Each one's question is in the Library's Chip list
+    tab and in `docs/CHIP-STATUS.md`.
+57. Tree, Sun, Fibonacci and Prime have no listed source, so they are sold at the Chip Exchange (the rule for chips
+    nothing makes). The list's prime sequence includes 1 and 9; the game uses true primes (2, 3, 5, 7, 11…).

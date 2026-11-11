@@ -244,6 +244,8 @@ export const CHIPS = {
   petal: { name: 'Petal chip', text: 'Bloomed by a Flower. Blocks one entire fee, however big, and breaks: fee instance defence, where a Block chip only takes 1¢ of a fee\'s cost. Wilts after 2 turns.' },
   clay: { name: 'Clay chip', text: 'Blocks entire fees, one per hit, and breaks after its count of hits. Fire bakes it into Brick.' },
   brick: { name: 'Brick chip', text: 'Baked Clay. Takes twice as many fees as the clay did before it breaks.' },
+  tree: { name: 'Tree chip', text: 'A tree growing on its own space, one chip taller a turn. At full height it seeds the stacks around it. A fee that hits it fells it into Wood.' },
+  wood: { name: 'Wood chip', text: 'Fell from a Tree. Blocks two entire fees, one per hit, then breaks.' },
   dynamite: { name: 'Dynamite', text: 'A stack of sticks on an empty space. One burns down each turn; when the last goes, every chip on the stacks around it is destroyed. Cleansing removes it.' },
 };
 // Chips no trick or table effect makes are sold at the Chip Exchange. Their price comes from a tier: how strong
@@ -305,6 +307,14 @@ export const SHOP_CHIPS = {
     text: (v) => `Each turn the House cancels the ${v.per > 1 ? v.per + ' largest fees' : 'largest fee'} charged to your position.` },
   shadow: { name: 'Shadow chip', tier: 2, glyph: '◗', list: 'Shadow Chip',
     text: () => 'Its stack cannot be aimed at while the stack in front of it in the lane is taller.' },
+  tree: { name: 'Tree chip', tier: 3, glyph: '🌳', kind: 'tree', place: 'space', list: 'Tree Chip',
+    text: () => 'Planted on an empty Bar space. It grows a chip taller each turn; at full height it drops a Seed on each stack around it (one per chip of height, up to 8). A fee that hits it fells it: it blocks that fee and falls into Wood chips on the spaces around it, one per chip of height. No worth.' },
+  sun: { name: 'Sun chip', tier: 3, glyph: '☀', list: 'Sun Chip',
+    text: () => 'While it is on your table, your Flowers bloom twice as many Petals and your Trees grow twice as fast.' },
+  fib: { name: 'Fibonacci chip', tier: 3, glyph: 'φ', place: 'top', seq: 'fib', list: 'Fibonacci Chip',
+    text: () => 'Goes on top of a stack. Two on top of each other merge into one worth the next Fibonacci number after the larger (1, 2, 3, 5, 8, 13…). On a win, what it grew beyond the chips that made it is paid out.' },
+  prime: { name: 'Prime chip', tier: 3, glyph: 'ℙ', place: 'top', seq: 'prime', list: 'Prime Chip',
+    text: () => 'Goes on top of a stack. Two on top of each other merge into one worth the next prime after the larger (2, 3, 5, 7, 11…). On a win, what it grew beyond the chips that made it is paid out.' },
   crown: { name: 'Crown chip', tier: 4, glyph: '♛', vars: { turns: 3 },
     text: (v) => `Its stack starts the bout Hardened for ${v.turns} turns: each fee takes only one chip.` },
 };
@@ -316,7 +326,8 @@ export const shopPrice = (id) => SHOP_CHIPS[id].price ?? CHIP_TIERS[SHOP_CHIPS[i
 export const shopFloor = (id) => SHOP_CHIPS[id].floor ?? CHIP_TIERS[SHOP_CHIPS[id].tier].floor;
 export const HAZARD_KINDS = ['debt', 'burn', 'acid', 'shock', 'corrupt', 'poison', 'boom', 'frost', 'lava'];
 // shields that take a whole fee per hit (`hits` on the chip), not 1¢ like Block
-export const INSTANCE_SHIELDS = ['flower', 'petal', 'clay', 'brick'];
+export const INSTANCE_SHIELDS = ['flower', 'petal', 'clay', 'brick', 'wood', 'tree'];
+export const SEQS = { fib: [1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377], prime: [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53] };
 // renamed shop chips, for saves made before the rename
 export const SHOP_RENAMES = { bumper: 'reducer', mirror: 'rebound', fog: 'transpara', frozen: 'frost' };
 
