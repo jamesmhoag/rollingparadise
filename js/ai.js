@@ -52,15 +52,26 @@ export function planTurn(b, s) {
   const shown = s.run.filter((e) => e.state === 'shown').length;
   const want = Math.max(0, Math.min(B.tipOf(s, 'trickery') - s.used.draw, 3 - shown));
   for (const t of s.book.slice().sort((x, y) => score(y) - score(x)).slice(0, want)) B.draw(b, s, t.uid);
-  // roll
+  // roll: every die is rolled out first, then the values are put where they do the most
   const prio = (e) => TRICKS[e.trick.id].type === 'expense' ? 0 : 1;
   const open = s.run.filter((e) => e.state === 'shown').sort((x, y) => prio(x) - prio(y) || y.dice.length - x.dice.length);
-  for (const e of open) {
-    const def = TRICKS[e.trick.id];
-    for (let guard = 0; guard < 6; guard++) {
-      const type = e.dice[0]?.type; const pool = s.pouch.filter((d) => !type || d.type === type);
-      const die = pool.find((d) => d.type === def.die) || (type ? pool[0] : pool.slice().sort((x, y) => y.type.slice(1) - x.type.slice(1))[0]);
-      if (!die || !B.roll(b, s, die.id, e)) break;
+  if (open.length) {
+    const wanted = open.map((e) => e.dice.find((d) => !d.chip)?.type || TRICKS[e.trick.id].die);
+    const rank = (d) => { const k = wanted.indexOf(d.type); return k < 0 ? 99 - +d.type.slice(1) / 100 : k; };
+    const room = open.reduce((n, e) => n + TRICKS[e.trick.id].count - e.dice.length, 0);
+    for (let n = 0; n < room; n++) { const die = s.pouch.slice().sort((x, y) => rank(x) - rank(y))[0]; if (!die || !B.rollOut(b, s, die.id)) break; }
+    for (const e of open) {
+      const def = TRICKS[e.trick.id], space = def.count - e.dice.length, tray = s.tray.slice(0, 8);
+      if (space <= 0 || !tray.length) continue;
+      let best = null, bv = 0;
+      for (let mask = 1; mask < 1 << tray.length; mask++) {
+        const pick = tray.filter((_, k) => mask >> k & 1); if (pick.length > space) continue;
+        const type = e.dice.find((d) => !d.chip)?.type || pick[0].type; if (pick.some((d) => d.type !== type)) continue;
+        const trial = { ...e, dice: [...e.dice, ...pick] };
+        const v = B.previewTotal(s, trial) + (B.bonusMet(s, trial) ? 4 : 0) + pick.length * 0.01;
+        if (v > bv) { bv = v; best = pick; }
+      }
+      if (best) for (const d of best) B.place(b, s, d.id, e);
     }
   }
   // bid

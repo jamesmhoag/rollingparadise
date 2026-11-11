@@ -14,29 +14,44 @@ is not built yet. Tab names are in **bold**.
 
 ### The bout (**Bout**, **Plays**, **Effects**, **Tricks**, **Targeting**, **Game**)
 - Goal: deplete the opponent's Worth before they deplete yours.
-- A turn: draw tricks from the Book to the Run, roll dice from the Pouch onto shown tricks, bid chips from your
-  position to play them, then Play or Pass. Unused draws, rolls and bids pay Power, Opportunity chips and chips
+- A turn: draw tricks from the Book to the Run, roll dice out of the Pouch (each shows its value in the Rolled
+  tray before it goes anywhere), place them on the shown tricks where they do the most, bid chips from your
+  position to play them, then Play or Pass. A die placed this turn can be moved until its trick is bid; dice left
+  in the tray go back to the Pouch. Unused draws, rolls and bids pay Power, Opportunity chips and chips
   stolen from the Stage.
 - A trick has a Trait (bid, no dice), a Roll effect (bid plus dice, scaled by the total) and a Bonus (full dice of
   the right type, condition met, matching class only).
 - Effects resolve in the workbook's order: Investments, Insurances, Expenses, Corrections.
 - Bids go to the House. A bid worth more than 1¢ makes the trick linger that many extra turns: the Trait repeats
   each turn and the Roll effect lands on the last turn, larger for the wait.
-- Fees move chips to the Stage. The winner takes the whole Stage.
+- Fees go out as Debt chips (1, 2, 5, 10¢) on the target stacks. When every Expense of the phase is out, the House
+  settles: Debt takes chips from the top while it covers their value, the paid chips go to the Stage, and the rest
+  stays on the stack as Debt until a later fee or the end of the turn finishes the chip beneath it.
+- Both Rollers' tricks in a phase are played together. Every value is read from the table as it stood when the
+  phase was called, so nothing played in a phase changes another trick in the same phase.
+- The Stage is shown as stacks of chips in front of the House. The winner takes the whole Stage.
 - Targeting approaches (front, rear, flank, body, any, meter) and distributions (Hit, Swipe, Poke, Hook, Drop,
   Burst, Wave, Aura, Rain) with the workbook's minimum / increment / maximum space counts.
 - 26 tricks across the four types, named from the trick lists.
 - Flips: a standard chip can be flipped from the top of a stack onto a shown trick. It lands as 0 or its worth,
   counts as a die of any type, uses a roll, and returns to the Meter when the trick has played.
-- The House runs the resolution: it collects the bids, calls each phase in order, points its stick at the trick
-  being played and at the space it lands on, and rakes fees to the Stage. A phase tracker and a four-line action
+- The House runs the resolution with two arms, one per Roller: it collects the bids, calls each phase, points both
+  arms at the two tricks being played and the spaces they land on at the same time, posts both calls to the feed,
+  then calls Settle and rakes the paid chips to the Stage.
+- Trick cards show their multiplier (quality plus +0.25 per upgrade) and the tooltip and Trick Trader spell out
+  what the next upgrade does to the roll total and the Trait. A phase tracker and a four-line action
   feed stay on screen for the whole bout.
 
 ### Chips (**Chips**, **Shop**)
 - Royale Paradise chips of 1, 2, 5 and 10¢, unlocked by floor as in the Chip Exchange table.
-- Debt, Block, Counter, Opportunity, Gold, Burning, Acid and Shocking chips, and Holes.
+- Debt, Block, Counter, Opportunity, Gold, Burning, Acid, Shocking, Corrupting, Poison and Boom chips, and Holes.
+  Three new Expenses leave the new hazards: Infect (Corrupting), Envenom (Poison) and Rig (Boom). The names are
+  placeholders.
 - Red, Blue and Yellow chips that extinguish, absorb and neutralize hazards on their stack.
-- Creatures (UFO, Fairy, Dragon), Familiars, Spawners and Calamities, used by the tilts.
+- Creatures (UFO, Fairy, Dragon, Mole, and from the 5¢ and 10¢ floors Unicorn and Mothership), Familiars, Spawners
+  and Calamities (Inferno, House Audit, Black Hole, Volcano, Tornado), used by the tilts.
+- Dice are drawn as their solids (d4 triangle, d6 square, d8 diamond, d10 hexagon, d20 octagon) and chips as discs
+  with an edge.
 
 ### Between bouts (**Shop**, **Lounge**, **Gamble**, **Commitment**, **Floor**, **Floors**)
 - Four floors with three tables and a High Roller each. Unseen tables hide their Roller until you sit down.
@@ -79,7 +94,9 @@ is not built yet. Tab names are in **bold**.
 | How a bout ends if neither side breaks | "Last call" is an addition: from turn 9 every Expense is multiplied by a factor that grows each turn. At turn 40 the most Worth wins. |
 | Debt (the **Debt** tab's five concepts) | "Knocked out by debt": reaching zero Worth loses the bout. |
 | Dice upgrades | Three of the 22 listed: Accelerate, Escalate, Stabilize. |
-| Which cards take a wallet slot | Benefit cards do (Discount, Business, Debit, Note, Trading). Passes do not (Royal, Membership, Suite Key, Punch), so a one-slot wallet can still enter the casino. |
+| Which cards take a wallet slot | Benefit cards and the Royal Card do (Collectables C80: with no room for the Royal Card you drop one of your two starters). Membership, Suite Key, Punch and Paradise are passes and do not. Cards can be dropped from the kit at any time, except the Royal Card before floor 1. |
+| Membership Card discount | "Also gives the discount": 10% off at the Trick Trader, not stacking with a Trader Discount Card. |
+| Debt chip values | Debt comes in the chip denominations, so 7¢ owed shows as a 5 and a 2. |
 | Which dice make the alley roll ("2dn") | Your two largest dice. Big dice are worth keeping for it. |
 | Wallet prices | Stats come from the **Gear** tab and prices from the **Gift Shop** tab, matched in order where the names differ. |
 | What a flip costs | One roll. The chip is not spent: it comes back to the Meter. |
@@ -88,7 +105,7 @@ is not built yet. Tab names are in **bold**.
 ## Not built yet
 
 - Artifacts and the jacket pocket limits.
-- Trading, Collectable, Roller, High Roller and Ascended cards; cosmetics; the music player.
+- Gift, Identification, Collectable, Roller, High Roller and Ascended cards (Paradise and five Notes are built); cosmetics; the music player.
 - Play-by-play sports. Games are settled by a weighted draw from the posted odds. No hedges.
 - Themes per opponent, table felts beyond a name, encounter modifiers.
 - Most of the 400-entry chip list, the **Effects** element table, Splitting, the Rest conditional.

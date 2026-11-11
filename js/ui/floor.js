@@ -1,7 +1,7 @@
 // The floor: a map of places to visit between bouts, each opening as a panel.
 import { h, syncList, openPanel, closePanel, toast, btn, tween, pulse, swapText } from './core.js';
 import { app, hud, oppTip, trickTag, diceSummary } from './app.js';
-import { dieEl, dieTip, trickTip, pips, drinkTip, cardTip, chipEl, chipTip } from './parts.js';
+import { dieEl, dieTip, trickTip, pips, drinkTip, cardTip, chipEl, chipTip, upInfo } from './parts.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
 import { cents } from '../util.js';
@@ -100,6 +100,7 @@ export function hubScene(root) {
     R.saveRun(run);
   }
   rerender = render; render();
+  if (run.pendingCard) setTimeout(() => { if (app.run === run && run.pendingCard) walletFullPanel(); }, 700);
 }
 
 // ---------- panels ----------
@@ -146,7 +147,7 @@ function traderPanel() {
     syncList(shelf, fs.shop, (it) => it.key, (it) => { const el = trickItem(run, (e) => e._t); el.append(btn('Buy', () => { tryDo(R.buyTrick(run, it.key), el); done(); }, null, 'small')); return el; },
       (el, it) => { el._t = it.trick; el.style.setProperty('--tc', D.TYPES[D.TRICKS[it.trick.id].type].color); const [n, s] = trickLine(it.trick); setItem(el, n, s, cents(R.price(run, 'trader', it.cost))); el.lastChild.classList.toggle('off', run.purse < R.price(run, 'trader', it.cost)); });
     syncList(mine, run.tricks, (t) => t.uid, (t) => { const el = trickItem(run, (e) => e._t);
-      el.append(btn('Upgrade', () => { tryDo(R.upgradeTrick(run, t.uid), el, t.up >= 2 ? 'A trick can be upgraded twice.' : fs.upgrades <= 0 ? 'No upgrades left on this floor.' : null); done(); }, '<b>Upgrade</b><p>+25% to the roll total. Two upgrades per trick, two upgrades per floor.</p>', 'small'),
+      el.append(btn('Upgrade', () => { tryDo(R.upgradeTrick(run, t.uid), el, t.up >= 2 ? 'A trick can be upgraded twice.' : fs.upgrades <= 0 ? 'No upgrades left on this floor.' : null); done(); }, () => `<b>Upgrade ${D.TRICKS[el._t.id].name}</b>${upInfo(el._t)}<p class="dim">Two upgrades per trick, two upgrades per floor. An upgraded trick shows a ▲ after its quality pips.</p>`, 'small'),
         btn('Sell', () => { tryDo(R.sellTrick(run, t.uid), el, 'Keep at least one trick.'); done(); }, null, 'small danger')); return el; },
       (el, t) => { el._t = t; el.style.setProperty('--tc', D.TYPES[D.TRICKS[t.id].type].color); const [n, s] = trickLine(t); setItem(el, n, s, `↑ ${cents(R.upgradeCost(run, t))} · sells ${cents(R.trickValue(run, t))}`);
         el.children[2].classList.toggle('off', t.up >= 2 || fs.upgrades <= 0 || run.purse < R.upgradeCost(run, t)); el.children[3].classList.toggle('off', run.tricks.length <= 1); });
@@ -219,18 +220,20 @@ function kitPanel() {
   openPanel(h('div', {}, head(`${D.CLASSES[run.cls].name}`, D.CLASSES[run.cls].blurb),
     h('div', { class: 'col' }, h('span', { class: 'cap', text: 'Book' }), h('div', { class: 'inv' }, run.tricks.map((t) => trickTag(t, run.cls))),
       h('span', { class: 'cap', text: 'Pouch' }), h('div', { class: 'dicebox' }, run.dice.map((d) => { const el = dieEl(d); el._tip = () => dieTip(d); el.classList.add('has-tip'); return el; })),
-      h('span', { class: 'cap', text: `${R.walletOf(run).name} wallet — ${R.walletCards(run).length}/${R.walletOf(run).slots} slots · passes do not take a slot` }), h('div', { class: 'inv' }, run.cards.map((c) => h('span', { class: 'tag-t', style: { '--tc': D.PASS_CARDS.includes(c) ? 'var(--pink)' : 'var(--gold)' }, tip: () => cardTip(c), text: D.CARDS[c].name }))),
+      h('span', { class: 'cap', text: `${R.walletOf(run).name} wallet — ${R.walletCards(run).length}/${R.walletOf(run).slots} slots · passes do not take a slot · click a card twice to drop it` }), h('div', { class: 'inv' }, run.cards.map((c) => { const pass = D.PASS_CARDS.includes(c); const el = h('span', { class: 'tag-t', style: { '--tc': pass ? 'var(--pink)' : 'var(--gold)', cursor: pass ? '' : 'pointer' }, tip: () => cardTip(c) + (pass ? '<p class="dim">A pass. It does not take a wallet slot.</p>' : '<p class="dim">Takes a wallet slot. Click twice to drop it for good.</p>'), text: D.CARDS[c].name });
+        el.onclick = () => { if (pass) return; if (!el._armed) { el._armed = true; el.classList.add('armed'); return toast(`Click ${D.CARDS[c].name} again to drop it.`, 'warn'); } if (!R.dropCard(run, c)) return toast('You need that one to get in.', 'warn'); closePanel(); rerender(); toast(`${D.CARDS[c].name} dropped.`); }; return el; })),
       h('span', { class: 'cap', text: 'Position' }), h('p', { class: 'sub', text: `${st.dims.meterRows} Meter rows and ${st.dims.barRows} Bar rows of 5 spaces, stacks up to ${st.dims.stackMax} chips. Your Bar holds ${st.dims.barRows * 5 * st.dims.stackMax} chips.` }))));
 }
 
 // a found card with no free slot: drop one or leave it
 function walletFullPanel() {
   const run = app.run, id = run.pendingCard, Wl = R.walletOf(run);
+  const must = id === 'royal';
   const done = (drop) => { R.resolvePending(run, drop); closePanel(); rerender(); toast(drop ? `${D.CARDS[id].name} goes in your wallet.` : 'You leave it where it lies.'); };
-  openPanel(h('div', { class: 'col' }, h('h2', { text: `Found: ${D.CARDS[id].name}` }), h('p', { class: 'sub', text: D.CARDS[id].text }),
-    h('p', { text: `Your ${Wl.name} wallet holds ${Wl.slots} card${Wl.slots > 1 ? 's' : ''} and it is full. Drop one to make room, or leave this one.` }),
+  openPanel(h('div', { class: 'col' }, h('h2', { text: `${must ? 'The doorman hands you a' : 'Found:'} ${D.CARDS[id].name}` }), h('p', { class: 'sub', text: D.CARDS[id].text }),
+    h('p', { text: `Your ${Wl.name} wallet holds ${Wl.slots} card${Wl.slots > 1 ? 's' : ''} and it is full. ${must ? 'You need the Royal Card to walk in, so one of these has to go.' : 'Drop one to make room, or leave this one.'}` }),
     h('div', { class: 'items' }, R.walletCards(run).map((c) => h('div', { class: 'item', tip: () => cardTip(c) }, h('div', { class: 'main' }, h('b', { text: D.CARDS[c].name }), h('small', { text: D.CARDS[c].text })), btn('Drop this', () => done(c), null, 'small danger')))),
-    h('div', { class: 'row' }, btn('Leave the new card', () => done(null), null, ''))));
+    must ? null : h('div', { class: 'row' }, btn('Leave the new card', () => done(null), null, ''))), must ? { modal: true } : undefined);
 }
 
 function exitPanel() {
