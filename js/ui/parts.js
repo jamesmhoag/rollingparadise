@@ -3,29 +3,39 @@ import { h } from './core.js';
 import * as D from '../data.js';
 import { cents, cap } from '../util.js';
 import { multOf, traitOf } from '../bout.js';
+import { facesOf, faceValue } from '../dice.js';
 
-const GLYPH = { opp: '★', block: '▣', counter: '✸', burn: '🔥', acid: '☣', shock: '⚡', corrupt: '☠', poison: '☘', boom: '💣', frozen: '❄', lava: '🌋' };
-export const chipSig = (ch) => `k-${ch.kind} v${ch.value}${ch.gold ? ' gold' : ''}${ch.resist ? ' r-' + ch.resist : ''}`;
-export const chipGlyph = (ch) => (ch.kind === 'std' ? (ch.resist ? D.SHOP_CHIPS[ch.resist]?.glyph || '◆' : String(ch.value)) : ch.kind === 'debt' ? '−' + ch.value : GLYPH[ch.kind] || '');
+const GLYPH = { opp: '★', block: '▣', counter: '✸', burn: '🔥', acid: '☣', shock: '⚡', corrupt: '☠', poison: '☘', boom: '💣', flower: '✿', petal: '❀', clay: '▤', brick: '▦', dynamite: '🧨' };
+export const chipSig = (ch) => `k-${ch.kind} v${ch.value}${ch.gold ? ' gold' : ''}${ch.frozen ? ' frozen' : ''}${ch.feather > 0 ? ' feather' : ''}${ch.resist ? ' r-' + ch.resist : ''}`;
+export const chipGlyph = (ch) => (ch.kind === 'std' ? (ch.resist ? D.SHOP_CHIPS[ch.resist]?.glyph || '◆' : ch.frozen ? `❄${ch.value}` : String(ch.value)) : ch.kind === 'debt' ? '−' + ch.value : GLYPH[ch.kind] || '');
 export function chipName(ch) {
   if (ch.kind === 'debt') return `${ch.value}¢ Debt chip`;
   if (ch.kind !== 'std') return D.CHIPS[ch.kind].name;
   if (ch.resist) return D.SHOP_CHIPS[ch.resist]?.name || 'Shop chip';
-  return `${ch.gold ? 'Gold ' : ''}${ch.value}¢ chip`;
+  if (ch.frozen) return `Frozen ${ch.value}¢ chip`;
+  return `${ch.gold ? 'Gold ' : ''}${ch.value}¢ Royal Paradise chip${ch.feather > 0 ? ' (Feathered)' : ''}`;
 }
 export function chipText(ch) {
-  if (ch.kind !== 'std') return D.CHIPS[ch.kind].text;
+  const hits = ch.hits != null && ch.kind !== 'std' ? ` <span class="dim keep">${ch.hits} fee${ch.hits === 1 ? '' : 's'} left in it.</span>` : '';
+  if (ch.kind !== 'std') return D.CHIPS[ch.kind].text + hits + (ch.shop && D.SHOP_CHIPS[ch.shop] ? ` ${D.CHIP_TIERS[D.SHOP_CHIPS[ch.shop].tier].name} shop chip.` : '');
   if (ch.resist) { const X = D.SHOP_CHIPS[ch.resist]; if (!X) return 'Worth 1¢.';
-    return `${D.shopText(ch.resist)} Worth 1¢, deployed at the base of your stacks, not wagered. ${D.CHIP_TIERS[X.tier].name} tier.`; }
-  if (ch.gold) return `Gold. Cannot be bid, but pays double (${ch.value * 2}¢) if it survives the bout.`;
-  return ch.value === 1 ? 'Standard chip. Bid it to play a trick this turn.' : `Standard chip. A fee under ${ch.value}¢ leaves Debt on top of it instead of paying it. Bid it and the trick lingers ${ch.value - 1} turn${ch.value > 2 ? 's' : ''}, growing as it waits.`;
+    return `${D.shopText(ch.resist)} Worth 1¢, ${X.place === 'top' ? 'goes on top of a stack' : 'deployed at the base of your stacks'}, not wagered.${ch.life != null ? ` ${ch.life} turn${ch.life === 1 ? '' : 's'} left.` : ''} ${D.CHIP_TIERS[X.tier].name} tier.`; }
+  if (ch.frozen) return D.CHIPS.frozen.text;
+  const feather = ch.feather > 0 ? ` Feathered for ${ch.feather} more turn${ch.feather > 1 ? 's' : ''}: ${D.CHIPS.feather.text.replace(/^A chip turned light for a few turns: /, '')}` : '';
+  if (ch.gold) return `Gold. Cannot be bid, but pays double (${ch.value * 2}¢) if it survives the bout.${feather}`;
+  return (ch.value === 1 ? 'Basic value chip. Bid it to play a trick this turn.' : `Basic value chip. A fee under ${ch.value}¢ leaves Debt on top of it instead of paying it. Bid it and the trick lingers ${ch.value - 1} turn${ch.value > 2 ? 's' : ''}, growing as it waits.`) + feather;
 }
 export const chipEl = (ch, cls = '') => h('span', { class: `chip static ${chipSig(ch)} ${cls}` }, h('i', { text: chipGlyph(ch) }));
 export const chipTip = (ch) => `<b>${chipName(ch)}</b><p>${chipText(ch)}</p>`;
 
+// a die's faces as small numbers, with special faces marked
+export function faceStrip(d) {
+  return facesOf(d).map((f) => { const v = faceValue(f), tag = f.rig ? '×' : f.ench ? '✧' : f.enc != null ? '▣' : f.w > 1 ? '!' : f.x > 1 ? '×' : '';
+    return `<span class="face${tag ? ' sp' : ''}">${v}${tag ? `<sup>${tag}</sup>` : ''}</span>`; }).join('');
+}
 export function dieTip(d, extra = '') {
-  const f = D.DICE[d.type].faces, ups = (d.up || []).map((u) => `<li><b>${D.DIE_UPGRADES[u].name}</b> — ${D.DIE_UPGRADES[u].text}</li>`).join('');
-  return `<b>${d.type}</b> <span class="dim">rolls 1–${f}</span>${ups ? `<ul>${ups}</ul>` : ''}${extra ? `<p>${extra}</p>` : ''}`;
+  const ups = (d.up || []).map((u, k) => `<li><b style="color:${D.DIE_UPGRADES[u].color}">${D.DIE_UPGRADES[u].mark} ${D.DIE_UPGRADES[u].name}</b>${d.tgt?.[k] != null ? ` <span class="dim">face ${d.tgt[k] + 1}</span>` : ''}<span class="v"> — ${D.upgradeText(u)}</span></li>`).join('');
+  return `<b>${d.type}</b> <span class="faces">${faceStrip(d)}</span>${ups ? `<ul>${ups}</ul>` : ''}${extra ? `<p>${extra}</p>` : ''}`;
 }
 // one badge per upgrade, so every upgrade a die carries can be read off the die itself
 export const dieMarks = (d) => ((d.up || []).length ? h('span', { class: 'ups' }, d.up.map((u) => h('b', { class: `u-${u}`, style: { '--uc': D.DIE_UPGRADES[u].color }, text: D.DIE_UPGRADES[u].mark }))) : null);

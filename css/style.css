@@ -359,8 +359,8 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 /* ---------- shop chips ---------- */
 .k-std.r-corrupt { --c: #efe6f7; --rim: #9a5ae0; --edge: #3f1a66; --fg: #6b2fb3; --bs: solid; } .k-std.r-poison { --c: #e6f5ea; --rim: #2f9a55; --edge: #0f4224; --fg: #1d7a40; --bs: solid; }
 .k-std.r-boom { --c: #2a2a30; --rim: #ff5a4a; --edge: #000; --fg: #ff8a7a; --bs: solid; }
-.k-std.r-bumper { --c: #f0f4f8; --rim: #63c4ff; --edge: #1d4a66; --fg: #1d5cb0; --bs: double; } .k-std.r-anchor { --c: #4b5566; --rim: #c9d3e0; --edge: #1b2029; --fg: #e8eef7; --bs: solid; }
-.k-std.r-nest { --c: #f4ead2; --rim: #c98a2e; --edge: #6b4510; --fg: #8a5a12; --bs: dotted; } .k-std.r-mirror { --c: #dfe9f5; --rim: #ffffff; --edge: #5d7488; --fg: #3d4f66; --bs: solid; --glow: 0 0 8px rgba(255, 255, 255, .7); }
+.k-std.r-reducer { --c: #f0f4f8; --rim: #63c4ff; --edge: #1d4a66; --fg: #1d5cb0; --bs: double; } .k-std.r-anchor { --c: #4b5566; --rim: #c9d3e0; --edge: #1b2029; --fg: #e8eef7; --bs: solid; }
+.k-std.r-nest { --c: #f4ead2; --rim: #c98a2e; --edge: #6b4510; --fg: #8a5a12; --bs: dotted; } .k-std.r-rebound { --c: #dfe9f5; --rim: #ffffff; --edge: #5d7488; --fg: #3d4f66; --bs: solid; --glow: 0 0 8px rgba(255, 255, 255, .7); }
 .k-std.r-lucky { --c: #2f8f55; --rim: #7dffb5; --edge: #0f4224; --fg: #eafff1; --bs: dashed; --glow: 0 0 8px rgba(125, 255, 181, .7); } .k-std.r-crown { --c: #7a2d7a; --rim: var(--amber); --edge: #2a0c33; --fg: var(--amber); --bs: solid; --glow: 0 0 10px rgba(255, 215, 106, .8); }
 .tier { display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 8px; font-size: 10px; font-weight: 700; letter-spacing: .06em; color: #06040f; background: var(--tc); vertical-align: 1px; }
 .item.locked .main { opacity: .55; }
@@ -402,7 +402,20 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 #tooltip:not(.verbose) { max-width: 280px; }
 
 /* new hazards and shop chips */
-.k-frozen { --c: #cfeeff; --rim: #ffffff; --edge: #4a8bb0; --fg: #1d5c8a; --bs: solid; --glow: 0 0 9px rgba(160, 225, 255, .9); }
-.k-lava { --c: #3a0d05; --rim: #ff7a1f; --edge: #000; --fg: #ffb36a; --bs: solid; --glow: 0 0 10px rgba(255, 110, 30, .9); animation: flicker .35s infinite alternate; }
-.k-std.r-frozen { --c: #fff1e0; --rim: #ff9f3a; --edge: #7a3f05; --fg: #c96a12; --bs: solid; }
-.k-std.r-fog { --c: #c9cfd8; --rim: #eef2f7; --edge: #5b6378; --fg: #3d4452; --bs: dotted; --glow: 0 0 12px rgba(220, 228, 240, .8); }
+.k-std.r-transpara { --c: #c9cfd8; --rim: #eef2f7; --edge: #5b6378; --fg: #3d4452; --bs: dotted; --glow: 0 0 12px rgba(220, 228, 240, .8); }
+
+/* chips from the workbook list */
+.k-std.frozen { --c: #d8f1ff; --rim: #ffffff; --edge: #4a8bb0; --fg: #1d5c8a; --bs: solid; --glow: 0 0 9px rgba(160, 225, 255, .9); } .k-std.frozen i { font-size: 10px; }
+.chip.feather::after { content: '〰'; position: absolute; top: -9px; right: -4px; font-size: 11px; color: #eef2f7; text-shadow: 0 0 6px #fff; }
+.k-flower { --c: #ff86ea; --rim: #ffe0fa; --edge: #8a2d5a; --fg: #fff; --bs: solid; --glow: 0 0 8px rgba(255, 134, 234, .7); }
+.k-petal { --c: #ffd1f2; --rim: #fff; --edge: #c0569b; --fg: #c0569b; --bs: dotted; }
+.k-clay { --c: #b8742a; --rim: #e6cba4; --edge: #4a2808; --fg: #fff3e0; --bs: solid; } .k-brick { --c: #a8432a; --rim: #e6a08a; --edge: #3d1205; --fg: #fff; --bs: double; }
+.k-dynamite { --c: #c8261e; --rim: #ffd36a; --edge: #4a0705; --fg: #fff; --bs: solid; --glow: 0 0 8px rgba(255, 90, 74, .8); animation: flicker .4s infinite alternate; }
+.k-std.r-seed { --c: #4a7a2a; --rim: #b8f08a; --edge: #1d3d0a; --fg: #eaffd6; --bs: solid; }
+.k-std.r-harmony { --c: #f4f4f4; --rim: #222; --edge: #555; --fg: #111; --bs: solid; --glow: 0 0 8px rgba(255, 255, 255, .6); }
+.k-std.r-power { --c: #ffd76a; --rim: #fff3bf; --edge: #8a6a05; --fg: #4a3200; --bs: solid; } .k-std.r-control { --c: #4a3a7a; --rim: #b08cff; --edge: #1d1440; --fg: #e3d9ff; --bs: solid; }
+.k-std.r-ward { --c: #1d4a66; --rim: #9fe8ff; --edge: #06263d; --fg: #9fe8ff; --bs: double; --glow: 0 0 10px rgba(159, 232, 255, .7); } .k-std.r-shadow { --c: #22222a; --rim: #5b5f6b; --edge: #000; --fg: #93a3c8; --bs: dotted; }
+/* die faces */
+.faces { display: inline-flex; gap: 2px; margin-left: 6px; vertical-align: 1px; } .face { min-width: 15px; padding: 0 3px; border-radius: 3px; background: rgba(255, 255, 255, .1); font-size: 10.5px; text-align: center; font-variant-numeric: tabular-nums; }
+.face.sp { background: rgba(255, 215, 106, .25); color: var(--amber); } .face sup { font-size: 7px; margin-left: 1px; }
+.face-pick { display: flex; gap: 4px; flex-wrap: wrap; margin: 6px 0; } .face-pick .btn { min-width: 30px; padding: 3px 7px; font-size: 12px; }

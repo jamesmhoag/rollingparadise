@@ -1,6 +1,7 @@
 // The floor: a map of places to visit between bouts, each opening as a panel.
 import { h, syncList, openPanel, closePanel, toast, btn, tween, pulse, swapText } from './core.js';
 import { app, hud, oppTip, trickTag, diceSummary } from './app.js';
+import { faceList, upgrade as upgradeFaces } from '../dice.js';
 import { dieEl, dieTip, trickTip, pips, drinkTip, cardTip, chipEl, chipTip, upInfo, cardEl, walletEl, jacketEl, drinkEl, feltStyle } from './parts.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
@@ -118,23 +119,33 @@ const setItem = (el, name, sub, price) => { el.querySelector('.main b').innerHTM
 function tryDo(ok, el, msg) { if (!ok) { toast(msg || 'You cannot afford that.', 'warn'); if (el) pulse(el, 'shake'); } return ok; }
 
 function smithPanel() {
-  const run = app.run; let sel = null;
+  const run = app.run; let sel = null, face = null;
   const forgeBox = h('div', { class: 'items list' }), pouch = h('div', { class: 'dicebox list' }), actions = h('div', { class: 'items list', style: { marginTop: '10px' } });
+  const facePick = h('div', { class: 'face-pick list' }), faceHint = h('p', { class: 'sub fade-t' });
   const done = after(render);
   function render() {
     syncList(forgeBox, Object.keys(D.DICE), (t) => t, (t) => { const el = item(); el.append(btn('Forge', () => { tryDo(R.forge(run, t), el, run.floor < D.DICE[t].forge.floor ? `The Diesmith forges ${t}s from floor ${D.DICE[t].forge.floor}.` : !R.forgeFodder(run, t) ? 'You do not have enough dice to melt down.' : null); sel = null; done(); }, null, 'small')); el.prepend(dieEl({ type: t })); return el; },
       (el, t) => { const f = D.DICE[t].forge, fod = R.forgeFodder(run, t), ok = run.floor >= f.floor && fod && run.purse >= R.forgeCost(run, t);
-        setItem(el, `1${t}`, run.floor < f.floor ? `From floor ${f.floor}` : `Melts ${f.dice} of your dice`, `${f.dice} dice + ${cents(R.forgeCost(run, t))}`); el.lastChild.classList.toggle('off', !ok);
+        setItem(el, `1${t}`, run.floor < f.floor ? `From floor ${f.floor}` : `Melts ${f.dice} of your dice`, `${f.dice} ${f.dice > 1 ? "dice" : "die"} + ${cents(R.forgeCost(run, t))}`); el.lastChild.classList.toggle('off', !ok);
         el._tip = () => `<b>Forge a ${t}</b><p>Costs ${cents(R.forgeCost(run, t))} and your ${f.dice} smallest ${f.dice > 1 ? 'dice' : 'die'}${fod ? `: ${diceSummary(fod)}` : ' (you need more dice; you always keep at least one)'}.</p>`; el.classList.add('has-tip'); });
-    syncList(pouch, run.dice, (d) => d.id + ':' + d.up.join(), (d) => { const el = dieEl(d); el.onclick = () => { sel = sel === d.id ? null : d.id; render(); }; el._tip = () => dieTip(d, 'Click to sell or upgrade it.'); el.classList.add('has-tip'); return el; }, (el, d) => el.classList.toggle('sel', sel === d.id));
+    syncList(pouch, run.dice, (d) => d.id + ':' + d.up.join() + ':' + faceList(d).join(), (d) => { const el = dieEl(d); el.onclick = () => { sel = sel === d.id ? null : d.id; face = null; render(); }; el._tip = () => dieTip(d, 'Click to sell or upgrade it.'); el.classList.add('has-tip'); return el; }, (el, d) => el.classList.toggle('sel', sel === d.id));
     const d = run.dice.find((x) => x.id === sel), acts = [];
     if (d) { acts.push({ k: 'sell', name: `Sell this ${d.type}`, sub: 'The Diesmith pays in chips.', price: `+${cents(D.DICE[d.type].sell)}`, label: 'Sell', go: () => { tryDo(R.sellDie(run, d.id), null, 'Keep at least one die.'); sel = null; } });
-      for (const [u, U] of Object.entries(D.DIE_UPGRADES)) acts.push({ k: u, name: U.name, sub: U.text + (d.up.length >= 2 ? ' This die already has two upgrades.' : ''), price: cents(R.dieUpgradeCost(run, d)), label: 'Upgrade', off: d.up.length >= 2 || (u !== 'accelerate' && d.up.includes(u)), go: () => tryDo(R.upgradeDie(run, d.id, u)) }); }
+      const vals = faceList(d); if (face == null || face >= vals.length) face = vals.indexOf(Math.max(...vals));
+      for (const [u, U] of Object.entries(D.DIE_UPGRADES)) {
+        const why = R.dieUpgradeBlock(run, d, u), after = faceList(upgradeFaces({ ...d, up: [...d.up], faces: d.faces?.map((f) => ({ ...f })) }, u, face));
+        const change = ['mirror', 'reflect'].includes(u) ? ' → a random face changes' : U.roll ? ' · when rolled' : ` → ${after.join(' ')}`;
+        acts.push({ k: u, name: `<span style="color:${U.color}">${U.mark}</span> ${U.name}${U.target ? ` <span class="dim">on face ${face + 1} (${vals[face]})</span>` : ''}`, sub: `${D.upgradeText(u)}<span class="dim">${change}</span>${why ? ` <span class="bad">${why}</span>` : ''}`,
+          price: cents(R.dieUpgradeCost(run, d)), label: 'Upgrade', off: !!why, go: () => tryDo(R.upgradeDie(run, d.id, u, face), null, R.dieUpgradeBlock(run, d, u)) });
+      } }
+    const vals = d ? faceList(d) : [];
+    syncList(facePick, vals.map((v, i) => ({ v, i })), (x) => `${x.i}:${x.v}`, (x) => btn(String(x.v), () => { face = x.i; render(); }, `<b>Face ${x.i + 1}</b><p>Shows ${x.v}. Pick it as the target for upgrades that change one face.</p>`, 'small'), (el, x) => el.classList.toggle('on', x.i === face));
+    swapText(faceHint, d ? `Faces: pick the target face (now face ${face + 1}). Upgrades marked "on face" change it.` : 'Pick a die to see its faces and upgrades.');
     syncList(actions, acts, (a) => a.k, (a) => { const el = item(); el.append(btn(a.label, () => { el._go(); done(); }, null, 'small')); return el; }, (el, a) => { setItem(el, a.name, a.sub, a.price); el._go = a.go; el.lastChild.classList.toggle('off', !!a.off); });
   }
   render();
   openPanel(h('div', {}, head('Diesmith', 'Reforges dice into other types and can upgrade your dice as well.'),
-    h('div', { class: 'cols2' }, h('div', {}, h('span', { class: 'cap', text: 'Forge' }), forgeBox), h('div', {}, h('span', { class: 'cap', text: 'Your pouch — pick a die' }), pouch, actions))), { wide: true });
+    h('div', { class: 'cols2' }, h('div', {}, h('span', { class: 'cap', text: 'Forge' }), forgeBox), h('div', {}, h('span', { class: 'cap', text: 'Your pouch — pick a die' }), pouch, faceHint, facePick, actions))), { wide: true });
 }
 
 function trickItem(run, getT) {

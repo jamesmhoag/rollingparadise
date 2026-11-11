@@ -1,0 +1,98 @@
+Chip Types ( 406 )	Type	Payment	Flip Value	Worth	Movable	Playable	State	Association	Party	Permanence	Pile	Placement	Stack amount	Created From	Create From Alt													
+Royale Paradise 1¢ chip	Basic	1	0 || 1	1¢	Yes	Yes	Inorganic		All	Resiliant	Roller	Versatile	1	Match Prep		Basic Chip worth 1¢ at the Royal Paradise												
+Royale Paradise 2¢ chip	Basic	2	0 || 2	2¢	Yes	Yes	Inorganic		All	Resiliant	Roller	Versatile	1	Match Prep		Basic Chip worth 2¢ at the Royale Paradise converts chip fee remainders under 2¢  into debt chips												
+Royale Paradise 5¢ chip	Basic	5	0 || 5	5¢	Yes	Yes	Inorganic		All	Resiliant	Roller	Versatile	1	Match Prep		Basic Chip worth 5¢ at the Royale Paradise  converts chip fee remainders under 5¢  into debt chips												
+Royale Paradise 10¢ chip	Basic	10	0 || 10	10¢	Yes	Yes	Inorganic		All	Resiliant	Roller	Versatile	1	Match Prep		Basic Chip worth 10¢ at the Royale Paradise converts chip fee remainders under 10¢  into debt chips												
+Block Chip	Defense	1	0 || 1	0¢	Yes	Yes			All	Fragile	Shield	Versatile	1	Spawned		Basic Deterent Chip good for 1¢ chip fee in a match												
+Counter Chip	Defense	1	0 || 1	0¢	Yes	Yes			All	Fragile	Shield	Versatile	1	Spawned		Basic Deterent Chip good for 1¢ chip fee in a match for both you and the charging Roller												
+Resist Chip	Defense	r	0 || r 	0¢	No	Yes			All	Fragile	Shield	Empty Space	Max	Spawned		Basic Deterent Chip deters damage instance under under r¢,  each resist chip is a stack tall and can not exceed max stack height in its value												
+Zap Chip	Hazard	s	N/A	f¢	Yes	No			Crew	Fragile	Both	Available Stack	Top	Spawned		Deterent Chip Shocks Rollerof fees with any debt it creates, is broken if fee exceeds												
+Feather p¢ Chip	Defense	p	0 || p	p¢ 	Yes	Yes			All	Temporary	Both	Targeted Chip	1	Chip Conversion		Turn limited Chip Modifier that causes charging Roller to miss any fees greater than the value of the stack												
+Hardened p¢ Chip	Defense	p	0 || p	p¢ 	Yes	Yes			All	Temporary	Both	Targeted Chip	1	Chip Conversion		Turn limited Chip Modifier that causes chips to cover any fee cost so that each fee instance cost one Chip until depleted												
+Regen x¢ Chip	Utility	p	0 || p	p¢ 	Yes	Yes			All	Temporary	Both	Targeted Chip	1	Chip Conversion		Turn limited Chip Modifier that causes remaining chips to grant recoup instanceTurn limited 												
+Transpara-Chip	Defense	p	1 || p	p¢ 	Yes	Yes			Crew	Temporary	Both	Targeted Chip	1	Chip Conversion		Chip can not be targeted by fee instances, but does not avoid extraneous fees frm fire, shock, virus, etc												
+Power Chip	Utility	s	0 || p	s¢ 	Yes	Yes			Crew	Temporary	Both	Targeted Chip	Max	Stack Conversion		Chip Conversion that generates more boosting influence that turn												
+Control Chip	Utility	s	0 || p	s¢ 	Yes	Yes			Crew	Temporary	Both	Targeted Chip	Max	Stack Conversion		Chip Conversion that generates more enfeebiling influence that turn												
+Anchor Chip	Utility	N/A	N/A	0¢ 	No	No			Crew	Match	Both	Empty Space	Base	Spawned		Match Limited Chip that can not be moved so any chips placed on top of it can not be affected by movement effects												
+Hole Chip	Hazard	/0	N/A	0¢ 	No	No			Crew	Match	Both	Empty Space	Base	Spawned		Match Limited Chip that creates a void on any empty stack it is moved to, chips moved onto this space are lost												
+Coin	Artifact	/0	N/A	0¢	No	No			Crew	Resiliant	Roller	Empty Space	Base	Match Prep		This isn't a chip at all its wider than the space, what can you even do with this? Can not be used to pay fees												
+Frozen f¢ Chip	Defense	f	N/A	f¢	Yes	No			Crew	Fragile	Roller	Available Stack	Top	Stack Conversion		Match Limited Chip Modifier that combines Royal Paradise chips together summing the value, lesser fees increments are convert to debt chips, Frozen chips can not be burned, corrupted, or shocked or turned into another type of chip												
+Sticky f¢ Chip	Utility	f	N/A	f¢	No	No			Crew	Fragile	Roller	Available Stack	1	Stack Conversion		Macth Limited Chip Modifier that spread to each chip above and below it in the stack and permemnently applies turn limited chip modifiers to each chip in the sticky stack (limited to first modifier stuck) can not be turned into another type of chip												
+Seed p¢ Chip	Vehicle	p	N/A	p¢ 	No	No			Crew	Fragile	Roller	Available Stack	Top	Chip Conversion		Match Limited Chip Modifier that is planted on a stack of chips (min 2) converting the top most to a flower chip that blooms new petal every turn, takes one fee instance to be removed												
+Tree Chip	Spawner	s	N/A	0¢	Break	No			Crew	Fragile	Roller	Empty Space	Top	Space Conversion		Grows until it reaches max stack height then drops seeds on adjacent piles, Count is based on height up to max adjacent spaces count (8), When broken it spawns wood chips in adjacent spaces based on height												
+Flower Chip	Spawner	f	N/A	0¢	Break	No			Cast	Fragile	Roller	Available Stack	Top	Stack Conversion		Grows Petal Chips and Drop themo on adajacent stacks each turn, Count is based on chips it is rooted in up to max adjacent spaces amount (8)												
+Petal Chip	Defense	1 instance	1*p	p¢ 	Yes	Yes			Crew	Fragile	Roller	Available Stack	Top	Spawned		Turn Limited Chip that is bloomed from an adjacent flower chip on any stack that has capacity available, Each petal takes one fee instance to be removed, Petals do not stack and new ones bloom only if stack has no petal or flower chips												
+Opportunity 1¢ Chip	Bounty	1 instance	0 || 1	1¢	Yes	Yes			All	Fragile	Shield	Versatile	1	Spawned		Chip that is can be earned during a match and used like any chip, remaining opportunities at the end of match refunds equvilant amount of bets made by the Roller that turn (bets must exceed or match remaining opportunity chips)												
+Golded 2*p¢ Chip	Bounty	2*p	N/A	2*p¢ 	Yes	No			Cast	Fragile	Roller	Versatile	1	Chip Conversion		Basic Chip that is turned to Gold, it can no longer be used, but is convert into 2X chips remaining amount of Gold Chips												
+Boosted Chip	Utility	p + b	0 + b || p + b	p¢ 	Yes	Yes			All	Fragile	Both	Versatile	1	Chip Conversion		Increases Dice Values for each Boosted chip in  the pile												
+Cheapened Chip	Aura	1 instance	0 || 0	0¢	Yes	Yes			All	Fragile	Both	Versatle	1	Chip Conversion		Decreases Dice Values for each Boosted chip in the pile												
+Harmony Chip	Aura	1 instance	N/A	0¢	Yes	No				Fragile	Both	Versatile	1	Spawned		Cleanses negative valued chips leaving Basic Chips behind												
+Debt -1¢ Chip	Hazard	-1	N/A	-1¢	Yes	No			All	Consuming	Both	Versatile	1	Spawned		Fee Chips cost Roller if chips are available behind it in the pile and fee is not deterred that turn, these chips can not be used and prevent using any chips												
+Burning -1¢ Chip	Hazard	-1	N/A	-1¢	Yes	No				Consuming	Both	Targeted Stack	1	Chip Conversion		Fee Chips that have a 30% chance to spread to adjacent piles each turn they remaining in the pile												
+Corrupting -1¢ Chip	Hazard	-1	N/A	-1¢	Yes	No				Consuming	Both	Targeted Stack	1	Chip Conversion		Fee Chips that have a 60% chance to spread to random piles each turn they remaining in the pile												
+Shocking -1¢ Chip	Hazard	-1	N/A	-1¢	Yes	No				Consuming	Both	Targeted Stack	Top	Chip Conversion		Fee Chips that charge random amount of random  piles each turn they are remaining in the pile												
+Poison -1¢  Chip	Hazard	-1	N/A	-1¢	Yes	No				Consuming	Roller	Targeted Stack	Top	Chip Conversion		Lingers on the stack until it is completely depleted												
+Boom -5¢ Chip	Hazard	-5	N/A	-2¢	Yes	No				Temporary	Both	Available Stack	1	Chip Conversion		Added to any open stack, and the on the next turn charges fees to the stack its on and all adjacent stacks												
+Dynamite Chip	Hazard	-s	N/A	-s¢	Yes	No				Temporary	Both	Empty Space	Top	Space Conversion		Consumes one chips in the dynamite stack until all are spent, then explodes destroying all chips in adjacent stacks												
+Black Hole Chip	Hazard	/0	N/A	0¢	No	No				Match	Both	Versatile	Base	Space Conversion		Sucks in adjacent chips each turn which are lost												
+UFO Chip	Creature	50	N/A	0¢	No	No				Temporary	Both	Versatile	Flying	Encountered		Flying Chip That removes a chip from a stack then flies back its home planet, Chips taken are lost												
+Mothership Chip	Creature	500	N/A	0¢	No	No				Temporary	Both	Available Stack	Flying	Encountered		Flying Chip That removes chips in a stack each turn until they are all depleted, Chips taken are lost												
+Fairy Chip	Creature	25	N/A	0¢	No	No				Temporary	Both	Available Stack	Flying	Encountered		Converts the top chip in the stack below it into a random chip of any type, Chaos Reigns! it cries as it flies away at the end of turn												
+Unicorn Chip	Creature	250	N/A	0¢	No	No				Temporary	Both	Available Stack	Flying	Encountered		Converts all chips in the stack below it into random chips of any type, Chaos Reigns! it cries as it flies away at the end of turn												
+Heli-Chipter	Utility	10	N/A	0¢	Yes	No				Match	Both	Available Stack	Flying	Spawned		Lifts stack below it off the table granting flying to each of the chips and reverses the play order of the stack to bottom to top												
+Cloud Chip	Hazard	/0	N/A	0¢	Yes	No				Temporary	Both	Versatile	Flying	Spawned		Rains on the space or stack below it cleansing the chips, and removing modifiers (melting ice, extinguishing fire, nullfiying corruption etc) Makes plants grow faster/produce more, can randomly shock random stacks												
+Worm Hole Chip	Hazard	/0	N/A	0¢	No	No				Temporary	Both	Empty Space	Base	Space Conversion		Any chips placed on top of the Worm Hole is transported it another empty space												
+Volcano Chip	Hazard	/0	N/A	0¢	No	No			Stage	Temporary	Both	Versatile	Base	Space Conversion		Erupts destroying all in the stack on the space and launches burning chips at  random stacks  each turn it is active, once dormant the space returns to normal but with a lower max height												
+Dragon Chip	Creature	250	N/A	0¢	No	No				Temporary	Both	Available Stack	Flying	Encountered		Breathes burning chips on the stack beneath it												
+Ward Chip	Utility	50	N/A	0¢	Yes	No				Match	Both	Empty Space	Max	Space Conversion		Nullifies the highest value depleting effect each turn												
+Hive Chip	Spawner	20	N/A	0¢	Break	No				Match	Both	Empty Space	Max	Stack Conversion		Create bumble bee chips and create Honey with Pollenate Bumble Bee Chips												
+Bumble Bee Chip	Creature	1	N/A	0¢	No	No				Temporary	Both	Adjacent Versatile	Flying	Spawned		Moves to the nearest flower and pollenates it causing it to bloom instantly for max value, and causing the bee to become a pollenate bumble bee, which returns to the hive on the next turn												
+Honey Chip	Consumable	2*p	2*p || 2*p	2*p¢	No	Yes				Delicious	Both	Adajacent Stack	1	Stack Conversion		Has Sticky, Golden, and  Delicious chip effect properties allowing it to be consumed for temporary attribute bonuses												
+Wood Chip	Defense	2 instances	0 || 0	0¢	Yes	Yes				Fragile	Both	Adjacent Versatile	1	Stack Conversion		Generated from a felled  Tree chip take two fee instances to break												
+Chocolate Chip	Consumable	p instances	N/A	0¢	Yes	No				Delicious	Both	Targeted Stack	Top	Chip Conversion		Can be consumed to gain temporary attribute bonuses												
+Fairy Bounty Chip	Bounty	1 instance	0 || 25	25¢	Yes	Yes				Resiliant	Roller			Chip Conversion		Drop after forcing a fairy into debt.  The chip can be used  and moved but is fragile and breaks with any instance of damage, can be exchanged for Royal Paradise Chips and a Unique Prize												
+Unicorn Bounty Chip	Bounty	1 instance	0 || 250	250¢	Yes	Yes				Resiliant	Roller			Chip Conversion		Drop after forcing a Unicorn into debt.  The chip can be used  and moved but is fragile and breaks with any instance of damage, can be exchanged for Royal Paradise Chips and a Unique Prize												
+UFO Bounty Chip	Bounty	1 instance	0 || 50	50¢	Yes	Yes				Resiliant	Roller			Chip Conversion		Drop after forcing a UFO into debt.  The chip can be used  and moved but is fragile and breaks with any instance of damage, can be exchanged for Royal Paradise Chips and a Unique Prize												
+Mothership Bounty Chip	Bounty	1 instance	0 || 500	500¢	Yes	Yes				Resiliant	Roller			Chip Conversion		Drop after forcing a Mothership into debt.  The chip can be used  and moved but is fragile and breaks with any instance of damage, can be exchanged for Royal Paradise Chips and a Unique Prize												
+Dragon Bounty Chip	Bounty	1 instance	0 || 250	250¢	Yes	Yes				Resiliant	Roller			Chip Conversion		Drop after forcing a Dragon into debt.  The chip can be used  and moved but is fragile and breaks with any instance of damage, can be exchanged for Royal Paradise Chips and a Unique Prize												
+Battery Chip	Utility	1 instance			Yes	Yes				Match			1	Chip Conversion		Energizes electrical and electronic chips on top												
+Clay Chip	Utility	p instances								Fragile				Chip Conversion		Absorbs a count of fee istances before breaking, based on the value of the chips it was converted from												
+Brick Chip	Utility	2*p instances								Fragile				Chip Conversion		A burn clay chip becomes a brick chip and takes twice as many instances to break												
+Acid Chip	Hazard	-1								Consuming				Chip Conversion		Destroys the chip under it each turn until it reaches the table then leaves a Hole												
+Upgrade Chip										Temporary																		
+Tornado Chip	Hazard	/0								Temporary						Tornado effects a random space/ stack if the stack is less that its strength its chips are scattered and have a chance to be lost												
+Blizzard Chip	Hazard	/0								Temporary						Giant Blizzard effect every space for one turn and obsucring it, after the turn end any stack less than its strength value is converted to a frozen chip												
+Ghost Chip	Creature	10 instances								Temporary						Very Spooky, like transparent chip												
+Puddle Chip	Hazard	/0								Temporary						Space that gets water will form a puddle and can no longer be played on until it dries after a turn without being watered												
+Ghost Ship Chip	Vehicle	100 instances								Temporary						Sails across empty tiles to a stack of chips with a gold chip on top and steals it, chips is converted into a treasure chip if ghost ship can be managed to destroyed												
+Chip Chip	Consumable									Fragile						Can be dipped in a dip chip to increases value, and makes it delicious granting temporary bonus attributes												
+Dip Chip	Consumable									Limited						Kinda like a puddle but its dip, which can be dipped with Chip Chips enough times to expose the space again												
+Dragon Roost Chip	Spawner									Match						If present with a dragon will cause the dragon to nest after burning a chip, leaving a new dragon egg, dargon returns to burn a chip stack after nesting, but flies off if the roost has an egg on top												
+Dragon Egg Chip	Consumable									Fragile						Hatches a Dragon after the Owner Plays a trick with a 10 or higher value												
+Treasure Chip	Conditional									Fragile						Contains a random amount of gold chips but has  slight chance one is a curse chip												
+Cursed Chip	Conditional									Fragile						Can not be distinguished for a gold chip, but has a negative effect on any roller with it in thier pile. Curse Effect is lifted as soon as the Cursed coin is removed from a pile												
+Mole Chip	Creature									Fragile						Digs up a random spot and creates a hole in it												
+Sun Chip	Aura									Temporary		Versatile				Increases plant growth for every space on the Roller's table, but they can not obcsure chips												
+Shadow Chip	Conditional									Fragile						Chips can not be targeted when behind taller stacks of chips												
+Repeater Chip										Fragile						Causes specific roll value (based on the count of chips below it) of effects targeted at the owner to be repeated when this chip is on top, 												
+Mimic Chip										Fragile						Each mimic chip on top of a pile cause each trick performed to be repeated that turn												
+Reducer Chip										Fragile			1			Each reducer chip on top of a pile lowers targeted effect on the own of the chips												
+Forgetter Chip										Fragile			1			Causes specific roll value (based on the count of chips below it) of effects target at the owner to be negated when this chip is on top, 												
+Tesla Chip	Hazard									Match						Grabs a lightning attack and send multiple back at random targets												
+Absorbtion Chip	Utility									Fragile						Absorbs instances of lightning												
+Sprinkler Chip	Utility									Match						Waters nearby space or stacks on the spaces, watered spaces can not be burnt and plant chip grow faster												
+Uranium Chip	Hazard									Match						Mutates 1 chip from an adjacent stack into another a different chip												
+Big Chip	Basic									Fragile						Chips that covers 5 total spaces so they can not fall in holes, Big chips can only be stacked on other big chips or empty spaces, but any chips can be stacked on a big chip if stack is not max height												
+Little Chip	Basic									Fragile			Top			Chips that don't cover a full space and can only be stacked on by other Little Chips												
+Fibonacci Chip	Conditional									Fragile			1			Chips that when stacked on each merge into a single chip with a greater value chip, each increment is the nex in Fibonaci Sequence (1,1,2,3,5,8,13 ...)												
+Prime Chip	Conditional									Fragile			1			Chips that when stacked on each merge into a single chip with a greater value chip, each increment is the next Prime Number (1,2,3,5,7,9,11,13,17,19....)												
+Magic Hat Chip	Gear	1	0 || 1	0¢ 	Yes	No				Fragile	Roller	Versatile	Top || Base	Spawned		Movable Hole												
+B 52¢ Chip	Vehicle	52	N/A	52¢ 	No	No				Fragile	Roller		Flying			Advances one space along the row leaving a boom 52¢ chip on top												
+Heavy Chip										Fragile	Roller		Base			Burden												
+Metal Chip										Match	Roller		Base			Deterent and Burden												
+Fish "n Chip	Consumable									Delicious	Roller		Base			Delicious and something to do with n values												
+Hamburger Chip	Consumable									Delicious	Roller		Base			Delicious if  cover top and bottom with bun chips												
+Bun Chip	Consumable									Delicious	Roller		Base			Delicious if the top or bottom of burger chip												
+Egg Chip	Consumable									Delicious	Roller		Base			Crack and Hatched conditions												
+Spy Chip	Utility									Delicious	Roller		Base			Appears to be a different chip but gains the Owner of it an advantage when its on top of one of their stacks												
+Doom Chip	Aura										Roller		Base			Appears to be a different chip but cause instance debt of Opposing roller if all of their stacks have a doom chip on top, appears as a doom chip to the Roller and a basic chip to the opponetn												
