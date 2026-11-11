@@ -303,7 +303,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .die.big { width: 64px; height: 64px; } .die.big i { font-size: 26px; } .die.big i::before { width: 34px; height: 34px; } .die.big.d4 { --ly: 10px; } .die.big::before { translate: 0 4px; }
 
 /* ---------- round 3: rolled tray, debt, calamity spaces ---------- */
-.tray-box { position: absolute; left: 882px; top: 436px; width: 190px; height: 42px; border: 1px dashed var(--line); border-radius: 9px; display: grid; place-items: center; font-size: 11px; color: var(--dim); transition: color .4s, border-color .4s, background-color .4s; pointer-events: none; }
+.tray-box { position: absolute; left: 882px; top: 436px; width: 190px; height: 80px; border: 1px dashed var(--line); border-radius: 9px; display: grid; place-items: center; font-size: 11px; color: var(--dim); transition: color .4s, border-color .4s, background-color .4s; pointer-events: none; }
 .tray-box.has { color: transparent; border-color: rgba(110, 240, 255, .55); background: rgba(110, 240, 255, .07); }
 .c-type .xm { color: var(--dim); font-weight: 700; letter-spacing: 0; } .c-type .xm.up { color: var(--good); text-shadow: 0 0 6px var(--good); }
 .cell.owes { border-color: rgba(224, 85, 95, .7); box-shadow: inset 0 0 12px rgba(224, 85, 95, .35); }
@@ -311,3 +311,28 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .cell.volcano { background: radial-gradient(circle at 50% 60%, #ffd36a 8%, #f2541f 26%, #3a0d05 60%, rgba(0, 0, 0, .3) 78%); border-color: #f27b1f; animation: flicker .6s infinite alternate; }
 .tag-t.armed { box-shadow: 0 0 0 2px var(--coral); }
 .up-line { color: var(--good); } .q .up { font-size: 8px; }
+
+/* ---------- round 4: phased turns, the roll, chip-first bidding, Debt you can read ---------- */
+.pills.steps { gap: 0; }
+.pill.step { position: relative; margin-right: 14px; opacity: .5; transition: opacity .3s, box-shadow .3s, border-color .3s; }
+.pill.step em { font-style: normal; font-weight: 800; display: inline-grid; place-items: center; width: 15px; height: 15px; margin-right: 2px; border-radius: 50%; background: rgba(150, 215, 255, .18); color: var(--cream); font-size: 10px; }
+.pill.step:not(:last-child)::after { content: '›'; position: absolute; right: -11px; top: 0; color: var(--dim); }
+.pill.step.now { opacity: 1; border-color: var(--gold); box-shadow: 0 0 10px rgba(110, 240, 255, .45); } .pill.step.now em { background: var(--gold); color: #03202a; }
+.pill.step.done { opacity: .35; } .pill.step.done span { color: var(--dim); }
+.owes-t { color: var(--bad); font-size: 12px; font-weight: 700; }
+.btn.wait { opacity: .55; filter: saturate(.4); }
+.tray-box.ready { border-color: rgba(110, 240, 255, .5); color: var(--cream); animation: breathe 1.6s ease-in-out infinite; }
+.chip.flipsel, .chip.bidsel { translate: 0 -7px; filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 9px var(--gold)); }
+.chip.bidsel { filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 9px var(--pink)); }
+.cell.soft { border-color: rgba(110, 240, 255, .4); cursor: pointer; } .cell.soft:hover { background: rgba(110, 240, 255, .14); }
+.cell.sel { border-color: #fff; background: rgba(255, 255, 255, .14); box-shadow: 0 0 12px rgba(110, 240, 255, .6); }
+.c-type { display: flex; align-items: center; gap: 3px; } .c-type .tgt { font-size: 9.5px; padding: 1px 7px; border-radius: 9px; background: var(--coral); color: #fff; opacity: 0; pointer-events: none; transition: opacity .3s; margin-left: auto; } .c-type .tgt.on { opacity: 1; pointer-events: auto; }
+.scene.bout.m-bid .tcard.pick .bidslot { border-color: var(--pink); border-style: solid; background: rgba(255, 110, 220, .25); color: #fff; box-shadow: 0 0 12px rgba(255, 110, 220, .7); animation: breathe 1.2s ease-in-out infinite; }
+.tcard.bid .bidslot { border-color: #6f7fb0; color: #9fb0d8; } .tcard.inplay .bidslot { border-color: transparent; color: transparent; }
+.orow.reveal { animation: reveal .8s var(--ease); } @keyframes reveal { 0% { box-shadow: 0 0 0 2px var(--pink), 0 0 18px var(--pink); } 100% { box-shadow: none; } }
+.fc-layer { position: absolute; inset: 0; pointer-events: none; z-index: 990; }
+.fc { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 1px; padding-top: 1px; font-size: 10.5px; line-height: 12px; font-weight: 800; pointer-events: none; }
+.fc b { padding: 0 4px; border-radius: 6px; background: rgba(4, 2, 12, .85); white-space: nowrap; }
+.fc .paid { color: var(--amber); } .fc .owed { color: #ff9aa2; } .fc .carry { color: var(--pink); } .fc .blk { color: var(--sky); } .fc .miss { color: var(--dim); }
+.fc.in::before { content: ''; position: absolute; left: 3px; right: 3px; top: 0; height: 50px; border: 2px dashed var(--pink); border-radius: 7px; }
+.debt-tag { position: absolute; height: 12px; line-height: 12px; text-align: center; font-size: 9px; font-weight: 800; color: #ff9aa2; pointer-events: none; text-shadow: 0 0 4px #000, 0 0 2px #000; }

@@ -163,7 +163,7 @@ export const CHIPS = {
   opp: { name: 'Opportunity chip', text: 'Earned during a bout for unused rolls. Worth 1¢ and can be bid. Fragile: lost at the end, but each one left pays a bonus chip if you win.' },
   block: { name: 'Block chip', text: 'Deterrent. Absorbs 1¢ of a fee and breaks. No worth. Fragile.' },
   counter: { name: 'Counter chip', text: 'Deterrent. Absorbs 1¢ of a fee and puts a Debt chip on the attacker. No worth. Fragile.' },
-  debt: { name: 'Debt chip', text: 'A fee waiting to be paid: worth minus its value. It blocks bidding from this stack. When the House settles, Debt takes chips from the top while it covers their value. What is left stays until it reaches the value of the chip beneath.' },
+  debt: { name: 'Debt chip', text: 'A fee waiting to be paid, shown as one marker with the exact amount. It already counts against Worth and blocks bidding from this stack. It pays the chip beneath once it reaches that chip\'s value, from any later fee.' },
   burn: { name: 'Burning chip', text: 'Hazard. Each turn it destroys the chip beneath it and has a 30% chance to spread to a neighbouring stack. Burns out after 3 turns.' },
   acid: { name: 'Acid chip', text: 'Hazard. Each turn it destroys the chip beneath it. When it reaches the table it leaves a Hole.' },
   shock: { name: 'Shocking chip', text: 'Hazard. Each turn it puts 1¢ of Debt on two other stacks. Fades after 2 turns.' },

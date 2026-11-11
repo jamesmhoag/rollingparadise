@@ -14,33 +14,73 @@ is not built yet. Tab names are in **bold**.
 
 ### The bout (**Bout**, **Plays**, **Effects**, **Tricks**, **Targeting**, **Game**)
 - Goal: deplete the opponent's Worth before they deplete yours.
-- A turn: draw tricks from the Book to the Run, roll dice out of the Pouch (each shows its value in the Rolled
-  tray before it goes anywhere), place them on the shown tricks where they do the most, bid chips from your
-  position to play them, then Play or Pass. A die placed this turn can be moved until its trick is bid; dice left
-  in the tray go back to the Pouch. Unused draws, rolls and bids pay Power, Opportunity chips and chips
-  stolen from the Stage.
+- A turn has three planning phases, then the House plays it (see **The turn** below). Unused draws, rolls and
+  bids pay Power, Opportunity chips and chips stolen from the Stage.
 - A trick has a Trait (bid, no dice), a Roll effect (bid plus dice, scaled by the total) and a Bonus (full dice of
   the right type, condition met, matching class only).
 - Effects resolve in the workbook's order: Investments, Insurances, Expenses, Corrections.
 - Bids go to the House. A bid worth more than 1¢ makes the trick linger that many extra turns: the Trait repeats
   each turn and the Roll effect lands on the last turn, larger for the wait.
-- Fees go out as Debt chips (1, 2, 5, 10¢) on the target stacks. When every Expense of the phase is out, the House
-  settles: Debt takes chips from the top while it covers their value, the paid chips go to the Stage, and the rest
-  stays on the stack as Debt until a later fee or the end of the turn finishes the chip beneath it.
+- Fees go out as Debt on the target stacks, then the House settles them (see **Debt** below).
 - Both Rollers' tricks in a phase are played together. Every value is read from the table as it stood when the
   phase was called, so nothing played in a phase changes another trick in the same phase.
 - The Stage is shown as stacks of chips in front of the House. The winner takes the whole Stage.
 - Targeting approaches (front, rear, flank, body, any, meter) and distributions (Hit, Swipe, Poke, Hook, Drop,
   Burst, Wave, Aura, Rain) with the workbook's minimum / increment / maximum space counts.
 - 26 tricks across the four types, named from the trick lists.
-- Flips: a standard chip can be flipped from the top of a stack onto a shown trick. It lands as 0 or its worth,
-  counts as a die of any type, uses a roll, and returns to the Meter when the trick has played.
+- Flips: the top standard chip of a stack can be picked in the Roll phase alongside dice. It lands as 0 or its
+  worth, counts as a die of any type, uses a roll, and returns to the Meter when the trick has played (or when the
+  Roll phase closes, if it was left in the roll).
 - The House runs the resolution with two arms, one per Roller: it collects the bids, calls each phase, points both
   arms at the two tricks being played and the spaces they land on at the same time, posts both calls to the feed,
   then calls Settle and rakes the paid chips to the Stage.
 - Trick cards show their multiplier (quality plus +0.25 per upgrade) and the tooltip and Trick Trader spell out
   what the next upgrade does to the roll total and the Trait. A phase tracker and a four-line action
   feed stay on screen for the whole bout.
+
+### The turn
+Both Rollers go through the same three phases. A phase closes for both at once, and closing it ends that kind of
+action for the turn.
+
+| Phase | What you do | Required before it closes | Closing it means |
+| --- | --- | --- | --- |
+| 1 · Draw | Click tricks in the Book to show them on the Run, up to Trickery. | At least one draw. | No more draws this turn. |
+| 2 · Roll | Pick dice from the Pouch, and top chips to flip, up to Proficiency. Press Roll: all of them land in **the roll** together, showing their values. Put them on shown tricks or leave them; move them between tricks freely. | At least one rolled die on a trick. | No more rolling or moving dice. Dice left in the roll go back to the Pouch (a flipped chip to the Meter). |
+| 3 · Bid | Click a stack to pick up its top chip, then click a trick to bid it. Repeat until out of bids (Ingenuity). A trick that already has a bid can take another; its BID slot becomes a **+** after the chips already on it. | At least one bid. | The House collects the bids and plays the turn. |
+
+- **You see the other Roller's move in a phase only after you lock in yours.** The opponent makes its move for a
+  phase when you lock it in, working from your table as it stood when the phase opened, so neither side sees the
+  other's choice before making its own. The feed then posts what they did ("Low Ball rolls 3 + 4 onto Charge").
+- Rolling is **one throw a turn**. Undo in the Roll phase takes dice off tricks and back into the roll, but never
+  undoes the throw, so you cannot look at values and pick again. Undo in Draw or Bid takes back that phase only.
+- A requirement is waived when it cannot be met: an empty Book, no shown trick with room for a die, no die or
+  flippable chip, or no chip you could bid without going broke. A bid can never spend your last chip.
+
+### Debt
+A fee is paid in whole chips, from the top of the stack it lands on. The rule, in the order the House applies it:
+
+1. Block and Counter chips on top absorb 1¢ each.
+2. The top chip is paid to the Stage if the Debt covers its whole value; repeat with the next chip.
+3. What cannot cover the next chip stays on that stack as **Debt**: one red marker showing the exact amount, with
+   a tag such as "3 of 5¢" (3¢ owed towards the 5¢ chip it sits on). It already counts against Worth, blocks
+   bidding from that stack, and the chip is paid as soon as later fees bring the Debt up to its value.
+4. If the stack runs out of chips, the rest (**overkill**) moves to the next stack behind it in the same **lane**:
+   the line of stacks running from the Stage out to the edge of the table. Overkill never spreads to another lane.
+   With no stack behind, it is wasted. A Hardened stack pays one chip per fee and nothing carries on.
+
+Worked example (this is checked in `tests/phases.mjs`): a stack of 5, 5 and 1 (top) takes a 14¢ fee. The 1, 5 and 5
+are paid (11¢); the stack is empty, so 3¢ carries to the stack behind, a 2, 2, 2. One 2 is paid and 1¢ stays there
+as Debt ("1 of 2¢"). A later 1¢ fee on that stack makes it 2¢ and the next 2 is paid.
+
+How this is shown:
+- While aiming an Expense (or hovering a bid one), every stack it touches shows the forecast: gold **−n** paid,
+  red **n owed** left as Debt, pink **n→** carried down the lane, **n wasted** overkill with nowhere to go. The
+  forecast runs the House's own settle on a copy of the table, so it matches what happens unless the other
+  Roller's tricks change the table first.
+- Worth shows what is owed beside it; each indebted stack carries its "x of y¢" tag; the stack tooltip states the
+  rule and how much more Debt takes its top chip.
+- When the House settles, the feed lists the chips paid and where the rest went, for example "Low Ball pays 11¢
+  (1 + 5 + 5) to the Stage: 3¢ overkill carries to the stack behind."
 
 ### Chips (**Chips**, **Shop**)
 - Royale Paradise chips of 1, 2, 5 and 10¢, unlocked by floor as in the Chip Exchange table.
@@ -87,16 +127,17 @@ is not built yet. Tab names are in **bold**.
 
 | Question | Reading used |
 | --- | --- |
-| Do Rollers act in turn or together? | Together. Both plan, then everything resolves by effect type. The opponent's Run is visible while you plan. |
-| The nine turn phases (Opening, Deal, Drop, Decision, Dance, Bow) | Folded into draw, roll, bid and Play. There is no separate hand, and no Toss or Reroll in the Bow. |
-| How a fee meets a chip | A fee removes chips from the top while it covers their value. What is left becomes Debt chips on the next chip, which is collected when Debt reaches its value. Overkill carries to the stack behind. |
+| Do Rollers act in turn or together? | Together, phase by phase (Draw, Roll, Bid). Each sees the other's move in a phase only once both have made it. Then everything resolves by effect type. |
+| The nine turn phases (Opening, Deal, Drop, Decision, Dance, Bow) | Folded into Draw, Roll, Bid and the House's play. There is no separate hand, and no Toss or Reroll in the Bow. |
+| How many throws a turn? | One. Everything you will roll is picked first and lands together. |
+| How a fee meets a chip | See **Debt** above: whole chips from the top, the remainder stays as Debt, overkill goes down the lane only. |
 | When tilt tiers are bought | Unlocked once per floor, then free to use for every bout on it. |
 | How a bout ends if neither side breaks | "Last call" is an addition: from turn 9 every Expense is multiplied by a factor that grows each turn. At turn 40 the most Worth wins. |
 | Debt (the **Debt** tab's five concepts) | "Knocked out by debt": reaching zero Worth loses the bout. |
 | Dice upgrades | Three of the 22 listed: Accelerate, Escalate, Stabilize. |
 | Which cards take a wallet slot | Benefit cards and the Royal Card do (Collectables C80: with no room for the Royal Card you drop one of your two starters). Membership, Suite Key, Punch and Paradise are passes and do not. Cards can be dropped from the kit at any time, except the Royal Card before floor 1. |
 | Membership Card discount | "Also gives the discount": 10% off at the Trick Trader, not stacking with a Trader Discount Card. |
-| Debt chip values | Debt comes in the chip denominations, so 7¢ owed shows as a 5 and a 2. |
+| Debt chip values | One Debt marker per stack showing the exact amount owed (it used to be split into 5, 2 and 1¢ chips, which read like money). |
 | Which dice make the alley roll ("2dn") | Your two largest dice. Big dice are worth keeping for it. |
 | Wallet prices | Stats come from the **Gear** tab and prices from the **Gift Shop** tab, matched in order where the names differ. |
 | What a flip costs | One roll. The chip is not spent: it comes back to the Meter. |

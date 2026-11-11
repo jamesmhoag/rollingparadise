@@ -63,3 +63,13 @@ comes from and the specific gaps.
     turns, Tornado throws stacks under 3 chips, Black Hole takes one chip a turn) are mine.
 32. Should Debt that does not cover the chip beneath it ever collect on its own? Now it waits until it reaches the
     chip's value, from any further fees.
+
+## Round 4 additions (phased turns and Debt)
+33. Rolling is read as one throw a turn. Should a Roller be able to throw again with rolls left over (for example
+    after a sip that raises Proficiency)?
+34. When every chip you could bid is your last, the required bid is waived. Should the House instead force the
+    bid (and the loss), or charge something else?
+35. Overkill goes only down its own lane and is wasted when nothing is behind. Should wasted overkill do anything
+    (spill to a neighbouring lane, go to the House, pay Power to the attacker)?
+36. The required draw, roll and bid each cost something every turn, so the AI now clears floor 1 less often in the
+    simulations. Should the rewards for unused actions or opponent strength be retuned around the requirements?

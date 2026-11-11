@@ -1,6 +1,6 @@
 import * as R from '../js/run.js';
 import * as B from '../js/bout.js';
-import { planTurn } from '../js/ai.js';
+import { autoTurn } from '../js/ai.js';
 import * as D from '../js/data.js';
 const stat = {};
 for (let seed = 1; seed <= 150; seed++) {
@@ -21,7 +21,7 @@ for (let seed = 1; seed <= 150; seed++) {
       start = R.startTable(run, R.newPrep(run, kind, 1));
     }
     const { bout } = start; let dmg = [0, 0];
-    while (!bout.over) { for (const s of bout.sides) planTurn(bout, s); for (const _ of B.resolve(bout)); }
+    while (!bout.over) { autoTurn(bout); for (const _ of B.resolve(bout)); }
     const k = `F${f} ${kind}`; const st = stat[k] ||= { n: 0, turns: 0, wins: 0, timeouts: 0, w0: 0, w1: 0 };
     st.n++; st.turns += bout.turn; st.wins += bout.winner === 0; st.timeouts += bout.timeout ? 1 : 0; st.w0 += bout.sides[0].dealt / bout.turn; st.w1 += bout.sides[1].dealt / bout.turn;
   }
