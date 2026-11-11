@@ -73,7 +73,7 @@ function chipsTab(own) {
   for (const k of ['opp', 'block', 'counter', 'debt', 'flower', 'petal', 'clay', 'brick', 'dynamite']) { const ch = { kind: k, value: k === 'opp' ? 1 : k === 'debt' ? 3 : 0 };
     out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), D.CHIPS[k].name, [D.CHIPS[k].text, dim(`Made by: ${BOUT_CHIPS[k]}`)])); }
   out.push(sec('Hazard chips', 'Left by Expenses with an element. A shop chip of the matching colour makes a stack immune.'));
-  for (const k of ['burn', 'acid', 'shock', 'corrupt', 'poison', 'boom']) { const ch = { kind: k, value: 0 }, by = leftBy(k), cure = Object.keys(D.SHOP_CHIPS).find((x) => D.resistsOf(x).includes(k));
+  for (const k of ['burn', 'acid', 'shock', 'corrupt', 'poison', 'boom', 'frost', 'lava']) { const ch = { kind: k, value: 0 }, by = leftBy(k), cure = Object.keys(D.SHOP_CHIPS).find((x) => D.resistsOf(x).includes(k));
     out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), D.CHIPS[k].name, [D.CHIPS[k].text, dim(`Left by: ${by.join(', ') || 'creatures and calamities'}${k === 'burn' ? ', the Dragon, Inferno and Volcano' : ''}.${cure ? ` Stopped by the ${D.SHOP_CHIPS[cure].name}.` : ''}`)])); }
   return out;
 }
@@ -85,7 +85,7 @@ function tricksTab(own) {
     for (const [id, def] of Object.entries(D.TRICKS)) { if (def.type !== type) continue;
       const t = { id, q: 1, up: 0 }, n = own.trick(id);
       out.push(entry(tipped(tagOf(t), () => trickTip(t, own.run?.cls)), def.name,
-        [`${def.cls ? D.CLASSES[def.cls].name : 'Any class'} · ${def.count}${def.die} · ${def.approach === 'none' ? 'no target' : `${def.approach}, ${D.DIST[def.dist].name}`}`, `<span class="k">Roll</span> ${def.roll.text}`, `<span class="k">Bonus</span> ${D.condText(def.bonus.cond)}: ${def.bonus.text}`], { own: n ? (n > 1 ? `In your book ×${n}` : 'In your book') : null }));
+        [`${def.cls ? D.CLASSES[def.cls].name : 'Any class'} · ${def.count}${def.die} · ${def.approach === 'none' ? 'no target' : `${def.approach}, ${D.DIST[def.dist].name}`}`, `<span class="k">Roll</span> ${def.roll.text}`, `<span class="k">Bonus</span> ${D.condText(def.bonus.cond)}: ${def.bonus.text}`, def.early ? dim(`Swift: plays with the ${D.TYPES[def.early].name}s.`) : null, def.arrange ? dim(`Arrangement: moves chips in ${def.side === 'opp' ? 'your opponent\'s' : 'your'} position (${def.arrange.replace('opp-', '')}).`) : null], { own: n ? (n > 1 ? `In your book ×${n}` : 'In your book') : null }));
     }
   }
   out.push(sec('Upgrades', `Quality (Common to Royal) sets the multiplier and is drawn as the frame; each of the ${D.TRICK_UPGRADE_MAX} Trick Trader upgrades adds +0.25 and a ▲, and gives the trick a moving foil. Upgrade cost: 100¢ × (1 + quality × (upgrades + 1)). Two upgrades per floor.`));

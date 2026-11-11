@@ -96,8 +96,8 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
     marks, and what should the other 19 die upgrades look like?
 
 ## Round 6 additions (floor path, hover detail, prizes, element chips)
-44. (Answered: the chip list is in `docs/CHIP-LIST.tsv`. Frozen now follows it; Lava, Orange and Fog were
-    replaced by list chips.)
+44. (Answered: the chip list is in `docs/CHIP-LIST.tsv` and is additive. The old Frozen hazard is kept as Frost,
+    with Lava and the Orange chip.)
 45. Tables 2 and 3 are a strict either/or. "Not without more time": what would let you fight both (a turn
     limit, a fee, a card)?
 46. The prize bonus is 25% of the opponent's starting worth. Should it scale with the wager or the floor instead?
@@ -105,8 +105,8 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
     Bid opened. Should moving a die during Bid be visible to them, or cost something?
 
 ## Round 7 additions (chip list, dice upgrades)
-48. Petals and Flowers, Clay and Brick take a whole fee each ("one fee instance"). Is an instance a whole fee, or
-    one fee's share on one stack (what is built)?
+48. (Answered: a Petal blocks an entire fee — fee instance defence. Built: it blocks the fee when it lands on its
+    stack, however big. A fee spread over several stacks is one landing per stack.)
 49. Harmony "leaves Basic chips behind": built as a 1¢ chip in place of each hazard chip it clears. Too generous?
 50. Dynamite destroys every chip on the 8 stacks around it, as listed. Should a Black chip or Hardening protect?
 51. Opportunity chips: the list says leftovers refund the bets made that turn; the game pays a chip per leftover.
@@ -114,3 +114,11 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
 52. Next from the list, in rough order of fit: Resist, Regen, Sticky, Tree/Wood, Boosted/Cheapened, Cloud,
     Sprinkler/Puddle, Worm Hole, Heli-Chipter, Repeater/Forgetter/Mimic, Fibonacci/Prime, Treasure/Cursed, Bounty
     chips (need creatures that can be forced into debt), Big/Little chips, Spy/Doom. Which first?
+
+## Round 8 additions (arrangements, Swift, Vengeance, Saturate)
+53. Arrangements move chips across the Meter and the Bar ("able to cross sections"). Should the Meter stay for
+    chips gained during the bout, with Bar chips stopping at its edge?
+54. The attribute sheet's Timing, Overflow and Performing rows (after the trick completes, in reaction, tumble,
+    fumble, penetrate, separating, pacing, dividing) would work best as Trader upgrades that bolt onto a trick.
+    Should trick upgrades become choices like that instead of the flat +0.25?
+55. Workbook classes Rogue and Brute map to Rascal and Hustler here for Retreat and Advance. Right mapping?

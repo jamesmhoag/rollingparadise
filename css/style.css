@@ -419,3 +419,8 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .faces { display: inline-flex; gap: 2px; margin-left: 6px; vertical-align: 1px; } .face { min-width: 15px; padding: 0 3px; border-radius: 3px; background: rgba(255, 255, 255, .1); font-size: 10.5px; text-align: center; font-variant-numeric: tabular-nums; }
 .face.sp { background: rgba(255, 215, 106, .25); color: var(--amber); } .face sup { font-size: 7px; margin-left: 1px; }
 .face-pick { display: flex; gap: 4px; flex-wrap: wrap; margin: 6px 0; } .face-pick .btn { min-width: 30px; padding: 3px 7px; font-size: 12px; }
+
+/* restored element hazards */
+.k-frost { --c: #cfeeff; --rim: #ffffff; --edge: #4a8bb0; --fg: #1d5c8a; --bs: solid; --glow: 0 0 9px rgba(160, 225, 255, .9); }
+.k-lava { --c: #3a0d05; --rim: #ff7a1f; --edge: #000; --fg: #ffb36a; --bs: solid; --glow: 0 0 10px rgba(255, 110, 30, .9); animation: flicker .35s infinite alternate; }
+.k-std.r-frost { --c: #fff1e0; --rim: #ff9f3a; --edge: #7a3f05; --fg: #c96a12; --bs: solid; }

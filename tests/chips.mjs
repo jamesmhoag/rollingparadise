@@ -192,6 +192,103 @@ const freeCell = (s) => s.grid.flatMap((row, r) => row.map((cell, c) => ({ r, c,
   assert(!spot.cell.chips.length && nearWorth() === 0, 'when the last stick goes, the stacks around it are destroyed');
 }
 
+// ---------- restored: Frost, Lava, Orange ----------
+{
+  const { bout, me } = table({});
+  const spot = B.biddable(me)[0], cell = me.grid[spot.r][spot.c];
+  cell.chips.push({ id: 4e6, kind: 'frost', value: 0, life: 2 });
+  assert(!B.bidChip(me, spot.r, spot.c), 'a Frost stack cannot be bid from');
+  drain(ticks(bout)); drain(ticks(bout));
+  assert(!cell.chips.some((ch) => ch.kind === 'frost'), 'Frost thaws after two turns');
+}
+{
+  const { bout, me } = table({ frost: 1 });
+  const { cell } = cellsWith(me, 'frost')[0];
+  cell.chips.push({ id: 4e6 + 1, kind: 'frost', value: 0, life: 9 }); drain(ticks(bout));
+  assert(!cell.chips.some((ch) => ch.kind === 'frost'), 'an Orange chip thaws its stack');
+}
+{
+  const { bout, me } = table({ burn: 1 });
+  const { cell } = cellsWith(me, 'burn')[0];
+  cell.chips.push({ id: 4e6 + 2, kind: 'lava', value: 0, life: 2 }); drain(ticks(bout));
+  assert(!cell.chips.some((ch) => ch.kind === 'lava'), 'a Red chip stops Lava');
+}
+{ // a Petal blocks a whole fee when it lands, however big
+  const { bout, me, opp } = table({});
+  const x = me.grid.flatMap((row, r) => row.map((cell, c) => ({ r, c, cell }))).find((y) => B.cellWorth(y.cell) > 0);
+  x.cell.chips.push({ id: 4e6 + 3, kind: 'petal', value: 0, hits: 1, life: 2 });
+  const g = engage(bout, opp, me, x.r, x.c, 500, {});
+  assert(g.placed === 0 && !x.cell.chips.some((ch) => ch.kind === 'petal'), 'a Petal blocks an entire fee and breaks');
+  assert(engage(bout, opp, me, x.r, x.c, 3, {}).placed === 3, 'the next fee lands');
+}
+
+// ---------- arrangements ----------
+const lane = (s, c) => s.grid.map((row) => row[c].chips.filter((ch) => !B.isHazard(ch)).map((ch) => ch.value));
+const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter((ch) => !B.isHazard(ch)).length, 0);
+{
+  const { bout, me } = table({});
+  const n0 = solidsIn(me), w0 = B.worth(me);
+  B.arrange(bout, me, 'front', null);
+  assert(solidsIn(me) === n0 && B.worth(me) === w0, 'arranging never loses or makes chips');
+  for (let c = 0; c < me.dims.cols; c++) { const L = lane(me, c).map((x) => x.length); const first = L.findIndex((n) => n < me.dims.stackMax);
+    assert(L.slice(first + 1).every((n) => n === 0), 'Retreat packs each lane toward the Stage'); }
+  B.arrange(bout, me, 'back', null);
+  for (let c = 0; c < me.dims.cols; c++) assert(lane(me, c)[0].length === 0 || lane(me, c).every((st) => st.length), 'Advance packs each lane to the back');
+}
+{
+  const { bout, me } = table({});
+  B.arrange(bout, me, 'value-front', null);
+  for (let c = 0; c < me.dims.cols; c++) { const flat = lane(me, c).flatMap((st) => st.slice().reverse()); assert(flat.every((v, i) => i === 0 || flat[i - 1] >= v), 'Stack Up puts the biggest chips at the front, on top'); }
+  B.arrange(bout, me, 'value-back', null);
+  for (let c = 0; c < me.dims.cols; c++) { const flat = lane(me, c).flatMap((st) => st.slice().reverse()); assert(flat.every((v, i) => i === 0 || flat[i - 1] <= v), 'Stash puts the biggest chips at the back'); }
+}
+{
+  const { bout, me } = table({});
+  const back = me.grid[me.rows - 1][0]; back.chips.push({ id: 4e6 + 9, kind: 'block', value: 0 }); while (B.solidCount(back) > me.dims.stackMax) back.chips.splice(0, 1);
+  B.arrange(bout, me, 'shields', [{ r: 0, c: 0 }]);
+  const firstStack = me.grid.map((row) => row[0]).find((cell) => cell.chips.length);
+  assert(firstStack.chips[firstStack.chips.length - 1].kind === 'block', 'Bulwark brings shields to the front, on top');
+}
+{
+  const { bout, me } = table({});
+  const r = me.dims.meterRows; me.grid[r][0].chips = []; // a gap at the top of a row
+  const before = me.grid[r].filter((cell) => cell.chips.length).length;
+  B.arrange(bout, me, 'up', [{ r, c: 0 }]);
+  assert(me.grid[r].slice(0, before).every((cell) => cell.chips.length) && !me.grid[r][me.dims.cols - 1].chips.length, 'Lift slides the row\'s stacks to the top lane');
+  B.arrange(bout, me, 'down', [{ r, c: 0 }]);
+  assert(!me.grid[r][0].chips.length && me.grid[r][me.dims.cols - 1].chips.length, 'Sink slides them to the bottom lane');
+}
+{ // anchored stacks stay put
+  const { bout, me } = table({ anchor: 1 });
+  const a = cellsWith(me, 'anchor')[0], before = a.cell.chips.map((ch) => ch.id).join();
+  B.arrange(bout, me, 'back', null); B.arrange(bout, me, 'up', null);
+  assert(a.cell.chips.map((ch) => ch.id).join() === before, 'an Anchor chip holds its stack in place');
+}
+{ // Debt stays with the chips
+  const { bout, me } = table({});
+  const x = me.grid.flatMap((row, r) => row.map((cell, c) => ({ r, c, cell }))).find((y) => y.r === me.rows - 1 && B.cellWorth(y.cell) > 0);
+  B._test.setDebt(bout, x.cell, 1); const owed = me.grid.flat().reduce((t, cell) => t + B.debtOf(cell), 0);
+  B.arrange(bout, me, 'front', null); B.arrange(bout, me, 'up', null);
+  assert(me.grid.flat().reduce((t, cell) => t + B.debtOf(cell), 0) === owed, 'Debt is never shed by moving chips');
+}
+
+// ---------- Swift, Vengeance, Saturate ----------
+{
+  assert(B.phaseOf('ambush') === 'investment' && B.phaseOf('charge') === 'expense', 'Ambush plays with the Investments');
+  const { bout, me } = table({});
+  me.paidLast = 7;
+  const e = { uid: 2, trick: { id: 'vengeance', q: 1, up: 0 }, dice: [{ value: 2, type: 'd6' }, { value: 3, type: 'd6' }], bid: [], bidValue: 1, state: 'shown' };
+  assert(B.previewTotal(me, e) === 5 + 7, 'Vengeance adds the fees you paid last turn');
+  const { opp } = table({}); void opp;
+}
+{
+  const { bout, me, opp } = table({});
+  opp.mods.boost = 6;
+  const e = { uid: 3, trick: { id: 'saturate', q: 1, up: 0 }, dice: [{ value: 2, type: 'd6' }, { value: 2, type: 'd6' }], bid: [], bidValue: 1, lingerTotal: 0, lingerLeft: 0, state: 'play' };
+  me.fz = { ...me.mods }; drain(B._test.play(bout, me, e));
+  assert(opp.mods.boost === 0 && me.mods.boost > 0 && opp.power === 0, 'Saturate boosts you and subdues their boosts (and Power on a match)');
+}
+
 // ---------- dice upgrades ----------
 {
   const { RNG } = await import('../js/util.js'); const X = await import('../js/dice.js');

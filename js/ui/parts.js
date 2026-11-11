@@ -5,7 +5,7 @@ import { cents, cap } from '../util.js';
 import { multOf, traitOf } from '../bout.js';
 import { facesOf, faceValue } from '../dice.js';
 
-const GLYPH = { opp: '★', block: '▣', counter: '✸', burn: '🔥', acid: '☣', shock: '⚡', corrupt: '☠', poison: '☘', boom: '💣', flower: '✿', petal: '❀', clay: '▤', brick: '▦', dynamite: '🧨' };
+const GLYPH = { opp: '★', block: '▣', counter: '✸', burn: '🔥', acid: '☣', shock: '⚡', corrupt: '☠', poison: '☘', boom: '💣', frost: '❄', lava: '🌋', flower: '✿', petal: '❀', clay: '▤', brick: '▦', dynamite: '🧨' };
 export const chipSig = (ch) => `k-${ch.kind} v${ch.value}${ch.gold ? ' gold' : ''}${ch.frozen ? ' frozen' : ''}${ch.feather > 0 ? ' feather' : ''}${ch.resist ? ' r-' + ch.resist : ''}`;
 export const chipGlyph = (ch) => (ch.kind === 'std' ? (ch.resist ? D.SHOP_CHIPS[ch.resist]?.glyph || '◆' : ch.frozen ? `❄${ch.value}` : String(ch.value)) : ch.kind === 'debt' ? '−' + ch.value : GLYPH[ch.kind] || '');
 export function chipName(ch) {
