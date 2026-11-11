@@ -26,6 +26,11 @@ is not built yet. Tab names are in **bold**.
 - Targeting approaches (front, rear, flank, body, any, meter) and distributions (Hit, Swipe, Poke, Hook, Drop,
   Burst, Wave, Aura, Rain) with the workbook's minimum / increment / maximum space counts.
 - 26 tricks across the four types, named from the trick lists.
+- Flips: a standard chip can be flipped from the top of a stack onto a shown trick. It lands as 0 or its worth,
+  counts as a die of any type, uses a roll, and returns to the Meter when the trick has played.
+- The House runs the resolution: it collects the bids, calls each phase in order, points its stick at the trick
+  being played and at the space it lands on, and rakes fees to the Stage. A phase tracker and a four-line action
+  feed stay on screen for the whole bout.
 
 ### Chips (**Chips**, **Shop**)
 - Royale Paradise chips of 1, 2, 5 and 10¢, unlocked by floor as in the Chip Exchange table.
@@ -35,6 +40,10 @@ is not built yet. Tab names are in **bold**.
 
 ### Between bouts (**Shop**, **Lounge**, **Gamble**, **Commitment**, **Floor**, **Floors**)
 - Four floors with three tables and a High Roller each. Unseen tables hide their Roller until you sit down.
+- Each floor is a floor plan you walk around, laid out after the sketch on the **Floors** tab: stairs up behind
+  the head table, game tables in the middle, shops along one wall, the House's book and the Lounge on the other,
+  the way in at the bottom next to the dodgy corner (where you search for cards). Floors 1 and 2 mirror each
+  other; floors 3 and 4 have their own layouts.
 - Diesmith: forge (dice plus chips, with the workbook's costs and floor gates), sell, upgrade.
 - Trick Trader: one trick per class plus one generic, restock, upgrade, sell, Membership Card after five
   purchases, Secret Shelf.
@@ -52,8 +61,11 @@ is not built yet. Tab names are in **bold**.
 - Lose: the position, the wager and two random dice. The run continues if you can raise chips (a winning ticket,
   or selling dice and tricks).
 - Suite after a Double Down floor: dresser, wardrobe, bed. Penthouse after floor 4.
-- Exit through the Gift Shop: jackets stay unlocked for future runs; the ATM banks chips if you found the Debit
-  Card.
+- Exit through the Gift Shop: jackets and wallets stay unlocked for future runs; the ATM banks chips if you found
+  the Debit Card.
+- Wallets (**Gear**): each has a slot count and a retention number. In the alley you roll two dice against that
+  number; succeed and the wallet's cards are on the dresser for your next run.
+- The purse limit: pass 999 trillion and the purse rips, ending the run in "crushing defeat".
 - Paradise Ascent: five legend steps plus your own finished builds, stored in the browser and placed by net worth.
 
 ## Readings chosen where the workbook leaves it open
@@ -67,19 +79,23 @@ is not built yet. Tab names are in **bold**.
 | How a bout ends if neither side breaks | "Last call" is an addition: from turn 9 every Expense is multiplied by a factor that grows each turn. At turn 40 the most Worth wins. |
 | Debt (the **Debt** tab's five concepts) | "Knocked out by debt": reaching zero Worth loses the bout. |
 | Dice upgrades | Three of the 22 listed: Accelerate, Escalate, Stabilize. |
+| Which cards take a wallet slot | Benefit cards do (Discount, Business, Debit, Note, Trading). Passes do not (Royal, Membership, Suite Key, Punch), so a one-slot wallet can still enter the casino. |
+| Which dice make the alley roll ("2dn") | Your two largest dice. Big dice are worth keeping for it. |
+| Wallet prices | Stats come from the **Gear** tab and prices from the **Gift Shop** tab, matched in order where the names differ. |
+| What a flip costs | One roll. The chip is not spent: it comes back to the Meter. |
 | Opponent strength | Generated per floor from the class tables; quality and dice improve each floor. |
 
 ## Not built yet
 
-- Flipping chips into the dice pool as d2s.
-- Artifacts, the jacket pocket limits, wallets with slot counts and the retention roll in the alley.
+- Artifacts and the jacket pocket limits.
 - Trading, Collectable, Roller, High Roller and Ascended cards; cosmetics; the music player.
 - Play-by-play sports. Games are settled by a weighted draw from the posted odds. No hedges.
 - Themes per opponent, table felts beyond a name, encounter modifiers.
 - Most of the 400-entry chip list, the **Effects** element table, Splitting, the Rest conditional.
 - Online ladder. The Ascent uses generated legends and your own past builds on this device.
-- The purse-limit ending.
 - Saving in the middle of a bout. A reload returns you to the floor before it.
+
+What is needed to build these is listed in `docs/OPEN-QUESTIONS.md`.
 
 ## Balance
 

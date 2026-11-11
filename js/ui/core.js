@@ -11,7 +11,7 @@ export function h(tag, props = {}, ...kids) {
   for (const [k, v] of Object.entries(props || {})) {
     if (v == null || v === false) continue;
     if (k === 'class') el.className = v; else if (k === 'text') el.textContent = v; else if (k === 'html') el.innerHTML = v;
-    else if (k === 'tip') tip(el, v); else if (k === 'style') Object.assign(el.style, v);
+    else if (k === 'tip') tip(el, v); else if (k === 'style') { for (const [p, val] of Object.entries(v)) { if (p.startsWith('--')) el.style.setProperty(p, val); else el.style[p] = val; } }
     else if (k.startsWith('on')) el.addEventListener(k.slice(2), v); else el.setAttribute(k, v);
   }
   for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid.nodeType ? kid : document.createTextNode(kid));

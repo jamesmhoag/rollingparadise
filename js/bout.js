@@ -32,7 +32,10 @@ export const tipOf = (s, k) => Math.max(0, s.tip[k] + (s.turnBonus[k] || 0));
 export const cOf = (s, k) => Math.max(0, s.c[k] + (s.turnBonus[k] || 0));
 
 function mkChip(b, kind, value = 0, extra = {}) { return { id: b.nextId++, kind, value, ...extra }; }
-function step(b, text, cells = [], kind = '') { const st = { text, cells, kind, fx: b.fx }; b.fx = {}; if (text) b.log.push(text); return st; }
+// A step carries who acted, which trick, and which phase the House is calling, so the table can show it.
+// the player's side is named "You", so fix the grammar once here
+const say = (t) => t.replace(/\bYou's\b/g, 'Your').replace(/\bYou (plays|charges|steals|gains|resists|evades|reflects|holds|wins)\b/g, (m, v) => `You ${v.slice(0, -1)}`).replace(/\bYou is\b/g, 'You are').replace(/\bYou has\b/g, 'You have').replace(/(?<=[a-z,:] )Your\b/g, 'your').replace(/^You .*/, (m) => m.replace(/, (gain|steal)s /g, ', $1 '));
+function step(b, text, cells = [], kind = '') { text = say(text); const st = { text, cells, kind, fx: b.fx, ...(b.ctx || {}) }; b.fx = {}; if (text) b.log.push(text); return st; }
 const ref = (s, r, c) => ({ side: s.idx, r, c });
 
 function meterOrder(s) {
@@ -177,6 +180,23 @@ export function roll(b, s, dieId, e) {
   // a die keeps its value for the turn, so undoing a plan never rerolls it
   const value = s.rolled[dieId] ?? (s.rolled[dieId] = rollDie(b.rng, die));
   const d = { ...die, value };
+  e.dice.push(d); s.used.roll++;
+  return d;
+}
+// Flip a standard chip onto a shown trick: it lands as 0 or its worth and counts as a die of any type.
+export function canFlip(b, s, r, c, e) {
+  const def = TRICKS[e.trick.id], ch = bidChip(s, r, c);
+  if (!ch || ch.kind !== 'std') return 'Only an uncovered standard chip on top of a stack can be flipped.';
+  if (e.state !== 'shown') return 'A trick that has been bid on cannot take more dice.';
+  if (s.used.roll >= tipOf(s, 'proficiency')) return 'No rolls left this turn (Proficiency). A flip uses a roll.';
+  if (e.dice.length >= def.count) return `${def.name} holds at most ${def.count} dice.`;
+  return null;
+}
+export function flip(b, s, r, c, e) {
+  if (canFlip(b, s, r, c, e)) return null;
+  const ch = s.grid[r][c].chips.pop(), key = 'c' + ch.id;
+  const value = s.rolled[key] ?? (s.rolled[key] = b.rng.next() < 0.5 ? 0 : ch.value); // keeps its face for the turn, like a die
+  const d = { id: key, type: e.dice[0]?.type || TRICKS[e.trick.id].die, up: [], value, chip: ch };
   e.dice.push(d); s.used.roll++;
   return d;
 }
@@ -518,16 +538,25 @@ export function* resolve(b) {
     e.lingerTotal = clamp(e.bidValue - 1, 0, 20); e.lingerLeft = e.lingerTotal; e.state = 'play';
     for (const ch of e.bid) b.fx[ch.id] = 'house'; s.bidsPaid += e.bidValue; e.bid = []; any = true;
   }
-  if (any) yield step(b, 'Bids are paid to the House.', [], 'bid');
+  b.ctx = { phase: 'bids' };
+  if (any) yield step(b, 'The House collects the bids.', [], 'bid');
   const plays = []; for (const s of b.sides) for (const e of s.run) if (e.state === 'play') plays.push({ s, e });
   const first = b.rng.int(2);
   plays.sort((x, y) => TYPES[TRICKS[x.e.trick.id].type].order - TYPES[TRICKS[y.e.trick.id].type].order || (x.s.idx === first ? 0 : 1) - (y.s.idx === first ? 0 : 1));
-  for (const p of plays) yield* play(b, p.s, p.e);
+  let called = null;
+  for (const p of plays) {
+    const type = TRICKS[p.e.trick.id].type;
+    if (type !== called) { called = type; b.ctx = { phase: type }; yield step(b, `The House calls ${TYPES[type].name}s.`, [], 'phase'); }
+    b.ctx = { phase: type, who: p.s.idx, uid: p.e.uid };
+    yield* play(b, p.s, p.e);
+  }
+  b.ctx = { phase: 'house' };
   // finished tricks and their dice go back to the Book and Pouch
   let done = 0;
   for (const { s, e } of plays) {
     if (e.lingerLeft > 0) { e.lingerLeft--; continue; }
-    s.run.splice(s.run.indexOf(e), 1); s.book.push(e.trick); for (const d of e.dice) { const { value, ...die } = d; s.pouch.push(die); } done++;
+    s.run.splice(s.run.indexOf(e), 1); s.book.push(e.trick); done++;
+    for (const d of e.dice) { if (d.chip) { delete d.chip.flip; addToMeter(b, s, [d.chip], null, 'spawn'); } else { const { value, ...die } = d; s.pouch.push(die); } } // a flipped chip comes back to the Meter
   }
   if (done) yield step(b, '', [], 'return');
   yield* ticks(b);
@@ -548,19 +577,21 @@ export function* resolve(b) {
     const opps = cOf(s, 'cunning') * unrolled; if (opps) addToMeter(b, s, Array.from({ length: opps }, () => mkChip(b, 'opp', 1)), null, 'spawn');
     const pow = cOf(s, 'conviction') * undrawn; s.power += pow;
     const bits = []; if (stolen) bits.push(`steals ${stolen}¢ from the Stage`); if (opps) bits.push(`gains ${opps} Opportunity`); if (pow) bits.push(`gains ${pow} Power`);
+    b.ctx = { phase: 'house', who: s.idx };
     if (bits.length) yield step(b, `${s.name} ${bits.join(', ')}.`, [], 'bonus');
   }
   for (const s of b.sides) {
     const st = s.status; st.resist = st.resistNext; st.resistNext = 0; st.evade = st.evadeNext; st.evadeNext = null; st.reflect = 0; st.reflectAll = false;
     for (const { cell } of allCells(s)) if (cell.hard > 0) cell.hard--;
   }
+  b.ctx = { phase: 'house' };
   const w = b.sides.map(worth);
   if (w[0] <= 0 || w[1] <= 0 || b.turn >= b.rules.maxTurns) {
     b.over = true; b.winner = w[0] > w[1] ? 0 : 1; b.timeout = w[0] > 0 && w[1] > 0;
     yield step(b, b.timeout ? `Last call. ${b.sides[b.winner].name} holds the most Worth.` : `${b.sides[1 - b.winner].name} is broke. ${b.sides[b.winner].name} wins the bout.`, [], 'over');
     return;
   }
-  b.turn++; startTurn(b);
+  b.turn++; startTurn(b); b.ctx = null;
   yield step(b, '', [], 'turn');
 }
 
@@ -570,7 +601,7 @@ export function summary(b, idx) {
   const std = chips.filter((ch) => ch.kind === 'std');
   return {
     win: b.winner === idx, turns: b.turn, timeout: !!b.timeout,
-    survivors: sum(std.filter((ch) => !ch.resist), (ch) => ch.value), gold: sum(std.filter((ch) => ch.gold), (ch) => ch.value),
+    survivors: sum(std.filter((ch) => !ch.resist), (ch) => ch.value) + sum(s.run.flatMap((e) => e.dice), (d) => (d.chip ? d.chip.value : 0)), gold: sum(std.filter((ch) => ch.gold), (ch) => ch.value),
     resist: std.filter((ch) => ch.resist).reduce((m, ch) => { m[ch.resist] = (m[ch.resist] || 0) + 1; return m; }, {}),
     opportunity: chips.filter((ch) => ch.kind === 'opp').length,
     ownFees: b.stage.paid[idx], oppFees: b.stage.paid[1 - idx], bids: s.bidsPaid,

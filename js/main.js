@@ -4,7 +4,7 @@ import { app } from './ui/app.js';
 import { statRow, jacketTip, dieEl, dieTip, trickTip, pips } from './ui/parts.js';
 import { hubScene } from './ui/floor.js';
 import { prepScene, resultScene } from './ui/prep.js';
-import { suiteScene, giftScene, ascentScene, summaryScene } from './ui/endgame.js';
+import { suiteScene, giftScene, ascentScene, summaryScene, alleyScene, walletTip } from './ui/endgame.js';
 import { boutScene } from './ui/boutview.js';
 import * as D from './data.js';
 import * as R from './run.js';
@@ -22,20 +22,24 @@ nav.suite = (penthouse) => go((root) => suiteScene(root, penthouse));
 nav.gift = () => go(giftScene);
 nav.ascent = () => { R.saveRun(app.run); go(ascentScene); };
 nav.summary = () => go(summaryScene);
+nav.alley = () => go(alleyScene);
 
 function titleScene(root) {
   const meta = app.meta = R.loadMeta(), saved = R.loadRun();
   const resume = saved && ['floor', 'ascent'].includes(saved.phase);
-  root.append(h('div', { class: 'title' }, h('div', {},
-    h('div', { class: 'pair' }, h('span', { class: 'die static d6', tip: '<b>A pair of dice</b><p>Say it out loud.</p>' }, h('i', { text: '⚅' })), h('span', { class: 'die static d6' }, h('i', { text: '⚀' }))),
-    h('div', { class: 'logo' }, h('small', { text: 'ROYAL PARADISE HOTEL & CASINO' }), 'Rolling Paradise'),
-    h('p', { class: 'tagline', text: 'Gamble your way to the top.' }),
-    h('div', { class: 'row', style: { justifyContent: 'center' } },
-      resume ? btn('Continue run', () => { app.run = saved; saved.phase === 'ascent' ? nav.ascent() : nav.hub(); }, `<b>Continue</b><p>${D.CLASSES[saved.cls].name}, ${saved.phase === 'ascent' ? 'on the Paradise Ascent' : `floor ${saved.floor}`}, ${cents(saved.purse)} in the purse.</p>`, 'big go') : null,
-      btn('New run', () => nav.select(), resume ? '<b>New run</b><p>Starts over. Your saved run is replaced once the new one reaches the first floor.</p>' : null, resume ? 'big' : 'big go'),
-      btn('How to play', () => howTo(), null, 'big')),
-    h('div', { class: 'stats', style: { justifyContent: 'center', marginTop: '26px' } },
-      [['Runs', meta.runs, 'Runs you have finished.'], ['Best floor', meta.best > 4 ? 'Ascent' : meta.best || '—', 'The highest floor any of your Rollers reached.'], ['Crowns', meta.crowns, 'Times you reached the top step of the Paradise Ascent.'], ['Jackets', meta.jackets.length, 'Jackets unlocked in the Gift Shop.'], ['ATM', cents(meta.atm), 'Chips banked for Gift Shop purchases.']]
+  // drifting neon motes; positions are fixed per load so the scene is calm, not noisy
+  const motes = Array.from({ length: 26 }, (_, i) => h('span', { class: 'mote', style: { left: `${(i * 37 + 11) % 100}%`, '--mc': i % 3 ? 'var(--gold)' : 'var(--pink)', '--d': `${7 + (i * 13) % 9}s`, '--w': `${-((i * 7) % 12)}s`, '--dx': `${((i * 29) % 120) - 60}px` } }));
+  const sign = h('div', { class: 'sign', tip: '<b>Rolling Paradise</b><p>A pair of dice. Say it out loud.</p>' }, h('div', { class: 'glow' }),
+    h('img', { class: 'l-pink', src: 'assets/logo-pink.png', alt: '', draggable: 'false' }), h('img', { class: 'l-cyan', src: 'assets/logo-cyan.png', alt: 'Rolling Paradise', draggable: 'false' }), h('img', { class: 'l-dice', src: 'assets/logo-dice.png', alt: '', draggable: 'false' }));
+  root.append(h('div', { class: 'title' }, h('div', { class: 'sky' }), h('div', { class: 'gridfloor' }), ...motes, h('div', { class: 'inner' },
+    h('div', { class: 'hotel neon-c', text: 'ROYAL PARADISE HOTEL & CASINO' }), sign,
+    h('p', { class: 'tagline neon-p', text: 'Gamble your way to the top' }),
+    h('div', { class: 'menu' },
+      resume ? btn('Continue', () => { app.run = saved; saved.phase === 'ascent' ? nav.ascent() : nav.hub(); }, `<b>Continue</b><p>${D.CLASSES[saved.cls].name}, ${saved.phase === 'ascent' ? 'on the Paradise Ascent' : `floor ${saved.floor}`}, ${cents(saved.purse)} in the purse.</p>`, 'sign-btn') : null,
+      btn('New run', () => nav.select(), resume ? '<b>New run</b><p>Starts over. Your saved run is replaced once the new one reaches the first floor.</p>' : null, resume ? 'sign-btn p' : 'sign-btn'),
+      btn('How to play', () => howTo(), null, 'sign-btn p')),
+    h('div', { class: 'stats records' },
+      [['Runs', meta.runs, 'Runs you have finished.'], ['Best floor', meta.best > 4 ? 'Ascent' : meta.best || '—', 'The highest floor any of your Rollers reached.'], ['Crowns', meta.crowns, 'Times you reached the top step of the Paradise Ascent.'], ['Jackets', meta.jackets.length, 'Jackets unlocked in the Gift Shop.'], ['Wallets', (meta.wallets || []).length, 'Wallets unlocked in the Gift Shop.'], ['ATM', cents(meta.atm), 'Chips banked for Gift Shop purchases.']]
         .map(([a, b, t]) => h('span', { class: 'stat', tip: `<b>${a}</b><p>${t}</p>` }, h('em', { text: a }), h('b', { text: b })))))));
 }
 
@@ -43,7 +47,8 @@ function howTo() {
   const p = (t, s) => h('div', {}, h('h3', { text: t }), h('p', { class: 'sub', text: s }));
   openPanel(h('div', { class: 'col' }, h('div', { class: 'row between' }, h('h2', { text: 'How to play' }), btn('Got it', () => closePanel(), null, 'small go')),
     p('The goal', 'Deplete your opponent\'s Worth before they deplete yours. Worth is the chips in your position. Reach zero and you are broke.'),
-    p('Your turn', 'Draw tricks from your Book onto your Run. Click a die in your Pouch to roll it onto a shown trick. Click a trick\'s BID slot, then one of your own stacks, to pay a chip and play it. Then press Play. Both Rollers plan at once and every effect resolves in order: Investments, Insurances, Expenses, Corrections.'),
+    p('Your turn', 'Draw tricks from your Book onto your Run. Click a die in your Pouch to roll it onto a shown trick, or Flip a chip onto it as a coin-toss die. Click a trick\'s BID slot, then one of your own stacks, to pay a chip and play it. Then press Play.'),
+    p('The House runs the table', 'Both Rollers plan at once. The House then calls each phase in order, Investments, Insurances, Expenses, Corrections, and points its stick at every trick as it plays. The feed under the table keeps the last calls on screen.'),
     p('Tricks', 'A bid with no dice plays only the small Trait. A bid with dice plays the Roll effect, scaled by the total. Fill the trick with the right dice and meet its condition for the Bonus. You can load dice over several turns before bidding.'),
     p('Holding back pays', 'Each draw, roll and bid you leave unused earns something: Power for your next roll, Opportunity chips, or chips stolen from the Stage.'),
     p('The Stage', 'Fees move chips from a position to the Stage. The winner takes everything on it. Bids go to the House and are gone.'),
@@ -52,7 +57,7 @@ function howTo() {
 }
 
 function selectScene(root) {
-  const meta = app.meta; let cls = 'hustler', jacket = 'standard';
+  const meta = app.meta; let cls = 'hustler', jacket = 'standard', wallet = meta.wallets.includes(meta.lastWallet) ? meta.lastWallet : 'worn_cloth';
   const cards = h('div', { class: 'cols3' }), jackets = h('div', { class: 'row wrap' });
   const els = Object.entries(D.CLASSES).map(([id, K]) => {
     const dice = Object.entries(K.dice).flatMap(([type, n]) => Array.from({ length: n }, () => type));
@@ -67,10 +72,14 @@ function selectScene(root) {
   cards.append(...els);
   const jb = meta.jackets.map((id) => { const b = btn(`🧥 ${D.JACKETS[id].name}`, () => { jacket = id; sync(); }, () => jacketTip(id), 'small'); b._id = id; return b; });
   jackets.append(h('span', { class: 'cap', text: 'Jacket' }), ...jb);
-  function sync() { for (const el of els) el.classList.toggle('sel', el._id === cls); for (const b of jb) b.classList.toggle('on', b._id === jacket); }
+  const wb = meta.wallets.map((id) => { const b = btn(`👛 ${D.WALLETS[id].name}`, () => { wallet = id; sync(); }, () => walletTip(id), 'small'); b._id = id; return b; });
+  const keptEl = h('span', { class: 'sub fade-t' });
+  jackets.append(h('span', { class: 'cap', style: { marginLeft: '18px' }, text: 'Wallet' }), ...wb, keptEl);
+  function sync() { for (const el of els) el.classList.toggle('sel', el._id === cls); for (const b of jb) b.classList.toggle('on', b._id === jacket); for (const b of wb) b.classList.toggle('on', b._id === wallet);
+    const k = (meta.kept || []).slice(0, D.WALLETS[wallet].slots); keptEl.textContent = k.length ? `On the dresser from your last run: ${k.map((c) => D.CARDS[c].name).join(', ')}` : ''; }
   sync();
   root.append(h('div', { class: 'page', style: { top: 0, padding: '22px 40px' } }, h('div', { class: 'row between' }, h('div', {}, h('h1', { text: 'Choose a Roller' }), h('p', { class: 'sub', text: 'Hover anything to see what it does. The doorman wants a word before you go in.' })),
-    h('div', { class: 'row' }, btn('Back', () => nav.title()), btn('Walk in', () => { app.run = R.newRun(cls, jacket); nav.intro().then(() => { if (app.meta.seenHow) return toast('Beat the doorman to earn your welcome stake.'); app.meta.seenHow = true; R.saveMeta(app.meta); howTo(); }); }, '<b>Walk in</b><p>You start with an intro bout on house chips. Win it and the House stakes you 200¢ to enter floor 1.</p>', 'big go'))),
+    h('div', { class: 'row' }, btn('Back', () => nav.title()), btn('Walk in', () => { app.run = R.newRun(cls, jacket, undefined, { wallet, kept: meta.kept }); meta.kept = []; meta.lastWallet = wallet; R.saveMeta(meta); nav.intro().then(() => { if (app.meta.seenHow) return toast('Beat the doorman to earn your welcome stake.'); app.meta.seenHow = true; R.saveMeta(app.meta); howTo(); }); }, '<b>Walk in</b><p>You start with an intro bout on house chips. Win it and the House stakes you 200¢ to enter floor 1.</p>', 'big go'))),
     h('div', { style: { marginTop: '16px' } }, cards), h('div', { style: { marginTop: '14px' } }, jackets)));
 }
 

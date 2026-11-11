@@ -2,12 +2,12 @@
 // floors, opponents, shops, the lounge, the sports book, wagers and tilts, winnings and the Ascent.
 import { RNG, sum, clamp } from './util.js';
 import * as D from './data.js';
-import { createBout, summary, barCapacity } from './bout.js';
+import { createBout, summary, barCapacity, rollDie } from './bout.js';
 
 const META_KEY = 'rollingparadise.meta.v1', RUN_KEY = 'rollingparadise.run.v1';
 const store = () => { try { return globalThis.localStorage || null; } catch { return null; } };
 export function loadMeta() {
-  const base = { jackets: ['standard'], atm: 0, debit: false, ladder: [], runs: 0, best: 0, crowns: 0 };
+  const base = { jackets: ['standard'], wallets: ['worn_cloth', 'duct_tape'], kept: [], atm: 0, debit: false, ladder: [], runs: 0, best: 0, crowns: 0 };
   try { return { ...base, ...JSON.parse(store()?.getItem(META_KEY) || '{}') }; } catch { return base; }
 }
 export const saveMeta = (m) => { try { store()?.setItem(META_KEY, JSON.stringify(m)); } catch { /* storage unavailable */ } };
@@ -21,18 +21,34 @@ const mkTrick = (run, id, q = 1, up = 0) => ({ uid: run.nextId++, id, q, up });
 const mkDie = (run, type) => ({ id: run.nextId++, type, up: [] });
 const ledger = (run, label, amt) => { run.ledger.push({ label, amt, floor: run.floor }); if (run.ledger.length > 200) run.ledger.shift(); };
 export const hasCard = (run, id) => run.cards.includes(id);
+// wallet: benefit cards take a slot, passes do not
+export const walletCards = (run) => run.cards.filter((id) => !D.PASS_CARDS.includes(id));
+export const walletOf = (run) => D.WALLETS[run.wallet] || D.WALLETS.worn_cloth;
+export const walletFull = (run) => walletCards(run).length >= walletOf(run).slots;
+// returns false and holds the card as pending when the wallet has no room
+export function addCard(run, id) {
+  if (hasCard(run, id)) return true;
+  if (!D.PASS_CARDS.includes(id) && walletFull(run)) { run.pendingCard = id; return false; }
+  run.cards.push(id); return true;
+}
+export function resolvePending(run, dropId) {
+  const id = run.pendingCard; run.pendingCard = null; if (!id || !dropId) return;
+  run.cards = run.cards.filter((x) => x !== dropId); run.cards.push(id);
+}
 export const price = (run, shop, base) => Math.max(1, Math.round(base * (hasCard(run, `discount_${shop}`) ? 0.9 : 1)));
 function spend(run, amt, label) { if (run.purse < amt) return false; run.purse -= amt; run.stats.spent += amt; ledger(run, label, -amt); return true; }
 
-export function newRun(cls, jacket = 'standard', seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0) {
-  const run = { v: 1, rng: new RNG(seed), seed, cls, jacket, floor: 0, purse: 0, nextId: 1, dice: [], tricks: [], chips: { burn: 0, shock: 0, acid: 0 },
+export function newRun(cls, jacket = 'standard', seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0, gear = {}) {
+  const run = { v: 1, rng: new RNG(seed), seed, cls, jacket, wallet: gear.wallet || 'worn_cloth', pendingCard: null, floor: 0, purse: 0, nextId: 1, dice: [], tricks: [], chips: { burn: 0, shock: 0, acid: 0 },
     drink: null, cards: [], punches: 0, rest: null, suiteKey: false, phase: 'intro', fs: null, bets: [], news: [], ledger: [], ascent: null,
     plan: { spacing: 'row', stacking: 'maxed', counts: null, resist: { burn: 0, shock: 0, acid: 0 } },
     stats: { bouts: 0, wins: 0, losses: 0, spent: 0, won: 0, turns: 0, dd: 0 } };
   const K = D.CLASSES[cls];
   for (const [type, n] of Object.entries(K.dice)) for (let i = 0; i < n; i++) run.dice.push(mkDie(run, type));
   run.tricks = K.tricks.map((id) => mkTrick(run, id));
-  run.cards = run.rng.shuffle(D.STARTER_CARDS).slice(0, 2);
+  // cards kept from the last run are on the dresser; starters top the wallet up to two
+  const slots = walletOf(run).slots; run.cards = (gear.kept || []).filter((id) => D.CARDS[id]).slice(0, slots);
+  for (const id of run.rng.shuffle(D.STARTER_CARDS)) { if (run.cards.length >= Math.min(2, slots)) break; if (!run.cards.includes(id)) run.cards.push(id); }
   return run;
 }
 
@@ -212,7 +228,7 @@ export function resolveBets(run) {
 export function searchFloor(run) {
   if (run.fs.searched) return null; run.fs.searched = true;
   const pool = D.FIND_CARDS.filter((id) => !hasCard(run, id)); const id = run.rng.pick(pool.length ? pool : ['trading']);
-  if (!hasCard(run, id)) run.cards.push(id); return id;
+  addCard(run, id); return id;
 }
 
 // ---------- wagers, tilts, position ----------
@@ -400,8 +416,22 @@ export function buyJacket(run, meta, id) {
   meta.atm -= fromAtm; run.purse -= need - fromAtm; meta.jackets.push(id); ledger(run, `Gift Shop: ${J.name} jacket`, -(need - fromAtm)); saveMeta(meta); return true;
 }
 export function deposit(run, meta) { if (!meta.debit && !hasCard(run, 'debit')) return 0; meta.debit = true; const n = run.purse; meta.atm += n; run.purse = 0; if (n) ledger(run, 'ATM deposit', -n); saveMeta(meta); return n; }
+export const walletAvailable = (run, meta, id) => { const Wl = D.WALLETS[id]; return Wl.level <= Math.max(0, run.floor - 1) && (!Wl.crown || meta.crowns > 0); };
+export function buyWallet(run, meta, id) {
+  const Wl = D.WALLETS[id]; if (meta.wallets.includes(id) || !walletAvailable(run, meta, id)) return false;
+  const fromAtm = meta.debit ? Math.min(meta.atm, Math.max(0, Wl.price - run.purse)) : 0;
+  if (run.purse + fromAtm < Wl.price) return false;
+  meta.atm -= fromAtm; run.purse -= Wl.price - fromAtm; meta.wallets.push(id); ledger(run, `Gift Shop: ${Wl.name} wallet`, -(Wl.price - fromAtm)); saveMeta(meta); return true;
+}
+// In the alley you are robbed. Two of your best dice decide whether you hold on to your wallet and its cards.
+export function alleyRoll(run) {
+  const dice = run.dice.slice().sort((a, b) => D.DICE[b.type].faces - D.DICE[a.type].faces).slice(0, 2).map((d) => ({ type: d.type, up: d.up, value: rollDie(run.rng, d) }));
+  const total = dice.reduce((n, d) => n + d.value, 0), need = walletOf(run).keep, cards = walletCards(run);
+  return { dice, total, need, kept: total >= need && cards.length > 0, cards };
+}
 // leaving through the alley ends the run
-export function endRun(run, meta, name = 'You') {
+export function endRun(run, meta, name = 'You', kept = []) {
+  meta.kept = kept;
   if (hasCard(run, 'debit')) meta.debit = true;
   meta.runs++; meta.best = Math.max(meta.best, run.floor);
   const reached = run.phase === 'paradise' || run.phase === 'fallen' || run.phase === 'ascent';
