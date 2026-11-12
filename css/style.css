@@ -467,3 +467,31 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .pend.me { color: #7df3ff; } .pend.opp { color: #ff9ab5; }
 /* a fee shown landing on nothing */
 .k-ghost { --c: transparent; --rim: #e0555f; --edge: transparent; --fg: #ff9aa2; --bs: dashed; opacity: .65; } .k-ghost::before { box-shadow: none !important; }
+
+/* ---------- round 13: overlays, water, weather, big chips, traits ---------- */
+.k-stray { --c: transparent; --rim: #e0555f; --edge: transparent; --fg: #ff9aa2; --bs: dashed; opacity: .65; } .k-stray::before { box-shadow: none !important; }
+.k-hard { --c: rgba(110, 160, 255, .25); --rim: #9fe8ff; --edge: #1d4a66; --fg: #eaf6ff; --bs: double; --glow: 0 0 10px rgba(110, 160, 255, .8); }
+.k-sticky { --c: rgba(255, 134, 234, .35); --rim: #ff86ea; --edge: #8a2d5a; --fg: #fff; --bs: dotted; } .k-sticky i { font-size: 10px; }
+.k-hive { --c: #f2b829; --rim: #fff3bf; --edge: #6b4510; --fg: #3a2604; --bs: solid; } .k-little { --c: #efe6cf; --rim: #fff; --edge: #9a8f74; scale: .55; }
+.k-egg { --c: #f4efe2; --rim: #c98a2e; --edge: #6b4510; --bs: solid; } .k-egg i { font-size: 13px; }
+.k-hat { --c: #17171c; --rim: #b08cff; --edge: #000; --fg: #fff; --bs: solid; --glow: 0 0 10px rgba(176, 140, 255, .8); } .k-hat i { font-size: 13px; }
+.k-doom { --c: #1d0406; --rim: #8a1f2a; --edge: #000; --fg: #ff9aa2; --bs: solid; --glow: 0 0 10px rgba(224, 85, 95, .8); }
+.k-volcano { --c: #3a0d05; --rim: #ff7a1f; --edge: #000; --fg: #ffd36a; --bs: solid; --glow: 0 0 12px rgba(255, 110, 30, .9); animation: flicker .6s infinite alternate; }
+.k-std.big { --bw: 4px; } .k-std.treasure { --glow: 0 0 16px rgba(242, 201, 76, 1); } .k-std.treasure i { font-size: 13px; }
+.k-std.r-heli { --c: #dfe9f5; --rim: #63c4ff; --edge: #1d4a66; --fg: #1d4a66; --bs: solid; } .k-std.r-battery { --c: #2a2a30; --rim: #7dffb5; --edge: #000; --fg: #7dffb5; --bs: solid; }
+.k-std.r-repeater, .k-std.r-forgetter, .k-std.r-tesla, .k-std.r-absorb, .k-std.r-sprinkler { --c: #1b1c22; --rim: #63c4ff; --edge: #000; --fg: #9fe8ff; --bs: double; --glow: 0 0 8px rgba(99, 196, 255, .6); }
+.k-std.r-mimic { --c: #4a3a7a; --rim: #ff86ea; --edge: #1d1440; --fg: #fff; --bs: solid; } .k-std.r-uranium { --c: #3d5a0a; --rim: #c8ff3a; --edge: #0f1a02; --fg: #e6ff9c; --bs: solid; --glow: 0 0 12px rgba(200, 255, 58, .8); animation: flicker 1.2s infinite alternate; }
+.k-std.r-spy { --c: #22222a; --rim: #c9d3e0; --edge: #000; --fg: #eee; --bs: dotted; } .k-std.r-big { --c: #efe6cf; --rim: var(--gold); --edge: #9a8f74; }
+.chip.wet::after { content: '💧'; position: absolute; bottom: -2px; left: -5px; font-size: 9px; } .chip.regen::after { content: '↺'; position: absolute; top: -9px; left: -3px; font-size: 11px; color: var(--good); text-shadow: 0 0 6px var(--good); }
+.cell.puddle { background: radial-gradient(ellipse at 50% 60%, rgba(120, 200, 255, .75) 25%, rgba(60, 140, 220, .45) 55%, transparent 75%); border-color: #63c4ff; }
+.cell.ice { background: radial-gradient(ellipse at 50% 60%, #eaf6ff 25%, rgba(160, 225, 255, .6) 55%, transparent 75%); border-color: #fff; }
+.cell.link { border-style: dotted; border-color: rgba(255, 215, 106, .5); } .cell.cut { box-shadow: inset 0 -6px 0 rgba(0, 0, 0, .35); } .cell.lifted { box-shadow: inset 0 0 0 2px #63c4ff, 0 -4px 10px rgba(99, 196, 255, .35); }
+.creature.orbital { font-size: 34px; z-index: 995; opacity: .92; filter: drop-shadow(0 10px 8px rgba(0, 0, 0, .35)); } .creature.bee { font-size: 16px; z-index: 992; animation: buzz .5s infinite alternate; }
+.creature.or-cloud { font-size: 42px; filter: drop-shadow(0 14px 10px rgba(0, 0, 0, .3)); } @keyframes buzz { to { translate: 3px -3px; } }
+.weather { position: absolute; pointer-events: none; z-index: 980; opacity: 0; transition: opacity 1.2s; overflow: hidden; border-radius: 10px; }
+.weather.blizzard { opacity: 1; background: linear-gradient(180deg, rgba(230, 245, 255, .28), rgba(200, 230, 255, .14)); backdrop-filter: brightness(1.15) saturate(.6); }
+.weather.blizzard i { position: absolute; top: -10px; width: 5px; height: 5px; border-radius: 50%; background: #fff; box-shadow: 0 0 4px #fff; animation: snow linear infinite; }
+.weather.sun { opacity: 1; background: radial-gradient(circle at 80% 10%, rgba(255, 230, 140, .3), transparent 60%); } .weather.moon { opacity: 1; background: radial-gradient(circle at 20% 10%, rgba(200, 210, 255, .25), rgba(10, 10, 40, .2) 70%); }
+.weather:not(.blizzard) i { display: none; } @keyframes snow { to { transform: translate(-30px, 300px); } }
+.traits { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; } .trait { font-size: 10px; padding: 1px 5px; border-radius: 8px; background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .15); }
+.trait i { font-style: normal; opacity: .65; } .trait.der { border-style: dashed; border-color: rgba(125, 243, 255, .4); } .trait.lst { border-color: rgba(255, 215, 106, .4); }

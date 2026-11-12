@@ -170,6 +170,8 @@ export const TRICKS = {
     roll: { k: 'freeze', text: 'Freeze up to the total chips of the target stack into one Frozen chip worth their sum. It cannot be bid, burned, corrupted or shocked, and a fee smaller than it only leaves Debt.' }, bonus: { cond: 'evens', k: 'spread', text: 'Freezes the neighbouring stack too (Swipe).' } },
   float: { name: 'Float', type: 'insurance', cls: 'rascal', die: 'd4', count: 2, side: 'self', approach: 'any', dist: 'hit',
     roll: { k: 'feather', text: 'Turn the top chip of the target stack into a Feather chip for 1 turn per 3 rolled (at least 1): any fee larger than that stack\'s worth misses it.' }, bonus: { cond: 'match', k: 'spread', text: 'Feathers the neighbouring stacks too (Swipe).' } },
+  renew: { name: 'Renew', type: 'insurance', cls: null, die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'hit',
+    roll: { k: 'regen', text: 'Regen up to the total of the value chips in the target stack, for 1 turn per 4 rolled: a Regen chip paid to the Stage comes straight back to its stack, without its Regen.' }, bonus: { cond: 'match', k: 'spread', text: 'Renews the neighbouring stacks too (Swipe).' } },
   // --- Investments ---
   stir: { name: 'Stir', type: 'investment', cls: null, die: 'd6', count: 1, side: 'none', approach: 'none', dist: 'hit',
     roll: { k: 'boost', text: 'Boost: your other roll effects this turn gain the total.' }, bonus: { cond: 'over:5', k: 'extend', text: 'Also grants that much Power for next turn.' } },
@@ -216,6 +218,14 @@ export const TRICKS = {
     roll: { k: 'arrange', text: 'Aggressive: in your opponent\'s target lanes, drag their biggest chips to the front where your fees land first.' }, bonus: { cond: 'evens', k: 'aura', text: 'Drags their whole position.' } },
   rout: { name: 'Rout', type: 'correction', cls: 'technician', die: 'd8', count: 2, side: 'opp', approach: 'any', dist: 'swipe', arrange: 'opp-shields-back',
     roll: { k: 'arrange', text: 'Aggressive: in your opponent\'s target lanes, push their Block, Counter, Petal and Clay chips to the back, out of the way.' }, bonus: { cond: 'over:10', k: 'aura', text: 'Routs their whole position.' } },
+  gum: { name: 'Gum Up', type: 'correction', cls: 'rascal', die: 'd4', count: 2, side: 'opp', approach: 'any', dist: 'hit',
+    roll: { k: 'sticky', text: 'Stick a Sticky chip on the target stack: its first timed modifier (a buff or a debuff) stops counting down.' }, bonus: { cond: 'match', k: 'spread', text: 'Gums the neighbouring stacks too (Swipe).' } },
+  foretell: { name: 'Foretell', type: 'correction', cls: null, die: 'd6', count: 2, side: 'opp', approach: 'front', dist: 'swipe',
+    roll: { k: 'doom', text: 'Plant a Doom chip on top of each target stack, up to the total. Your opponent sees plain 1¢ chips. Once every one of their stacks is topped with Doom, each Doom chip charges 1¢ of Debt a turn.' }, bonus: { cond: 'evens', k: 'aura', text: 'Plants on every stack.' } },
+  conjure: { name: 'Conjure', type: 'correction', cls: 'technician', die: 'd8', count: 2, side: 'opp', approach: 'any', dist: 'hit',
+    roll: { k: 'hat', text: 'Slip a Magic Hat under the target stack (a total of 8 or more). Each turn the chip on it falls in and is lost.' }, bonus: { cond: 'match', k: 'spread', text: 'Slips Hats under the neighbouring stacks too (Swipe).' } },
+  handoff: { name: 'Hand Off', type: 'correction', cls: 'hustler', die: 'd4', count: 1, side: 'opp', approach: 'any', dist: 'hit',
+    roll: { k: 'handoff', text: 'Move one of your Uranium chips onto the target stack. Its radiation is their problem now.' }, bonus: { cond: 'over:3', k: 'spread', text: 'Hands off one more Uranium chip next door.' } },
   fence: { name: 'Fence', type: 'correction', cls: 'hustler', die: 'd4', count: 2, side: 'none', approach: 'none', dist: 'hit',
     roll: { k: 'fence', text: 'Convert Debt chips on your position, up to the total, into Opportunity chips on your Meter.' }, bonus: { cond: 'match', k: 'blocks', text: 'Also adds 2 Block chips to your Meter.' } },
 };
@@ -244,7 +254,17 @@ export const CHIPS = {
   petal: { name: 'Petal chip', text: 'Bloomed by a Flower. Blocks one entire fee, however big, and breaks: fee instance defence, where a Block chip only takes 1¢ of a fee\'s cost. Wilts after 2 turns.' },
   clay: { name: 'Clay chip', text: 'Blocks entire fees, one per hit, and breaks after its count of hits. Fire bakes it into Brick.' },
   brick: { name: 'Brick chip', text: 'Baked Clay. Takes twice as many fees as the clay did before it breaks.' },
-  ghost: { name: 'Ghost Debt', text: 'A fee that landed on nothing. It comes to nothing when the House settles.' },
+  stray: { name: 'Stray Debt', text: 'A fee that landed on nothing. It comes to nothing when the House settles.' },
+  hard: { name: 'Hardened chip', text: 'Lies over its stack for a few turns: each fee takes only one chip from the stack and nothing carries on. No worth. A piercing fee destroys it; cleansing removes it.' },
+  sticky: { name: 'Sticky chip', text: 'Gummed onto a stack by an opponent. The first timed modifier on the stack (Hardened, Feather, Regen, a Burning, Shocking, Corrupting, Frost or Lava chip, or Petals) stops counting down while it stays. Its value is the height of the stack it stuck to. Cleansing removes it.' },
+  hive: { name: 'Hive chip', text: 'A spawner. Every second turn each Hive chip in a stack sends out a Bumble Bee (your familiar). Takes damage like a Petal: each whole fee breaks one Hive chip.' },
+  little: { name: 'Little chip', text: 'Tiny: takes no stack height and has no worth. Blocks one whole fee (one hit instance). Only other Little chips can go on top of it.' },
+  egg: { name: 'Dragon Egg', text: 'Hatches a Dragon after 5 hatch steps: one a turn, one more on a Dragon Roost, one more next to heat (fire, lava, a Sun overhead). Takes 5 whole fees before it breaks, and a broken egg never hatches. Edible.' },
+  hat: { name: 'Magic Hat', text: 'A hole you can move. It always sits at the bottom of its stack and each turn the chip on it falls in and is lost. Corrections move it like a chip. Dangerous to its owner, so it is planted on the opponent.' },
+  doom: { name: 'Doom chip', text: 'Planted by Foretell. Its victim sees a plain 1¢ chip. While every one of the victim\'s stacks has a Doom chip on top, each Doom chip charges 1¢ of Debt every turn (instance debt). Any fee knocks it off.' },
+  volcano: { name: 'Volcano chip', text: 'A Calamity in chip form: a full stack, two spaces by two where there is room. Nothing can be placed on it. For four turns it launches Burning chips, then goes dormant; the space returns with one less stack height.' },
+  treasure: { name: 'Treasure chip', text: 'A chest of 50 to 100 Gold chips, dropped by a sunk Ghost Ship. Gold: it cannot be bid but pays double if it survives the bout. One in ten carries a Cursed chip with it.' },
+  cursed: { name: 'Cursed chip', text: 'Looks like a Gold chip. While it is in your pile, every turn one of Draw, Roll or Bid is 1 lower (never below 1). The curse lifts when it leaves your pile.' },
   resist: { name: 'Resist chip', text: 'Debt resistance, made by Resist Cards. Fees smaller than its r on its stack are deterred entirely, the way a Red chip keeps fire off. It cannot exceed the stack height.' },
   food: { name: 'Food chip', text: 'Delicious. Double-click it while it is on top of one of your stacks to eat it for a bonus to your attributes.' },
   dip: { name: 'Dip chip', text: 'A bowl of dip on its own space. Each Chip Chip you eat is dipped first for twice the bonus, until the dip runs out.' },
@@ -314,8 +334,34 @@ export const SHOP_CHIPS = {
     text: () => 'Its stack cannot be aimed at while the stack in front of it in the lane is taller.' },
   tree: { name: 'Tree chip', tier: 3, glyph: '🌳', kind: 'tree', place: 'space', list: 'Tree Chip',
     text: () => 'Planted on an empty Bar space. It grows a chip taller each turn; at full height it drops a Seed on each stack around it (one per chip of height, up to 8). A fee that hits it fells it: it blocks that fee and falls into Wood chips on the spaces around it, one per chip of height. No worth.' },
-  sun: { name: 'Sun chip', tier: 3, glyph: '☀', list: 'Sun Chip',
-    text: () => 'While it is on your table, your Flowers bloom twice as many Petals and your Trees grow twice as fast.' },
+  sun: { name: 'Sun chip', tier: 3, glyph: '☀', place: 'sky', list: 'Sun Chip',
+    text: () => 'Orbital: it goes up into your sky, not onto a stack. While it shines your Flowers bloom twice as many Petals, your Trees grow twice as fast, Puddles dry and eggs hatch faster.' },
+  heli: { name: 'Heli-Chipter', tier: 3, glyph: '🚁', place: 'top', list: 'Heli-Chipter',
+    text: () => 'Goes on top of a stack and lifts it: the stack is flying and plays from the bottom. Bids take its bottom chip and fees pay from the bottom up to the Heli-Chipter.' },
+  hive: { name: 'Hive chip', tier: 3, glyph: '🐝', kind: 'hive', place: 'space', vars: { hits: 1, every: 2, max: 6 }, list: 'Hive Chip',
+    text: (v) => `A spawner on its own space (Hive chips stack together). Every ${v.every} turns each Hive chip in the stack sends out a Bumble Bee, up to ${v.max} bees. Each Hive chip takes one whole fee, like a Petal.` },
+  battery: { name: 'Battery chip', tier: 3, glyph: '🔋', list: 'Battery Chip', tags: ['electric'],
+    text: () => 'Energizes the electrical and electronic chips above it in its stack: each gets one more instance a turn (a Zap shocks one more stack, a Repeater repeats once more, a Forgetter forgets once more…).' },
+  repeater: { name: 'Repeater chip', tier: 4, glyph: '⟳', place: 'top', list: 'Repeater Chip', tags: ['electronic'],
+    text: () => 'Electronic. On top of a stack with n chips under it: each of your tricks whose dice total n plays its roll effect again (once more per Battery under it).' },
+  mimic: { name: 'Mimic chip', tier: 4, glyph: '🎭', place: 'top', list: 'Mimic Chip',
+    text: () => 'While it is on top of one of your stacks, each phase of the turn one of your tricks of that type, picked at random, plays its roll effect again. One repeat per Mimic on top.' },
+  forgetter: { name: 'Forgetter chip', tier: 4, glyph: '⌀', place: 'top', list: 'Forgetter Chip', tags: ['electronic'],
+    text: () => 'Electronic. On top of a stack with n chips under it: the first of your opponent\'s tricks each turn whose dice total n is forgotten (its roll effect does nothing). One more per Battery under it.' },
+  tesla: { name: 'Tesla chip', tier: 4, glyph: '⚡', list: 'Tesla Chip', tags: ['electronic'],
+    text: () => 'Electronic. Lightning (Zap, Shocking chips, a Cloud\'s strike) that would hit your position is grabbed, once a turn, and sent back as 2 Shocking chips on random enemy stacks (one more per Battery under it).' },
+  absorb: { name: 'Absorption chip', tier: 3, glyph: '◉', list: 'Absorbtion Chip', tags: ['electronic'],
+    text: () => 'Electronic. Absorbs up to 2 lightning instances a turn on its stack and the stacks around it (one more per Battery under it). An absorbed Shocking chip burns out.' },
+  sprinkler: { name: 'Sprinkler chip', tier: 2, glyph: '⛲', place: 'top', list: 'Sprinkler Chip', tags: ['electronic'],
+    text: () => 'Electronic. Each turn it shoots water at the farthest space from it: an empty space becomes a Puddle, a stack gets wet (it cannot burn, but passes electricity on). One more space per Battery under it.' },
+  uranium: { name: 'Uranium chip', tier: 3, glyph: '☢', list: 'Uranium Chip',
+    text: () => 'Radioactive. Each turn it mutates one chip on a stack next to it into a random chip. Hand it Off (a Correction) onto your opponent.' },
+  big: { name: 'Big chip', tier: 4, glyph: '⬤', kind: 'std', place: 'big', list: 'Big Chip',
+    text: () => 'A value chip two spaces by two, worth 4 basic chips of the table (4¢, 8¢, 20¢ or 40¢). Big chips stack only on Big chips or an empty block; any chip can go on top. Too big to fall in a hole or be moved by Corrections.' },
+  little: { name: 'Little chip', tier: 1, glyph: '·', kind: 'little', place: 'top', vars: { hits: 1 }, list: 'Little Chip',
+    text: () => 'Tiny: no worth and no height. Goes on top of a stack and blocks one whole fee. Only other Little chips go on top of it.' },
+  spy: { name: 'Spy chip', tier: 3, glyph: '🕵', place: 'top', list: 'Spy Chip',
+    text: () => 'Looks like a plain 1¢ chip to your opponent. While it is on top of one of your stacks, your opponent makes each phase\'s plays first and you see them, aims included, before you commit.' },
   fib: { name: 'Fibonacci chip', tier: 3, glyph: 'φ', place: 'top', seq: 'fib', list: 'Fibonacci Chip',
     text: () => 'Goes on top of a stack. Two on top of each other merge into one worth the next Fibonacci number after the larger (1, 2, 3, 5, 8, 13…). On a win, what it grew beyond the chips that made it is paid out.' },
   prime: { name: 'Prime chip', tier: 3, glyph: 'ℙ', place: 'top', seq: 'prime', list: 'Prime Chip',
@@ -335,10 +381,10 @@ export const SHOP_CHIPS = {
     text: () => 'Food. Eat it plain: +2 Roll but −1 Bid this turn. On a Bun and topped with a Bun, eat the top Bun for the whole burger: +1 Draw, Roll and Bid for 2 turns.' },
   bun: { name: 'Bun Chip', tier: 1, glyph: '🍞', kind: 'food', place: 'top', list: 'Bun Chip', food: { mods: { conviction: 1 }, turns: 1 },
     text: () => 'Food. Eat it: +1 Conviction this turn. On top of a Hamburger that sits on a Bun, it is the whole burger.' },
-  egg: { name: 'Egg Chip', tier: 2, glyph: '🥚', kind: 'food', place: 'top', list: 'Egg Chip', food: { mods: { proficiency: 2, trickery: -1 }, turns: 2 },
-    text: () => 'Food. Eat it raw: +2 Roll but −1 Draw for 2 turns.' },
-  zap: { name: 'Zap chip', tier: 2, glyph: 'ϟ', vars: { s: 3 }, list: 'Zap Chip',
-    text: (v) => `Electric deterrent. A fee of ${v.s}¢ or less on its stack shocks the attacker: a Shocking chip lands on one of their front stacks. A bigger fee breaks it.` },
+  egg: { name: 'Egg Chip', tier: 2, glyph: '🥚', kind: 'egg', place: 'top', vars: { hits: 5, hatch: 5 }, list: 'Egg Chip', food: { mods: { proficiency: 2, trickery: -1 }, turns: 2 },
+    text: () => 'A Dragon egg. Eat it raw: +2 Roll but −1 Draw for 2 turns. Leave it and it hatches a Dragon at your opponent after 5 hatch steps (one a turn, one more next to heat). It takes 5 whole fees before it breaks; broken, it never hatches.' },
+  zap: { name: 'Zap chip', tier: 2, glyph: 'ϟ', vars: { s: 3 }, list: 'Zap Chip', tags: ['electric'],
+    text: (v) => `Electric deterrent. A fee of ${v.s}¢ or less on its stack shocks the attacker: a Shocking chip lands on one of their front stacks (one more per Battery under it). A bigger fee breaks it.` },
   boosted: { name: 'Boosted chip', tier: 3, glyph: '⇡', vars: { die: 1 }, list: 'Boosted Chip',
     text: (v) => `Every die you roll shows ${v.die} more for each Boosted chip in your position.` },
   cheapened: { name: 'Cheapened chip', tier: 3, glyph: '⇣', vars: { die: 1 }, list: 'Cheapened Chip',
@@ -354,29 +400,50 @@ export const shopVars = (id) => SHOP_CHIPS[id].vars || {};
 export const shopText = (id) => { const X = SHOP_CHIPS[id]; return typeof X.text === 'function' ? X.text(shopVars(id)) : X.text; };
 export const shopPrice = (id) => SHOP_CHIPS[id].price ?? CHIP_TIERS[SHOP_CHIPS[id].tier].price;
 export const shopFloor = (id) => SHOP_CHIPS[id].floor ?? CHIP_TIERS[SHOP_CHIPS[id].tier].floor;
-export const HAZARD_KINDS = ['debt', 'burn', 'acid', 'shock', 'corrupt', 'poison', 'boom', 'frost', 'lava', 'ghost']; // ghost: a fee shown landing on nothing
+// chips that lie over a stack rather than in it: they take no height, stay on top and are cleansed like hazards.
+// stray: a fee shown landing on nothing · hard: the Hardened chip · sticky: the Sticky chip
+export const HAZARD_KINDS = ['debt', 'burn', 'acid', 'shock', 'corrupt', 'poison', 'boom', 'frost', 'lava', 'stray', 'hard', 'sticky'];
 // shields that take a whole fee per hit (`hits` on the chip), not 1¢ like Block
-export const INSTANCE_SHIELDS = ['flower', 'petal', 'clay', 'brick', 'wood', 'tree'];
+export const INSTANCE_SHIELDS = ['flower', 'petal', 'clay', 'brick', 'wood', 'tree', 'hive', 'little', 'egg'];
 export const SEQS = { fib: [1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377], prime: [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53] };
 // renamed shop chips, for saves made before the rename
 export const SHOP_RENAMES = { bumper: 'reducer', mirror: 'rebound', fog: 'transpara', frozen: 'frost' };
 
-// `bounty`: how much Debt a creature soaks before it is driven off and drops a Bounty chip worth that much;
+// Creatures are chips over the table. `hits`: how many fee instances (whole fees, whatever their size) bring it
+// down; then it drops a Bounty chip worth `bounty` (BOUNTY_PER_HIT a hit). `layer`: 'flying' or 'ground'.
+// `life`: turns it stays. A creature with no hits (the Ghost) cannot be damaged.
+export const BOUNTY_PER_HIT = 5;
 export const CREATURES = {
-  ufo: { name: 'UFO', glyph: '🛸', text: 'Abducts the top chip of a random stack each turn, then flies home. Chips taken are lost.', bounty: 50 },
-  fairy: { name: 'Fairy', glyph: '🧚', text: 'Converts the top chip of a random stack into a random chip. Chaos reigns!', bounty: 25 },
-  dragon: { name: 'Dragon', glyph: '🐉', text: 'Breathes a Burning chip onto a random stack each turn.', bounty: 250 },
-  mole: { name: 'Mole', glyph: '🐭', text: 'Digs up a random empty space and leaves a Hole.' },
-  unicorn: { name: 'Unicorn', glyph: '🦄', text: 'Converts every chip in a random stack into random chips. Chaos reigns!', bounty: 250 },
-  mothership: { name: 'Mothership', glyph: '👾', text: 'Hovers over one stack and beams up a chip every turn until the stack is gone. Chips taken are lost.', bounty: 500 },
+  ufo: { name: 'UFO', glyph: '🛸', hits: 1, life: 1, layer: 'flying', text: 'Flying. Abducts the top chip of a random stack, stays the turn, then flies home. Chips taken are lost.' },
+  fairy: { name: 'Fairy', glyph: '🧚', hits: 1, life: 2, layer: 'flying', text: 'Flying. Converts the top chip of a random stack into a random chip. Chaos reigns!' },
+  dragon: { name: 'Dragon', glyph: '🐉', hits: 50, life: 2, layer: 'flying', text: 'Flying. Breathes a Burning chip onto a random stack each turn.' },
+  mole: { name: 'Mole', glyph: '🐭', hits: 1, life: 2, layer: 'ground', text: 'Digs up a random empty space and leaves a Hole, then sits in it.' },
+  unicorn: { name: 'Unicorn', glyph: '🦄', hits: 1, life: 1, layer: 'ground', text: 'Converts every chip in a random stack into random chips. Chaos reigns!' },
+  mothership: { name: 'Mothership', glyph: '👾', hits: 10, life: 5, layer: 'flying', text: 'Flying. Hovers over one stack and beams up a chip every turn until the stack is gone. Chips taken are lost.' },
+  ghost: { name: 'Ghost', glyph: '👻', hits: 0, life: 3, layer: 'flying', text: 'Very spooky. Fear: no trick can aim at its row, only spreads reach it. It cannot be damaged, and no overkill passes into or through its row.' },
+  ghostship: { name: 'Ghost Ship', glyph: '🏴‍☠️', hits: 100, life: 6, layer: 'flying', text: 'A vehicle that sails across empty spaces to a stack with a Gold chip on top and steals it. Takes 100 fee instances to sink; sunk, it drops a Treasure chip with everything it stole.' },
+};
+for (const C of Object.values(CREATURES)) C.bounty = C.hits * BOUNTY_PER_HIT;
+CREATURES.ghostship.bounty = 0; // it drops Treasure instead
+// Orbital chips: weather and vehicles in the sky, above the flying layer. Weather comes with the table's felt.
+// `size`: spaces it covers ('table' = all of them).
+export const ORBITALS = {
+  cloud: { name: 'Cloud', glyph: '☁', size: 1, text: 'Weather. Drifts a space each turn and rains on what is under it: an empty space becomes a Puddle, a stack gets wet and its fire, frost and corruption wash off. Plants under it grow faster. One turn in four it throws lightning: a Shocking chip on a random stack.' },
+  sun: { name: 'Sun', glyph: '☀', size: 'table', text: 'Weather. While it shines your Flowers bloom twice as many Petals and your Trees grow twice as fast; Puddles dry, ice thaws and eggs hatch faster.' },
+  moon: { name: 'Moon', glyph: '☾', size: 'table', text: 'Weather. The tide: each turn a Puddle spreads to an empty space next to it, and Ghosts come out. (Proposed: the list gives the Moon no effect yet.)' },
+  blizzard: { name: 'Blizzard', glyph: '❄', size: 'table', text: 'Weather as big as the table, for one turn. At its end every stack shorter than its strength freezes into one Frozen chip, wet chips freeze and Puddles turn to ice.' },
+  b52: { name: 'B-52', glyph: '✈', size: 1, text: 'A vehicle launched by a Calamity. Flies one space along a row each turn and drops a 52¢ Boom chip on the stack beneath.' },
+  tornado: { name: 'Tornado', glyph: '🌪', size: 1, text: 'Moves to a space next to it each turn. A stack under it shorter than its strength (2d6) is thrown about, and some of its chips may be lost.' },
 };
 export const CALAMITIES = {
   wormhole: { name: 'Worm Hole', text: 'Opens on an empty space of your position. Any chips that land on it are pulled through to an empty space on your opponent\'s side.' },
   inferno: { name: 'Inferno', text: 'Really, really hot. A Burning chip lands on one of your stacks every turn.' },
   audit: { name: 'House Audit', text: 'Every second turn, each of your front stacks is charged a 1¢ fee.' },
-  blackhole: { name: 'Black Hole', text: 'Takes one of your Bar spaces. Every turn it pulls in a chip from a stack next to it, and that chip is lost.' },
-  volcano: { name: 'Volcano', text: 'Takes one of your Bar spaces. For four turns it launches a Burning chip at one of your stacks, then goes dormant and frees the space.' },
-  tornado: { name: 'Tornado', text: 'Every turn it hits one of your stacks. A stack under 3 chips high is thrown about, and some of its chips may be lost.' },
+  blackhole: { name: 'Black Hole', text: 'A hole in space on one of your Bar spaces: anything put on it is gone. Every turn, and whenever a Correction moves chips, it consumes the bottom chip of a stack next to it.' },
+  volcano: { name: 'Volcano', text: 'A full stack of Volcano chips, two spaces by two where there is room. Nothing can be placed on it. For four turns it launches a Burning chip at one of your stacks, then goes dormant: the space comes back one stack height lower.' },
+  tornado: { name: 'Tornado', text: 'A Tornado chip moves over your position. Its strength is rolled on 2d6; a stack under it shorter than that is thrown about, and some of its chips may be lost.' },
+  blizzard: { name: 'Blizzard', text: 'Every fourth turn a Blizzard covers your whole table for a turn: stacks shorter than its strength (2d6) freeze into one Frozen chip.' },
+  b52: { name: 'B-52', text: 'Launches a B-52 over your position: it flies along a row dropping a 52¢ Boom chip on a stack each turn.' },
 };
 
 // ---------- Wagers and tilts ----------
@@ -389,7 +456,7 @@ export const TILT_TIERS = [
   { inc: 0.1, challenge: 100000, cheat: 500000 }, { inc: 0.2, challenge: 1000000, cheat: 5000000 },
 ];
 export const TILTS = {
-  hazard: { kind: 'challenge', name: 'Hazard', cap: [6, 6, 3, 0, 0], text: 'Adds a Hole to a random space of your position. Holes cannot hold chips.' },
+  hazard: { kind: 'challenge', name: 'Hazard', cap: [6, 6, 3, 0, 0], text: 'Adds a Hole to a random space of your position. Holes cannot hold chips. One in three is a Magic Hat under one of your stacks instead.' },
   creature: { kind: 'challenge', name: 'Creature', cap: [3, 3, 2, 1, 1], text: 'A creature visits your position for a couple of turns, messes with it, then leaves.' },
   spawner: { kind: 'challenge', name: 'Spawner', cap: [1, 1, 1, 1, 1], text: 'A nest that sends a new creature at your position every third turn. One in two is a Dragon Roost: it takes a Bar space and calls a Dragon, which burns a chip, then lays an egg on the Roost. While the egg sits there no Dragon comes; play a trick totalling 10 or more and it hatches a Dragon onto your opponent.' },
   calamity: { kind: 'challenge', name: 'Calamity', cap: [0, 0, 0, 1, 1], text: 'A disaster that lasts the whole bout.' },
@@ -417,20 +484,20 @@ export const BOSSES = [null,
   ['ATM Machine', 'Pile of Cash', 'Exotic Animal', 'Antique Clock'], ['Gold Bar', 'Uncut Gem', 'Luxury Vehicle', 'Lucrative Deal'],
   ['Sunken Treasure', 'Endangered Species', 'Vested 401k', 'Project Funding'], ['Trust Fund', 'The Vault', 'Priceless Painting', 'Ancient Artifact']];
 export const ASCENT_NAMES = ['Shop Keeper', 'Veteran Hustler', 'Golden Parachute', 'Diamond Hands', 'The House'];
-// Table felts. For now a felt only colours the table (a: centre, b: edge, rim: the rail). `effect` is where a
-// board effect will go; none is wired yet. `pool: false` felts are not dealt to random tables.
+// Table felts (a: centre, b: edge, rim: the rail). `weather`: the orbital weather the table brings (see ORBITALS);
+// `cold`: wet chips and Puddles on it freeze. `pool: false` felts are not dealt to random tables.
 export const FELTS = {
   felt: { name: 'Felt', a: '#1f8a63', b: '#0a3326', rim: '#c9f7df', line: 'Classic green baize.' },
   satin: { name: 'Satin', a: '#a3366f', b: '#3d0c28', rim: '#ffc2e4', line: 'Slick and shiny. Chips slide a little.' },
   buffet: { name: 'Buffet', a: '#b8742a', b: '#4a2808', rim: '#ffe0a8', line: 'Somebody spilled the gravy.' },
-  earthen: { name: 'Earthen', a: '#7a5a35', b: '#2c1d0d', rim: '#e6cba4', line: 'Packed clay and old roots.' },
-  frosty: { name: 'Frosty', a: '#7fbfe0', b: '#1d4a66', rim: '#f0fbff', line: 'Cold to the touch. Breath fogs over it.' },
+  earthen: { name: 'Earthen', a: '#7a5a35', b: '#2c1d0d', rim: '#e6cba4', line: 'Packed clay and old roots.', weather: ['cloud'] },
+  frosty: { name: 'Frosty', a: '#7fbfe0', b: '#1d4a66', rim: '#f0fbff', line: 'Cold to the touch. Breath fogs over it.', weather: ['cloud'], cold: true },
   urban: { name: 'Urban', a: '#5b5f6b', b: '#1b1c22', rim: '#cfd3dd', line: 'Asphalt grey with a painted line.' },
-  oceanic: { name: 'Oceanic', a: '#1f7fa8', b: '#06263d', rim: '#9fe8ff', line: 'Deep blue, with a tide to it.' },
-  molten: { name: 'Molten', a: '#d9531f', b: '#3d0a02', rim: '#ffd36a', line: 'Still warm from the forge.' },
-  lunar: { name: 'Lunar', a: '#8d8aa3', b: '#25233a', rim: '#ecebff', line: 'Pale and cratered.' },
-  polar: { name: 'Polar', a: '#d8e6f0', b: '#5d7488', rim: '#ffffff', line: 'Snow white and blinding.' },
-  galactic: { name: 'Galactic', a: '#5a2fa8', b: '#0d0526', rim: '#d9c2ff', line: 'Stars in the weave.' },
+  oceanic: { name: 'Oceanic', a: '#1f7fa8', b: '#06263d', rim: '#9fe8ff', line: 'Deep blue, with a tide to it.', weather: ['cloud'] },
+  molten: { name: 'Molten', a: '#d9531f', b: '#3d0a02', rim: '#ffd36a', line: 'Still warm from the forge.', weather: ['sun'] },
+  lunar: { name: 'Lunar', a: '#8d8aa3', b: '#25233a', rim: '#ecebff', line: 'Pale and cratered.', weather: ['moon'] },
+  polar: { name: 'Polar', a: '#d8e6f0', b: '#5d7488', rim: '#ffffff', line: 'Snow white and blinding.', weather: ['blizzard'], cold: true },
+  galactic: { name: 'Galactic', a: '#5a2fa8', b: '#0d0526', rim: '#d9c2ff', line: 'Stars in the weave.', weather: ['moon'] },
   royal: { name: 'Royal', a: '#7a2d7a', b: '#22082b', rim: '#ffd76a', line: 'The High Roller\'s own cloth.', pool: false },
   house: { name: 'House', a: '#2b2f6b', b: '#0b0b26', rim: '#7df3ff', line: 'The doorman and the barfly play on this.', pool: false },
   paradise: { name: 'Paradise', a: '#d4a52a', b: '#3a2604', rim: '#fff3bf', line: 'Gold thread. For the Ascent.', pool: false },

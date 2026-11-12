@@ -48,7 +48,7 @@ for (let seed = 1; seed <= 25; seed++) {
 
 // ---------- Debt ----------
 const { engage, settleAll, setDebt } = B._test;
-const fresh = (seed) => { const { bout } = R.startIntro(R.newRun('hustler', 'standard', seed)); bout.sides[1].grid.forEach((row) => row.forEach((cell) => { cell.chips = []; cell.hard = 0; })); return bout; };
+const fresh = (seed) => { const { bout } = R.startIntro(R.newRun('hustler', 'standard', seed)); bout.sides[1].grid.forEach((row) => row.forEach((cell) => { cell.chips = []; })); return bout; };
 const std = (bout, v) => ({ id: bout.nextId++, kind: 'std', value: v });
 const settle = (bout) => { for (const _ of settleAll(bout, 'expense')); }; // eslint-disable-line no-unused-vars
 

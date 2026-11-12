@@ -20,7 +20,7 @@ export function evalTarget(b, s, e, tgt) {
     const live = cells.filter(({ r, c }) => B.occupied(t.grid[r][c])); if (!live.length) return -1;
     const share = def.tax ? 99 : total / live.length; let v = 0;
     for (const { r, c } of live) { const cell = t.grid[r][c]; const w = Math.max(0, B.cellWorth(cell)); const shields = cell.chips.filter(B.isShield).length;
-      v += def.tax ? w : Math.min(share, w + shields * 0.4) - (cell.hard > 0 ? share * 0.6 : 0); }
+      v += def.tax ? w : Math.min(share, w + shields * 0.4) - (B.hardOf(cell) > 0 ? share * 0.6 : 0); }
     return v;
   }
   if (def.approach === 'meter') { let col = 0; for (let r = 0; r < t.rows; r++) col += Math.max(0, B.cellWorth(t.grid[r][tgt.c])); return col - tgt.r * 3; }

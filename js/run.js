@@ -304,7 +304,7 @@ export function autoCounts(run, dims, purse = run.purse, reserve = 0) {
 }
 // the saved chip mix, or a fresh one if it no longer fits the purse or the position
 export function validCounts(run, dims) {
-  const c = run.plan.counts, shop = sum(Object.entries(run.plan.resist || {}), ([k, n]) => Math.min(n, owned(run, k)) * (D.SHOP_CHIPS[k]?.place === 'space' ? dims.stackMax : 1)) // a Tree needs a whole space
+  const c = run.plan.counts, shop = sum(Object.entries(run.plan.resist || {}), ([k, n]) => Math.min(n, owned(run, k)) * (D.SHOP_CHIPS[k]?.place === 'space' ? dims.stackMax : D.SHOP_CHIPS[k]?.place === 'big' ? 3 * dims.stackMax + 1 : D.SHOP_CHIPS[k]?.place === 'sky' ? 0 : 1)) // a Tree needs a whole space, a Big chip four
     + run.cards.filter((id) => D.CARDS[id]?.resist).length; // and room for Resist chips
   if (c && planWorth(c) <= run.purse && sum(Object.values(c)) + shop <= barCapacity(dims) && planWorth(c) > 0) return c;
   return autoCounts(run, dims, run.purse, shop);
@@ -338,7 +338,7 @@ export function startTable(run, prep) {
     calamities: Array.from({ length: t.calamity }, () => run.rng.pick(Object.keys(D.CALAMITIES))) } };
   const st = rollerStats(run, extra); const counts = validCounts(run, st.dims);
   for (const el of Object.keys(extra.resist)) extra.resist[el] = Math.min(extra.resist[el], owned(run, el));
-  const bout = createBout({ seed: run.rng.int(2 ** 31), a: playerSpec(run, counts, extra), b: entry.opp, rules: { maxDenom: maxDenom(run.floor) } });
+  const bout = createBout({ seed: run.rng.int(2 ** 31), a: playerSpec(run, counts, extra), b: entry.opp, rules: { maxDenom: maxDenom(run.floor), felt: prep.kind === 'boss' ? 'royal' : D.feltId(entry.felt) } });
   const com = committed(bout);
   return { bout, ctx: { kind: prep.kind, idx: prep.idx, opp: entry.opp, felt: prep.kind === 'boss' ? 'royal' : D.feltId(entry.felt), prep, wager: Math.max(0, run.purse - com), mult: multiplier(run, prep), committed: com, resist: extra.resist } };
 }

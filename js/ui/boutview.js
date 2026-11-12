@@ -1,7 +1,8 @@
 // The table. Every chip, die, trick card and creature is one persistent element that is
 // moved, faded or flipped to follow the bout state, so nothing ever pops between states.
 import { h, tip, wait, tween, swapText, setOn, pulse, syncList, toast, btn, refreshTip, box, vc, detail } from './core.js';
-import { chipSig, chipGlyph, chipName, chipText, dieTip, trickTip, pips, statTip, drinkTip, dieMarks, dieClass, trickLook, feltStyle } from './parts.js';
+import { chipSig, chipGlyph, chipName, chipText, dieTip, trickTip, pips, statTip, drinkTip, dieMarks, dieClass, trickLook, feltStyle, seenAs, traitsOf, traitsHtml } from './parts.js';
+import { flyerTraits } from '../traits.js';
 import { openLibrary } from './library.js';
 import * as D from '../data.js';
 import * as B from '../bout.js';
@@ -115,6 +116,11 @@ export function boutScene(root, bout, ctx, onDone) {
   const banner = h('div', { class: 'banner' });
   const fcLayer = h('div', { class: 'fc-layer' }); // fee forecasts and Debt tags over the stacks
   root.append(...frameEls, oppRun, layer, fcLayer, arms[0].el, arms[1].el, phaseCall, banner);
+  // table-sized weather: a see-through sheet over each position (snow for a Blizzard, light for the Sun or Moon)
+  const weatherEls = bout.sides.map((s, si) => { const a = cellPos(si, si === 0 ? s.rows - 1 : 0, 0), w = s.rows * cw[si];
+    const el = h('div', { class: 'weather', style: { left: a.x + 'px', top: TOP + 'px', width: w + 'px', height: s.dims.cols * CH + 'px' } },
+      ...Array.from({ length: 26 }, (_, i) => h('i', { style: { left: `${(i * 37) % 100}%`, animationDelay: `${-(i * 0.73) % 6}s`, animationDuration: `${4 + (i % 5)}s` } })));
+    root.insertBefore(el, layer); return el; });
 
   // cells
   bout.sides.forEach((s, si) => {
@@ -152,21 +158,24 @@ export function boutScene(root, bout, ctx, onDone) {
   function cellTip(si, r, c) {
     const s = bout.sides[si], cell = s.grid[r][c], zone = r < s.dims.meterRows ? 'Meter' : 'Bar';
     if (cell.black) return `<b>${D.CALAMITIES.blackhole.name}</b><p>${D.CALAMITIES.blackhole.text}</p>`;
-    if (cell.roost) return `<b>Dragon Roost</b>${cell.roost.egg ? ' <span class="dim">an egg on top</span>' : ''}<p>${cell.roost.egg ? 'No Dragon comes while the egg sits here. Play a trick totalling 10 or more and it hatches a Dragon onto your opponent.' : 'Every third turn it calls a Dragon, which burns a chip and nests here.'}</p>`;
+    if (cell.roost) { const eggs = cell.chips.filter((ch) => ch.kind === 'egg'); return `<b>Dragon Roost</b>${eggs.length ? ` <span class="dim">${eggs.length} egg${eggs.length > 1 ? 's' : ''}</span>` : ''}<p>${eggs.length ? `No Dragon comes while an egg sits here. Each egg takes 2 hatch steps a turn here (${eggs.map((e) => `${e.prog || 0}/5`).join(', ')}) and hatches a Dragon at ${s.idx ? 'its owner' : 'you'}; break it first (5 whole fees) or play a trick totalling 10 or more to hatch it at your opponent.` : 'Every third turn it calls a Dragon, which burns a chip and lays an egg here.'}</p>`; }
+    if (cell.link) return cellTip(si, cell.link.r, cell.link.c);
+    if (cell.puddle && !cell.chips.length) return `<b>${cell.puddle.ice ? 'Iced-over Puddle' : 'Puddle'}</b><p>${cell.puddle.ice ? 'Frozen. It thaws under the Sun or in the rain.' : 'Water on an empty space. Nothing can be played here until it dries, after a turn without water.'}</p>${cell.hole ? '<p class="dim">It fills a Hole: Wood can float here.</p>' : ''}`;
     if (cell.worm && !cell.chips.length) return `<b>${D.CALAMITIES.wormhole.name}</b><p>${D.CALAMITIES.wormhole.text}</p>`;
     if (cell.volcano > 0) return `<b>${D.CALAMITIES.volcano.name}</b> <span class="dim">${cell.volcano} turn${cell.volcano > 1 ? 's' : ''} left</span><p>${D.CALAMITIES.volcano.text}</p>`;
-    if (cell.hole) return `<b>Hole</b><p>Nothing can be placed here.</p>`;
+    if (cell.hole) return `<b>Hole</b><p>Nothing can be placed here. It does not move.</p>`;
     const dimLine = `<p class="dim">${zone} row ${zone === 'Meter' ? r + 1 : r - s.dims.meterRows + 1} of ${zone === 'Meter' ? s.dims.meterRows : s.dims.barRows}, lane ${c + 1} of ${s.dims.cols}. Hover the ${zone.toUpperCase()} label for how the position's size is set.</p>`;
     if (!cell.chips.length) return `<b>Empty ${zone} space</b><p>Holds up to ${s.dims.stackMax} chips (${D.BASE_DIMS.stackMax} + ${s.dims.stackMax - D.BASE_DIMS.stackMax} Balance).</p>${fxTip(si, r, c)}${dimLine}`;
-    const groups = []; for (let i = cell.chips.length - 1; i >= 0; i--) { const ch = cell.chips[i], g = groups[groups.length - 1]; if (g && g.sig === chipSig(ch)) g.n++; else groups.push({ sig: chipSig(ch), ch, n: 1 }); }
-    const top = cell.chips[cell.chips.length - 1], debt = B.debtOf(cell), next = B.debtTarget(cell);
+    const groups = []; for (let i = cell.chips.length - 1; i >= 0; i--) { const ch = seenAs(cell.chips[i], si), g = groups[groups.length - 1]; if (g && g.sig === chipSig(ch)) g.n++; else groups.push({ sig: chipSig(ch), ch, n: 1 }); }
+    const top = seenAs(cell.chips[cell.chips.length - 1], si), debt = B.debtOf(cell), next = B.debtTarget(cell), hard = B.hardOf(cell);
     return `<b>${zone} stack</b> <span class="dim">${B.solidCount(cell)}/${s.dims.stackMax} high · worth ${B.cellWorth(cell)}¢${debt ? ` · owes ${debt}¢` : ''}</span>
-      ${cell.hard > 0 ? `<p class="good">Hardened for ${cell.hard} more turn${cell.hard > 1 ? 's' : ''}: each fee takes only one chip.</p>` : ''}
+      ${hard > 0 ? `<p class="good">Hardened for ${hard} more turn${hard > 1 ? 's' : ''}: each fee takes only one chip.</p>` : ''}
+      ${B.lifted(cell) ? '<p class="good">Lifted by a Heli-Chipter: flying, and it plays from the bottom.</p>' : ''}${cell.anchor ? '<p class="dim">Covers two spaces by two.</p>' : ''}${cell.cut ? `<p class="dim">A dormant Volcano left it ${cell.cut} lower.</p>` : ''}
       ${debt && next ? `<p class="bad">Owes ${debt}¢. Debt only pays whole chips, so the ${next.value}¢ chip it sits on goes to the Stage once the Debt reaches ${next.value}¢: ${next.value - debt}¢ more, from any later fee or hazard.</p>` : ''}
       ${debt ? `<p class="dim">${DEBT_RULE}</p>` : ''}
       <ul class="stack">${groups.map((g) => `<li><span class="chip static mini ${g.sig}"><i>${chipGlyph(g.ch)}</i></span> ${g.n} × ${chipName(g.ch)}</li>`).join('')}</ul>
       ${si === 0 && !B.canEat(bout, me, r, c) ? (() => { const f = B.foodOf(me, r, c); return `<p class="good keep">Double-click to eat ${f.label}: ${Object.entries(f.mods).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${D.STATS[k].name}`).join(', ')}${f.turns > 1 ? ` for ${f.turns} turns` : ' this turn'}.</p>`; })() : ''}
-      <p class="dim">Top: ${chipText(top)}</p>${fxTip(si, r, c)}${dimLine}`;
+      <p class="dim">Top: ${chipText(top)}</p>${traitsHtml(traitsOf(top, { cell }))}${fxTip(si, r, c)}${dimLine}`;
   }
   const DEBT_RULE = 'How Debt works: a fee is paid from the top of the stack it lands on, one whole chip at a time. What cannot cover the next chip stays on that stack as Debt and already counts against Worth. If the stack runs out of chips, the rest (overkill) moves to the next stack behind it in the same lane (the line of stacks running from the Stage to the edge of the table). It never spreads to another lane, and with no stack behind it is wasted.';
   function cardTip(uid) {
@@ -296,7 +305,10 @@ export function boutScene(root, bout, ctx, onDone) {
 
     // chips
     const want = new Map();
-    bout.sides.forEach((s, si) => { for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) s.grid[r][c].chips.forEach((ch, lvl) => want.set(ch.id, { ...chipPos(si, r, c, lvl), ch, side: si })); });
+    bout.sides.forEach((s, si) => { for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const cell = s.grid[r][c];
+      if (cell.anchor && r + 1 < s.rows && c + 1 < s.dims.cols) { const a = cellPos(si, r, c), b2 = cellPos(si, r + 1, c + 1), cx = (a.x + b2.x) / 2 + a.w / 2, cy = (a.y + b2.y) / 2 + CH / 2;
+        cell.chips.forEach((ch, lvl) => want.set(ch.id, { x: cx - CHIP / 2, y: cy - CHIP / 2 + 10 - Math.min(lvl, 12) * 5, z: 20 + c * 40 + lvl, ch: seenAs(ch, si), side: si, s: ch.big || ch.kind === 'volcano' ? 1.9 : 0 })); }
+      else cell.chips.forEach((ch, lvl) => want.set(ch.id, { ...chipPos(si, r, c, lvl), ch: seenAs(ch, si), side: si })); } });
     for (const e of me.run) { const cl = cards.get(e.uid); e.bid.forEach((ch, i) => want.set(ch.id, { x: cl.x + 9 + i * 10, y: cl.y + 87, z: 900 + i, ch, side: 0 })); }
     const flipIds = new Set(ui.flips.map(({ r, c }) => B.bidChip(me, r, c)?.id)), bidId = ui.chip && B.bidChip(me, ui.chip.r, ui.chip.c)?.id;
     const ostep = Math.min(48, Math.floor(216 / Math.max(1, opp.run.length))); oppRun.style.setProperty('--oh', `${ostep - 6}px`);
@@ -336,16 +348,27 @@ export function boutScene(root, bout, ctx, onDone) {
 
     // cells, creatures, numbers
     const tags = [];
-    bout.sides.forEach((s, si) => { for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const el = els.cells[si][r][c], cell = s.grid[r][c], debt = B.debtOf(cell); el.classList.toggle('hole', !!cell.hole); el.classList.toggle('hard', cell.hard > 0); el.classList.toggle('black', !!cell.black); el.classList.toggle('worm', !!cell.worm); el.classList.toggle('roost', !!cell.roost); el.classList.toggle('egg', !!cell.roost?.egg); el.classList.toggle('food', si === 0 && !B.canEat(bout, me, r, c)); el.classList.toggle('volcano', cell.volcano > 0); el.classList.toggle('owes', debt > 0);
+    bout.sides.forEach((s, si) => { for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const el = els.cells[si][r][c], cell = s.grid[r][c], debt = B.debtOf(cell); el.classList.toggle('hole', !!cell.hole); el.classList.toggle('hard', B.hardOf(cell) > 0); el.classList.toggle('puddle', !!cell.puddle && !cell.chips.length); el.classList.toggle('ice', !!cell.puddle?.ice); el.classList.toggle('link', !!cell.link || !!cell.anchor); el.classList.toggle('cut', !!cell.cut); el.classList.toggle('lifted', B.lifted(cell)); el.classList.toggle('black', !!cell.black); el.classList.toggle('worm', !!cell.worm); el.classList.toggle('roost', !!cell.roost); el.classList.toggle('egg', !!cell.roost && cell.chips.some((ch) => ch.kind === 'egg')); el.classList.toggle('food', si === 0 && !B.canEat(bout, me, r, c)); el.classList.toggle('volcano', cell.volcano > 0); el.classList.toggle('owes', debt > 0);
       if (debt) { const next = B.debtTarget(cell); tags.push({ k: `${si}:${r}:${c}`, si, r, c, text: next ? `${debt} of ${next.value}¢` : `owes ${debt}` }); } } });
     syncTags(tags);
-    for (const cr of bout.creatures) {
-      let el = els.creatures.get(cr.id); const s = bout.sides[cr.side];
-      const p = cr.r >= 0 ? cellPos(cr.side, cr.r, cr.c) : { x: cr.side === 0 ? 300 : 960, y: 44, w: 40 };
-      if (!el) { if (cr.gone || cr.arrive > bout.turn) continue; el = h('div', { class: 'creature', text: D.CREATURES[cr.kind].glyph, tip: `<b>${D.CREATURES[cr.kind].name}</b><p>${D.CREATURES[cr.kind].text}</p>` }); layer.append(el); els.creatures.set(cr.id, el); spawn(el, p.x, -40, ''); }
-      if (cr.gone) { el.style.opacity = '0'; place(el, p.x + (cr.side === 0 ? -200 : 200), -60); els.creatures.delete(cr.id); setTimeout(() => el.remove(), 800); continue; }
-      void s; el.style.opacity = '1'; place(el, p.x + p.w / 2 - 16, p.y - 14);
+    // creatures fly over the stacks, bees with them; orbital chips (weather, vehicles) ride above them
+    const flyers = [...bout.creatures.map((cr) => ({ key: 'c' + cr.id, side: cr.side, r: cr.r, c: cr.c, gone: cr.gone, late: cr.arrive > bout.turn, glyph: D.CREATURES[cr.kind].glyph, cls: `creature cr-${cr.kind}`,
+      tip: () => `<b>${D.CREATURES[cr.kind].name}</b>${D.CREATURES[cr.kind].hits ? ` <span class="dim">${D.CREATURES[cr.kind].hits - (cr.dmg || 0)} of ${D.CREATURES[cr.kind].hits} hits left</span>` : ''}<p>${D.CREATURES[cr.kind].text}</p>${cr.hold?.length ? `<p class="bad">Holds ${sum(cr.hold, (x) => x.value)}¢ of stolen Gold.</p>` : ''}${traitsHtml(flyerTraits(cr.kind))}` })),
+      ...bout.sides.flatMap((s) => s.bees.map((bee) => ({ key: 'b' + bee.id, side: s.idx, r: bee.r, c: bee.c, glyph: '🐝', cls: 'creature bee', tip: `<b>Bumble Bee</b> <span class="dim">${bee.life} turn${bee.life === 1 ? '' : 's'} left</span><p>A familiar from a Hive. It stings creatures over its table and pollinates Flowers into Honey.</p>` }))),
+      ...bout.sides.flatMap((s) => s.sky.filter((o) => D.ORBITALS[o.kind].size !== 'table').map((o) => ({ key: 's' + o.id, side: s.idx, r: o.r, c: o.c, glyph: D.ORBITALS[o.kind].glyph, cls: `creature orbital or-${o.kind}`, out: o.c < 0,
+        tip: () => `<b>${D.ORBITALS[o.kind].name}</b>${o.str ? ` <span class="dim">strength ${o.str}</span>` : ''}<p>${D.ORBITALS[o.kind].text}</p>${traitsHtml(flyerTraits(o.kind, true))}` })))];
+    const live = new Set();
+    for (const f of flyers) {
+      let el = els.creatures.get(f.key); const on = f.r >= 0 && !f.out, p = on ? cellPos(f.side, f.r, Math.max(0, f.c)) : { x: f.side === 0 ? 300 : 960, y: 44, w: 40 };
+      if (!el) { if (f.gone || f.late) continue; el = h('div', { class: f.cls, text: f.glyph, tip: f.tip }); layer.append(el); els.creatures.set(f.key, el); spawn(el, p.x, -40, ''); }
+      live.add(f.key);
+      if (f.gone) { el.style.opacity = '0'; place(el, p.x + (f.side === 0 ? -200 : 200), -60); els.creatures.delete(f.key); setTimeout(() => el.remove(), 800); continue; }
+      el.style.opacity = '1'; place(el, p.x + p.w / 2 - 16, p.y - (f.cls.includes('orbital') ? 26 : f.cls.includes('bee') ? 2 : 14));
     }
+    for (const [key, el] of els.creatures) if (!live.has(key)) { el.style.opacity = '0'; els.creatures.delete(key); setTimeout(() => el.remove(), 800); }
+    bout.sides.forEach((s, si) => { const big = s.sky.filter((o) => D.ORBITALS[o.kind].size === 'table'), w = weatherEls[si];
+      for (const k of ['blizzard', 'sun', 'moon']) w.classList.toggle(k, big.some((o) => o.kind === k));
+      w._tip = big.length ? () => big.map((o) => `<b>${D.ORBITALS[o.kind].name}</b>${o.str ? ` <span class="dim">strength ${o.str}</span>` : ''}<p>${D.ORBITALS[o.kind].text}</p>`).join('') : null; });
     bout.sides.forEach((s, si) => { const owed = owedBy(s); swapText(owesEl[si], owed ? ` · owes ${owed}¢` : ''); tween(worthEl[si], B.worth(s)); tween(stageEl[si], bout.stage.paid[si]); syncList(badgeBox[si], badges(s), (x) => x.k, (x) => h('span', { class: `badge ${x.cls || ''}`, tip: x.tip }), (el, x) => swapText(el, x.text)); });
     swapText(root.querySelector('.turn-n'), String(bout.turn));
     const at = B.PHASES.indexOf(bout.phase);
@@ -561,13 +584,14 @@ export function boutScene(root, bout, ctx, onDone) {
     if (throwing()) return doThrow();
     const why = B.needOf(bout, me); if (why) return nope(why, commitBtn);
     ui.locked = true; setMode(null); ui.chip = null; ui.sel.clear(); ui.flips = []; prompt = ''; renderFeed();
-    const phase = bout.phase, before = new Set(opp.run.map((e) => e.uid));
-    planPhase(bout, opp);
+    const phase = bout.phase, before = ui.spyBefore || new Set(opp.run.map((e) => e.uid));
+    if (ui.spied !== spyKey()) planPhase(bout, opp); ui.spied = null; ui.spyBefore = null;
     if (!B.advance(bout)) B.advance(bout, true);
     sync(); reveal(phase, before);
     await wait(420 / ui.speed);
     ui.locked = false;
     if (bout.phase === 'resolve') return playTurn();
+    spyPhase();
     if (bout.phase === 'aim') { const first = me.run.find((x) => x.state === 'bid' && B.needsTarget(x) && B.validTargets(bout, me, x).length > 1); if (first) setMode('target', first.uid); }
     sync(); hint();
   }
@@ -624,7 +648,17 @@ export function boutScene(root, bout, ctx, onDone) {
     sync(); hint();
   }
   // The Drink phase: sip once, eat once, then the next turn. Your opponent drinks when you move on.
-  function closeDrink() { drinkPhase(bout, opp); B.nextTurn(bout); setMode(null); sync(); hint(); }
+  function closeDrink() { drinkPhase(bout, opp); B.nextTurn(bout); setMode(null); spyPhase(); sync(); hint(); }
+  // a Spy on top of one of your stacks: your opponent makes this phase's plays now, and you see them
+  const spyKey = () => `${bout.turn}:${bout.phase}`;
+  function spyPhase() {
+    if (!B.spying(me) || !B.PHASES.includes(bout.phase) || ui.spied === spyKey()) return;
+    ui.spyBefore = new Set(opp.run.map((e) => e.uid)); planPhase(bout, opp); ui.spied = spyKey();
+    const tn = (e) => D.TRICKS[e.trick.id].name, at = (t) => (t ? `${t.side === 0 ? 'your' : 'their'} ${t.r < bout.sides[t.side].dims.meterRows ? 'Meter' : 'Bar'} lane ${t.c + 1}` : 'nothing');
+    const seen = bout.phase === 'draw' ? opp.run.filter((e) => !ui.spyBefore.has(e.uid)).map(tn) : bout.phase === 'roll' ? opp.run.filter((e) => e.dice.some((d) => d.t === bout.turn)).map((e) => `${e.dice.map((d) => d.value).join('+')} on ${tn(e)}`)
+      : bout.phase === 'bid' ? opp.run.filter((e) => e.state === 'bid').map((e) => `${e.bidValue}¢ on ${tn(e)}`) : opp.run.filter((e) => e.state === 'bid' && e.target).map((e) => `${tn(e)} at ${at(e.target)}`);
+    feedPush(`Your Spy: ${opp.name} ${bout.phase === 'aim' ? 'aims' : bout.phase + 's'} ${seen.length ? names(seen) : 'nothing'}.`, 1);
+  }
   async function finish() {
     document.removeEventListener('keydown', onKey);
     const win = bout.winner === 0; await wait(500);
@@ -634,6 +668,6 @@ export function boutScene(root, bout, ctx, onDone) {
     requestAnimationFrame(() => requestAnimationFrame(() => banner.classList.add('in')));
   }
 
-  requestAnimationFrame(() => { sync(); hint(); });
+  requestAnimationFrame(() => { spyPhase(); sync(); hint(); });
   void ctx; void sum;
 }

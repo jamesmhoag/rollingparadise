@@ -1,64 +1,25 @@
 # Chip list status
 
 Every row of the workbook chip list (`docs/CHIP-LIST.tsv`) and where it stands. The same view is in the
-Library under **Chip list**. Fill in what a **Needs detail** row asks for and it can be built. Statuses live in
-`js/chiplist.js`.
+Library under **Chip list**, with each chip's traits (see **Traits**). Statuses live in `js/chiplist.js`
+(generated from the sheet). Row 18, the Coin, is left out: it is an Artifact, for later.
 
-## Needs detail (29)
+## Needs detail (2)
 
 | Row | Chip | What is missing |
 | --- | --- | --- |
-| 12 | Regen x¢ Chip | Need: what a "recoup instance" pays (how many ¢, from where) and how long the modifier lasts. What makes it? |
-| 18 | Coin | Need: what it is for. Artifacts are not built yet, and the text asks the same question. |
-| 20 | Sticky f¢ Chip | Need: which modifiers stick (Feather, Hardened, Power…?), how long, and what makes a Sticky chip. |
-| 42 | Heli-Chipter | Need: what "reverses the play order of the stack" means here (pay from the bottom first?) and what makes it. |
-| 43 | Cloud Chip | Need: what makes a Cloud, how long it stays, how often it shocks, and how much faster plants grow. |
-| 48 | Hive Chip | Need: how many bees a Hive makes and how often, and what breaks it. Depends on Bumble Bee and Honey. |
-| 49 | Bumble Bee Chip | Need: Hive rules first. Flowers exist, so pollinating is ready once bees are. |
-| 58 | Battery Chip | Need: which chips count as electrical or electronic, and what energizing does to them. |
-| 64 | Blizzard Chip | Need: its strength value and what brings it (a Calamity tilt?). Frozen chips exist for it to make. |
-| 65 | Ghost Chip | Need: what it does besides being hard to target, and where it comes from. |
-| 66 | Puddle Chip | Need: a water source first (Cloud, Sprinkler). |
-| 67 | Ghost Ship Chip | Need: how it is destroyed (100 hits of what?) and the Treasure chip. |
-| 72 | Treasure Chip | Need: how many Gold chips it holds, how it opens, and the curse chance. |
-| 73 | Cursed Chip | Need: the negative effect while it is in a pile. |
-| 77 | Repeater Chip | Need: which roll value repeats ("based on the count of chips below it") and how often. |
-| 78 | Mimic Chip | Need: whose tricks are repeated (the owner's, or tricks aimed at the owner) and what makes it. |
-| 80 | Forgetter Chip | Need: same as Repeater — which roll value is negated. |
-| 81 | Tesla Chip | Need: which effects count as lightning (Zap, Shocking chips?) and how many targets it sends back to. |
-| 82 | Absorbtion Chip | Need: which effects count as lightning, and how many it absorbs. |
-| 83 | Sprinkler Chip | Need: watering rules (Puddle) and how much faster plants grow. |
-| 84 | Uranium Chip | Need: what places it (it harms its own stack, so a trick or a tilt?). |
-| 85 | Big Chip | Need: chips that cover 5 spaces are a new table rule. Which 5 (a plus shape?) and its value. |
-| 86 | Little Chip | Need: its value and how many fit on a space. |
-| 89 | Magic Hat Chip | Need: how a Hole moves ("movable hole") and who moves it. |
-| 90 | B 52¢ Chip | Need: what launches it, and the size of the Boom it drops (52¢ of Debt?). |
-| 91 | Heavy Chip | Need: what a "Burden" is. |
-| 92 | Metal Chip | Need: what it deters and what its burden is. |
-| 97 | Spy Chip | Need: the advantage it gives, and what it looks like to the opponent. |
-| 98 | Doom Chip | Need: what places Doom chips on the opponent's stacks, and how much "instance debt" is. |
+| 91 | Heavy Chip | Skipped for now (by request). Need: what a "Burden" is. |
+| 92 | Metal Chip | Skipped for now (by request). Need: what it deters and what its burden is. |
 
-## Partly built (13)
+## Partly built (0)
 
-| Row | Chip | In the game |
+| Row | Chip | How it is in the game |
 | --- | --- | --- |
-| 11 | Hardened p¢ Chip | Built as a stack state, not a chip: Brace (Insurance, Technician) and the Crown chip Harden a stack. Need: should it become a chip on top? |
-| 17 | Hole Chip | Built as a space state, not a chip: the Hazard tilt, Acid and the Mole make Holes. Need: should it be a movable chip (see Magic Hat)? |
-| 25 | Opportunity 1¢ Chip | Opportunity chip: earned for unused rolls. Differs: the list says leftovers refund that turn's bets; the game pays a chip per leftover. Need: which? |
-| 37 | Black Hole Chip | Built as a Calamity that takes a Bar space, not a chip. Need: what else places one? |
-| 38 | UFO Chip | Built as a creature that visits the table (Creature tilt), not a chip with a worth. See the Bounty chips. |
-| 39 | Mothership Chip | Built as a creature (from the 10¢ floors). |
-| 40 | Fairy Chip | Built as a creature. |
-| 41 | Unicorn Chip | Built as a creature (from the 5¢ floors). |
-| 45 | Volcano Chip | Built as a Calamity: launches Burning chips for 4 turns. Missing: the lower max height after it goes dormant (how much lower?). |
-| 46 | Dragon Chip | Built as a creature. |
-| 63 | Tornado Chip | Built as a Calamity: stacks under 3 high are thrown about. Need: its "strength" value, if not 3. |
-| 74 | Mole Chip | Built as a creature: digs a Hole. |
-| 96 | Egg Chip | Egg chip: food (+2 Roll, −1 Draw for 2 turns). Missing: crack and hatch conditions and what hatches. |
 
-## Built (55)
 
-| Row | Chip | In the game |
+## Built (94)
+
+| Row | Chip | How it is in the game |
 | --- | --- | --- |
 | 2 | Royal Paradise 1¢ chip | The 1¢ Royal Paradise chip. |
 | 3 | Royal Paradise 2¢ chip | The 2¢ Royal Paradise chip, from floor 2. |
@@ -69,15 +30,20 @@ Library under **Chip list**. Fill in what a **Needs detail** row asks for and it
 | 8 | Resist Chip | Resist chip: made by Resist Cards (found in the dodgy corner; r 2 or 3). Sits at the base of a front Bar stack; fees under r¢ on it are deterred, like a Red chip keeps fire off. |
 | 9 | Zap Chip | Zap chip: a shop chip (Uncommon). A fee of 3¢ or less on its stack shocks the attacker; a bigger fee shorts it out. |
 | 10 | Feather p¢ Chip | Feather: the Float trick (Insurance, Rascal). |
+| 11 | Hardened p¢ Chip | Hardened chip: lies over its stack (no worth, no height) for its turns, so each fee takes one chip. Made by Brace (Insurance) and the Crown chip. A piercing fee destroys it, a Cloud's rain washes it off; your own cleansing keeps it. |
+| 12 | Regen x¢ Chip | Regen: the Renew trick (Insurance) gives value chips Regen for a few turns. A Regen chip paid to the Stage is restored to its position straight away, without its Regen. |
 | 13 | Transpara-Chip | Transpara-Chip: a shop chip (Rare). |
 | 14 | Power Chip | Power chip: a shop chip (Uncommon), +1 to your roll effects each turn for 4 turns. |
 | 15 | Control Chip | Control chip: a shop chip (Uncommon), −1 to your opponent's roll effects each turn for 4 turns. |
 | 16 | Anchor Chip | Anchor chip: a shop chip (Uncommon). |
+| 17 | Hole Chip | Hole: the Hazard tilt, Acid and the Mole make them. A Hole does not move (the Magic Hat is the movable one); a Puddle fills one so Wood can float in it. |
 | 19 | Frozen f¢ Chip | Frozen chip: the Chill trick (Insurance). |
+| 20 | Sticky f¢ Chip | Sticky chip: the Gum Up trick (Correction) sticks it on an opponent's stack. The first timed buff or debuff there stops counting down; its value is the stack's height. |
 | 21 | Seed p¢ Chip | Seed chip: a shop chip (Uncommon). Sprouts into a Flower. |
 | 22 | Tree Chip | Tree chip: a shop chip (Rare). Grows on an empty space, seeds the stacks around it, and falls into Wood when a fee hits it. |
 | 23 | Flower Chip | Flower chip: grown from a Seed. |
 | 24 | Petal Chip | Petal chip: bloomed by a Flower; blocks an entire fee. |
+| 25 | Opportunity 1¢ Chip | Opportunity chip: earned for unused rolls, accumulated, bid and moved like any chip. One left at the end counts as value in your position (no refund). |
 | 26 | Golded 2*p¢ Chip | Gold: the Gild trick. |
 | 27 | Boosted Chip | Boosted chip: a shop chip (Rare). Every die you roll shows 1 more per Boosted chip in your position. |
 | 28 | Cheapened Chip | Cheapened chip: a shop chip (Rare), read as the opposite of Boosted: your opponent's dice show 1 less per Cheapened chip in your position. |
@@ -89,29 +55,63 @@ Library under **Chip list**. Fill in what a **Needs detail** row asks for and it
 | 34 | Poison -1¢  Chip | Poison: Envenom. |
 | 35 | Boom -5¢ Chip | Boom: Rig. |
 | 36 | Dynamite Chip | Dynamite: the Fuse trick (Expense, Technician). |
+| 37 | Black Hole Chip | Black Hole: a Calamity, a hole in space on a Bar space. Anything put on it is gone; each turn, and whenever a Correction moves chips, it consumes the bottom chip of a stack next to it. |
+| 38 | UFO Chip | UFO creature: flying, 1 hit instance, stays a turn. Abducts a chip; a hit drives it off for a 5¢ Bounty. |
+| 39 | Mothership Chip | Mothership creature: flying, 10 hit instances (50¢ Bounty). |
+| 40 | Fairy Chip | Fairy creature: flying, 1 hit instance (5¢ Bounty). |
+| 41 | Unicorn Chip | Unicorn creature: 1 hit instance (5¢ Bounty). |
+| 42 | Heli-Chipter | Heli-Chipter: a shop chip (Rare) on top of a stack. The stack is flying and plays from the bottom: bids take the bottom chip and fees pay from the bottom up. |
+| 43 | Cloud Chip | Cloud: orbital weather that comes with Oceanic, Frosty and Earthen tables. It drifts, rains (Puddles, wet stacks, fire and frost washed off, plants grow faster) and throws lightning one turn in four. |
 | 44 | Worm Hole Chip | Worm Hole: a Calamity (Challenge tilt). Opens on an empty Meter space; chips that land on it are pulled through to your opponent's side. |
+| 45 | Volcano Chip | Volcano chips: the Volcano Calamity is a full stack, two spaces by two where there is room, that nothing can be placed on. Dormant after 4 turns, the spaces come back one stack height lower. |
+| 46 | Dragon Chip | Dragon creature: flying, 50 hit instances (250¢ Bounty). Breathes fire. |
 | 47 | Ward Chip | Ward chip: a shop chip (Royal). |
-| 50 | Honey Chip | Honey chip: food sold at the Chip Exchange (+1 Roll, +1 Bid for a turn). The Hive that makes it still needs detail. |
+| 48 | Hive Chip | Hive chip: a shop chip (Rare) on its own space. Every second turn each Hive chip in the stack sends out a Bumble Bee (up to 6). Each Hive chip takes a whole fee, like a Petal. |
+| 49 | Bumble Bee Chip | Bumble Bee: a familiar from a Hive. It stings creatures over your table (one hit each turn) and pollinates your Flowers into Honey chips. |
+| 50 | Honey Chip | Honey chip: food (+1 Roll, +1 Bid for a turn). Sold at the Chip Exchange and made by Bumble Bees pollinating Flowers. |
 | 51 | Wood Chip | Wood chip: falls from a felled Tree; blocks two entire fees. |
 | 52 | Chocolate Chip | Chocolate chip: food sold at the Chip Exchange (+1 Draw for 2 turns). |
-| 53 | Fairy Bounty Chip | Bounty system: a creature hovering over a stack (yours or your opponent's, and you can aim at it) soaks fees; overkill goes on to the stacks beneath. At 25¢ the Fairy is driven off and drops this chip, which pays its worth. |
-| 54 | Unicorn Bounty Chip | Bounty: at 250¢ of Debt. Pays 250¢. |
-| 55 | UFO Bounty Chip | Bounty: at 50¢ of Debt. Pays 50¢. |
-| 56 | Mothership Bounty Chip | Bounty: at 500¢ of Debt. Pays 500¢. |
-| 57 | Dragon Bounty Chip | Bounty: at 250¢ of Debt. Pays 250¢. |
+| 53 | Fairy Bounty Chip | Bounty system: creatures have hit instances; each fee instance on one takes a hit, the last drives it off and it drops a Bounty chip worth 5¢ a hit. The Fairy has 1 hit: 5¢. |
+| 54 | Unicorn Bounty Chip | Bounty: the Unicorn has 1 hit. Pays 5¢. |
+| 55 | UFO Bounty Chip | Bounty: the UFO has 1 hit. Pays 5¢. |
+| 56 | Mothership Bounty Chip | Bounty: the Mothership has 10 hits. Pays 50¢. |
+| 57 | Dragon Bounty Chip | Bounty: the Dragon has 50 hits. Pays 250¢. |
+| 58 | Battery Chip | Battery chip: a shop chip (Rare). Electrical and electronic chips above it in its stack get one more instance a turn (Zap, Repeater, Forgetter, Tesla, Absorption, Sprinkler); a Shocking chip on its stack hits one more stack. |
 | 59 | Clay Chip | Clay chip: a shop chip (Uncommon). |
 | 60 | Brick Chip | Brick chip: fire bakes Clay. |
 | 61 | Acid Chip | Acid: Melt. |
 | 62 | Upgrade Chip | Upgrade chip: a shop chip (Epic). On your Meter each one puts a random die upgrade on every roll, for that roll only (a risk); bid on a trick it plays that trick one upgrade higher. |
+| 63 | Tornado Chip | Tornado chip: the Tornado Calamity moves over your position with a strength of 2d6; a stack under it shorter than that is thrown about. |
+| 64 | Blizzard Chip | Blizzard: orbital weather as big as the table, from Polar tables (now and then) and the Blizzard Calamity (every fourth turn). It lasts a turn, then freezes every stack shorter than its strength (2d6), wet chips and Puddles. |
+| 65 | Ghost Chip | Ghost creature: fear. No trick can aim at its row (only spreads reach it), it cannot be damaged, and no overkill passes into or through its row. Bad for both Rollers. |
+| 66 | Puddle Chip | Puddle: water on an empty space (a Cloud's rain, a Sprinkler) makes one; nothing can be played on it until it dries after a turn without water. Wet stacks cannot burn, pass electricity on, freeze in the cold and grow plants faster. |
+| 67 | Ghost Ship Chip | Ghost Ship creature: a vehicle with 100 hit instances. Sails across empty spaces to a Gold-topped stack and steals the Gold; sunk, it drops a Treasure chip with all it stole. |
 | 68 | Chip Chip | Chip Chip: food (+1 Steal for a turn, doubled when dipped). |
 | 69 | Dip Chip | Dip chip: a shop chip on its own space; the next 3 Chip Chips you eat are dipped for double. |
-| 70 | Dragon Roost Chip | Dragon Roost: one in two Spawner tilts is a Roost. It takes a Bar space and calls a Dragon every third turn, which nests and lays an egg. |
-| 71 | Dragon Egg Chip | Dragon Egg: laid on a Roost. No Dragon comes while it sits there; play a trick totalling 10 or more and it hatches a Dragon onto your opponent. |
-| 75 | Sun Chip | Sun chip: a shop chip (Rare). Flowers bloom twice as many Petals and Trees grow twice as fast. |
+| 70 | Dragon Roost Chip | Dragon Roost: one in two Spawner tilts. It takes a Bar space and calls a Dragon every third turn while no egg sits on it; the Dragon lays an egg chip on it. |
+| 71 | Dragon Egg Chip | Dragon Egg: 5 hit instances. Hatches after 5 hatch steps: one a turn, two on a Roost (3 turns), one more next to heat. Broken first, it never hatches. A trick totalling 10 or more hatches the eggs on your Roost at your opponent. |
+| 72 | Treasure Chip | Treasure chip: dropped by a sunk Ghost Ship. 50 to 100 Gold plus what it stole; one in ten carries a Cursed chip. |
+| 73 | Cursed Chip | Cursed chip: looks like a Gold chip. While it is in your pile, each turn one of Draw, Roll or Bid is 1 lower (never below 1). |
+| 74 | Mole Chip | Mole creature: 1 hit instance (5¢ Bounty). Digs a Hole and sits in it. |
+| 75 | Sun Chip | Sun chip: a shop chip (Rare) that goes up into your sky as orbital weather, and the weather of Molten tables. Flowers and Trees grow twice as fast, Puddles dry, eggs hatch faster. |
 | 76 | Shadow Chip | Shadow chip: a shop chip (Uncommon). |
+| 77 | Repeater Chip | Repeater chip: a shop chip (Epic), electronic. On top of a stack with n chips under it, your tricks whose dice total n play again (once more per Battery). |
+| 78 | Mimic Chip | Mimic chip: a shop chip (Epic). For each Mimic on top of your stacks, one of your tricks of each type, at random, plays again in that phase. |
 | 79 | Reducer Chip | Reducer chip: a shop chip (Uncommon). Each fee on its stack is 1¢ smaller. |
+| 80 | Forgetter Chip | Forgetter chip: a shop chip (Epic), electronic. On top of a stack with n chips under it, the first of your opponent's tricks each turn whose dice total n is negated (one more per Battery). |
+| 81 | Tesla Chip | Tesla chip: a shop chip (Epic), electronic. Zap, Shocking chips and Cloud lightning count as lightning; once a turn it grabs a strike on your position and sends 2 back (one more per Battery). |
+| 82 | Absorbtion Chip | Absorption chip: a shop chip (Rare), electronic. Absorbs 2 lightning instances a turn on its stack and the stacks around it (one more per Battery); an absorbed Shocking chip cannot repeat. |
+| 83 | Sprinkler Chip | Sprinkler chip: a shop chip (Uncommon), electronic. Each turn it shoots water at the farthest space: a Puddle or a wet stack. |
+| 84 | Uranium Chip | Uranium chip: a shop chip (Rare). Each turn it mutates a chip next to it into a random chip. The Hand Off trick (Correction) moves it onto your opponent. |
+| 85 | Big Chip | Big chip: a shop chip (Epic). Two spaces by two (the list says 5; the clarification says 4), worth 4 basic chips of the table: 4¢, 8¢, 20¢ or 40¢. Big chips stack only on Big chips; anything goes on top. |
+| 86 | Little Chip | Little chip: a shop chip (Common). Tiny: no worth, no height, one hit instance. Only Little chips go on top of it. |
 | 87 | Fibonacci Chip | Fibonacci chip: a shop chip (Rare). Two on one stack merge into the next number after the larger. |
 | 88 | Prime Chip | Prime chip: a shop chip (Rare). Two on one stack merge into the next prime after the larger. |
+| 89 | Magic Hat Chip | Magic Hat: a movable hole that always sits at the bottom of its stack and swallows the chip on it each turn. The Conjure trick plants it on your opponent; one in three Hazard tilts is a Hat under one of your own stacks. |
+| 90 | B 52¢ Chip | B-52: orbital vehicle from the B-52 Calamity. Flies one space along a row each turn, dropping a 52¢ Boom chip. |
 | 93 | Fish "n Chip | Fish 'n Chip: food. +1 Conviction for every chip under it (n, up to 3) this turn. |
 | 94 | Hamburger Chip | Hamburger chip: food. Plain: +2 Roll, −1 Bid. Bun-Hamburger-Bun, eaten from the top Bun: +1 Draw, Roll and Bid for 2 turns. |
 | 95 | Bun Chip | Bun chip: food (+1 Conviction), and the top and bottom of a burger. |
+| 96 | Egg Chip | Egg chip: food (+2 Roll, −1 Draw for 2 turns) and a Dragon egg: 5 hit instances, hatches a Dragon at your opponent after 5 hatch steps unless eaten or broken. |
+| 97 | Spy Chip | Spy chip: a shop chip (Rare) that looks like a 1¢ chip to your opponent. On top of your stack, your opponent plays each phase first and you see it, aims included, before you commit. |
+| 98 | Doom Chip | Doom chip: the Foretell trick (Correction) plants them on your opponent's front stacks; they see 1¢ chips. Once all their stacks are topped with Doom, each Doom chip charges 1¢ a turn (instance debt). |
