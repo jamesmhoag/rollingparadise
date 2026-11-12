@@ -335,10 +335,15 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
   const { bout, me } = table({ chocolate: 1, hamburger: 1, bun: 2, egg: 1 });
   const at = (id) => me.grid.flatMap((row, r) => row.map((cell, c) => ({ r, c, cell }))).find((y) => y.cell.chips[y.cell.chips.length - 1]?.shop === id);
   const choc = at('chocolate'); assert(choc, 'food goes on top of a stack');
+  assert(B.canEat(bout, me, choc.r, choc.c), 'food waits for the Drink phase');
+  bout.phase = 'drink'; me.ate = false;
   const t0 = B.tipOf(me, 'trickery'); B.eat(bout, me, choc.r, choc.c);
-  assert(B.tipOf(me, 'trickery') === t0 + 1 && !choc.cell.chips.some((ch) => ch.shop === 'chocolate'), 'eating Chocolate gives +1 Draw now');
-  drain(B.resolve(bout)); assert(B.tipOf(me, 'trickery') === t0 + 1, 'and next turn too (2 turns)');
-  const egg = at('egg'); if (egg) { const d0 = B.tipOf(me, 'proficiency'), t1 = B.tipOf(me, 'trickery'); B.eat(bout, me, egg.r, egg.c); assert(B.tipOf(me, 'proficiency') === d0 + 2 && B.tipOf(me, 'trickery') === t1 - 1, 'an Egg pairs a penalty with a bigger bonus'); }
+  assert(!choc.cell.chips.some((ch) => ch.shop === 'chocolate') && me.ate, 'eating Chocolate takes it off the stack');
+  const egg = at('egg'); if (egg) assert(B.canEat(bout, me, egg.r, egg.c) === 'One food a round.', 'one food a round');
+  B.nextTurn(bout); assert(B.tipOf(me, 'trickery') === t0 + 1, 'the bonus works from the next turn');
+  bout.phase = 'drink'; me.ate = false; B.nextTurn(bout); assert(B.tipOf(me, 'trickery') === t0 + 1, 'and the turn after (2 turns)');
+  if (egg) { bout.phase = 'drink'; me.ate = false; const d0 = B.tipOf(me, 'proficiency'), t1 = B.tipOf(me, 'trickery'); B.eat(bout, me, egg.r, egg.c); B.nextTurn(bout); assert(B.tipOf(me, 'proficiency') === d0 + 2 && B.tipOf(me, 'trickery') === t1 - 2, 'an Egg pairs a penalty with a bigger bonus'); }
+  bout.phase = 'drink'; me.ate = false;
   // build a burger by hand: Bun, Hamburger, Bun
   const spot = me.grid.flatMap((row, r) => row.map((cell, c) => ({ r, c, cell }))).find((y) => B.solidCount(y.cell) && B.capacityLeft(me, y.cell) >= 0 && y.r >= me.dims.meterRows);
   spot.cell.chips.push({ id: 3e6, kind: 'food', shop: 'bun', value: 0 }, { id: 3e6 + 1, kind: 'food', shop: 'hamburger', value: 0 }, { id: 3e6 + 2, kind: 'food', shop: 'bun', value: 0 });
@@ -351,11 +356,15 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
   const x = me.grid.flatMap((row, r) => row.map((cell, c) => ({ r, c, cell }))).find((y) => B.solidCount(y.cell) && y.r >= me.dims.meterRows);
   bout.creatures.push({ id: 2e6, kind: 'fairy', side: 0, r: x.r, c: x.c, life: 3, arrive: 1 });
   assert(engage(bout, opp, me, x.r, x.c, 10, {}).placed === 0, 'a creature soaks a fee on the stack it hovers over');
-  engage(bout, opp, me, x.r, x.c, 20, {});
+  assert(engage(bout, opp, me, x.r, x.c, 20, {}).placed === 5, 'overkill past the creature hits the stack beneath');
+  const ex = { trick: { id: 'charge', q: 1, up: 0 }, dice: [{ value: 3, type: 'd6' }], state: 'shown' };
+  bout.creatures.push({ id: 2e6 + 1, kind: 'ufo', side: 0, r: x.r, c: x.c, life: 3, arrive: 1 });
+  assert(B.validTargets(bout, me, ex).some((v) => v.side === 0 && v.r === x.r && v.c === x.c), 'your own Expenses can aim at a creature over your stack');
+  bout.creatures.pop();
   assert(bout.creatures[0].gone && me.grid.flat().some((cell) => cell.chips.some((ch) => ch.kind === 'bounty' && ch.value === D.CREATURES.fairy.bounty)), 'enough Debt drives it off and it drops a Bounty chip');
   const purse = run.purse, cards = run.cards.length + (run.pendingCard ? 1 : 0);
   bout.over = true; bout.winner = 1; const res = R.settle(run, ctx, bout);
-  assert(run.purse === D.CREATURES.fairy.bounty && run.cards.length + (run.pendingCard ? 1 : 0) === cards + 1 && res.news.some((n) => /Bounty/.test(n)), 'a Bounty chip pays its worth and a Unique Prize, even on a loss'); void purse;
+  assert(run.purse === D.CREATURES.fairy.bounty && res.news.some((n) => /Bounty/.test(n)), 'a Bounty chip pays its worth, even on a loss'); void purse; void cards;
 }
 { // Zap: a small fee shocks the attacker, a big one breaks it
   const { bout, me, opp } = table({ zap: 1 });
@@ -386,6 +395,30 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
       for (let t = 0; t < 4; t++) drain(ticks(bout)); assert(roost.roost.egg, 'the Dragon lays an egg on its Roost'); found.roost++; }
   }
   assert(found.worm && found.roost, 'Worm Holes and Dragon Roosts turn up from the Calamity and Spawner tilts');
+}
+
+// ---------- permanent dice, random Upgrade-chip rolls, effect chips ----------
+{
+  const X = await import('../js/dice.js');
+  const run = R.newRun('technician', 'standard', 9); R.enterFloor(run, 4); run.purse = 5000;
+  X.upgrade(run.dice[0], 'encase', 0); const id = run.dice[0].id;
+  const { bout, ctx } = R.startTable(run, R.newPrep(run, 'table', 0));
+  const copy = bout.sides[0].pouch.find((d) => d.id === id); copy.faces[0].enc = 6; // as if it came up three times
+  bout.over = true; bout.winner = 0; R.settle(run, ctx, bout);
+  assert(run.dice.find((d) => d.id === id).faces[0].enc === 6, 'use-dependent faces carry over between bouts');
+}
+{
+  const { bout, me } = table({ upgrade: 3 });
+  const die = me.pouch[0], before = JSON.stringify(die.faces || null);
+  B.draw(bout, me, me.book[0].uid); B.advance(bout, true); B.throwDice(bout, me, [die.id]);
+  assert(JSON.stringify(me.tray[0].faces || null) === before, 'Upgrade-chip upgrades never stay on the die');
+}
+{
+  const { bout, me, opp } = table({});
+  me.status.resist = 3; me.mods.boost = 2; me.power = 1; opp.mods.enfeeble = 1;
+  const fx = B.effectChips(bout, me), fo = B.effectChips(bout, opp);
+  assert(fx.find((t) => t.key === 'resist').size === 3 && fx.find((t) => t.key === 'boost').size === 2 && fx.find((t) => t.key === 'power').size === 1, 'effects are chips sized by what they cover');
+  assert(fo.find((t) => t.key === 'enfeeble' && t.zone === 'bar' && !t.good), 'harmful effects lie in the Bar');
 }
 
 // ---------- dice upgrades ----------

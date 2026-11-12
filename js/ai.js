@@ -50,13 +50,20 @@ export function autoPhase(b) {
   return b.phase;
 }
 // Plan a whole turn for both Rollers, phase by phase, ready for resolve().
-export function autoTurn(b) { while (B.PHASES.includes(b.phase)) autoPhase(b); }
+// The Drink phase: an AI Roller sips its drink if it has one, and eats a food chip on top of one of its stacks.
+export function drinkPhase(b, s) {
+  if (s.drink && s.drink.sips > 0 && b.rng.chance(0.7)) B.sip(b, s);
+  for (let r = 0; r < s.rows && !s.ate; r++) for (let c = 0; c < s.dims.cols && !s.ate; c++) if (!B.canEat(b, s, r, c)) B.eat(b, s, r, c);
+}
+export function autoTurn(b) {
+  if (b.phase === 'drink') { for (const s of b.sides) drinkPhase(b, s); B.nextTurn(b); }
+  while (B.PHASES.includes(b.phase)) autoPhase(b);
+}
 
 const prio = (e) => (TRICKS[e.trick.id].type === 'expense' ? 0 : 1);
 
 function planDraw(b, s) {
   const v = seen(b, s), o = v.sides[1 - s.idx], rng = b.rng;
-  if (s.drink && s.drink.sips > 0 && rng.chance(0.6)) B.sip(b, s);
   const chips = s.grid.flat().flatMap((cell) => cell.chips);
   const debts = chips.filter(B.isHazard).length, mine = b.stage.paid[s.idx];
   const oppShields = o.grid.slice(0, o.dims.meterRows).flat().flatMap((cell) => cell.chips).filter((ch) => B.isShield(ch) || ch.kind === 'opp').length;

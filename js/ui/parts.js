@@ -20,7 +20,7 @@ export function chipName(ch) {
 }
 export function chipText(ch) {
   const hits = ch.hits != null && ch.kind !== 'std' ? ` <span class="dim keep">${ch.hits} fee${ch.hits === 1 ? '' : 's'} left in it.</span>` : '';
-  if (ch.kind === 'bounty') return `${D.CHIPS.bounty.text} Unique Prize: ${D.CREATURES[ch.creature]?.prize}.`;
+  if (ch.kind === 'bounty') return D.CHIPS.bounty.text;
   if (ch.kind === 'resist') return `${D.CHIPS.resist.text} Fees under ${ch.r}¢ on this stack are deterred.`;
   if ((ch.kind === 'food' || ch.kind === 'dip') && ch.shop) return D.shopText(ch.shop) + (ch.dips != null ? ` ${ch.dips} dip${ch.dips === 1 ? '' : 's'} left.` : '');
   if (ch.kind !== 'std') return D.CHIPS[ch.kind].text + hits + (ch.shop && D.SHOP_CHIPS[ch.shop] ? ` ${D.CHIP_TIERS[D.SHOP_CHIPS[ch.shop].tier].name} shop chip.` : '');

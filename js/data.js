@@ -48,7 +48,7 @@ export const DICE = {
 // The workbook's 22 dice upgrades. A die has faces (1 to n to start); most upgrades change them when bought,
 // a few change how the die rolls. `target`: the buyer picks a face. `roll`: works when the die is rolled, so it
 // cannot be taken twice. `mark`/`color`: the badge the die wears. `floor`: the Diesmith offers it from this floor.
-// Numbers the rules read are in DIE_VARS. Faces that change with use (Rig, Enchant, Encase) reset each bout.
+// Numbers the rules read are in DIE_VARS. Faces that change with use (Rig, Enchant, Encase) change for good.
 export const DIE_VARS = { bump: 2, rig: 2, enchant: 3, encaseStep: 2, rebalance: 2, gamble: 2, curse: 3 };
 export const DIE_UPGRADES = {
   accelerate: { name: 'Accelerate', text: 'Shift every face up by 1.', mark: '+', color: '#7dffb5', floor: 1 },
@@ -65,9 +65,9 @@ export const DIE_UPGRADES = {
   temper: { name: 'Temper', text: 'Weighted to the lowest: roll twice, keep the lower.', mark: '▼', color: '#9fb0d8', roll: true, floor: 1 },
   escalate: { name: 'Escalate', text: 'Weighted to the highest: roll twice, keep the higher.', mark: '▲', color: '#ffd76a', roll: true, floor: 1 },
   emphasize: { name: 'Emphasize', text: 'Weight the target face: it comes up twice as often.', mark: '!', color: '#ff86ea', target: true, floor: 2 },
-  rig: { name: 'Rig', text: (v) => `The target face is worth ×${v.rig}, but it is spent (0) after it comes up once in a bout.`, mark: '×', color: '#ff5a4a', target: true, floor: 2 },
-  enchant: { name: 'Enchant', text: (v) => `The target face is worth ×${v.enchant}, dwindling by 1 each time it comes up in a bout.`, mark: '✧', color: '#b08cff', target: true, floor: 2 },
-  encase: { name: 'Encase', text: (v) => `The target face starts each bout at 0 but grows by ${v.encaseStep} each time it comes up.`, mark: '▣', color: '#c9d3e0', target: true, floor: 2 },
+  rig: { name: 'Rig', text: (v) => `The target face is worth ×${v.rig}, but it is spent (0) for good after it comes up once.`, mark: '×', color: '#ff5a4a', target: true, floor: 2 },
+  enchant: { name: 'Enchant', text: (v) => `The target face is worth ×${v.enchant}, dwindling by 1 for good each time it comes up.`, mark: '✧', color: '#b08cff', target: true, floor: 2 },
+  encase: { name: 'Encase', text: (v) => `The target face starts at 0 but grows by ${v.encaseStep} for good each time it comes up.`, mark: '▣', color: '#c9d3e0', target: true, floor: 2 },
   rebalance: { name: 'Rebalance', text: (v) => `The target face is worth ×${v.rebalance}; the opposite face becomes 0.`, mark: '⇅', color: '#ffd76a', target: true, floor: 2 },
   gamble: { name: 'Gamble', text: (v) => `Each roll a random face is worth ×${v.gamble}.`, mark: '?', color: '#7df3ff', roll: true, floor: 2 },
   curse: { name: 'Curse', text: (v) => `Each roll one random face is worth ×${v.curse} and every other face is 0.`, mark: '☠', color: '#b3261e', roll: true, floor: 3 },
@@ -247,7 +247,7 @@ export const CHIPS = {
   resist: { name: 'Resist chip', text: 'Debt resistance, made by Resist Cards. Fees smaller than its r on its stack are deterred entirely, the way a Red chip keeps fire off. It cannot exceed the stack height.' },
   food: { name: 'Food chip', text: 'Delicious. Double-click it while it is on top of one of your stacks to eat it for a bonus to your attributes.' },
   dip: { name: 'Dip chip', text: 'A bowl of dip on its own space. Each Chip Chip you eat is dipped first for twice the bonus, until the dip runs out.' },
-  bounty: { name: 'Bounty chip', text: 'Dropped by a creature driven off by Debt. Worth its bounty and can be bid, but it is fragile: any fee that reaches it breaks it. Still on your table when the bout ends, it pays its worth and a Unique Prize.' },
+  bounty: { name: 'Bounty chip', text: 'Dropped by a creature driven off by Debt. Worth its bounty and can be bid, but it is fragile: any fee that reaches it breaks it. Still on your table when the bout ends, it pays its worth, win or lose.' },
   tree: { name: 'Tree chip', text: 'A tree growing on its own space, one chip taller a turn. At full height it seeds the stacks around it. A fee that hits it fells it into Wood.' },
   wood: { name: 'Wood chip', text: 'Fell from a Tree. Blocks two entire fees, one per hit, then breaks.' },
   dynamite: { name: 'Dynamite', text: 'A stack of sticks on an empty space. One burns down each turn; when the last goes, every chip on the stacks around it is destroyed. Cleansing removes it.' },
@@ -343,7 +343,7 @@ export const SHOP_CHIPS = {
   cheapened: { name: 'Cheapened chip', tier: 3, glyph: '⇣', vars: { die: 1 }, list: 'Cheapened Chip',
     text: (v) => `Every die your opponent rolls shows ${v.die} less (not below 0) for each Cheapened chip in your position.` },
   upgrade: { name: 'Upgrade chip', tier: 4, glyph: '⬆', place: 'meter', list: 'Upgrade Chip',
-    text: () => 'Starts on your Meter. While it is there every die you roll is upgraded: 1 chip Escalate, 2 also +1, 3 also Gamble, 4 or more another +1 each. Bid it on a trick and that trick plays one upgrade higher.' },
+    text: () => 'Starts on your Meter. While it is there, each Upgrade chip puts a random die upgrade (good or bad) on every die you roll, for that roll only. Bid it on a trick and that trick plays one upgrade higher.' },
   crown: { name: 'Crown chip', tier: 4, glyph: '♛', vars: { turns: 3 },
     text: (v) => `Its stack starts the bout Hardened for ${v.turns} turns: each fee takes only one chip.` },
 };
@@ -361,14 +361,13 @@ export const SEQS = { fib: [1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377], p
 export const SHOP_RENAMES = { bumper: 'reducer', mirror: 'rebound', fog: 'transpara', frozen: 'frost' };
 
 // `bounty`: how much Debt a creature soaks before it is driven off and drops a Bounty chip worth that much;
-// `prize`: the Unique Prize its Bounty chip brings if it is still on your table when the bout ends.
 export const CREATURES = {
-  ufo: { name: 'UFO', glyph: '🛸', text: 'Abducts the top chip of a random stack each turn, then flies home. Chips taken are lost.', bounty: 50, prize: 'a d8 for your pouch' },
-  fairy: { name: 'Fairy', glyph: '🧚', text: 'Converts the top chip of a random stack into a random chip. Chaos reigns!', bounty: 25, prize: 'a card found on the floor' },
-  dragon: { name: 'Dragon', glyph: '🐉', text: 'Breathes a Burning chip onto a random stack each turn.', bounty: 250, prize: 'a Scorch trick at the floor’s quality' },
+  ufo: { name: 'UFO', glyph: '🛸', text: 'Abducts the top chip of a random stack each turn, then flies home. Chips taken are lost.', bounty: 50 },
+  fairy: { name: 'Fairy', glyph: '🧚', text: 'Converts the top chip of a random stack into a random chip. Chaos reigns!', bounty: 25 },
+  dragon: { name: 'Dragon', glyph: '🐉', text: 'Breathes a Burning chip onto a random stack each turn.', bounty: 250 },
   mole: { name: 'Mole', glyph: '🐭', text: 'Digs up a random empty space and leaves a Hole.' },
-  unicorn: { name: 'Unicorn', glyph: '🦄', text: 'Converts every chip in a random stack into random chips. Chaos reigns!', bounty: 250, prize: 'a free die upgrade on your best die' },
-  mothership: { name: 'Mothership', glyph: '👾', text: 'Hovers over one stack and beams up a chip every turn until the stack is gone. Chips taken are lost.', bounty: 500, prize: 'a d20 for your pouch' },
+  unicorn: { name: 'Unicorn', glyph: '🦄', text: 'Converts every chip in a random stack into random chips. Chaos reigns!', bounty: 250 },
+  mothership: { name: 'Mothership', glyph: '👾', text: 'Hovers over one stack and beams up a chip every turn until the stack is gone. Chips taken are lost.', bounty: 500 },
 };
 export const CALAMITIES = {
   wormhole: { name: 'Worm Hole', text: 'Opens on an empty space of your position. Any chips that land on it are pulled through to an empty space on your opponent\'s side.' },

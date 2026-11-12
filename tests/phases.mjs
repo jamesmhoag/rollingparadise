@@ -38,7 +38,8 @@ for (let seed = 1; seed <= 25; seed++) {
   const e3 = me.run.find((x) => x.uid === e.uid), s3 = B.biddable(me)[0]; B.bid(bout, me, e3, s3.r, s3.c);
   planPhase(bout, opp); assert(B.advance(bout) && bout.phase === 'resolve', 'Bid closes and the House plays');
   for (const _ of B.resolve(bout)); // eslint-disable-line no-unused-vars
-  assert(bout.over || bout.phase === 'draw', 'the next turn opens on Draw');
+  assert(bout.over || bout.phase === 'drink', 'the round closes with the Drink phase');
+  if (!bout.over) { assert(B.canSip(bout, me) || !me.drink, 'sipping waits for the Drink phase'); B.advance(bout); assert(bout.phase === 'draw', 'the next turn opens on Draw'); }
   let guard = 0; while (!bout.over && guard++ < 50) { autoTurn(bout); for (const _ of B.resolve(bout)); } // eslint-disable-line no-unused-vars
   assert(bout.over, 'bouts still finish');
 }

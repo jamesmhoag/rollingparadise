@@ -745,7 +745,7 @@ export const CHIP_LIST = [
 "source": "Chip Conversion",
 "text": "Drop after forcing a fairy into debt.  The chip can be used  and moved but is fragile and breaks with any instance of damage, can be exchanged for Royal Paradise Chips and a Unique Prize",
 "status": "built",
-"note": "Bounty system: a creature hovering over a stack soaks fees that land there; at 25¢ of Debt the Fairy is driven off and drops this chip. Pays 25¢ and a found card.",
+"note": "Bounty system: a creature hovering over a stack (yours or your opponent's, and you can aim at it) soaks fees; overkill goes on to the stacks beneath. At 25¢ the Fairy is driven off and drops this chip, which pays its worth.",
 "show": {
 "kind": "bounty",
 "value": 25,
@@ -761,7 +761,7 @@ export const CHIP_LIST = [
 "source": "Chip Conversion",
 "text": "Drop after forcing a Unicorn into debt.  The chip can be used  and moved but is fragile and breaks with any instance of damage, can be exchanged for Royal Paradise Chips and a Unique Prize",
 "status": "built",
-"note": "Bounty: at 250¢ of Debt. Pays 250¢ and a free die upgrade on your best die.",
+"note": "Bounty: at 250¢ of Debt. Pays 250¢.",
 "show": {
 "kind": "bounty",
 "value": 250,
@@ -777,7 +777,7 @@ export const CHIP_LIST = [
 "source": "Chip Conversion",
 "text": "Drop after forcing a UFO into debt.  The chip can be used  and moved but is fragile and breaks with any instance of damage, can be exchanged for Royal Paradise Chips and a Unique Prize",
 "status": "built",
-"note": "Bounty: at 50¢ of Debt. Pays 50¢ and a d8.",
+"note": "Bounty: at 50¢ of Debt. Pays 50¢.",
 "show": {
 "kind": "bounty",
 "value": 50,
@@ -793,7 +793,7 @@ export const CHIP_LIST = [
 "source": "Chip Conversion",
 "text": "Drop after forcing a Mothership into debt.  The chip can be used  and moved but is fragile and breaks with any instance of damage, can be exchanged for Royal Paradise Chips and a Unique Prize",
 "status": "built",
-"note": "Bounty: at 500¢ of Debt. Pays 500¢ and a d20.",
+"note": "Bounty: at 500¢ of Debt. Pays 500¢.",
 "show": {
 "kind": "bounty",
 "value": 500,
@@ -809,7 +809,7 @@ export const CHIP_LIST = [
 "source": "Chip Conversion",
 "text": "Drop after forcing a Dragon into debt.  The chip can be used  and moved but is fragile and breaks with any instance of damage, can be exchanged for Royal Paradise Chips and a Unique Prize",
 "status": "built",
-"note": "Bounty: at 250¢ of Debt. Pays 250¢ and a Scorch trick.",
+"note": "Bounty: at 250¢ of Debt. Pays 250¢.",
 "show": {
 "kind": "bounty",
 "value": 250,
@@ -884,7 +884,7 @@ export const CHIP_LIST = [
 "source": "",
 "text": "",
 "status": "built",
-"note": "Upgrade chip: a shop chip (Epic). On your Meter it upgrades every roll (Escalate, +1, Gamble, more +1 as you add chips); bid on a trick it plays that trick one upgrade higher.",
+"note": "Upgrade chip: a shop chip (Epic). On your Meter each one puts a random die upgrade on every roll, for that roll only (a risk); bid on a trick it plays that trick one upgrade higher.",
 "show": {
 "kind": "std",
 "value": 1,
