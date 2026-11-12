@@ -7,7 +7,8 @@ import * as AI from '../../js/ai.js';
 import * as D from '../../js/data.js';
 
 const DEFAULT_DIMS = { ...D.BASE_DIMS };
-export function setBoard(cfg = {}) { Object.assign(D.BASE_DIMS, DEFAULT_DIMS, cfg); }
+// cfg.scaleOppWorth: opponents' worth shrinks with their Bar, so they fill the same share of a smaller board
+export function setBoard(cfg = {}) { const { scaleOppWorth = false, ...dims } = cfg; Object.assign(D.BASE_DIMS, DEFAULT_DIMS, dims); D.BOARD_RULES.scaleOppWorth = scaleOppWorth; }
 
 // ---------------- play: the in-bout planner for side 0, with knobs ----------------
 // Knobs (all optional; absent = the shipped AI, exactly):

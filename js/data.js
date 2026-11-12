@@ -23,6 +23,10 @@ export const CLASSES = {
   },
 };
 export const BASE_DIMS = { cols: 5, stackMax: 3, meterRows: 2, barRows: 3 };
+export const BASE_DIMS_DEFAULT = Object.freeze({ ...BASE_DIMS });
+// If the base board is ever changed, scale each opponent's worth by its Bar capacity on the new board over its
+// capacity on the default board, so it fills the same share of its position. Off: worth stays set by the floor.
+export const BOARD_RULES = { scaleOppWorth: false };
 
 // `per`: what each point does, for hover text that says what a +1 or −1 actually changes
 export const STATS = {

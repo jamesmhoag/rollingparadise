@@ -11,7 +11,8 @@ export { STANDARD };
 
 export const BOARDS = [];
 for (const cols of [5, 4, 3]) for (const [v, mods] of [['base', {}], ['bar-1', { barRows: 2 }], ['height-1', { stackMax: 2 }], ['both-1', { barRows: 2, stackMax: 2 }]])
-  BOARDS.push({ name: `cols ${cols} · ${v}`, board: { cols, ...mods }, strat: STANDARD });
+  for (const scaled of [false, true])
+    BOARDS.push({ name: `cols ${cols} · ${v}${scaled ? ' · scaled' : ''}`, board: { cols, ...mods, scaleOppWorth: scaled }, strat: STANDARD });
 
 // A. buy patterns, B. one play or table change, C. one shop add-on bought first
 export const STRATEGIES = [

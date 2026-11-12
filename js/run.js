@@ -105,6 +105,10 @@ export function genOpponent(run, floor, worthTarget, o = {}) {
   // chips: a little petty cash in 1¢ for bidding, the rest in the biggest chips the floor allows
   const md = o.maxDenom || maxDenom(floor), cap = barCapacity(dims);
   let W = worthTarget;
+  if (D.BOARD_RULES.scaleOppWorth) {
+    const B1 = D.BASE_DIMS_DEFAULT, cap0 = barCapacity({ cols: o.cols || B1.cols, stackMax: Math.max(1, B1.stackMax + bvd.balance), barRows: Math.max(1, B1.barRows + bvd.depth) });
+    W = Math.max(1, Math.round(W * cap / cap0));
+  }
   let petty = Math.min(W, Math.max(6, Math.round(cap * 0.12)));
   // the big chip: up to 10¢ as before, or the smallest bigger one that fits the worth into the position
   const allowed = D.DENOM_VALUES.filter((v) => v <= md), fits = (v) => petty + Math.ceil(Math.max(0, W - petty) / v) <= cap;
