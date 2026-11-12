@@ -377,8 +377,8 @@ export const SHOP_CHIPS = {
     text: (v) => `Goes on top of a stack. Blocks ${v.hits} entire fees, one per hit, then breaks. Fire on its stack bakes it into a Brick chip that takes twice as many. No worth.` },
   harmony: { name: 'Harmony chip', tier: 3, sold: false, from: 'trick:attune', glyph: '☯', vars: { per: 1 }, list: 'Harmony Chip',
     text: (v) => `In each Correction phase it clears ${v.per} hazard chip or ¢ of Debt from its stack or the stacks around it. A hazard chip it clears is replaced by a 1¢ chip if there is room.` },
-  power: { name: 'Lasting Power chip', tier: 2, sold: false, from: 'trick:empower', glyph: '⚡︎', vars: { boost: 1, turns: 4 }, list: 'Power Chip',
-    text: (v) => `In each Investment phase your roll effects gain ${v.boost}.` },
+  power: { name: 'Power chip', tier: 2, sold: false, from: 'trick:empower', glyph: '⚡︎', vars: { boost: 1, turns: 4 }, list: 'Power Chip',
+    text: (v) => `Your roll effects gain ${v.boost} for each turn it is on the table (from the Investment phase, or at once if it arrives during play).` },
   control: { name: 'Control chip', tier: 2, sold: false, from: 'trick:throttle', glyph: '⊘', vars: { enfeeble: 1, turns: 4 }, list: 'Control Chip',
     text: (v) => `In each Investment phase your opponent's roll effects lose ${v.enfeeble}.` },
   ward: { name: 'Ward chip', tier: 4, sold: false, from: 'trick:wardoff', glyph: '⛨', vars: { per: 1 }, list: 'Ward Chip',
@@ -423,7 +423,6 @@ export const SHOP_CHIPS = {
   chocolate: { name: 'Chocolate Chip', tier: 1, glyph: '🍫', kind: 'food', place: 'top', list: 'Chocolate Chip', food: { mods: { trickery: 1 }, turns: 2 },
     text: () => 'Food. Eat it from the top of a stack: +1 Draw for 2 turns.' },
   // Made when a phase is passed with actions left unused (see REWARD in bout.js); they carry their amount (`amt`).
-  surge: { name: 'Power chip', tier: 1, sold: false, from: 'stat:conviction', glyph: '⚡', text: () => 'Power added to your table: from draws left unused (Conviction), Stir, an Investment trait, or a Boost or Press bonus. The next roll effect you play takes all your Power chips, adding what they carry, and spends them.' },
   steal: { name: 'Steal chip', tier: 1, sold: false, from: 'stat:charisma', glyph: '🫳', text: () => 'Made from bids left unused (Charisma). In the House phase it steals what it carries from the Stage (your fees first, then your opponent\'s) onto your Meter, then it is gone.' },
   honey: { name: 'Honey Chip', tier: 2, sold: false, from: 'bees', glyph: '🍯', kind: 'food', place: 'top', list: 'Honey Chip', food: { mods: { proficiency: 1, ingenuity: 1 }, turns: 1 },
     text: () => 'Food (sticky, golden). Eat it: +1 Roll and +1 Bid this turn.' },
@@ -458,7 +457,7 @@ export function madeBy(id) {
   const f = SHOP_CHIPS[id]?.from; if (!f) return null;
   if (f.startsWith('trick:')) { const T = TRICKS[f.slice(6)]; return T ? `the ${T.name} trick (${TYPES[T.type].name}${T.cls ? ', ' + CLASSES[T.cls].name : ''})` : null; }
   if (f.startsWith('tilt:')) return `the ${TILTS[f.slice(5)]?.name || f.slice(5)} tilt`;
-  if (f.startsWith('stat:')) return { conviction: 'draws left unused when the Draw phase is passed (Conviction), and other added Power', charisma: 'bids left unused when the Bid phase is passed (Charisma)' }[f.slice(5)] || f;
+  if (f.startsWith('stat:')) return { charisma: 'bids left unused when the Bid phase is passed (Charisma)' }[f.slice(5)] || f;
   return { bees: 'Bumble Bees pollinating your Flowers', roost: 'a Dragon on its Roost' }[f] || f;
 }
 // the trick that makes a chip, if any

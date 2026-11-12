@@ -16,10 +16,11 @@ is not built yet. Tab names are in **bold**.
 - Goal: deplete the opponent's Worth before they deplete yours.
 - A turn has three planning phases, then the House plays it (see **The turn** below). Draws, rolls and bids left
   unused pay **as soon as their phase is passed**, as chips on the Meter at random spaces with room (lost if it is
-  full): unused draws make a **Power chip** carrying their Power (Conviction), unused rolls **Opportunity chips**
-  (Cunning), unused bids a **Steal chip** (Charisma) that steals from the Stage in the House phase. All added Power is
-  a Power chip on the Meter (Stir, an Investment trait, a Boost or Press bonus too); the next roll effect takes all
-  of them. Both sides' chips appear when the phase closes, so you see your opponent's build up. Each step pill says
+  full): unused draws make **Power chips** (Conviction), unused rolls **Opportunity chips** (Cunning), unused bids a
+  **Steal chip** (Charisma) that steals from the Stage in the House phase. All added Power is Power chips on the Meter,
+  one per point (Stir, an Investment trait, a Boost or Press bonus too): the same Power chip Empower makes. Each adds
+  +1 to your roll effects for the turn (in the Investment phase, or at once if it arrives during play) and lasts that
+  turn; nothing spends it. Both sides' chips appear when the phase closes, so you see your opponent's build up. Each step pill says
   in its hover what passing it gives; once passed it shows ✓ (all used) or what it kept.
 - A trick has a Trait (bid, no dice), a Roll effect (bid plus dice, scaled by the total) and a Bonus (full dice of
   the right type, condition met, matching class only).
@@ -45,8 +46,8 @@ is not built yet. Tab names are in **bold**.
   what each side resolved in it in its own column (You, then your opponent). Things that cannot be put together take
   another row for that side; a line repeated shows once with a count; House lines that belong to neither side span
   both columns, and the House's call of a phase becomes the row header. The short view shows the last rows;
-  **History** opens the whole match the same way, by turn, to scroll back through. Hover an entry to light up the
-  spaces it touched.
+  **History** (at the end of the phase bar) opens the same list to the whole match, by turn, to scroll back through,
+  with each phase's note; Esc or History again closes it. Hover an entry to light up the spaces it touched.
 
 ### The turn
 Both Rollers go through the same three phases. A phase closes for both at once, and closing it ends that kind of
@@ -56,8 +57,10 @@ action for the turn.
 | --- | --- | --- | --- |
 | 1 · Draw | Click tricks in the Book to show them on the Run, up to Trickery. | At least one draw. | No more draws this turn. |
 | 2 · Roll | Two steps. **Pick**: dice from the Pouch, and top chips to flip, up to Proficiency; press Roll and all of them land in **the roll** together, showing their values. The throw stands. **Place**: put them on shown tricks; move them between tricks freely. | A throw, and every die in the roll that fits a shown trick on one. | No more rolling or moving dice. A die with nowhere to go **stays in the roll**, keeping its value, until a later turn's trick has room; it is never rerolled. |
-| 3 · Bid | Click your stacks to pick up a **hand** of chips (click a stack again for the chip under its top one), up to your bids left (Ingenuity), then click a trick: the whole hand is bid on it at once, one bid per chip. Or click a trick (or the **+** sitting on
-top of its bid pile) first: then each stack you click bids its top chip straight onto that trick. Dice rolled this turn can still be moved between tricks. A trick that already has a bid can take another; its BID slot becomes a **+** after the chips already on it. | At least one bid. | The House collects the bids and plays the turn. |
+| 3 · Bid | Click your stacks to pick up a **hand** of chips (click a stack again for the chip under its top one), up to your bids left (Ingenuity), then click a trick: the whole hand is bid on it at once, one bid per chip. Or click a trick (or the **+** ring on its
+bid pile) first: then each stack you click bids its top chip straight onto that trick. A trick's bid chips stack in a
+pile, like a stack on the table, with the BID ring riding on the top chip as a **+**; the roll breakdown sits beside
+the pile. Click the pile to take its top chip back. Dice rolled this turn can still be moved between tricks. A trick that already has a bid can take another; its BID slot becomes a **+** after the chips already on it. | At least one bid. | The House collects the bids and plays the turn. |
 
 - The button that closes a phase is named for what comes next: **Roll** (done drawing), **Roll n** (throw the
   picked dice), **Bid** (done rolling), **Play** (commit the turn). Dice placed this turn and bids stay editable until

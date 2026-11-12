@@ -362,7 +362,7 @@ function startTurn(b) {
     s.used = { draw: 0, roll: 0, bid: 0 }; s.turnBonus = {}; s.rolled = {}; s.thrown = false; s.heat = heat(b.turn);
     for (const f of s.food || []) { for (const [k, v] of Object.entries(f.mods)) s.turnBonus[k] = (s.turnBonus[k] || 0) + v; f.turns--; } // food still working
     s.food = (s.food || []).filter((f) => f.turns > 0);
-    s.mods = { boost: 0, enfeeble: s.status.enfeebleNext, press: 0, bend: null, mul: 1, pierce: false }; s.wardUsed = 0;
+    s.mods = { boost: 0, enfeeble: s.status.enfeebleNext, press: 0, bend: null, mul: 1, pierce: false }; s.wardUsed = 0; for (const x of powerChips(s)) delete x.ch.on;
     s.paidLast = s.paidTurn || 0; s.paidTurn = 0; // fees paid last turn, for Vengeance
     s.status.enfeebleNext = 0; s.absorbUsed = {}; s.forgotUsed = {};
     const curses = allCells(s).reduce((n, x) => n + x.cell.chips.filter((ch) => ch.cursed).length, 0); s.cursed = curses; // a Cursed chip in your pile: Draw, Roll or Bid 1 lower
@@ -435,10 +435,10 @@ function phaseRewards(b, phase) {
   b.rewards = b.rewards || [];
   for (const s of b.sides) {
     const w = rewardOf(s, phase); if (!w || !w.n) continue;
-    const chips = phase === 'draw' ? [powerChip(b, w.n)] : phase === 'roll' ? Array.from({ length: w.n }, () => mkChip(b, 'opp', 1)) : [mkChip(b, 'fx', 0, { shop: 'steal', resist: 'steal', life: 99, amt: w.n })];
+    const chips = phase === 'draw' ? Array.from({ length: w.n }, () => powerChip(b)) : phase === 'roll' ? Array.from({ length: w.n }, () => mkChip(b, 'opp', 1)) : [mkChip(b, 'fx', 0, { shop: 'steal', resist: 'steal', life: 99, amt: w.n })];
     const { left, at } = toMeterAtRandom(b, s, chips);
     const u = `${w.unused} unused ${phase === 'draw' ? 'draw' : phase === 'roll' ? 'roll' : 'bid'}${w.unused > 1 ? 's' : ''}`;
-    const text = phase === 'draw' ? `${u}: a Power chip (+${w.n}) on the Meter` : phase === 'roll' ? `${u}: ${w.n - left.length} Opportunity chip${w.n - left.length === 1 ? '' : 's'} on the Meter` : `${u}: a Steal chip (${w.n}¢ from the Stage, in the House phase) on the Meter`;
+    const text = phase === 'draw' ? `${u}: ${w.n - left.length} Power chip${w.n - left.length === 1 ? '' : 's'} on the Meter` : phase === 'roll' ? `${u}: ${w.n - left.length} Opportunity chip${w.n - left.length === 1 ? '' : 's'} on the Meter` : `${u}: a Steal chip (${w.n}¢ from the Stage, in the House phase) on the Meter`;
     b.rewards.push({ side: s.idx, phase, turn: b.turn, text: `${text}${left.length ? `; ${left.length} had no room and ${left.length === 1 ? 'is' : 'are'} lost` : ''}.`, cells: at.map((x) => ref(s, x.r, x.c)) });
   }
 }
@@ -453,12 +453,21 @@ function toMeterAtRandom(b, s, chips) {
   if (left.length) s.overflow = (s.overflow || 0) + left.length;
   return { left, at };
 }
-// Power is on the table: each Power chip carries what was added; the next roll effect takes all of it.
-const powerChip = (b, n) => mkChip(b, 'fx', 0, { shop: 'surge', resist: 'surge', life: 99, amt: n });
-export const powerChips = (s) => allCells(s).flatMap((x) => x.cell.chips.filter((ch) => ch.shop === 'surge').map((ch) => ({ ...x, ch })));
-export const powerOf = (s) => sum(powerChips(s), (x) => x.ch.amt || 0);
-export function addPower(b, s, n) { if (n > 0) return toMeterAtRandom(b, s, [powerChip(b, n)]).left.length === 0; return false; }
-function spendPower(b, s) { const n = powerOf(s); for (const x of powerChips(s)) { x.cell.chips.splice(x.cell.chips.indexOf(x.ch), 1); b.fx[x.ch.id] = 'void'; } return n; }
+// Added Power is Power chips on the Meter: the same chip Empower makes, one per point of Power. Each adds its +1 to
+// your roll effects for the turn (in the Investment phase, or at once if it arrives during play), and these last that
+// turn. `on`: it has already added its +1 this turn.
+const powerChip = (b) => mkChip(b, 'fx', 0, { shop: 'power', resist: 'power', life: 1 });
+export const powerChips = (s) => allCells(s).flatMap((x) => x.cell.chips.filter((ch) => ch.resist === 'power').map((ch) => ({ ...x, ch })));
+// Power still to join this turn's roll effects (shown on the cards while you plan)
+export const powerOf = (s) => sum(powerChips(s), (x) => (x.ch.on ? 0 : shopVars('power').boost || 1));
+export function addPower(b, s, n) {
+  if (n <= 0) return 0;
+  const { at } = toMeterAtRandom(b, s, Array.from({ length: n }, () => powerChip(b)));
+  if (b.phase === 'resolve') { const placed = powerChips(s).filter((x) => !x.ch.on && at.some((y) => y.cell === x.cell)); for (const x of placed) x.ch.on = true; s.mods.boost += placed.length * (shopVars('power').boost || 1); }
+  return at.length;
+}
+// Saturate's bonus knocks off the Power your opponent added (Empower's chips stay)
+function dropPower(b, s) { for (const x of powerChips(s)) if (!x.ch.maker) { x.cell.chips.splice(x.cell.chips.indexOf(x.ch), 1); b.fx[x.ch.id] = 'void'; } }
 function homeDie(b, s, d) { if (d.chip) addToMeter(b, s, [d.chip], null, 'spawn'); else { const { value, t, ...die } = d; void value; void t; s.pouch.push(die); } } // a flipped chip comes back to the Meter
 
 // ---------- food ----------
@@ -1115,7 +1124,7 @@ function* play(b, s, e, opt = {}) {
     const left = addToMeter(b, s, Array.from({ length: m }, () => mkChip(b, 'block')), null, 'spawn');
     yield step(b, `${s.name} plays ${def.name}: ${m} Block chip${m > 1 ? 's' : ''} to the Meter${overText(left)}.`, [], 'play');
   } else if (inv) {
-    const ok = addPower(b, s, m); yield step(b, `${s.name} plays ${def.name}: a Power chip (+${m}) on the Meter${ok ? '' : ' (no room: lost)'}.`, [], 'play');
+    const n = addPower(b, s, m); yield step(b, `${s.name} plays ${def.name}: ${n} Power chip${n === 1 ? '' : 's'} on the Meter${n < m ? ` (${m - n} had no room and ${m - n === 1 ? 'is' : 'are'} lost)` : ''}.`, [], 'play');
   } else {
     const n = cleanse(b, s, m); yield step(b, `${s.name} plays ${def.name}${n ? `: ${n} Debt or hazard chip${n > 1 ? 's' : ''} cleansed` : ''}.`, [], 'play');
   }
@@ -1128,7 +1137,7 @@ function* play(b, s, e, opt = {}) {
   const vals = e.dice.map((d) => (!own && fz.bend != null ? fz.bend : d.value));
   const bonus = bonusMet(s, e) ? def.bonus.k : null;
   let total = sum(vals) + e.lingerTotal * e.dice.length;
-  if (!inv) { total += fz.boost - fz.enfeeble + (opt.again ? 0 : spendPower(b, s)) + (def.type === 'expense' ? fz.press : 0) + (def.vengeance ? s.paidLast || 0 : 0); }
+  if (!inv) { total += fz.boost - fz.enfeeble + 0 + (def.type === 'expense' ? fz.press : 0) + (def.vengeance ? s.paidLast || 0 : 0); }
   total = Math.max(0, Math.round(total * (inv ? investMult(effTrick(e)) : trickMult(effTrick(e)) * fz.mul) * (def.type === 'expense' ? heat(b.turn) : 1)));
   if (bonus === 'double') total *= 2;
   const tag = `${opt.again ? `${opt.again}: ` : ''}${s.name}'s ${def.name} (${vals.join('+')}${bonus ? ', bonus' : ''})`;
@@ -1227,7 +1236,7 @@ function* play(b, s, e, opt = {}) {
     case 'feather': { const turns = Math.max(1, Math.floor(total / 3)); let n = 0;
       for (const { r, c } of cells) { const i = topPayableIdx(s.grid[r][c]); if (i < 0) continue; const ch = s.grid[r][c].chips[i]; ch.feather = Math.max(ch.feather || 0, turns); n++; }
       yield step(b, `${tag}: ${n} stack${n === 1 ? '' : 's'} Feathered for ${turns} turn${turns > 1 ? 's' : ''}.`, cells.map((x) => ref(s, x.r, x.c)), n ? 'play' : 'miss'); return; }
-    case 'saturate': { s.mods.boost += total; const had = o.mods.boost; o.mods.boost = 0; o.mods.subdued = true; if (bonus === 'extend') spendPower(b, o);
+    case 'saturate': { s.mods.boost += total; const had = o.mods.boost; o.mods.boost = 0; o.mods.subdued = true; if (bonus === 'extend') dropPower(b, o);
       yield step(b, `${tag}: other roll effects gain ${total}; ${o.name}'s boosts${had ? ` (${had})` : ''} are subdued${bonus === 'extend' ? ' and their Power drained' : ''}.`, [], 'play'); return; }
     case 'arrange': { const side = def.side === 'opp' ? o : s, all = bonus === 'aura';
       const moved = arrange(b, side, def.arrange, all ? null : cells);
@@ -1552,7 +1561,8 @@ function* chipPhase(b, s, type) {
   const o = b.sides[1 - s.idx];
   if (type === 'investment') {
     const pw = chipsAt(s, 'power'), ct = chipsAt(s, 'control'), lk = chipsAt(s, 'lucky');
-    if (pw.length) { const n = pw.length * (shopVars('power').boost || 1); s.mods.boost += n; yield step(b, `${s.name}'s Power chip${pw.length > 1 ? 's' : ''}: roll effects gain ${n} this turn.`, pw.map((x) => ref(s, x.r, x.c)), 'bonus'); }
+    const fresh = pw.filter((x) => !x.ch.on); for (const x of fresh) x.ch.on = true;
+    if (fresh.length) { const n = fresh.length * (shopVars('power').boost || 1); s.mods.boost += n; yield step(b, `${s.name}'s Power chip${fresh.length > 1 ? 's' : ''}: roll effects gain ${n} this turn.`, fresh.map((x) => ref(s, x.r, x.c)), 'bonus'); }
     if (ct.length) { const n = ct.length * (shopVars('control').enfeeble || 1); o.mods.enfeeble += n; yield step(b, `${s.name}'s Control chip${ct.length > 1 ? 's' : ''}: ${o.name}'s roll effects lose ${n} this turn.`, ct.map((x) => ref(s, x.r, x.c)), 'bonus'); }
     if (lk.length) { let luck = 0; for (let k = 0; k < lk.length; k++) if (b.rng.chance(shopVars('lucky').chance)) luck++;
       const left = luck ? addToMeter(b, s, Array.from({ length: luck }, () => mkChip(b, 'opp', 1)), null, 'spawn') : [];
