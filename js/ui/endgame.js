@@ -10,7 +10,7 @@ import { cents } from '../util.js';
 function jacketList(onPick, forSale) {
   const run = app.run, meta = app.meta, box = h('div', { class: 'items list' });
   function render() {
-    const ids = Object.keys(D.JACKETS).filter((id) => (forSale ? !meta.jackets.includes(id) && id !== 'standard' : meta.jackets.includes(id)));
+    const ids = Object.keys(D.JACKETS).filter((id) => (forSale ? !meta.jackets.includes(id) && id !== 'standard' : meta.jackets.includes(id) && R.jacketFits(run.cls, id)));
     syncList(box, ids, (id) => id, (id) => { const J = D.JACKETS[id]; const el = h('div', { class: 'item', tip: () => jacketTip(id) }, h('div', { class: 'main' }, h('b', { text: `🧥 ${J.name}` }), h('small', { text: J.effect })), h('span', { class: 'price' }), btn(forSale ? 'Buy' : 'Wear', () => onPick(id, el), null, 'small')); return el; },
       (el, id) => { const J = D.JACKETS[id]; el.querySelector('.price').textContent = forSale ? (R.jacketAvailable(run, id) ? cents(J.price) : `Reach floor ${J.level + 1}`) : run.jacket === id ? 'Wearing' : '';
         el.classList.toggle('sel', !forSale && run.jacket === id); el.lastChild.classList.toggle('off', forSale ? !R.jacketAvailable(run, id) || run.purse + (meta.debit ? meta.atm : 0) < J.price : run.jacket === id); });

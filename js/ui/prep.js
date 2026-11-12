@@ -96,7 +96,7 @@ export function prepScene(root, kind, idx) {
   // each tilt is on or off; while on, the House may play it during the bout
   const rows = Object.entries(D.TILTS).map(([k, T]) => {
     const tg = btn('Off', () => { if (prep.dd) return toast('Double Down keeps your last Challenges and no Cheats.', 'warn'); if (!R.setTilt(run, prep, k, !prep.tilts[k])) return toast(`Opens on floor ${T.floor}.`, 'warn'); P.update(); }, null, 'small');
-    const el = h('div', { class: `tilt ${T.kind}`, tip: () => `<b>${T.name}</b> <span class="dim">${T.kind === 'challenge' ? `Challenge tilt — +${T.mult} to the multiplier` : `Cheat tilt — −${T.mult} to the multiplier`}</span><p>${T.text}</p>${T.base || T.per ? `<p class="dim">The House's chance to play it each turn: ${Math.round(T.base * 100)}% plus up to ${Math.round(T.per * 100)}% more, as ${T.kind === 'challenge' ? 'you lose' : 'your opponent loses'} chips to the House.</p>` : ''}${R.tiltOpen(run, k) ? '' : `<p class="bad">Opens on floor ${T.floor}.</p>`}` },
+    const el = h('div', { class: `tilt ${T.kind}`, tip: () => `<b>${T.name}</b> <span class="dim">${T.kind === 'challenge' ? `Challenge tilt — +${T.mult} to the multiplier, and a House bounty of ${Math.round(T.mult * 100)}% of your opponent's worth on a win` : `Cheat tilt — −${T.mult} to the multiplier, and a House cut of ${Math.round(T.mult * 100)}% of your opponent's worth on a win`}</span><p>${T.text}</p>${T.base || T.per ? `<p class="dim">The House's chance to play it each turn: ${Math.round(T.base * 100)}% plus up to ${Math.round(T.per * 100)}% more, as ${T.kind === 'challenge' ? 'you lose' : 'your opponent loses'} chips to the House.</p>` : ''}${R.tiltOpen(run, k) ? '' : `<p class="bad">Opens on floor ${T.floor}.</p>`}` },
       h('span', {}, `${T.kind === 'challenge' ? '⚠' : '✚'} ${T.name}`), h('span', { class: 'dim', text: `${T.kind === 'challenge' ? '+' : '−'}${T.mult}` }), tg);
     return { k, el, tg }; });
   tiltBox.append(...rows.map((r) => r.el));
@@ -105,14 +105,15 @@ export function prepScene(root, kind, idx) {
   function sync() {
     H.update();
     const m = R.multiplier(run, prep), worth = P.worth(), wager = Math.max(0, run.purse - worth);
-    tween(multEl, m, (n) => `×${n.toFixed(2)}`, 400); tween(posEl, worth, cents, 300); tween(wagerEl, wager, cents, 300); tween(winEl, Math.round(wager * m), cents, 400);
+    tween(multEl, m, (n) => `×${n.toFixed(2)}`, 400); tween(posEl, worth, cents, 300); tween(wagerEl, wager, cents, 300); const extra = R.tiltPay({ tiltNet: R.tiltNet(prep), opp }) + Math.round(R.chipStake(run.plan.resist) * (m - 1));
+    tween(winEl, Math.max(0, Math.round(wager * m) + extra), cents, 400);
     for (const r of rows) { const on = !!prep.tilts[r.k]; swapText(r.tg, on ? 'On' : 'Off'); r.tg.classList.toggle('on', on); r.tg.classList.toggle('off', prep.dd || !R.tiltOpen(run, r.k)); r.el.classList.toggle('lit', on); }
     ddBtn.classList.toggle('on', prep.dd); ddBtn.classList.toggle('gone', !(kind === 'table' && fs.lastWin));
   }
   tiltBox.className = 'tilts';
   root.append(H.el, h('div', { class: 'page', style: { display: 'grid', gridTemplateColumns: '1fr 290px', gap: '16px' } },
     h('div', { class: 'col' }, h('div', { class: 'box' }, P.el),
-      h('div', { class: 'box col' }, h('div', { class: 'row between' }, h('span', { class: 'cap', tip: '<b>Tilts</b><p>Switch tilts on or off. Challenge tilts make the bout harder and raise your wager multiplier; Cheat tilts make it easier and lower it.</p><p>While a tilt is on, the House may play it during the bout. The more you lose to the House, the harder your Challenges hit; the more your opponent loses to the House, the stronger your Cheats.</p>', text: 'Tilt the bout' })), tiltBox)),
+      h('div', { class: 'box col' }, h('div', { class: 'row between' }, h('span', { class: 'cap', tip: '<b>Tilts</b><p>Switch tilts on or off. Challenge tilts make the bout harder and raise your wager multiplier; Cheat tilts make it easier and lower it. Each also pays (Challenge) or takes (Cheat) its share of your opponent's worth when you win, so they matter even when your whole purse is on the table.</p><p>While a tilt is on, the House may play it during the bout. The more you lose to the House, the harder your Challenges hit; the more your opponent loses to the House, the stronger your Cheats.</p>', text: 'Tilt the bout' })), tiltBox)),
     h('div', { class: 'col' }, oppBox(opp, 'Across the table'),
       h('div', { class: 'box col', tip: `<b>Wager</b><p>Every chip you do not put in your position is wagered. Win and it comes back multiplied; lose and it is gone. Table bouts start at ×${D.WAGER_BASE}, High Rollers at ×${D.WAGER_BOSS}.</p>` },
         h('div', { class: 'row between' }, h('span', { class: 'cap', text: 'Wager multiplier' }), multEl),

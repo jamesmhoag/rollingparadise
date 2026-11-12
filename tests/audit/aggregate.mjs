@@ -1,8 +1,8 @@
-// Summarise audit JSONL into per (scenario, class) rows. node tests/audit/aggregate.mjs in.jsonl out.json
+// Summarise audit JSONL into per (scenario, class) rows. node tests/audit/aggregate.mjs in.jsonl [more.jsonl ...] out.json
 import { readFileSync, writeFileSync } from 'node:fs';
-const [inp, out] = process.argv.slice(2);
-const rows = readFileSync(inp, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+export const readRows = (files) => files.flatMap((f) => readFileSync(f, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)));
 const STAGES = ['none', 'intro', ...[1, 2, 3, 4].flatMap((f) => [`F${f} T1`, `F${f} T2/3`, `F${f} HR`])];
+export function summarize(rows) {
 const errors = rows.filter((r) => r.error);
 const groups = new Map();
 for (const r of rows) { if (r.error) continue; const k = `${r.name}|${r.cls}`; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); }
@@ -36,5 +36,11 @@ for (const [k, rs] of groups) {
     medPurseF: [1, 2, 3, 4].map((f) => { const v = rs.filter((r) => r.purseAt[f] != null).map((r) => r.purseAt[f]).sort((a, b) => a - b); return v.length ? v[Math.floor(v.length / 2)] : null; }),
     buys, misses, bets: rs.reduce((x, r) => x + r.bets, 0), barfly: rs.reduce((x, r) => [x[0] + r.barfly[0], x[1] + r.barfly[1]], [0, 0]), sold: mean(rs.map((r) => r.sold)) });
 }
-writeFileSync(out, JSON.stringify({ errors: errors.length, errorSample: errors.slice(0, 3), summary }, null, 1));
-console.log('groups', summary.length, 'errors', errors.length);
+return { errors: errors.length, errorSample: errors.slice(0, 3), summary };
+}
+if (process.argv[1] && new URL(import.meta.url).pathname === process.argv[1]) {
+  const args = process.argv.slice(2), out = args.pop();
+  const res = summarize(readRows(args));
+  writeFileSync(out, JSON.stringify(res, null, 1));
+  console.log('groups', res.summary.length, 'errors', res.errors);
+}

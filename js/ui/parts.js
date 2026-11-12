@@ -125,7 +125,7 @@ export function cardTip(id, v) {
 }
 export function jacketTip(id, v) {
   const J = D.JACKETS[id];
-  return `<b>${J.name} jacket</b> <span class="dim">${J.effect}</span>${Object.keys(J.mods).length ? changes(J.mods, v) : '<p>No modifiers.</p>'}`;
+  return `<b>${J.name} jacket</b> <span class="dim">${J.effect}</span>${Object.keys(J.mods).length ? changes(J.mods, v) : '<p>No modifiers.</p>'}${J.cls ? `<p class="dim">Cut for the ${D.CLASSES[J.cls].name}; no other class can wear it.</p>` : ''}`;
 }
 
 // ---------- gear visuals ----------
