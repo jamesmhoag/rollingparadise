@@ -421,6 +421,34 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
   assert(fo.find((t) => t.key === 'enfeeble' && t.zone === 'bar' && !t.good), 'harmful effects lie in the Bar');
 }
 
+// ---------- ghost Debt, overkill spreading at once, totals, paid bids ----------
+{
+  const { bout, me, opp } = table({});
+  // a lane with one small stack: the overkill spreads to the stack behind at once, the rest is wasted on show
+  const c = 0, rows = [...Array(me.rows).keys()];
+  for (const r of rows) me.grid[r][c].chips = [];
+  const m = me.dims.meterRows; me.grid[m][c].chips = [{ id: 8e6, kind: 'std', value: 2 }]; me.grid[m + 1][c].chips = [{ id: 8e6 + 1, kind: 'std', value: 1 }];
+  const g = engage(bout, opp, me, m, c, 7, {});
+  assert(B.debtOf(me.grid[m][c]) === 2 && B.debtOf(me.grid[m + 1][c]) === 1, 'overkill spreads down the lane as the fee lands');
+  assert(g.placed === 3 && me.grid.slice(m + 2).some((row) => row[c].chips.some((ch) => ch.kind === 'ghost' && ch.value === 4)), 'what has nowhere to go shows as a ghost Debt chip on the next empty space');
+  drain(B._test.settleAll(bout, 'expense'));
+  assert(!me.grid.flat().some((cell) => cell.chips.some((ch) => ch.kind === 'ghost')), 'the House clears ghosts as it settles');
+}
+{
+  const { bout, me } = table({});
+  me.power = 2;
+  const e = { uid: 7, trick: { id: 'charge', q: 1, up: 0 }, dice: [{ value: 5, type: 'd6' }, { value: 2, type: 'd6' }], bid: [], bidValue: 2, state: 'bid' };
+  const t = B.totalParts(me, e);
+  assert(t.diceSum === 7 && t.linger === 2 && t.power === 2 && t.total === 11, 'a total of 11 is shown as 5 + 2, +2 linger, +2 Power');
+}
+{
+  const { bout, me, opp } = table({});
+  const e = me.run[0] || B.draw(bout, me, me.book[0].uid); void opp;
+  const spot = B.biddable(me)[0]; bout.phase = 'bid'; e.state = 'shown'; B.bid(bout, me, e, spot.r, spot.c);
+  bout.phase = 'aim'; drain(B.resolve(bout));
+  assert(Array.isArray(e.paid) && e.paid.length === 1, 'a trick keeps a record of the bid it paid');
+}
+
 // ---------- dice upgrades ----------
 {
   const { RNG } = await import('../js/util.js'); const X = await import('../js/dice.js');

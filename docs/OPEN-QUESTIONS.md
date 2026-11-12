@@ -144,3 +144,9 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
     Should knocking an effect chip off (with a fee, Scatter, a Tornado) end the effect?
 65. Big chips for big effects only stack with big chips. Should big *value* chips exist too (the list's Big Chip,
     covering 5 spaces), and what are they worth?
+
+## Round 12 additions (the Bluff, fees on nothing)
+66. The Bluff shows the opponent's bids before you aim. Should it also show their dice totals, or keep those until
+    the House plays?
+67. A trick that loses its target keeps its aim and lands on nothing. Should it instead slide to the nearest stack
+    (as it did before), maybe as a trick upgrade (the sheet's Overflow row)?

@@ -36,7 +36,9 @@ for (let seed = 1; seed <= 25; seed++) {
   if (again && B.tipOf(me, 'ingenuity') > 1) { assert(B.bid(bout, me, e, again.r, again.c) && e.bid.length === 2, 'a trick that has a bid can take another'); }
   B.resetPlan(bout, me); assert(!me.used.bid && me.run.find((x) => x.uid === e.uid).state === 'shown', 'undo in Bid takes back only the bids');
   const e3 = me.run.find((x) => x.uid === e.uid), s3 = B.biddable(me)[0]; B.bid(bout, me, e3, s3.r, s3.c);
-  planPhase(bout, opp); assert(B.advance(bout) && bout.phase === 'resolve', 'Bid closes and the House plays');
+  planPhase(bout, opp); assert(B.advance(bout) && bout.phase === 'aim', 'Bid closes and the Bluff opens: bids are out, aims are not');
+  assert(opp.run.every((x) => x.state !== 'bid' || !x.target || true), 'their aim is made in the Bluff');
+  planPhase(bout, opp); assert(B.advance(bout) && bout.phase === 'resolve', 'the Bluff closes and the House plays');
   for (const _ of B.resolve(bout)); // eslint-disable-line no-unused-vars
   assert(bout.over || bout.phase === 'drink', 'the round closes with the Drink phase');
   if (!bout.over) { assert(B.canSip(bout, me) || !me.drink, 'sipping waits for the Drink phase'); B.advance(bout); assert(bout.phase === 'draw', 'the next turn opens on Draw'); }

@@ -42,7 +42,10 @@ export function planPhase(b, s) {
   if (b.phase === 'draw') planDraw(b, s);
   else if (b.phase === 'roll') planRoll(b, s);
   else if (b.phase === 'bid') planBid(b, s);
+  else if (b.phase === 'aim') planAim(b, s);
 }
+// The Bluff: the bids are out; aim each bid trick at the best target as the table stands now.
+function planAim(b, s) { const v = seen(b, s); for (const e of s.run) if (e.state === 'bid' && B.needsTarget(e)) { const t = bestTarget(v, s, e); if (t) B.setTarget(b, s, e, t); } }
 // Both Rollers play one phase, then it closes. Returns the new phase.
 export function autoPhase(b) {
   for (const s of b.sides) planPhase(b, s);
@@ -115,7 +118,6 @@ function planRoll(b, s) {
 function planBid(b, s) {
   const v = seen(b, s), rng = b.rng;
   const ready = s.run.filter((e) => e.state === 'shown').sort((x, y) => (y.dice.length ? 1 : 0) - (x.dice.length ? 1 : 0) || prio(x) - prio(y));
-  const aim = (e) => { if (B.needsTarget(e)) { const tgt = bestTarget(v, s, e); if (tgt) e.target = tgt; } };
   for (const e of ready) {
     const def = TRICKS[e.trick.id];
     if (s.used.bid >= B.tipOf(s, 'ingenuity')) break;
@@ -124,12 +126,12 @@ function planBid(b, s) {
     const spot = cheapestBidSpot(s); if (!spot) break;
     if (B.worth(s) - spot.ch.value <= 1) break;
     if (spot.ch.value > 2 && rng.chance(0.6)) continue; // a big chip would linger for a long time
-    B.bid(b, s, e, spot.r, spot.c); aim(e);
+    B.bid(b, s, e, spot.r, spot.c);
   }
   // one bid is required each turn: the cheapest chip on the most useful trick
   if (!s.used.bid && B.canAct(b, s)) {
     const e = s.run.filter((x) => x.state !== 'play').sort((x, y) => (y.dice.length ? 1 : 0) - (x.dice.length ? 1 : 0) || prio(x) - prio(y))[0];
     const spot = B.biddable(s).sort((x, y) => x.ch.value - y.ch.value)[0];
-    if (e && spot) { B.bid(b, s, e, spot.r, spot.c); aim(e); }
+    if (e && spot) B.bid(b, s, e, spot.r, spot.c);
   }
 }

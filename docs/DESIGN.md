@@ -185,6 +185,27 @@ bought, on a target face you pick, and the panel previews the faces each one lea
 Curse change how the die rolls. Up to 2 per die; the roll-time ones cannot be taken twice. A die's hover shows its
 faces and each upgrade's badge; the rules are in `js/dice.js`.
 
+### The Bluff (fourth phase)
+After Bid comes the Bluff. The bids are shown to both Rollers (you see what they bid on, and they see yours); then
+each Roller aims their bid tricks: click a trick, then a space, or keep the marked one. Aims stay hidden until the
+House plays them. The button after Bid reads **Bluff**, and in the Bluff it reads **Play**.
+
+### Reading a trick
+A card shows how its total is made under the number: the dice, `+n linger` from the bid (turns × dice), `+n pow`
+(Power), Vengeance, `×` quality, `×` last call and `×2` for a doubling bonus. Its hover says the same in words. Once
+the bid is paid to the House, the card keeps `paid 1+1¢ · n to go`. Tricks still lingering mark the spaces they
+will land on, for both Rollers: blue outlines for yours, red for your opponent's, with the trick's name and turns
+left.
+
+### Fees on nothing, and overkill
+A fee spreads its overkill as it lands: what a stack cannot pay goes straight on to the stacks behind it in the
+lane, so the table shows where every ¢ is headed before the House settles. A fee whose target is gone keeps its
+aim (the same lane, or the same space) and lands there as a ghost Debt chip that comes to nothing when the House
+settles; overkill with no stack behind shows the same way on the next empty space.
+
+While a phase is on, the parts of the table you cannot use (the Book outside Draw, the Pouch outside Roll, everything
+while the House plays) look inactive but keep their numbers and hovers.
+
 ### The Drink phase
 Each round ends with a Drink phase after the House has played: sip once, eat once, then Next turn. What you take
 works from the next turn. If you have nothing to sip or eat, the table moves straight on.

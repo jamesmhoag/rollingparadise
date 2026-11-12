@@ -11,7 +11,7 @@ import { rollDie, boutCopy, facesOf, upgrade as upgradeFaces } from './dice.js';
 export { rollDie };
 import { DIE_UPGRADES, TRICKS, TYPES, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, CREATURES, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS } from './data.js';
 
-export const PHASES = ['draw', 'roll', 'bid'];
+export const PHASES = ['draw', 'roll', 'bid', 'aim']; // 'aim' is shown as the Bluff
 export const LAST_CALL = 8;
 export const heat = (turn) => (turn > LAST_CALL ? 1 + 0.25 * (turn - LAST_CALL) : 1);
 export const trickMult = (t) => QMULT[t.q] * (1 + 0.25 * (t.up || 0));
@@ -262,6 +262,7 @@ export function flippable(s) { const out = []; for (let r = 0; r < s.rows; r++) 
 export function biddable(s) { const out = []; for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const ch = bidChip(s, r, c); if (ch && spare(s, ch)) out.push({ r, c, ch }); } return out; }
 // Is the phase's one required action possible at all? If not, the phase can be closed without it.
 export function canAct(b, s, phase = b.phase) {
+  if (phase === 'aim') return s.run.some((e) => e.state === 'bid' && needsTarget(e) && validTargets(b, s, e).length > 1);
   if (phase === 'draw') return s.book.length > 0 && tipOf(s, 'trickery') > 0;
   if (phase === 'roll') {
     if (s.thrown) return s.tray.some((d) => s.run.some((e) => fitsOn(d, e)));
@@ -492,6 +493,7 @@ export function validTargets(b, s, e, payOnly) {
   return out;
 }
 export function setTarget(b, s, e, tgt) {
+  if (b.phase !== 'aim' && b.phase !== 'bid') return false;
   if (!validTargets(b, s, e).some((v) => v.side === tgt.side && v.r === tgt.r && v.c === tgt.c)) return false;
   e.target = { side: tgt.side, r: tgt.r, c: tgt.c }; return true;
 }
@@ -526,6 +528,15 @@ export function bonusMet(s, e) {
   if (cond.startsWith('over:')) return total >= +cond.slice(5);
   if (cond.startsWith('under:')) return total <= +cond.slice(6);
   return false;
+}
+// What a trick's total is made of: dice, linger from the bid, Power, Vengeance, the multiplier, Last call, a
+// doubling bonus. Boost and Enfeeble join when the trick plays, so the card shows them as they stand now.
+export function totalParts(s, e) {
+  const def = TRICKS[e.trick.id], inv = def.type === 'investment';
+  const dice = sum(e.dice, (d) => d.value), turns = e.state === 'play' ? e.lingerTotal : clamp(e.bidValue - 1, 0, 20);
+  const linger = turns * e.dice.length, power = inv ? 0 : s.power, venge = def.vengeance ? s.paidLast || 0 : 0;
+  const mult = inv ? investMult(effTrick(e)) : trickMult(effTrick(e)), heatX = def.type === 'expense' ? s.heat || 1 : 1, double = bonusMet(s, e) && def.bonus.k === 'double';
+  return { dice: e.dice.map((d) => d.value), diceSum: dice, turns, linger, power, venge, mult, heat: heatX, double, total: previewTotal(s, e) };
 }
 // what a shown trick would do right now (for previews and the AI)
 export function previewTotal(s, e) {
@@ -570,6 +581,14 @@ export function forecastFee(b, s, e, origin) {
   return [...out.values()];
 }
 // A fee goes out as Debt chips on the target stack. Nothing is paid until the House settles.
+// a Debt chip that lands where there is nothing to pay it: shown, then gone when the House settles
+function ghost(b, side, r, c, amount, why) {
+  const cell = side.grid[r]?.[c]; if (!cell || cell.hole) return;
+  const g = mkChip(b, 'ghost', amount, { why }); cell.chips.push(g); b.fx[g.id] = 'debt';
+}
+const clearGhosts = (b, s) => { for (const { cell } of allCells(s)) for (const ch of cell.chips.filter((x) => x.kind === 'ghost')) { cell.chips.splice(cell.chips.indexOf(ch), 1); b.fx[ch.id] = 'void'; } };
+// What a stack can pay before a fee spills on down the lane: its chips and 1¢ shields, less the Debt it already owes.
+const canTake = (cell, pierce) => sum(cell.chips, (ch) => (isPayable(ch) ? ch.value : !pierce && (ch.kind === 'block' || ch.kind === 'counter') ? 1 : 0)) - debtOf(cell);
 function engage(b, att, def, r, c, amount, o = {}) {
   const cell = def.grid[r][c], st = def.status, notes = [];
   const open = !o.pierce && !o.reflected;
@@ -613,9 +632,27 @@ function engage(b, att, def, r, c, amount, o = {}) {
       if (cols.length) { const cc = b.rng.pick(cols), tc = att.grid[frontRow(att, cc)][cc]; if (!hasResist(tc, 'shock') && !iced(tc) && !tc.chips.some((ch) => ch.kind === 'shock')) tc.chips.push(mkHazard(b, 'shock')); notes.push('Zapped back'); } }
     else { cell.chips.splice(cell.chips.indexOf(zaps[0]), 1); b.fx[zaps[0].id] = 'void'; notes.push('a Zap chip shorts out'); }
   }
-  markDue(cell, { pierce: o.pierce, glean: o.glean && att ? att.idx : null, element: o.element, att: att ? att.idx : null });
-  setDebt(b, cell, debtOf(cell) + amount, 'debt');
-  return { placed: amount, notes };
+  const due = { pierce: o.pierce, glean: o.glean && att ? att.idx : null, att: att ? att.idx : null };
+  // overkill spreads right away: what this stack cannot pay goes on down the lane to the stacks behind it
+  const lane = [r, ...[...Array(def.rows).keys()].filter((y) => y > r && !def.grid[y][c].hole && occupied(def.grid[y][c], o.pierce))];
+  let left = amount, last = r;
+  for (let k = 0; k < lane.length && left > 0; k++) {
+    const y = lane[k], x = def.grid[y][c], hard = x.hard > 0 && !o.pierce;
+    const keep = hard ? left : Math.min(left, Math.max(0, canTake(x, o.pierce)));
+    if (k === 0 || keep > 0) markDue(x, { ...due, element: k === 0 ? o.element : null });
+    if (keep > 0) setDebt(b, x, debtOf(x) + keep, 'debt');
+    left -= keep; last = y;
+    if (hard) { left = 0; break; }
+    const next = lane[k + 1];
+    if (left > 0 && next != null) { b.trace?.push({ side: def.idx, r: y, c, owed: 0, paid: 0, paidChips: [], blocked: 0, left: debtOf(x), carry: left, behind: next, lost: 0 }); if (k === 0) notes.push(`${left}¢ overkill spills down the lane`); }
+  }
+  if (left > 0) { // nothing behind: the overkill is wasted, shown on the space past the last stack
+    const back = [...Array(def.rows).keys()].filter((y) => y > last && !def.grid[y][c].hole && !def.grid[y][c].chips.length)[0];
+    if (back != null) ghost(b, def, back, c, left, 'overkill with no stack behind');
+    b.trace?.push({ side: def.idx, r: last, c, owed: 0, paid: 0, paidChips: [], blocked: 0, left: debtOf(def.grid[last][c]), carry: 0, behind: -1, lost: left });
+    notes.push(`${left}¢ overkill wasted`);
+  }
+  return { placed: amount - left, notes };
 }
 function markDue(cell, o) {
   const due = cell.due || (cell.due = { prior: debtOf(cell), pierce: false, glean: null, element: null, att: null });
@@ -640,6 +677,7 @@ function* ward(b, s) {
   }
 }
 function* settleSide(b, s) {
+  clearGhosts(b, s);
   yield* ward(b, s);
   for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) {
     const cell = s.grid[r][c], due = cell.due; if (!due) continue; cell.due = null;
@@ -821,8 +859,14 @@ function* play(b, s, e) {
   if (t && def.approach !== 'none') {
     const valid = validTargets(b, s, e, pierce), want = e.target || valid[0];
     const far = (x) => (x.side !== want.side ? 1000 : 0) + Math.abs(x.c - want.c) * 10 + Math.abs(x.r - want.r);
-    if (valid.length && want) origin = valid.slice().sort((x, y) => far(x) - far(y))[0];
-    if (!origin) { yield step(b, `${tag} finds no target and fizzles.`, [], 'miss'); return; }
+    const lane = ['front', 'rear', 'body'].includes(def.approach);
+    // the trick keeps its aim: the same lane for front/rear/body, the same space otherwise
+    if (valid.length && want) origin = lane ? valid.filter((x) => x.side === want.side && x.c === want.c)[0] : valid.find((x) => x.side === want.side && x.r === want.r && x.c === want.c);
+    if (!origin && valid.length && !e.target) origin = valid.slice().sort((x, y) => far(x) - far(y))[0];
+    if (!origin) {
+      if (def.roll.k === 'fee' && want) { const ws = b.sides[want.side]; ghost(b, ws, want.r, want.c, total, 'its target is gone');
+        yield step(b, `${tag} lands on an empty space: ${total}¢ of Debt on nothing.`, [ref(ws, want.r, want.c)], 'miss'); return; }
+      yield step(b, `${tag} finds no target and fizzles.`, [], 'miss'); return; }
     t = b.sides[origin.side]; // an Expense aimed at a creature over your own stack lands on your side
   }
   const dist = bonus === 'spread' ? SPREAD[e.trick.id] || 'swipe' : bonus === 'aura' ? 'aura' : def.dist;
@@ -1121,7 +1165,7 @@ export function* resolve(b) {
   let any = false;
   for (const s of b.sides) for (const e of s.run) if (e.state === 'bid') {
     e.lingerTotal = clamp(e.bidValue - 1, 0, 20); e.lingerLeft = e.lingerTotal; e.state = 'play';
-    for (const ch of e.bid) b.fx[ch.id] = 'house'; s.bidsPaid += e.bidValue; e.bid = []; any = true;
+    for (const ch of e.bid) b.fx[ch.id] = 'house'; e.paid = e.bid.map((ch) => ch.value); s.bidsPaid += e.bidValue; e.bid = []; any = true;
   }
   b.ctx = { phase: 'bids' };
   if (any) yield step(b, 'The House collects the bids.', [], 'bid');
