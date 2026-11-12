@@ -10,22 +10,29 @@ function table(seed = 3, cls = 'hustler') {
   const { bout } = R.startTable(run, R.newPrep(run, 'table', 0)); return { run, bout, me: bout.sides[0], opp: bout.sides[1] };
 }
 
-// ---------- passing Draw with draws unused makes a Power chip on the Meter ----------
+// ---------- passing Draw with draws unused makes Power chips on the Meter, for the turn ----------
 {
   const { bout, me } = table();
   const want = B.cOf(me, 'conviction') * B.tipOf(me, 'trickery');
   assert(B.rewardOf(me, 'draw').n === want && B.powerOf(me) === 0, 'what passing Draw will give is known before it is passed');
   B.advance(bout, true);
   const pc = B.powerChips(me);
-  assert(pc.length === 1 && pc[0].ch.amt === want && pc[0].r < me.dims.meterRows && B.powerOf(me) === want, 'unused draws become one Power chip carrying their Power, on a Meter space');
+  assert(pc.length === want && pc.every((x) => x.r < me.dims.meterRows && x.ch.shop === 'power' && x.ch.life === 1) && B.powerOf(me) === want, 'unused draws become Power chips (the same chip Empower makes), one per point, on the Meter, for the turn');
+  assert(D.SHOP_CHIPS.power.name === 'Power chip', 'the Power chip keeps its name');
   assert(bout.rewards.some((w) => w.side === 0 && w.phase === 'draw' && /Power chip/.test(w.text)), 'the reward is reported for the feed');
   assert(bout.rewards.some((w) => w.side === 1 && w.phase === 'draw') === (B.rewardOf(bout.sides[1], 'draw').n > 0), 'the opponent builds theirs too, where you can see them');
-  // the next roll effect takes all of it
   const e = { uid: 'x', trick: { id: 'charge', q: 1, up: 0 }, dice: [{ id: 'd1', type: 'd6', value: 3, up: [] }], bid: [], bidValue: 1, state: 'play', lingerLeft: 0, lingerTotal: 0 };
-  assert(B.previewTotal(me, e) >= 3 + want, 'a preview counts the Power chips');
+  assert(B.previewTotal(me, e) >= 3 + want, 'while you plan, a preview counts the Power still to come');
+  // the Investment phase turns them into a boost for every roll effect this turn; they are not spent by the first one
+  me.mods.boost = 0; drain(B._test.chipPhase(bout, me, 'investment'));
+  assert(me.mods.boost === want && B.powerOf(me) === 0 && B.powerChips(me).length === want, 'in the Investment phase the Power chips boost roll effects for the turn');
   e.target = B.validTargets(bout, me, { ...e, state: 'bid' })[0];
-  drain(B._test.play(bout, me, e));
-  assert(B.powerOf(me) === 0 && !B.powerChips(me).length, 'playing a roll effect spends the Power chips');
+  drain(B._test.play(bout, me, e)); drain(B._test.play(bout, me, { ...e, uid: 'y' }));
+  assert(me.mods.boost === want && B.powerChips(me).length === want, 'playing roll effects does not spend them: they last the turn');
+  drain(B._test.chipPhase(bout, me, 'investment')); assert(me.mods.boost === want, 'a Power chip adds once a turn');
+  // Power added during play joins at once
+  bout.phase = 'resolve'; const b0 = me.mods.boost, n = B.addPower(bout, me, 2);
+  assert(me.mods.boost === b0 + n, 'Power added during play boosts the rest of the turn at once');
 }
 // ---------- all draws used: nothing kept ----------
 {

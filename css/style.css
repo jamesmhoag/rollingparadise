@@ -182,8 +182,8 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .c-open { opacity: 0; pointer-events: none; padding: 7px 8px; display: flex; flex-direction: column; gap: 4px; } .tcard.open .c-open { opacity: 1; pointer-events: auto; } .tcard.open .c-compact { opacity: 0; pointer-events: none; }
 .c-name { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; } .c-type { font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--tc); font-weight: 800; }
 .c-slots { display: flex; gap: 6px; height: 34px; flex: none; align-content: flex-start; flex-wrap: wrap; } .slot { width: 30px; height: 30px; border-radius: 7px; border: 1.5px dashed #6f7fb0; font-size: 9px; color: #6f7fb0; display: grid; place-items: center; transition: border-color .3s, color .3s; } .slot.full { border-color: transparent; color: transparent; }
-.c-bid { display: flex; gap: 6px; align-items: center; height: 34px; flex: none; } .bidslot { width: 34px; height: 34px; border-radius: 50%; border: 2px dashed #6f7fb0; display: grid; place-items: center; font-size: 8.5px; font-weight: 800; color: #9fb0d8; transition: all .3s; }
-.tcard.open:not(.inplay) .bidslot:hover, .tcard.active .bidslot { border-color: var(--pink); background: rgba(255, 110, 220, .22); color: #fff; box-shadow: 0 0 10px rgba(255, 110, 220, .6); } .tcard.bid .bidslot, .tcard.inplay .bidslot { border-color: transparent; color: transparent; }
+.c-bid { display: flex; gap: 6px; align-items: center; height: 34px; flex: none; } .bidslot.ring { position: absolute; left: 0; top: 0; pointer-events: auto; cursor: pointer; font-size: 15px; background: rgba(9, 6, 24, .75); transition: transform .45s var(--ease), border-color .3s, box-shadow .3s; } .bidslot { width: 34px; height: 34px; border-radius: 50%; border: 2px dashed #6f7fb0; display: grid; place-items: center; font-size: 8.5px; font-weight: 800; color: #9fb0d8; transition: all .3s; }
+.tcard.open:not(.inplay) .bidslot:hover, .tcard.active .bidslot, .bidslot.ring:hover, .bidslot.ring.active { border-color: var(--pink); background: rgba(255, 110, 220, .22); color: #fff; box-shadow: 0 0 10px rgba(255, 110, 220, .6); } .tcard.bid .bidslot, .tcard.inplay .bidslot { border-color: transparent; color: transparent; }
 .c-bid .tgt { font-size: 10px; padding: 2px 8px; border-radius: 9px; background: var(--coral); color: #fff; opacity: 0; pointer-events: none; transition: opacity .3s; margin-left: auto; } .c-bid .tgt.on { opacity: 1; pointer-events: auto; }
 .c-text { font-size: 10.5px; line-height: 1.25; flex: 1; overflow: hidden; } .c-text p { margin: 0 0 3px; } .c-text em { font-style: normal; font-weight: 800; color: var(--tc); } .c-text .bonus { transition: all .35s; padding: 1px 3px; border-radius: 4px; }
 .bonus.met { background: #2f8f55; color: #fff; } .bonus.met em { color: #fff; } .bonus.na { opacity: .45; } .tcard.narrow .c-text { font-size: 9.5px; } .tcard.narrow .c-name { font-size: 12px; }
@@ -248,6 +248,20 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .feed-line::before { content: ''; position: absolute; left: 2px; top: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--fc, var(--dim)); box-shadow: 0 0 7px var(--fc, transparent); }
 .feed-line.you { --fc: var(--gold); } .feed-line.them { --fc: var(--pink); } .feed-line.house { --fc: var(--amber); } .feed-line.now { color: var(--cream); } .feed-line.prompt { color: var(--gold); font-style: italic; --fc: transparent; }
 .feed-lines > .enter { opacity: 0; transform: translateY(16px); } .feed-lines > .leave { opacity: 0; transform: translateY(-12px); }
+/* the feed is a table: a row per phase (the header and its note), then a column for each side; a House line spans both */
+.f-row { flex: none; display: grid; grid-template-columns: 82px 1fr 1fr; gap: 0 10px; height: 18px; line-height: 18px; transition: transform .45s var(--ease), opacity .4s; }
+.f-ph { font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--amber); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-right: 1px solid var(--line); padding-right: 6px; }
+.f-ph.cont { color: transparent; } .f-ph small { display: none; margin-left: 5px; letter-spacing: 0; text-transform: none; color: var(--dim); }
+.f-c { font-size: 12.5px; color: var(--dim); padding-left: 15px; position: relative; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 4px; }
+.f-c::before { content: ''; position: absolute; left: 2px; top: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--fc, var(--dim)); box-shadow: 0 0 7px var(--fc, transparent); }
+.f-c.you { --fc: var(--gold); } .f-c.them { --fc: var(--pink); } .f-c.house { --fc: var(--amber); } .f-c.empty::before { display: none; } .f-c.span { grid-column: 2 / span 2; }
+.f-row.now .f-c:not(.empty) { color: var(--cream); } .f-c:not(.empty):hover { background: rgba(255, 255, 255, .06); color: var(--cream); }
+.phases .btn.hist { flex: none; padding: 0 10px; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; border-radius: 0; border-width: 0 0 0 1px; height: 18px; } .phases .btn.hist.on { color: var(--gold); }
+/* History: the same list, open to the whole bout and scrollable; rows grow to fit, the phase note shows */
+.feed { cursor: default; } .feed.open { height: 338px; z-index: 1200; background: #090618; box-shadow: 0 14px 40px rgba(0, 0, 0, .6); }
+.feed.open .feed-lines { justify-content: flex-start; overflow-y: auto; padding-bottom: 8px; }
+.feed.open .f-row { height: auto; line-height: 16px; padding: 2px 0; border-top: 1px solid rgba(255, 255, 255, .04); } .feed.open .f-c { white-space: normal; } .feed.open .f-ph { white-space: normal; } .feed.open .f-ph small { display: block; }
+.feed.open .f-row.turn { position: sticky; top: 0; z-index: 2; background: #090618; border-top: 0; } .f-row.turn .f-ph { color: var(--gold); } .f-row.turn .f-c { padding-left: 0; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; } .f-row.turn .f-c::before { display: none; }
 .run-empty { position: absolute; left: 248px; top: 466px; width: 626px; height: 240px; border: 1px dashed var(--line); border-radius: 10px; display: grid; place-items: center; color: var(--dim); font-size: 13px; transition: opacity .5s; cursor: help; }
 .stick { position: absolute; left: 640px; top: 60px; --ac: var(--gold); height: 5px; width: 70px; transform-origin: 0 50%; border-radius: 3px; background: linear-gradient(90deg, #7a5320, #f3d79b 22%, #c9963f 80%, #f3d79b); box-shadow: 0 0 10px rgba(255, 215, 106, .55), 0 4px 6px rgba(0, 0, 0, .6); z-index: 985; pointer-events: none; opacity: .55;
   transition: transform .6s var(--ease), width .6s var(--ease), opacity .4s; }
@@ -327,7 +341,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .cell.soft { border-color: rgba(110, 240, 255, .4); cursor: pointer; } .cell.soft:hover { background: rgba(110, 240, 255, .14); }
 .cell.sel { border-color: #fff; background: rgba(255, 255, 255, .14); box-shadow: 0 0 12px rgba(110, 240, 255, .6); }
 .c-type { display: flex; align-items: center; gap: 3px; } .c-type .tgt { font-size: 9.5px; padding: 1px 7px; border-radius: 9px; background: var(--coral); color: #fff; opacity: 0; pointer-events: none; transition: opacity .3s; margin-left: auto; } .c-type .tgt.on { opacity: 1; pointer-events: auto; }
-.scene.bout.m-bid .tcard.pick .bidslot { border-color: var(--pink); border-style: solid; background: rgba(255, 110, 220, .25); color: #fff; box-shadow: 0 0 12px rgba(255, 110, 220, .7); animation: breathe 1.2s ease-in-out infinite; }
+.scene.bout.m-bid .tcard.pick .bidslot, .scene.bout.m-bid .bidslot.ring.pick { border-color: var(--pink); border-style: solid; background: rgba(255, 110, 220, .25); color: #fff; box-shadow: 0 0 12px rgba(255, 110, 220, .7); animation: breathe 1.2s ease-in-out infinite; }
 .tcard.bid .bidslot { border-color: #6f7fb0; color: #9fb0d8; } .tcard.inplay .bidslot { border-color: transparent; color: transparent; }
 .orow.reveal { animation: reveal .8s var(--ease); } @keyframes reveal { 0% { box-shadow: 0 0 0 2px var(--pink), 0 0 18px var(--pink); } 100% { box-shadow: none; } }
 .fc-layer { position: absolute; inset: 0; pointer-events: none; z-index: 990; }
@@ -456,7 +470,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .scene.bout .cell { background-color: rgba(9, 6, 24, .16); }
 
 /* the card says how its total is made, and what it paid */
-.c-math { font-size: 9.5px; color: var(--dim); text-align: right; min-height: 12px; letter-spacing: .02em; } .c-paid { font-size: 9.5px; color: var(--amber); text-align: right; min-height: 12px; }
+.c-math { flex: 1; min-width: 0; max-height: 34px; overflow: hidden; white-space: pre-line; font-size: 9.5px; line-height: 11px; color: var(--dim); text-align: right; letter-spacing: .02em; } /* beside the bid pile, so the trick text keeps its room */
 /* parts of the table that cannot be used in this phase look inactive, but still show their data and hovers */
 .scene.bout:not(.ph-draw) .tcard:not(.open), .scene.bout.locked .tcard, .scene.bout:not(.ph-roll) .die:not(.on):not(.rolled), .scene.bout.thrown .die:not(.on):not(.rolled), .scene.bout.locked .die { filter: saturate(.35) brightness(.75); }
 .scene.bout.locked .controls .btn:not(.lib-btn), .scene.bout:not(.ph-bid):not(.ph-aim) .bidslot { opacity: .45; }
@@ -510,7 +524,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .k-std.v100 i, .k-std.v250 i, .k-std.v500 i, .k-std.v1000 i, .k-std.v2500 i, .k-std.v5000 i, .k-std.v10000 i, .k-std.v25000 i, .k-std.v50000 i { font-size: 10px; letter-spacing: -.5px; }
 .tilt { grid-template-columns: 1fr auto auto; } .tilt.lit { box-shadow: inset 0 0 0 1px var(--gold); } .tilt .on { color: var(--gold); }
 
-/* ---------- round 15: properties, effect chips, history, bid hands ---------- */
+/* ---------- round 15: properties, effect chips, bid hands ---------- */
 /* a chip's traits as a two-column property list (key and value), shown in verbose hovers */
 .props { display: grid; grid-template-columns: 1fr 1fr; gap: 1px 12px; margin: 6px 0 0; padding: 5px 0 0; border-top: 1px solid rgba(255, 255, 255, .1); font-size: 10.5px; line-height: 1.35; }
 .props > div { display: flex; justify-content: space-between; gap: 6px; min-width: 0; }
@@ -526,54 +540,14 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .k-fx { --bs: dashed; }
 .cell.full-tgt { box-shadow: inset 0 0 0 2px rgba(255, 90, 74, .45); }
 .cell.full-tgt::after { content: 'FULL'; position: absolute; right: 2px; top: 1px; font-size: 7.5px; letter-spacing: .06em; color: rgba(255, 140, 120, .9); }
-/* the match history: the feed opens into a scrollable list of every action this bout */
-.feed { cursor: default; }
-.feed .hist-btn { position: absolute; right: 6px; top: 2px; z-index: 3; font: 600 10px/1 inherit; padding: 2px 7px; border-radius: 8px; border: 1px solid var(--line); background: rgba(255, 255, 255, .06); color: var(--dim); cursor: pointer; }
-.feed .hist-btn:hover { color: var(--cream); border-color: var(--gold); }
-.feed.open { height: 338px; z-index: 1200; background: rgba(9, 6, 24, .94); box-shadow: 0 14px 40px rgba(0, 0, 0, .6); }
-.feed.open .feed-lines { display: none; }
-.feed-hist { display: none; position: absolute; left: 0; right: 0; top: 19px; bottom: 0; overflow-y: auto; padding: 2px 12px 8px; scrollbar-width: thin; }
-.feed.open .feed-hist { display: block; }
-.feed-hist .turn-h { position: sticky; top: 0; z-index: 2; background: rgba(9, 6, 24, .96); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); padding: 5px 0 2px; }
-.feed-hist .h-line { font-size: 12px; line-height: 17px; color: var(--dim); padding: 1px 4px 1px 15px; position: relative; border-radius: 4px; cursor: default; }
-.feed-hist .h-line::before { content: ''; position: absolute; left: 3px; top: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--fc, var(--dim)); }
-.feed-hist .h-line.you { --fc: var(--gold); } .feed-hist .h-line.them { --fc: var(--pink); } .feed-hist .h-line.house { --fc: var(--amber); }
-.feed-hist .h-line:hover { background: rgba(255, 255, 255, .06); color: var(--cream); }
-.feed-hist .h-line .ph { font-size: 9.5px; opacity: .55; margin-right: 6px; text-transform: uppercase; letter-spacing: .05em; }
 .cell.review { box-shadow: inset 0 0 0 2px var(--gold), 0 0 14px rgba(255, 215, 106, .5); z-index: 2; }
 /* a hand of bid chips picked up from your stacks */
 .chip.handsel { filter: drop-shadow(0 0 7px var(--gold)); translate: 0 -5px; }
 .chip.unbid { pointer-events: auto; cursor: pointer; } .chip.unbid:hover { filter: brightness(1.3) drop-shadow(0 0 5px var(--coral)); }
-.c-slots .room { font-size: 9px; opacity: .7; margin-left: 4px; align-self: center; }
-.tray-box .cap { position: absolute; right: 6px; bottom: 3px; font-size: 9px; opacity: .7; }
 .tray-cap { position: absolute; left: 950px; top: 418px; width: 120px; text-align: right; font-size: 9.5px; letter-spacing: .04em; color: var(--dim); pointer-events: none; }
-.feed .phases { padding-right: 70px; }
 
-/* ---------- round 16: the feed as a table, step rewards, bid onto a trick ---------- */
-.f-row { flex: none; display: grid; grid-template-columns: 74px 1fr 1fr; gap: 0 10px; min-height: 18px; align-items: start; transition: transform .45s var(--ease), opacity .4s; }
-.feed-lines .f-row { height: 18px; line-height: 18px; }
-.f-ph { font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: var(--amber); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-right: 1px solid rgba(255, 255, 255, .08); padding-right: 6px; }
-.f-ph.cont { color: transparent; }
-.f-ph small { display: block; text-transform: none; letter-spacing: 0; font-size: 10px; color: var(--dim); opacity: .8; line-height: 13px; white-space: normal; }
-.f-c { font-size: 12px; color: var(--dim); padding-left: 12px; position: relative; min-width: 0; border-radius: 4px; }
-.feed-lines .f-c { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.f-c::before { content: ''; position: absolute; left: 2px; top: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--fc, var(--dim)); }
-.f-c.you { --fc: var(--gold); } .f-c.them { --fc: var(--pink); } .f-c.house { --fc: var(--amber); } .f-c.empty::before { display: none; }
-.f-c.span { grid-column: 2 / span 2; }
-.f-row.now .f-c:not(.empty) { color: var(--cream); }
-.f-c:not(.empty):hover { background: rgba(255, 255, 255, .06); color: var(--cream); }
-.feed-hist .f-row { padding: 2px 0; border-top: 1px solid rgba(255, 255, 255, .04); line-height: 16px; }
-.feed-hist .f-c { white-space: normal; }
-.feed-hist .turn-h { display: grid; grid-template-columns: 74px 1fr 1fr; gap: 0 10px; }
-.feed-hist .turn-h span + span { color: var(--dim); }
+/* ---------- round 16: step rewards ---------- */
 /* a passed step: all used (✓) or some kept (what they made) */
 .pill.step.allused::before { content: '✓'; position: absolute; right: -3px; top: -7px; font-size: 10px; color: var(--mint, #8fe3b0); }
 .pill.step.kept { opacity: .7; border-color: rgba(255, 215, 106, .5); }
 .pill.step.kept::before { content: attr(data-kept); position: absolute; right: -10px; top: -9px; white-space: nowrap; font-size: 9px; padding: 0 5px; border-radius: 7px; background: rgba(255, 215, 106, .18); color: var(--gold); }
-/* the + sits on top of a trick's bid pile; a trick picked to bid onto glows */
-.c-bid { position: relative; }
-.bidslot.more { visibility: hidden; }
-.bid-plus { position: absolute; z-index: 990; width: 20px; height: 20px; border-radius: 50%; border: 2px dashed #9fb0d8; background: rgba(9, 6, 24, .88); color: #cfe0ff; display: grid; place-items: center; font: 800 13px/1 inherit; cursor: pointer; pointer-events: auto; transition: left .3s, top .3s, box-shadow .3s; }
-.bid-plus:hover { border-color: var(--gold); color: var(--gold); }
-.bid-plus.picked { border-style: solid; border-color: var(--gold); color: var(--gold); box-shadow: 0 0 10px rgba(255, 215, 106, .7); }
-.bidslot.picked { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 10px rgba(255, 215, 106, .6); border-style: solid; }
