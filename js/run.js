@@ -304,7 +304,8 @@ export function autoCounts(run, dims, purse = run.purse, reserve = 0) {
 }
 // the saved chip mix, or a fresh one if it no longer fits the purse or the position
 export function validCounts(run, dims) {
-  const c = run.plan.counts, shop = sum(Object.entries(run.plan.resist || {}), ([k, n]) => Math.min(n, owned(run, k)) * (D.SHOP_CHIPS[k]?.place === 'space' ? dims.stackMax : 1)); // a Tree needs a whole space
+  const c = run.plan.counts, shop = sum(Object.entries(run.plan.resist || {}), ([k, n]) => Math.min(n, owned(run, k)) * (D.SHOP_CHIPS[k]?.place === 'space' ? dims.stackMax : 1)) // a Tree needs a whole space
+    + run.cards.filter((id) => D.CARDS[id]?.resist).length; // and room for Resist chips
   if (c && planWorth(c) <= run.purse && sum(Object.values(c)) + shop <= barCapacity(dims) && planWorth(c) > 0) return c;
   return autoCounts(run, dims, run.purse, shop);
 }
@@ -321,7 +322,7 @@ function planGroups(run, counts, resist) {
 function playerSpec(run, counts, extra = {}, dimsOverride) {
   const st = rollerStats(run, extra), K = D.CLASSES[run.cls];
   return { name: 'You', title: K.name, cls: run.cls, tip: st.tip, c: st.c, dims: dimsOverride || st.dims, why: dimsOverride ? { note: 'A bar table: one size smaller than your usual position in every direction.' } : dimsWhy(run, extra), deploy: K.deploy, tricks: run.tricks, dice: run.dice,
-    plan: { chips: planGroups(run, counts, extra.resist), spacing: run.plan.spacing, stacking: run.plan.stacking }, drink: run.drink && run.drink.sips > 0 ? run.drink : null, ...extra.side };
+    plan: { chips: planGroups(run, counts, extra.resist), spacing: run.plan.spacing, stacking: run.plan.stacking, resistChips: run.cards.map((id) => D.CARDS[id]?.resist).filter(Boolean) }, drink: run.drink && run.drink.sips > 0 ? run.drink : null, ...extra.side };
 }
 const committed = (bout) => sum(bout.sides[0].grid.flat().flatMap((c) => c.chips).filter((ch) => ch.kind === 'std' && !ch.resist), (ch) => ch.value);
 
@@ -384,17 +385,21 @@ export function settle(run, ctx, bout) {
     } else { run.purse = safe; lines.push(['Chips kept off the table', safe], ['Position lost', -ctx.committed]); run.phase = 'fallen'; }
     res.total = run.purse; ledger(run, sm.win ? `Ascent: beat ${ctx.opp.name}` : `Ascent: lost to ${ctx.opp.name}`, run.purse - start); return res;
   }
+  // Bounty chips still on your table pay their worth and a Unique Prize, win or lose
+  const bounty = sum(sm.bounties || [], (x) => x.value);
+  for (const x of sm.bounties || []) res.news.push(`${D.CREATURES[x.creature].name} Bounty chip: ${x.value}¢ and ${uniquePrize(run, x.creature)}.`);
   // table or High Roller
   const entry = ctx.kind === 'boss' ? run.fs.boss : run.fs.tables[ctx.idx];
   const wager = sm.intervened ? Math.floor(ctx.wager / 2) : ctx.wager;
   if (sm.win) {
-    const base = sm.survivors + sm.gold + sm.ownFees + sm.pendingBids + sm.opportunity + sm.nest + sm.seq + wager;
+    const base = sm.survivors + sm.gold + sm.ownFees + sm.pendingBids + sm.opportunity + sm.nest + sm.seq + bounty + wager;
     const winnings = sm.oppFees + Math.round(wager * (ctx.mult - 1));
     lines.push(['Chips left in your position', sm.survivors], ['Your fees, restored from the Stage', sm.ownFees + sm.pendingBids]);
     if (sm.gold) lines.push(['Gold chips pay double', sm.gold]);
     if (sm.opportunity) lines.push(['A chip for every Opportunity chip', sm.opportunity]);
     if (sm.nest) lines.push(['Nest Egg chips hatch', sm.nest]);
     if (sm.seq) lines.push(['Fibonacci and Prime chips grew', sm.seq]);
+    if (bounty) lines.push(['Bounty chips cashed in', bounty]);
     lines.push(['Wager returned', wager]);
     if (sm.intervened) lines.push(['Intervention took half your wager', -(ctx.wager - wager)]);
     lines.push([`Fees ${ctx.opp.name} paid to the table`, sm.oppFees], [`Wager winnings ×${ctx.mult}`, Math.round(wager * (ctx.mult - 1))]);
@@ -411,8 +416,9 @@ export function settle(run, ctx, bout) {
       if (!tablesLeft(run) && !run.fs.bossOpen) { run.fs.bossOpen = true; res.news.push('The High Roller is waiting at the head table.'); }
     } else { res.news.push(`${ctx.opp.name} is dethroned. The stairs are open.`); }
   } else {
-    run.purse = 0;
+    run.purse = bounty;
     lines.push(['Chips in your position', -ctx.committed], ['Wager', -ctx.wager]);
+    if (bounty) lines.push(['Bounty chips cashed in', bounty]);
     const lost = rng.shuffle(run.dice).slice(0, Math.min(2, Math.max(0, run.dice.length - 1)));
     run.dice = run.dice.filter((d) => !lost.includes(d)); if (lost.length) lines.push([`Dice taken: ${lost.map((d) => d.type).join(', ')}`, 0]);
     if (run.fs) run.fs.lastWin = null;
@@ -421,6 +427,17 @@ export function settle(run, ctx, bout) {
   res.news.push(...resolveBets(run));
   res.total = sm.win ? res.base + res.winnings : run.purse;
   return res;
+}
+// the Unique Prize a creature's Bounty chip brings (CREATURES[kind].prize says what)
+function uniquePrize(run, kind) {
+  if (kind === 'ufo') { run.dice.push(mkDie(run, 'd8')); return 'a d8'; }
+  if (kind === 'mothership') { run.dice.push(mkDie(run, 'd20')); return 'a d20'; }
+  if (kind === 'dragon') { run.tricks.push(mkTrick(run, 'scorch', clamp(run.floor, 1, 4))); return 'a Scorch trick'; }
+  if (kind === 'fairy') { const pool = D.FIND_CARDS.filter((id) => !hasCard(run, id)); const id = run.rng.pick(pool.length ? pool : ['trading']); addCard(run, id); return `the ${D.CARDS[id].name}`; }
+  if (kind === 'unicorn') { const d = run.dice.slice().sort((a, b) => D.DICE[b.type].faces - D.DICE[a.type].faces).find((x) => (x.up || []).length < D.DIE_UPGRADE_MAX);
+    if (!d) return 'nothing (every die is fully upgraded)'; const opts = ['accelerate', 'stabilize', 'escalate'].filter((x) => !canUpgrade(d, x, D.DIE_UPGRADE_MAX));
+    if (!opts.length) return 'nothing'; const u = run.rng.pick(opts); upgradeFaces(d, u, 0, run.rng); return `${D.DIE_UPGRADES[u].name} on your ${d.type}`; }
+  return 'nothing';
 }
 // You always keep the winnings. Then one prize: 'die' (bonus money and one die), 'dice' (two dice), 'glean' (a trick)
 export const prizeBonus = (ctx) => Math.round((ctx.opp?.worth || 0) * D.PRIZES.bonus);

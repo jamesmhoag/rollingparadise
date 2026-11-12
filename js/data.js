@@ -244,6 +244,10 @@ export const CHIPS = {
   petal: { name: 'Petal chip', text: 'Bloomed by a Flower. Blocks one entire fee, however big, and breaks: fee instance defence, where a Block chip only takes 1¢ of a fee\'s cost. Wilts after 2 turns.' },
   clay: { name: 'Clay chip', text: 'Blocks entire fees, one per hit, and breaks after its count of hits. Fire bakes it into Brick.' },
   brick: { name: 'Brick chip', text: 'Baked Clay. Takes twice as many fees as the clay did before it breaks.' },
+  resist: { name: 'Resist chip', text: 'Debt resistance, made by Resist Cards. Fees smaller than its r on its stack are deterred entirely, the way a Red chip keeps fire off. It cannot exceed the stack height.' },
+  food: { name: 'Food chip', text: 'Delicious. Double-click it while it is on top of one of your stacks to eat it for a bonus to your attributes.' },
+  dip: { name: 'Dip chip', text: 'A bowl of dip on its own space. Each Chip Chip you eat is dipped first for twice the bonus, until the dip runs out.' },
+  bounty: { name: 'Bounty chip', text: 'Dropped by a creature driven off by Debt. Worth its bounty and can be bid, but it is fragile: any fee that reaches it breaks it. Still on your table when the bout ends, it pays its worth and a Unique Prize.' },
   tree: { name: 'Tree chip', text: 'A tree growing on its own space, one chip taller a turn. At full height it seeds the stacks around it. A fee that hits it fells it into Wood.' },
   wood: { name: 'Wood chip', text: 'Fell from a Tree. Blocks two entire fees, one per hit, then breaks.' },
   dynamite: { name: 'Dynamite', text: 'A stack of sticks on an empty space. One burns down each turn; when the last goes, every chip on the stacks around it is destroyed. Cleansing removes it.' },
@@ -315,6 +319,31 @@ export const SHOP_CHIPS = {
     text: () => 'Goes on top of a stack. Two on top of each other merge into one worth the next Fibonacci number after the larger (1, 2, 3, 5, 8, 13…). On a win, what it grew beyond the chips that made it is paid out.' },
   prime: { name: 'Prime chip', tier: 3, glyph: 'ℙ', place: 'top', seq: 'prime', list: 'Prime Chip',
     text: () => 'Goes on top of a stack. Two on top of each other merge into one worth the next prime after the larger (2, 3, 5, 7, 11…). On a win, what it grew beyond the chips that made it is paid out.' },
+  // food: eaten from the top of a stack for attribute bonuses that last `turns`. Some pair a penalty with a bigger bonus.
+  chocolate: { name: 'Chocolate Chip', tier: 1, glyph: '🍫', kind: 'food', place: 'top', list: 'Chocolate Chip', food: { mods: { trickery: 1 }, turns: 2 },
+    text: () => 'Food. Eat it from the top of a stack: +1 Draw for 2 turns.' },
+  honey: { name: 'Honey Chip', tier: 2, glyph: '🍯', kind: 'food', place: 'top', list: 'Honey Chip', food: { mods: { proficiency: 1, ingenuity: 1 }, turns: 1 },
+    text: () => 'Food (sticky, golden). Eat it: +1 Roll and +1 Bid this turn.' },
+  chipchip: { name: 'Chip Chip', tier: 1, glyph: '🥔', kind: 'food', place: 'top', list: 'Chip Chip', food: { mods: { charisma: 1 }, turns: 1, dip: true },
+    text: () => 'Food. Eat it: +1 Steal this turn, doubled if you have a Dip chip with dip left.' },
+  dip: { name: 'Dip Chip', tier: 2, glyph: '🥣', kind: 'dip', place: 'space', vars: { dips: 3 }, list: 'Dip Chip',
+    text: (v) => `A bowl on its own empty space. The next ${v.dips} Chip Chips you eat are dipped for twice the bonus.` },
+  fishchip: { name: 'Fish ’n Chip', tier: 2, glyph: '🐟', kind: 'food', place: 'top', list: 'Fish "n Chip', food: { per: 'conviction', turns: 1 },
+    text: () => 'Food. Eat it: +1 Power-per-draw (Conviction) for every chip under it (n, up to 3) this turn.' },
+  hamburger: { name: 'Hamburger Chip', tier: 2, glyph: '🍔', kind: 'food', place: 'top', list: 'Hamburger Chip', food: { mods: { proficiency: 2, ingenuity: -1 }, turns: 1 },
+    text: () => 'Food. Eat it plain: +2 Roll but −1 Bid this turn. On a Bun and topped with a Bun, eat the top Bun for the whole burger: +1 Draw, Roll and Bid for 2 turns.' },
+  bun: { name: 'Bun Chip', tier: 1, glyph: '🍞', kind: 'food', place: 'top', list: 'Bun Chip', food: { mods: { conviction: 1 }, turns: 1 },
+    text: () => 'Food. Eat it: +1 Conviction this turn. On top of a Hamburger that sits on a Bun, it is the whole burger.' },
+  egg: { name: 'Egg Chip', tier: 2, glyph: '🥚', kind: 'food', place: 'top', list: 'Egg Chip', food: { mods: { proficiency: 2, trickery: -1 }, turns: 2 },
+    text: () => 'Food. Eat it raw: +2 Roll but −1 Draw for 2 turns.' },
+  zap: { name: 'Zap chip', tier: 2, glyph: 'ϟ', vars: { s: 3 }, list: 'Zap Chip',
+    text: (v) => `Electric deterrent. A fee of ${v.s}¢ or less on its stack shocks the attacker: a Shocking chip lands on one of their front stacks. A bigger fee breaks it.` },
+  boosted: { name: 'Boosted chip', tier: 3, glyph: '⇡', vars: { die: 1 }, list: 'Boosted Chip',
+    text: (v) => `Every die you roll shows ${v.die} more for each Boosted chip in your position.` },
+  cheapened: { name: 'Cheapened chip', tier: 3, glyph: '⇣', vars: { die: 1 }, list: 'Cheapened Chip',
+    text: (v) => `Every die your opponent rolls shows ${v.die} less (not below 0) for each Cheapened chip in your position.` },
+  upgrade: { name: 'Upgrade chip', tier: 4, glyph: '⬆', place: 'meter', list: 'Upgrade Chip',
+    text: () => 'Starts on your Meter. While it is there every die you roll is upgraded: 1 chip Escalate, 2 also +1, 3 also Gamble, 4 or more another +1 each. Bid it on a trick and that trick plays one upgrade higher.' },
   crown: { name: 'Crown chip', tier: 4, glyph: '♛', vars: { turns: 3 },
     text: (v) => `Its stack starts the bout Hardened for ${v.turns} turns: each fee takes only one chip.` },
 };
@@ -331,15 +360,18 @@ export const SEQS = { fib: [1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377], p
 // renamed shop chips, for saves made before the rename
 export const SHOP_RENAMES = { bumper: 'reducer', mirror: 'rebound', fog: 'transpara', frozen: 'frost' };
 
+// `bounty`: how much Debt a creature soaks before it is driven off and drops a Bounty chip worth that much;
+// `prize`: the Unique Prize its Bounty chip brings if it is still on your table when the bout ends.
 export const CREATURES = {
-  ufo: { name: 'UFO', glyph: '🛸', text: 'Abducts the top chip of a random stack each turn, then flies home. Chips taken are lost.' },
-  fairy: { name: 'Fairy', glyph: '🧚', text: 'Converts the top chip of a random stack into a random chip. Chaos reigns!' },
-  dragon: { name: 'Dragon', glyph: '🐉', text: 'Breathes a Burning chip onto a random stack each turn.' },
+  ufo: { name: 'UFO', glyph: '🛸', text: 'Abducts the top chip of a random stack each turn, then flies home. Chips taken are lost.', bounty: 50, prize: 'a d8 for your pouch' },
+  fairy: { name: 'Fairy', glyph: '🧚', text: 'Converts the top chip of a random stack into a random chip. Chaos reigns!', bounty: 25, prize: 'a card found on the floor' },
+  dragon: { name: 'Dragon', glyph: '🐉', text: 'Breathes a Burning chip onto a random stack each turn.', bounty: 250, prize: 'a Scorch trick at the floor’s quality' },
   mole: { name: 'Mole', glyph: '🐭', text: 'Digs up a random empty space and leaves a Hole.' },
-  unicorn: { name: 'Unicorn', glyph: '🦄', text: 'Converts every chip in a random stack into random chips. Chaos reigns!' },
-  mothership: { name: 'Mothership', glyph: '👾', text: 'Hovers over one stack and beams up a chip every turn until the stack is gone. Chips taken are lost.' },
+  unicorn: { name: 'Unicorn', glyph: '🦄', text: 'Converts every chip in a random stack into random chips. Chaos reigns!', bounty: 250, prize: 'a free die upgrade on your best die' },
+  mothership: { name: 'Mothership', glyph: '👾', text: 'Hovers over one stack and beams up a chip every turn until the stack is gone. Chips taken are lost.', bounty: 500, prize: 'a d20 for your pouch' },
 };
 export const CALAMITIES = {
+  wormhole: { name: 'Worm Hole', text: 'Opens on an empty space of your position. Any chips that land on it are pulled through to an empty space on your opponent\'s side.' },
   inferno: { name: 'Inferno', text: 'Really, really hot. A Burning chip lands on one of your stacks every turn.' },
   audit: { name: 'House Audit', text: 'Every second turn, each of your front stacks is charged a 1¢ fee.' },
   blackhole: { name: 'Black Hole', text: 'Takes one of your Bar spaces. Every turn it pulls in a chip from a stack next to it, and that chip is lost.' },
@@ -359,7 +391,7 @@ export const TILT_TIERS = [
 export const TILTS = {
   hazard: { kind: 'challenge', name: 'Hazard', cap: [6, 6, 3, 0, 0], text: 'Adds a Hole to a random space of your position. Holes cannot hold chips.' },
   creature: { kind: 'challenge', name: 'Creature', cap: [3, 3, 2, 1, 1], text: 'A creature visits your position for a couple of turns, messes with it, then leaves.' },
-  spawner: { kind: 'challenge', name: 'Spawner', cap: [1, 1, 1, 1, 1], text: 'A nest that sends a new creature at your position every third turn.' },
+  spawner: { kind: 'challenge', name: 'Spawner', cap: [1, 1, 1, 1, 1], text: 'A nest that sends a new creature at your position every third turn. One in two is a Dragon Roost: it takes a Bar space and calls a Dragon, which burns a chip, then lays an egg on the Roost. While the egg sits there no Dragon comes; play a trick totalling 10 or more and it hatches a Dragon onto your opponent.' },
   calamity: { kind: 'challenge', name: 'Calamity', cap: [0, 0, 0, 1, 1], text: 'A disaster that lasts the whole bout.' },
   shield: { kind: 'cheat', name: 'Shield', cap: [5, 3, 3, 1, 0], text: 'Start with a full stack of Block chips on your Meter.' },
   familiar: { kind: 'cheat', name: 'Familiar', cap: [2, 2, 2, 1, 1], text: 'A little friend that removes one Debt or hazard chip each turn and may chase creatures away.' },
@@ -467,6 +499,8 @@ export const CARDS = {
   paradise: { name: 'Paradise Card', text: 'Earned by beating the last High Roller. It opens the Paradise Ascent.' },
   membership: { name: 'Membership Card', text: 'Earned by buying 5 tricks on one floor. Opens the Trick Trader\'s Secret Shelf and takes 10% off everything the Trader sells.' },
   suite: { name: 'Suite Key Card', text: 'Earned by winning a Double Down. Opens a Suite after you beat the High Roller.' },
+  resist_card: { name: 'Resist Card', text: 'Debt resistance. Each bout starts with a Resist chip (r = 2) at the base of one of your front Bar stacks: fees under 2¢ on that stack are deterred.', resist: 2 },
+  resist_card_plus: { name: 'Resist Card: Gold', text: 'Debt resistance. Each bout starts with a Resist chip (r = 3) at the base of one of your front Bar stacks: fees under 3¢ on that stack are deterred.', resist: 3 },
   debit: { name: 'Debit Card', text: 'Found by searching the floor. Lets you use the ATM in the Gift Shop, which keeps chips between runs.' },
   punch: { name: 'Punch Card', text: 'One punch per drink bought. Five punches and the next drink is free.' },
   note: { name: 'Note: on bidding', text: '"Small chips bid fast. Big chips linger. Keep a stack of 1¢ chips at the back."' },
@@ -496,5 +530,5 @@ export const PASS_CARDS = ['membership', 'suite', 'punch', 'paradise'];
 export const PURSE_LIMIT = 999e12;
 export const STARTER_CARDS = ['discount_diesmith', 'discount_trader', 'discount_lounge', 'business_trickery', 'business_ingenuity', 'business_proficiency',
   'business_charisma', 'business_cunning', 'business_conviction'];
-export const FIND_CARDS = ['debit', 'note', 'note_dice', 'note_debt', 'note_house', 'note_hold', 'note_flip', 'trading', 'punch'];
+export const FIND_CARDS = ['resist_card', 'resist_card_plus', 'debit', 'note', 'note_dice', 'note_debt', 'note_house', 'note_hold', 'note_flip', 'trading', 'punch'];
 export const WALLET_SLOTS = 4;

@@ -120,7 +120,7 @@ export function boutScene(root, bout, ctx, onDone) {
       for (let c = 0; c < s.dims.cols; c++) {
         const p = cellPos(si, r, c);
         const el = h('div', { class: `cell ${r < s.dims.meterRows ? 'meter' : 'bar'}`, style: { left: p.x + 'px', top: p.y + 'px', width: p.w + 'px', height: CH + 'px' },
-          onclick: () => clickCell(si, r, c), onmouseenter: () => hoverCell(si, r, c), onmouseleave: () => hoverCell(si, -1, -1), tip: () => cellTip(si, r, c) });
+          onclick: () => clickCell(si, r, c), ondblclick: () => eatCell(si, r, c), onmouseenter: () => hoverCell(si, r, c), onmouseleave: () => hoverCell(si, -1, -1), tip: () => cellTip(si, r, c) });
         els.cells[si][r][c] = el; root.insertBefore(el, layer);
       } }
     const m = s.dims.meterRows, x0 = cellPos(si, si === 0 ? m - 1 : 0, 0).x, x1 = cellPos(si, si === 0 ? s.rows - 1 : m, 0).x;
@@ -150,6 +150,8 @@ export function boutScene(root, bout, ctx, onDone) {
   function cellTip(si, r, c) {
     const s = bout.sides[si], cell = s.grid[r][c], zone = r < s.dims.meterRows ? 'Meter' : 'Bar';
     if (cell.black) return `<b>${D.CALAMITIES.blackhole.name}</b><p>${D.CALAMITIES.blackhole.text}</p>`;
+    if (cell.roost) return `<b>Dragon Roost</b>${cell.roost.egg ? ' <span class="dim">an egg on top</span>' : ''}<p>${cell.roost.egg ? 'No Dragon comes while the egg sits here. Play a trick totalling 10 or more and it hatches a Dragon onto your opponent.' : 'Every third turn it calls a Dragon, which burns a chip and nests here.'}</p>`;
+    if (cell.worm && !cell.chips.length) return `<b>${D.CALAMITIES.wormhole.name}</b><p>${D.CALAMITIES.wormhole.text}</p>`;
     if (cell.volcano > 0) return `<b>${D.CALAMITIES.volcano.name}</b> <span class="dim">${cell.volcano} turn${cell.volcano > 1 ? 's' : ''} left</span><p>${D.CALAMITIES.volcano.text}</p>`;
     if (cell.hole) return `<b>Hole</b><p>Nothing can be placed here.</p>`;
     const dimLine = `<p class="dim">${zone} row ${zone === 'Meter' ? r + 1 : r - s.dims.meterRows + 1} of ${zone === 'Meter' ? s.dims.meterRows : s.dims.barRows}, lane ${c + 1} of ${s.dims.cols}. Hover the ${zone.toUpperCase()} label for how the position's size is set.</p>`;
@@ -161,6 +163,7 @@ export function boutScene(root, bout, ctx, onDone) {
       ${debt && next ? `<p class="bad">Owes ${debt}¢. Debt only pays whole chips, so the ${next.value}¢ chip it sits on goes to the Stage once the Debt reaches ${next.value}¢: ${next.value - debt}¢ more, from any later fee or hazard.</p>` : ''}
       ${debt ? `<p class="dim">${DEBT_RULE}</p>` : ''}
       <ul class="stack">${groups.map((g) => `<li><span class="chip static mini ${g.sig}"><i>${chipGlyph(g.ch)}</i></span> ${g.n} × ${chipName(g.ch)}</li>`).join('')}</ul>
+      ${si === 0 && !B.canEat(bout, me, r, c) ? (() => { const f = B.foodOf(me, r, c); return `<p class="good keep">Double-click to eat ${f.label}: ${Object.entries(f.mods).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${D.STATS[k].name}`).join(', ')}${f.turns > 1 ? ` for ${f.turns} turns` : ' this turn'}.</p>`; })() : ''}
       <p class="dim">Top: ${chipText(top)}</p>${dimLine}`;
   }
   const DEBT_RULE = 'How Debt works: a fee is paid from the top of the stack it lands on, one whole chip at a time. What cannot cover the next chip stays on that stack as Debt and already counts against Worth. If the stack runs out of chips, the rest (overkill) moves to the next stack behind it in the same lane (the line of stacks running from the Stage to the edge of the table). It never spreads to another lane, and with no stack behind it is wasted.';
@@ -294,7 +297,7 @@ export function boutScene(root, bout, ctx, onDone) {
 
     // cells, creatures, numbers
     const tags = [];
-    bout.sides.forEach((s, si) => { for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const el = els.cells[si][r][c], cell = s.grid[r][c], debt = B.debtOf(cell); el.classList.toggle('hole', !!cell.hole); el.classList.toggle('hard', cell.hard > 0); el.classList.toggle('black', !!cell.black); el.classList.toggle('volcano', cell.volcano > 0); el.classList.toggle('owes', debt > 0);
+    bout.sides.forEach((s, si) => { for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const el = els.cells[si][r][c], cell = s.grid[r][c], debt = B.debtOf(cell); el.classList.toggle('hole', !!cell.hole); el.classList.toggle('hard', cell.hard > 0); el.classList.toggle('black', !!cell.black); el.classList.toggle('worm', !!cell.worm); el.classList.toggle('roost', !!cell.roost); el.classList.toggle('egg', !!cell.roost?.egg); el.classList.toggle('food', si === 0 && !B.canEat(bout, me, r, c)); el.classList.toggle('volcano', cell.volcano > 0); el.classList.toggle('owes', debt > 0);
       if (debt) { const next = B.debtTarget(cell); tags.push({ k: `${si}:${r}:${c}`, si, r, c, text: next ? `${debt} of ${next.value}¢` : `owes ${debt}` }); } } });
     syncTags(tags);
     for (const cr of bout.creatures) {
@@ -481,6 +484,12 @@ export function boutScene(root, bout, ctx, onDone) {
       if (B.worth(me) - ch.value <= 0) return nope('That is your last chip. Bid it and you are broke.', cellEl);
       return act(() => { ui.chip = { r, c }; });
     }
+  }
+  // food on top of one of your stacks: double-click to eat it
+  function eatCell(si, r, c) {
+    if (ui.locked || si !== 0) return;
+    const why = B.canEat(bout, me, r, c); if (why) return;
+    act(() => { const f = B.eat(bout, me, r, c); toast(`You eat ${f.label}: ${Object.entries(f.mods).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${D.STATS[k].short}`).join(', ')}${f.turns > 1 ? ` for ${f.turns} turns` : ' this turn'}.`); });
   }
   function hoverCell(si, r, c) { hover = r < 0 ? null : { side: si, r, c }; if (ui.mode === 'target') { marks(); hint(); } }
   const onKey = (ev) => { if (ev.key === 'Escape' && (ui.mode || ui.chip)) act(() => { setMode(null); ui.chip = null; }); };
