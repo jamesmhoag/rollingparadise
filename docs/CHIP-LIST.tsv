@@ -96,3 +96,14 @@ Bun Chip	Consumable									Delicious	Roller		Base			Delicious if the top or bot
 Egg Chip	Consumable									Delicious	Roller		Base			Crack and Hatched conditions												
 Spy Chip	Utility									Delicious	Roller		Base			Appears to be a different chip but gains the Owner of it an advantage when its on top of one of their stacks												
 Doom Chip	Aura										Roller		Base			Appears to be a different chip but cause instance debt of Opposing roller if all of their stacks have a doom chip on top, appears as a doom chip to the Roller and a basic chip to the opponetn												
+Green Chip	Basic	1	0 || 1	25¢	Yes	Yes			All	Resiliant				Match Prep		Basic value chip worth 25¢
+Purple Chip	Basic	1	0 || 1	50¢	Yes	Yes			All	Resiliant				Match Prep		Basic value chip worth 50¢
+Orange Chip	Basic	1	0 || 1	100¢	Yes	Yes			All	Resiliant				Match Prep		Basic value chip worth 100¢
+Black Chip	Basic	1	0 || 1	250¢	Yes	Yes			All	Resiliant				Match Prep		Basic value chip worth 250¢
+White Chip	Basic	1	0 || 1	500¢	Yes	Yes			All	Resiliant				Match Prep		Basic value chip worth 500¢
+Silver Chip	Basic	1	0 || 1	1000¢	Yes	Yes			All	Resiliant				Match Prep		Basic value chip worth 1000¢
+Ruby Chip	Basic	1	0 || 1	2500¢	Yes	Yes			All	Resiliant				Match Prep		Basic value chip worth 2500¢
+Emerald Chip	Basic	1	0 || 1	5000¢	Yes	Yes			All	Resiliant				Match Prep		Basic value chip worth 5000¢
+Saphire Chip	Basic	1	0 || 1	10,000¢	Yes	Yes			All	Resiliant				Match Prep		Basic value chip worth 10,000¢
+Amber Chip	Basic	1	0 || 1	25,000¢	Yes	Yes			All	Resiliant				Match Prep		Basic value chip worth 25,000¢
+Diamond Chip	Basic	1	0 || 1	50,000¢	Yes	Yes			All	Resiliant				Match Prep		Basic value chip worth 50,000¢

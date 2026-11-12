@@ -9,7 +9,7 @@
 import { RNG, sum, clone, clamp, order1D } from './util.js';
 import { rollDie, boutCopy, facesOf, upgrade as upgradeFaces } from './dice.js';
 export { rollDie };
-import { DIE_UPGRADES, TRICKS, TYPES, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, CREATURES, ORBITALS, FELTS, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS } from './data.js';
+import { DIE_UPGRADES, TRICKS, TYPES, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, CREATURES, ORBITALS, FELTS, TILTS, DENOM_VALUES, tiltChance, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS } from './data.js';
 
 export const PHASES = ['draw', 'roll', 'bid', 'aim']; // 'aim' is shown as the Bluff
 export const LAST_CALL = 8;
@@ -136,7 +136,7 @@ function addToMeter(b, s, chips, origin, from) {
 }
 function makeChange(b, amount) {
   const out = [];
-  for (const v of [10, 5, 2, 1]) { if (v > (b.rules.maxDenom || 1)) continue; while (amount >= v && out.length < 60) { out.push(mkChip(b, 'std', v)); amount -= v; } }
+  for (const v of DENOM_VALUES.slice().reverse()) { if (v > (b.rules.maxDenom || 1)) continue; while (amount >= v && out.length < 60) { out.push(mkChip(b, 'std', v)); amount -= v; } }
   return out;
 }
 
@@ -228,30 +228,59 @@ function mkSide(b, spec, idx) {
   // hazard tilts: holes on random spaces
   const spots = b.rng.shuffle(allCells(s)).slice(0, spec.holes || 0);
   for (const { cell } of spots) if (b.rng.chance(1 / 3)) s.hatsDue++; else cell.hole = true; // one in three is a Magic Hat, slipped under a stack once the chips are down
-  // calamities that sit on the table take a Bar space of their own
-  // Worm Holes open on an empty Meter space; Dragon Roosts (one in two Spawners) take a Bar space
-  for (const cal of s.calamities) if (cal === 'wormhole') {
-    const free = allCells(s).filter((x) => x.r < d.meterRows && !x.cell.hole); if (free.length) b.rng.pick(free).cell.worm = true;
-  }
-  let nests = 0;
-  for (let k = 0; k < (spec.spawners || 0); k++) {
-    const free = allCells(s).filter((x) => x.r >= d.meterRows && !x.cell.hole);
-    if (b.rng.chance(0.5) && free.length) { const { cell } = b.rng.pick(free); cell.roost = { id: b.nextId++ }; } else nests++;
-  }
-  s.spawners = nests;
-  for (const cal of s.calamities) if (cal === 'blackhole') {
-    const free = allCells(s).filter((x) => x.r >= d.meterRows && !x.cell.hole && !x.cell.roost); if (!free.length) continue;
-    const { cell } = b.rng.pick(free); cell.hole = true; cell.black = true;
-  } else if (cal === 'volcano') { // a full stack of Volcano chips, two by two where there is room
-    const blk = freeBlock(s, b.rng.shuffle([...Array(d.barRows).keys()].map((i) => i + d.meterRows)));
-    const at = blk || b.rng.pick(allCells(s).filter((x) => x.r >= d.meterRows && !x.cell.hole && !x.cell.roost && !x.cell.link) || [null]); if (!at) continue;
-    if (blk) claimBlock(s, blk.r, blk.c); const cell = s.grid[at.r][at.c]; cell.volcano = 4;
-    for (let k = 0; k < d.stackMax; k++) cell.chips.push(mkChip(b, 'volcano', 0));
-  } else if (cal === 'tornado') s.sky.push({ id: b.nextId++, kind: 'tornado', r: b.rng.int(rows), c: b.rng.int(d.cols), str: b.rng.range(1, 6) + b.rng.range(1, 6) });
-  else if (cal === 'b52') s.sky.push({ id: b.nextId++, kind: 'b52', r: b.rng.int(rows), c: -1 });
+  // the tilts that are on: each opens the bout once; the House may play them again later (houseTilts)
+  s.tilts = spec.tilts || {};
+  const cals = s.calamities; s.calamities = []; s.spawners = 0;
+  for (let k = 0; k < (spec.spawners || 0); k++) placeSpawner(b, s);
+  for (const cal of cals) placeCalamity(b, s, cal);
   // the table's weather
   for (const w of b.weather) if (w === 'cloud') s.sky.push({ id: b.nextId++, kind: 'cloud', r: b.rng.int(rows), c: b.rng.int(d.cols) }); else if (w === 'sun' || w === 'moon') s.sky.push({ id: b.nextId++, kind: w, r: -1, c: -1 });
   return s;
+}
+
+// Calamities and Spawners can arrive when the bout starts or later, when the House plays the tilt. Those that sit
+// on the table need empty spaces: Worm Holes a Meter space, Black Holes, Roosts and Volcanoes Bar spaces.
+const emptyBar = (s) => allCells(s).filter((x) => x.r >= s.dims.meterRows && !x.cell.chips.length && !x.cell.hole && !x.cell.roost && !x.cell.link && !x.cell.anchor && !x.cell.puddle);
+function placeSpawner(b, s) {
+  const free = emptyBar(s);
+  if (b.rng.chance(0.5) && free.length) { b.rng.pick(free).cell.roost = { id: b.nextId++ }; return 'a Dragon Roost'; }
+  s.spawners++; return 'a Nest';
+}
+function placeCalamity(b, s, cal) {
+  const d = s.dims;
+  if (cal === 'wormhole') { const free = allCells(s).filter((x) => x.r < d.meterRows && !x.cell.hole && !x.cell.chips.length && !x.cell.worm); if (!free.length) return false; b.rng.pick(free).cell.worm = true; }
+  else if (cal === 'blackhole') { const free = emptyBar(s); if (!free.length) return false; const { cell } = b.rng.pick(free); cell.hole = true; cell.black = true; }
+  else if (cal === 'volcano') { // a full stack of Volcano chips, two by two where there is room
+    const blk = freeBlock(s, b.rng.shuffle([...Array(d.barRows).keys()].map((i) => i + d.meterRows))), at = blk || b.rng.pick(emptyBar(s)); if (!at) return false;
+    if (blk) claimBlock(s, blk.r, blk.c); const cell = s.grid[at.r][at.c]; cell.volcano = 4;
+    for (let k = 0; k < d.stackMax; k++) cell.chips.push(mkChip(b, 'volcano', 0));
+  } else if (cal === 'tornado') s.sky.push({ id: b.nextId++, kind: 'tornado', r: b.rng.int(s.rows), c: b.rng.int(d.cols), str: b.rng.range(1, 6) + b.rng.range(1, 6) });
+  else if (cal === 'b52') s.sky.push({ id: b.nextId++, kind: 'b52', r: b.rng.int(s.rows), c: -1 });
+  s.calamities.push(cal); return true;
+}
+// How the bout is going for a Roller: `lost` is the share of what they started with that they have paid to the
+// House (it drives their Challenges), `gain` the share their opponent has paid (it drives their Cheats).
+export const lostShare = (b, s) => clamp(b.stage.paid[s.idx] / Math.max(1, s.startWorth || 1), 0, 1);
+export const gainShare = (b, s) => lostShare(b, b.sides[1 - s.idx]);
+export function tiltRate(b, s, key) { const T = TILTS[key]; return tiltChance(key, T.kind === 'challenge' ? lostShare(b, s) : gainShare(b, s)); }
+// The House plays the tilts that are on, in the House phase from the second turn.
+function* houseTilts(b, s) {
+  if (b.turn < 2) return;
+  const L = lostShare(b, s), G = gainShare(b, s), on = (k) => s.tilts?.[k] && b.rng.chance(tiltRate(b, s, k));
+  const say = (k, what, kind) => step(b, `The House plays ${TILTS[k].name}: ${what}.`, [], kind);
+  if (on('hazard')) { const n = 1 + Math.floor(L * 3), free = b.rng.shuffle(allCells(s).filter((x) => !x.cell.chips.length && !x.cell.hole && !x.cell.roost && !x.cell.link && !x.cell.worm)); let holes = 0, hats = 0;
+    for (let k = 0; k < n; k++) { if (b.rng.chance(1 / 3)) { const st = allCells(s).filter((x) => solidCount(x.cell) && capacityLeft(s, x.cell) > 0 && !x.cell.link && !x.cell.anchor && !x.cell.roost && !x.cell.chips.some((ch) => ch.kind === 'hat'));
+        if (st.length) { const h0 = mkChip(b, 'hat', 0); b.rng.pick(st).cell.chips.unshift(h0); b.fx[h0.id] = 'spawn'; hats++; continue; } }
+      const x = free.shift(); if (x) { x.cell.hole = true; delete x.cell.puddle; holes++; } }
+    if (holes || hats) yield say('hazard', [holes ? `${holes} Hole${holes > 1 ? 's' : ''}` : '', hats ? `${hats} Magic Hat${hats > 1 ? 's' : ''}` : ''].filter(Boolean).join(' and '), 'hazard'); }
+  if (on('creature') && b.creatures.filter((cr) => cr.side === s.idx && !cr.gone).length < 1 + Math.floor(L * 3)) {
+    const cr = mkCreature(b, s.idx, b.turn + 1); if (L >= 0.5 && b.rng.chance(L)) cr.kind = b.rng.pick(['dragon', 'mothership']), cr.life = CREATURES[cr.kind].life; b.creatures.push(cr);
+    yield say('creature', `a ${CREATURES[cr.kind].name} is on its way`, 'creature'); }
+  if (on('spawner') && s.spawners + allCells(s).filter((x) => x.cell.roost).length < 1 + Math.floor(L * 2)) yield say('spawner', placeSpawner(b, s), 'hazard');
+  if (on('calamity') && s.calamities.length < 1 + (L >= 0.5 ? 1 : 0)) { const cal = b.rng.pick(Object.keys(CALAMITIES).filter((k) => !s.calamities.includes(k)));
+    if (cal && placeCalamity(b, s, cal)) yield say('calamity', CALAMITIES[cal].name, 'hazard'); }
+  if (on('shield')) { const n = 1 + Math.floor(G * 4); addToMeter(b, s, Array.from({ length: n }, () => mkChip(b, 'block')), null, 'spawn'); yield say('shield', `${n} Block chip${n > 1 ? 's' : ''} on your Meter`, 'bonus'); }
+  if (on('familiar') && s.familiars < 1 + Math.floor(G * 2)) { s.familiars++; yield say('familiar', `a Familiar joins (${s.familiars})`, 'familiar'); }
 }
 
 // opts: { seed, a, b, rules:{ maxDenom, maxTurns } }  (a = player side 0, b = opponent side 1)
@@ -269,7 +298,8 @@ export function createBout(opts) {
       if (top?.shop === 'seed' && solidCount(cell) >= 2) { top.kind = 'flower'; top.value = 0; top.hits = 1; delete top.resist; }
       mergeSeq(b, cell);
     }
-    for (let k = 0; k < s.hatsDue; k++) { const st = allCells(s).filter((x) => x.r >= s.dims.meterRows && solidCount(x.cell) && !x.cell.link && !x.cell.anchor && !x.cell.chips.some((ch) => ch.kind === 'hat'));
+    s.startWorth = worth(s);
+    for (let k = 0; k < s.hatsDue; k++) { const st = allCells(s).filter((x) => x.r >= s.dims.meterRows && solidCount(x.cell) && capacityLeft(s, x.cell) > 0 && !x.cell.link && !x.cell.anchor && !x.cell.chips.some((ch) => ch.kind === 'hat'));
       if (st.length) b.rng.pick(st).cell.chips.unshift(mkChip(b, 'hat', 0, { owner: null })); }
     for (let k = 0; k < (spec.shields || 0); k++) addToMeter(b, s, Array.from({ length: s.dims.stackMax }, () => mkChip(b, 'block')));
     for (let k = 0; k < (spec.creatures || 0); k++) b.creatures.push(mkCreature(b, i, b.rng.range(1, 5)));
@@ -1052,7 +1082,7 @@ function* play(b, s, e, opt = {}) {
     case 'doom': { let n = 0; const list = bonus === 'aura' ? allCells(t) : cells.map(({ r, c }) => ({ r, c, cell: t.grid[r][c] }));
       for (const x of list) { if (n >= total || !solidCount(x.cell) || capacityLeft(t, x.cell) <= 0 || x.cell.chips[topSolid(x.cell)]?.kind === 'doom') continue; const d = mkChip(b, 'doom', 0, { owner: s.idx }); pushChip(x.cell, d); b.fx[d.id] = 'spawn'; n++; }
       yield step(b, `${tag}: ${n} chip${n === 1 ? '' : 's'} planted.`, list.map((x) => ref(t, x.r, x.c)), n ? 'play' : 'miss'); return; }
-    case 'hat': { let n = 0; if (total >= 8) for (const { r, c } of cells) { const cell = t.grid[r][c]; if (!solidCount(cell) || cell.chips.some((ch) => ch.kind === 'hat') || cell.link || cell.anchor) continue; const hat = mkChip(b, 'hat', 0, { owner: s.idx }); cell.chips.unshift(hat); b.fx[hat.id] = 'spawn'; n++; }
+    case 'hat': { let n = 0; if (total >= 8) for (const { r, c } of cells) { const cell = t.grid[r][c]; if (!solidCount(cell) || capacityLeft(t, cell) <= 0 || cell.chips.some((ch) => ch.kind === 'hat') || cell.link || cell.anchor) continue; const hat = mkChip(b, 'hat', 0, { owner: s.idx }); cell.chips.unshift(hat); b.fx[hat.id] = 'spawn'; n++; }
       yield step(b, `${tag}: ${n ? `${n} Magic Hat${n > 1 ? 's' : ''} slipped under ${o.name}'s stacks` : 'the trick needs a total of 8'}.`, cells.map((x) => ref(t, x.r, x.c)), n ? 'play' : 'miss'); return; }
     case 'handoff': { let n = 0;
       for (const { r, c } of cells) { const cell = t.grid[r][c], from = allCells(s).find((x) => x.cell.chips.some((ch) => ch.shop === 'uranium')); if (!from || capacityLeft(t, cell) <= 0) continue;
@@ -1102,7 +1132,7 @@ function transform(b, cell, i) {
   const v = cell.chips[i]; if (!v || v.frozen || v.big || ['volcano', 'hat', 'egg', 'hive', 'doom'].includes(v.kind)) return; // Frozen and Big chips cannot be turned into another chip
   const k = b.rng.pick(['std', 'std', 'opp', 'block', 'counter', 'gold', 'debt', 'poison', 'boom']); delete v.gold; delete v.resist; delete v.shop;
   if (k === 'gold') { v.kind = 'std'; v.value = Math.max(1, v.value); v.gold = true; }
-  else if (k === 'std') { v.kind = 'std'; v.value = b.rng.pick([1, 2, 5, 10].filter((d) => d <= Math.max(2, b.rules.maxDenom))); }
+  else if (k === 'std') { v.kind = 'std'; v.value = b.rng.pick(DENOM_VALUES.filter((d) => d <= Math.max(2, b.rules.maxDenom))); }
   else if (k === 'debt') { if (cell.chips.filter(isPayable).length > 1) { cell.chips.splice(i, 1); b.fx[v.id] = 'void'; setDebt(b, cell, debtOf(cell) + 1, 'debt'); } }
   else if (k === 'poison' || k === 'boom') { if (cell.chips.filter(isPayable).length > 1) { cell.chips.splice(i, 1); v.kind = k; v.value = 0; v.life = HAZARD_LIFE[k]; cell.chips.push(v); } }
   else { v.kind = k; v.value = k === 'opp' ? 1 : 0; }
@@ -1309,7 +1339,8 @@ function* ticks(b) {
     for (let k = 0; k < lucky; k++) if (b.rng.chance(shopVars('lucky').chance)) luck++;
     if (luck) luck -= addToMeter(b, s, Array.from({ length: luck }, () => mkChip(b, 'opp', 1)), null, 'spawn').length;
     if (luck) yield step(b, `${s.name}'s Lucky chip${lucky > 1 ? 's turn' : ' turns'} up ${luck} Opportunity chip${luck > 1 ? 's' : ''}.`, [], 'bonus');
-    if (s.spawners && b.turn % 3 === 0) for (let k = 0; k < s.spawners; k++) b.creatures.push(mkCreature(b, s.idx, b.turn));
+    yield* houseTilts(b, s);
+    if (s.spawners && b.turn % (s.tilts?.spawner && lostShare(b, s) >= 1 / 3 ? 2 : 3) === 0) for (let k = 0; k < s.spawners; k++) b.creatures.push(mkCreature(b, s.idx, b.turn));
     for (const { cell } of allCells(s)) if (cell.roost && !cell.chips.some((ch) => ch.kind === 'egg') && b.turn % 3 === 0 && !b.creatures.some((x) => x.roost === cell.roost.id && !x.gone))
       b.creatures.push(newCreature(b, 'dragon', s.idx, b.turn, { roost: cell.roost.id }));
     if (s.sky.some((o) => o.kind === 'moon') && b.turn % 4 === 0) b.creatures.push(newCreature(b, 'ghost', s.idx, b.turn)); // the Moon brings Ghosts out
@@ -1440,7 +1471,7 @@ export function* resolve(b) {
   for (const s of b.sides) if (worth(s) <= 0 && s.interventions > 0 && b.stage.paid[s.idx] > 0) {
     s.interventions--; s.intervened = true;
     for (const { cell } of allCells(s)) for (const ch of cell.chips.filter(isHazard)) { cell.chips.splice(cell.chips.indexOf(ch), 1); b.fx[ch.id] = 'void'; }
-    const chips = makeChange(b, b.stage.paid[s.idx]); let back = 0;
+    const share = Math.min(1, 0.5 + gainShare(b, s)), chips = makeChange(b, Math.round(b.stage.paid[s.idx] * share)); let back = 0;
     for (const ch of chips) { const spot = allCells(s).reverse().find((x) => capacityLeft(s, x.cell) > 0); if (!spot) break; spot.cell.chips.push(ch); b.fx[ch.id] = 'from-stage'; back += ch.value; }
     b.stage.paid[s.idx] -= back;
     yield step(b, `Intervention! ${back}¢ of ${s.name}'s fees are restored.`, [], 'bonus');
@@ -1503,6 +1534,8 @@ export function effectChips(b, s) {
   if (s.positionTilt) add('position', 'Position', '⊞', s.positionTilt, 2, true, 'Balance, Versatility and Depth raised for this bout.');
   if (s.spawners) add('nest', 'Nest', '🪹', s.spawners, 1, false, 'Sends a creature every third turn.');
   for (const cal of new Set(s.calamities)) if (['inferno', 'audit', 'tornado'].includes(cal)) add('cal-' + cal, CALAMITIES[cal].name, { inferno: '🔥', audit: '§', tornado: '🌪' }[cal], s.calamities.filter((x) => x === cal).length, cal === 'audit' ? 2 : 3, false, CALAMITIES[cal].text);
+  for (const k of Object.keys(s.tilts || {})) { const T = TILTS[k], ch = T.base || T.per ? `${Math.round(tiltRate(b, s, k) * 100)}%` : 'on';
+    add('tilt-' + k, `${T.name} tilt`, T.kind === 'challenge' ? '⚠' : '✚', ch, 1, T.kind === 'cheat', `${T.text} ${T.base || T.per ? `The House's chance to play it this turn: ${ch} (${T.kind === 'challenge' ? `you have lost ${Math.round(lostShare(b, s) * 100)}% of what you started with` : `your opponent has lost ${Math.round(gainShare(b, s) * 100)}% of what they started with`} to the House).` : ''}`); }
   if (s.heat > 1) add('heat', 'Last call', '⏳', `×${s.heat.toFixed(2)}`, 3, false, 'Every Expense is multiplied; more each turn.');
   return out;
 }

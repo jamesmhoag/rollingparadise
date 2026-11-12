@@ -11,13 +11,7 @@ Library under **Chip list**, with each chip's traits (see **Traits**). Statuses 
 | 91 | Heavy Chip | Skipped for now (by request). Need: what a "Burden" is. |
 | 92 | Metal Chip | Skipped for now (by request). Need: what it deters and what its burden is. |
 
-## Partly built (0)
-
-| Row | Chip | How it is in the game |
-| --- | --- | --- |
-
-
-## Built (94)
+## Built (105)
 
 | Row | Chip | How it is in the game |
 | --- | --- | --- |
@@ -115,3 +109,14 @@ Library under **Chip list**, with each chip's traits (see **Traits**). Statuses 
 | 96 | Egg Chip | Egg chip: food (+2 Roll, −1 Draw for 2 turns) and a Dragon egg: 5 hit instances, hatches a Dragon at your opponent after 5 hatch steps unless eaten or broken. |
 | 97 | Spy Chip | Spy chip: a shop chip (Rare) that looks like a 1¢ chip to your opponent. On top of your stack, your opponent plays each phase first and you see it, aims included, before you commit. |
 | 98 | Doom Chip | Doom chip: the Foretell trick (Correction) plants them on your opponent's front stacks; they see 1¢ chips. Once all their stacks are topped with Doom, each Doom chip charges 1¢ a turn (instance debt). |
+| 99 | Green Chip | Royal Paradise 25¢ chip: a basic value chip worth 25¢, dealt from floor 3. |
+| 100 | Purple Chip | Royal Paradise 50¢ chip: a basic value chip worth 50¢, dealt from floor 4. |
+| 101 | Orange Chip | Royal Paradise 100¢ chip: a basic value chip worth 100¢, dealt from floor 4. |
+| 102 | Black Chip | Royal Paradise 250¢ chip: a basic value chip worth 250¢, dealt from floor 4. |
+| 103 | White Chip | Royal Paradise 500¢ chip: a basic value chip worth 500¢, dealt from the Paradise Ascent (the list gives 5000¢; read as 500¢, between Black and Silver). |
+| 104 | Silver Chip | Silver Chip: a basic value chip worth 1,000¢, dealt from the Paradise Ascent. |
+| 105 | Ruby Chip | Ruby Chip: a basic value chip worth 2,500¢, dealt from the Paradise Ascent. |
+| 106 | Emerald Chip | Emerald Chip: a basic value chip worth 5,000¢, dealt from the Paradise Ascent. |
+| 107 | Saphire Chip | Sapphire Chip: a basic value chip worth 10,000¢, dealt from the Paradise Ascent (spelled Sapphire in the game). |
+| 108 | Amber Chip | Amber Chip: a basic value chip worth 25,000¢, dealt from the Paradise Ascent. |
+| 109 | Diamond Chip | Diamond Chip: a basic value chip worth 50,000¢, dealt from the Paradise Ascent. |

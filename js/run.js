@@ -82,6 +82,10 @@ export function rollerStats(run, extra = {}) {
     c: { charisma: Math.max(0, v.charisma), cunning: Math.max(0, v.cunning), conviction: Math.max(0, v.conviction) } };
 }
 export const maxDenom = (floor) => Math.max(...D.DENOMS.filter((d) => d.floor <= Math.max(1, floor)).map((d) => d.value));
+export const denomsFor = (floor) => D.DENOMS.filter((d) => d.floor <= Math.max(1, floor)).map((d) => d.value);
+export const noCounts = () => Object.fromEntries(D.DENOM_VALUES.map((v) => [v, 0]));
+// the floor a run's chips come from: the Ascent opens every chip
+export const chipFloor = (run) => (run.phase === 'ascent' ? D.ASCENT_FLOOR : run.floor || 1);
 
 // ---------- opponents ----------
 export function genOpponent(run, floor, worthTarget, o = {}) {
@@ -99,8 +103,11 @@ export function genOpponent(run, floor, worthTarget, o = {}) {
   const tricks = ids.map((id) => mkTrick(run, id, q, (o.boss ? rng.int(2) : 0) + (o.up || 0)));
   // chips: a little petty cash in 1¢ for bidding, the rest in the biggest chips the floor allows
   const md = o.maxDenom || maxDenom(floor), cap = barCapacity(dims);
-  let big = md, W = worthTarget;
+  let W = worthTarget;
   let petty = Math.min(W, Math.max(6, Math.round(cap * 0.12)));
+  // the big chip: up to 10¢ as before, or the smallest bigger one that fits the worth into the position
+  const allowed = D.DENOM_VALUES.filter((v) => v <= md), fits = (v) => petty + Math.ceil(Math.max(0, W - petty) / v) <= cap;
+  let big = Math.max(...allowed.filter((v) => v <= 10)); if (!fits(big)) big = allowed.find((v) => v > big && fits(v)) || Math.max(...allowed);
   let nBig = big > 1 ? Math.floor((W - petty) / big) : 0;
   if (nBig + petty > cap) { nBig = cap - petty; }
   if (big === 1) { petty = Math.min(W, cap); nBig = 0; }
@@ -277,27 +284,26 @@ export function searchFloor(run) {
 }
 
 // ---------- wagers, tilts, position ----------
+// tilts are on (1) or off (0)
 export const newPrep = (run, kind, idx) => ({ kind, idx, tilts: Object.fromEntries(Object.keys(D.TILTS).map((k) => [k, 0])), dd: false });
-export function tiltCap(run, key) { const T = D.TILTS[key]; const n = run.fs ? run.fs.tiers[T.kind] : 0; return sum(T.cap.slice(0, n)); }
-// each tilt uses the cheapest unlocked tier slots first
-function tiltValue(key, count) { let left = count, v = 0; D.TILTS[key].cap.forEach((cap, tier) => { const n = Math.min(left, cap); v += n * D.TILT_TIERS[tier].inc; left -= n; }); return v; }
+export const tiltOpen = (run, key) => (run.floor || 1) >= D.TILTS[key].floor;
+export function setTilt(run, prep, key, on) { if (on && !tiltOpen(run, key)) return false; prep.tilts[key] = on ? 1 : 0; return true; }
 export function multiplier(run, prep) {
   const base = prep.kind === 'boss' ? D.WAGER_BOSS : D.WAGER_BASE; let m = base;
-  for (const [k, n] of Object.entries(prep.tilts)) m += (D.TILTS[k].kind === 'challenge' ? 1 : -1) * tiltValue(k, n);
+  for (const [k, n] of Object.entries(prep.tilts)) if (n) m += (D.TILTS[k].kind === 'challenge' ? 1 : -1) * D.TILTS[k].mult;
   m = clamp(m, 1, Math.max(3, base));
   if (prep.dd) m = Math.min(D.DD_MAX, m * 2);
   return Math.round(m * 100) / 100;
 }
-export function unlockTier(run, kind) {
-  const n = run.fs.tiers[kind]; if (n >= D.TILT_TIERS.length) return false;
-  if (!spend(run, D.TILT_TIERS[n][kind], `${kind === 'challenge' ? 'Challenge' : 'Cheat'} tilt tier ${n + 1}`)) return false; run.fs.tiers[kind]++; return true;
-}
 // default chip mix: fill the Bar with the best chips the purse affords, keeping some 1¢ chips to bid with
 // `reserve`: spaces kept for shop chips
 export function autoCounts(run, dims, purse = run.purse, reserve = 0) {
-  const cap = Math.max(0, barCapacity(dims) - reserve), denoms = D.DENOMS.filter((d) => d.floor <= Math.max(1, run.floor)).map((d) => d.value).sort((a, b) => b - a);
-  const counts = { 1: 0, 2: 0, 5: 0, 10: 0 }; let slots = cap, money = purse;
-  const ones = Math.min(slots, money, Math.max(6, Math.round(cap * 0.15))); counts[1] = ones; slots -= ones; money -= ones;
+  const cap = Math.max(0, barCapacity(dims) - reserve), all = denomsFor(chipFloor(run));
+  const counts = noCounts(); let slots = cap, money = purse;
+  const ones = Math.min(slots, money, Math.max(6, Math.round(cap * 0.15)));
+  // chips up to 10¢ as before; bigger ones only as far as the purse needs them to fit in the Bar (more, smaller stacks)
+  const fits = (d) => ones + Math.ceil(Math.max(0, money - ones) / d) <= cap, small = Math.max(...all.filter((v) => v <= 10));
+  const top = fits(small) ? small : all.find((v) => v > small && fits(v)) || Math.max(...all), denoms = all.filter((v) => v <= top).sort((a, b) => b - a); counts[1] = ones; slots -= ones; money -= ones;
   for (const v of denoms) { if (v === 1) continue; const n = Math.min(slots, Math.floor(money / v)); counts[v] += n; slots -= n; money -= n * v; }
   const more = Math.min(slots, money); counts[1] += more;
   return counts;
@@ -312,7 +318,7 @@ export function validCounts(run, dims) {
 export const planWorth = (counts) => sum(Object.entries(counts), ([v, n]) => v * n);
 export const planCount = (counts, resist) => sum(Object.values(counts)) + sum(Object.values(resist || {}));
 function planGroups(run, counts, resist) {
-  const order = D.CLASSES[run.cls].deploy === 'end' ? [1, 2, 5, 10] : [10, 5, 2, 1];
+  const order = D.CLASSES[run.cls].deploy === 'end' ? D.DENOM_VALUES : D.DENOM_VALUES.slice().reverse();
   const groups = Object.entries(resist || {}).filter(([, n]) => n > 0).map(([el, n]) => ({ value: 1, count: n, resist: el }));
   for (const v of order) if (counts[v] > 0) groups.push({ value: v, count: counts[v] });
   return groups;
@@ -329,13 +335,14 @@ const committed = (bout) => sum(bout.sides[0].grid.flat().flatMap((c) => c.chips
 export function startIntro(run) {
   const opp = genOpponent(run, 1, 18, { weak: true, name: 'Low Ball', title: 'Doorman', cls: 'technician' });
   const st = rollerStats(run); const n = Math.min(30, barCapacity(st.dims));
-  const bout = createBout({ seed: run.rng.int(2 ** 31), a: playerSpec(run, { 1: n, 2: 0, 5: 0, 10: 0 }), b: opp, rules: { maxDenom: 1 } });
+  const bout = createBout({ seed: run.rng.int(2 ** 31), a: playerSpec(run, { ...noCounts(), 1: n }), b: opp, rules: { maxDenom: 1 } });
   return { bout, ctx: { kind: 'intro', opp, felt: 'house', wager: 0, mult: 1, committed: n } };
 }
 export function startTable(run, prep) {
   const entry = prep.kind === 'boss' ? run.fs.boss : run.fs.tables[prep.idx], t = prep.tilts;
-  const extra = { position: t.position, resist: { ...run.plan.resist }, side: { positionTilt: t.position, holes: t.hazard, creatures: t.creature, spawners: t.spawner, shields: t.shield, familiars: t.familiar, interventions: t.intervention,
-    calamities: Array.from({ length: t.calamity }, () => run.rng.pick(Object.keys(D.CALAMITIES))) } };
+  const on = (k) => (t[k] ? 1 : 0); // a tilt that is on opens the bout once, then the House may play it again as the bout goes
+  const extra = { position: on('position'), resist: { ...run.plan.resist }, side: { tilts: Object.fromEntries(Object.keys(D.TILTS).filter((k) => t[k]).map((k) => [k, true])), positionTilt: on('position'), holes: on('hazard'), creatures: on('creature'), spawners: on('spawner'),
+    shields: on('shield'), familiars: on('familiar'), interventions: on('intervention'), calamities: on('calamity') ? [run.rng.pick(Object.keys(D.CALAMITIES))] : [] } };
   const st = rollerStats(run, extra); const counts = validCounts(run, st.dims);
   for (const el of Object.keys(extra.resist)) extra.resist[el] = Math.min(extra.resist[el], owned(run, el));
   const bout = createBout({ seed: run.rng.int(2 ** 31), a: playerSpec(run, counts, extra), b: entry.opp, rules: { maxDenom: maxDenom(run.floor), felt: prep.kind === 'boss' ? 'royal' : D.feltId(entry.felt) } });
@@ -345,7 +352,7 @@ export function startTable(run, prep) {
 export function startLounge(run, drinkId) {
   const L = run.fs.lounge, st = rollerStats(run), d = L.drinks.find((x) => x.id === drinkId);
   const dims = { cols: 3, stackMax: Math.max(2, st.dims.stackMax - 1), meterRows: Math.max(1, st.dims.meterRows - 1), barRows: Math.max(2, st.dims.barRows - 1) };
-  const n = Math.min(16, barCapacity(dims)), md = maxDenom(run.floor), counts = { 1: 0, 2: 0, 5: 0, 10: 0 };
+  const n = Math.min(16, barCapacity(dims)), md = maxDenom(run.floor), counts = noCounts();
   counts[1] = Math.min(4, n); counts[md] += n - counts[1]; // house chips: a few 1¢ to bid with, the rest in the floor's biggest chip
   const bout = createBout({ seed: run.rng.int(2 ** 31), a: playerSpec(run, counts, {}, dims), b: L.challenger, rules: { maxDenom: md, maxTurns: 20 } });
   L.challenged = true;
@@ -353,7 +360,7 @@ export function startLounge(run, drinkId) {
 }
 export function startAscent(run) {
   const A = run.ascent, opp = A.ladder[A.step].opp, st = rollerStats(run); const counts = validCounts(run, st.dims);
-  const bout = createBout({ seed: run.rng.int(2 ** 31), a: playerSpec(run, counts, { resist: { ...run.plan.resist } }), b: opp, rules: { maxDenom: 10, maxTurns: 50 } });
+  const bout = createBout({ seed: run.rng.int(2 ** 31), a: playerSpec(run, counts, { resist: { ...run.plan.resist } }), b: opp, rules: { maxDenom: maxDenom(D.ASCENT_FLOOR), maxTurns: 50 } });
   const com = committed(bout);
   return { bout, ctx: { kind: 'ascent', opp, felt: 'paradise', wager: 0, mult: 1, committed: com, resist: run.plan.resist } };
 }
@@ -461,9 +468,9 @@ export function netWorth(run) { return run.purse + sum(run.dice, (d) => D.DICE[d
 export function buildAscent(run, meta) {
   const worths = [1100, 1300, 1500, 1800, 2200], nominal = [1e6, 1e7, 1e9, 1e11, 1e12];
   const ladder = D.ASCENT_NAMES.map((name, i) => ({ name, networth: nominal[i], legend: true,
-    opp: genOpponent(run, 4, worths[i], { boss: i >= 3, name, title: ['Millionaire', 'Millionaire', 'Billionaire', 'Billionaire', 'Trillionaire'][i], q: 4, up: Math.floor(i / 2), maxDenom: 10 }) }));
+    opp: genOpponent(run, 4, worths[i], { boss: i >= 3, name, title: ['Millionaire', 'Millionaire', 'Billionaire', 'Billionaire', 'Trillionaire'][i], q: 4, up: Math.floor(i / 2), maxDenom: maxDenom(D.ASCENT_FLOOR) }) }));
   for (const bld of meta.ladder || []) {
-    const opp = genOpponent(run, 4, clamp(bld.worth, 600, 2000), { cls: bld.cls, name: bld.name, title: 'Remnant Roller', q: 4, maxDenom: 10 });
+    const opp = genOpponent(run, 4, clamp(bld.worth, 600, 2000), { cls: bld.cls, name: bld.name, title: 'Remnant Roller', q: 4, maxDenom: maxDenom(D.ASCENT_FLOOR) });
     opp.tricks = bld.tricks.map((t) => mkTrick(run, t.id, t.q, t.up)); opp.dice = bld.dice.map((d) => ({ ...mkDie(run, d.type), up: d.up || [], faces: d.faces }));
     ladder.push({ name: bld.name, networth: bld.networth, legend: false, opp });
   }

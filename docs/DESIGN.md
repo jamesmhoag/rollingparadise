@@ -247,8 +247,15 @@ what you own, carry or wear is marked.
   purchases, Secret Shelf.
 - Lounge: the drink list with sips; buy, or play the barfly for it once per floor.
 - Sports Book: the seven sports, the odds table, one bet per game, settled while you are at the table.
-- Commitment: Challenge and Cheat tilts with the tier costs, slot counts and multiplier steps from the table;
-  position planner with spacing and stacking choices; everything left off the table is wagered.
+- Commitment: Challenge and Cheat tilts switched on or off (each adds or takes its share of the multiplier; some
+  open on later floors); position planner with spacing and stacking choices; everything left off the table is
+  wagered.
+- **Tilts are played by the House.** A tilt that is on opens the bout once, then in each House phase from turn 2 the
+  House may play it again. Its chance is `base + per × pressure`: for Challenges the pressure is the share of your
+  starting chips you have paid to the House, for Cheats the share your opponent has paid. Pressure also sets the
+  impact: more Holes, bigger creatures, more nests (and faster ones), a second Calamity; more Block chips, more
+  Familiars, a bigger Intervention. Position is played at the start only. Each tilt that is on lies on the table
+  as an effect chip showing the House's chance this turn.
 - Wager ×1.5 at tables, ×3 at the High Roller, capped at ×3. Double Down doubles it up to ×6, keeps the last
   bout's Challenge tilts, drops Cheat tilts, and on a win opens the High Roller and grants a Suite Key Card.
 
@@ -274,7 +281,7 @@ what you own, carry or wear is marked.
 | The nine turn phases (Opening, Deal, Drop, Decision, Dance, Bow) | Folded into Draw, Roll, Bid and the House's play. There is no separate hand, and no Toss or Reroll in the Bow. |
 | How many throws a turn? | One. Everything you will roll is picked first and lands together. |
 | How a fee meets a chip | See **Debt** above: whole chips from the top, the remainder stays as Debt, overkill goes down the lane only. |
-| When tilt tiers are bought | Unlocked once per floor, then free to use for every bout on it. |
+| How strong a tilt is | Set by the bout, not bought: tiers and slot counts are gone; a tilt is on or off. |
 | How a bout ends if neither side breaks | "Last call" is an addition: from turn 9 every Expense is multiplied by a factor that grows each turn. At turn 40 the most Worth wins. |
 | Debt (the **Debt** tab's five concepts) | "Knocked out by debt": reaching zero Worth loses the bout. |
 | Dice upgrades | All 22 from the workbook. They are permanent, including faces that change with use (Rig, Enchant, Encase); only Upgrade chip effects are for one roll. Readings: "fill" moves value into the target (Divide: 1 from every face; Gift: half the highest; Devour: all of the lowest), Boost/Bonk ±2, Rig/Enchant/Encase change with use and reset each bout, Gamble ×2 and Curse ×3 on a random face each roll. Numbers in `DIE_VARS`. |
@@ -299,6 +306,14 @@ what you own, carry or wear is marked.
 - Saving in the middle of a bout. A reload returns you to the floor before it.
 
 What is needed to build these is listed in `docs/OPEN-QUESTIONS.md`.
+
+## Basic chips
+
+Fifteen value chips: 1, 2, 5, 10, 25 (floor 1 to 3), 50, 100, 250 (floor 4) and 500 to 50,000 (the Paradise
+Ascent). Up to 500¢ they are Royal Paradise chips named by value; from 1000¢ the metal and gem chips go by name
+(Silver, Ruby, Emerald, Sapphire, Amber, Diamond) with a short face (1K … 50K). The automatic chip mix and the
+opponents keep to chips of 10¢ and under unless the worth will not fit in the position, and then use the smallest
+bigger chip that fits.
 
 ## Round 13: chips over, under and above the table
 

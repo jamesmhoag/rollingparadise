@@ -173,3 +173,16 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
   lost as triggers, chips stacked as a trick's deployment for its duration, rolls that make chips. Would that be
   a new kind of tilt, or the House's own Run?
 - **Skipped for now:** Heavy and Metal (Burden).
+
+## Round 14 additions (basic chips, House-played tilts)
+
+- **White chip** is listed at 5000¢, between Black (250¢) and Silver (1000¢). It is in the game at **500¢**. Right?
+- **Chip colours.** The 10¢ chip is now Yellow, as on the list (it was black and gold); Black is 250¢. Sapphire is
+  spelled with two p's in the game (the list has "Saphire").
+- **"Tilts stronger".** Read as Cheat tilts: they grow as your opponent loses to the House, while Challenges grow as
+  you do. Should your opponent's losses also make your Challenges *weaker*?
+- **Position** is played once, at the start (changing the table's size mid-bout is not supported). Should it grow
+  some other way, such as an extra Draw, Roll or Bid when the House plays it?
+- **Tilt tiers** are gone: no unlock costs, no slot counts. Tilts open by floor (Spawner from 2, Calamity and
+  Intervention from 3). Should anything be paid to switch one on?
+- **The House's rates** (`base`, `per` and `mult` on each tilt in `js/data.js`) are first guesses to tune.

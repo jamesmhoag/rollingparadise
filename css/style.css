@@ -495,3 +495,17 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .weather:not(.blizzard) i { display: none; } @keyframes snow { to { transform: translate(-30px, 300px); } }
 .traits { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; } .trait { font-size: 10px; padding: 1px 5px; border-radius: 8px; background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .15); }
 .trait i { font-style: normal; opacity: .65; } .trait.der { border-style: dashed; border-color: rgba(125, 243, 255, .4); } .trait.lst { border-color: rgba(255, 215, 106, .4); }
+
+/* the expanded basic chips: colours from the chip list; metal and gem chips from 1000¢ */
+.k-std.v10 { --c: #f2d22e; --rim: #fff7c2; --edge: #8a6a05; --fg: #3a2a00; }
+.k-std.v25 { --c: #2f9a55; --rim: #c8ffd9; --edge: #0f4224; --fg: #fff; } .k-std.v50 { --c: #7a3cc4; --rim: #e3d0ff; --edge: #2e1060; --fg: #fff; }
+.k-std.v100 { --c: #f2851f; --rim: #ffe0bf; --edge: #7a3a05; --fg: #fff; } .k-std.v250 { --c: #18181d; --rim: #e6e6ea; --edge: #000; --fg: #fff; }
+.k-std.v500 { --c: #ffffff; --rim: #ffd76a; --edge: #9a8f74; --fg: #2b2414; }
+.k-std.v1000 { --c: #c9d0d8; --rim: #ffffff; --edge: #5b6370; --fg: #1d232b; --bs: solid; --glow: 0 0 8px rgba(220, 228, 240, .7); }
+.k-std.v2500 { --c: #c0143c; --rim: #ff9aae; --edge: #5a0518; --fg: #fff; --bs: solid; --glow: 0 0 10px rgba(255, 40, 90, .7); }
+.k-std.v5000 { --c: #10a060; --rim: #9affc9; --edge: #034a2a; --fg: #fff; --bs: solid; --glow: 0 0 10px rgba(40, 220, 130, .7); }
+.k-std.v10000 { --c: #1c4fc4; --rim: #a6c4ff; --edge: #081f5a; --fg: #fff; --bs: solid; --glow: 0 0 10px rgba(60, 120, 255, .7); }
+.k-std.v25000 { --c: #e8961c; --rim: #ffe1a6; --edge: #6b3c02; --fg: #3a1d00; --bs: solid; --glow: 0 0 10px rgba(255, 170, 40, .7); }
+.k-std.v50000 { --c: #e6fbff; --rim: #ffffff; --edge: #6bb3d6; --fg: #1d4a66; --bs: solid; --glow: 0 0 14px rgba(200, 245, 255, 1); }
+.k-std.v100 i, .k-std.v250 i, .k-std.v500 i, .k-std.v1000 i, .k-std.v2500 i, .k-std.v5000 i, .k-std.v10000 i, .k-std.v25000 i, .k-std.v50000 i { font-size: 10px; letter-spacing: -.5px; }
+.tilt { grid-template-columns: 1fr auto auto; } .tilt.lit { box-shadow: inset 0 0 0 1px var(--gold); } .tilt .on { color: var(--gold); }

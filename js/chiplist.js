@@ -2390,5 +2390,291 @@ export const CHIP_LIST = [
 "pile": "Roller",
 "stack": "Base"
 }
+},
+{
+"row": 99,
+"name": "Green Chip",
+"type": "Basic",
+"permanence": "Resiliant",
+"placement": "",
+"source": "Match Prep",
+"text": "Basic value chip worth 25¢",
+"status": "built",
+"note": "Royal Paradise 25¢ chip: a basic value chip worth 25¢, dealt from floor 3.",
+"show": {
+"kind": "std",
+"value": 25
+},
+"list": {
+"type": "Basic",
+"payment": "1",
+"flip": "0 || 1",
+"worth": "25¢",
+"movable": "Yes",
+"playable": "Yes",
+"party": "All",
+"permanence": "Resiliant",
+"source": "Match Prep"
+}
+},
+{
+"row": 100,
+"name": "Purple Chip",
+"type": "Basic",
+"permanence": "Resiliant",
+"placement": "",
+"source": "Match Prep",
+"text": "Basic value chip worth 50¢",
+"status": "built",
+"note": "Royal Paradise 50¢ chip: a basic value chip worth 50¢, dealt from floor 4.",
+"show": {
+"kind": "std",
+"value": 50
+},
+"list": {
+"type": "Basic",
+"payment": "1",
+"flip": "0 || 1",
+"worth": "50¢",
+"movable": "Yes",
+"playable": "Yes",
+"party": "All",
+"permanence": "Resiliant",
+"source": "Match Prep"
+}
+},
+{
+"row": 101,
+"name": "Orange Chip",
+"type": "Basic",
+"permanence": "Resiliant",
+"placement": "",
+"source": "Match Prep",
+"text": "Basic value chip worth 100¢",
+"status": "built",
+"note": "Royal Paradise 100¢ chip: a basic value chip worth 100¢, dealt from floor 4.",
+"show": {
+"kind": "std",
+"value": 100
+},
+"list": {
+"type": "Basic",
+"payment": "1",
+"flip": "0 || 1",
+"worth": "100¢",
+"movable": "Yes",
+"playable": "Yes",
+"party": "All",
+"permanence": "Resiliant",
+"source": "Match Prep"
+}
+},
+{
+"row": 102,
+"name": "Black Chip",
+"type": "Basic",
+"permanence": "Resiliant",
+"placement": "",
+"source": "Match Prep",
+"text": "Basic value chip worth 250¢",
+"status": "built",
+"note": "Royal Paradise 250¢ chip: a basic value chip worth 250¢, dealt from floor 4.",
+"show": {
+"kind": "std",
+"value": 250
+},
+"list": {
+"type": "Basic",
+"payment": "1",
+"flip": "0 || 1",
+"worth": "250¢",
+"movable": "Yes",
+"playable": "Yes",
+"party": "All",
+"permanence": "Resiliant",
+"source": "Match Prep"
+}
+},
+{
+"row": 103,
+"name": "White Chip",
+"type": "Basic",
+"permanence": "Resiliant",
+"placement": "",
+"source": "Match Prep",
+"text": "Basic value chip worth 500¢",
+"status": "built",
+"note": "Royal Paradise 500¢ chip: a basic value chip worth 500¢, dealt from the Paradise Ascent (the list gives 5000¢; read as 500¢, between Black and Silver).",
+"show": {
+"kind": "std",
+"value": 500
+},
+"list": {
+"type": "Basic",
+"payment": "1",
+"flip": "0 || 1",
+"worth": "500¢",
+"movable": "Yes",
+"playable": "Yes",
+"party": "All",
+"permanence": "Resiliant",
+"source": "Match Prep"
+}
+},
+{
+"row": 104,
+"name": "Silver Chip",
+"type": "Basic",
+"permanence": "Resiliant",
+"placement": "",
+"source": "Match Prep",
+"text": "Basic value chip worth 1000¢",
+"status": "built",
+"note": "Silver Chip: a basic value chip worth 1,000¢, dealt from the Paradise Ascent.",
+"show": {
+"kind": "std",
+"value": 1000
+},
+"list": {
+"type": "Basic",
+"payment": "1",
+"flip": "0 || 1",
+"worth": "1000¢",
+"movable": "Yes",
+"playable": "Yes",
+"party": "All",
+"permanence": "Resiliant",
+"source": "Match Prep"
+}
+},
+{
+"row": 105,
+"name": "Ruby Chip",
+"type": "Basic",
+"permanence": "Resiliant",
+"placement": "",
+"source": "Match Prep",
+"text": "Basic value chip worth 2500¢",
+"status": "built",
+"note": "Ruby Chip: a basic value chip worth 2,500¢, dealt from the Paradise Ascent.",
+"show": {
+"kind": "std",
+"value": 2500
+},
+"list": {
+"type": "Basic",
+"payment": "1",
+"flip": "0 || 1",
+"worth": "2500¢",
+"movable": "Yes",
+"playable": "Yes",
+"party": "All",
+"permanence": "Resiliant",
+"source": "Match Prep"
+}
+},
+{
+"row": 106,
+"name": "Emerald Chip",
+"type": "Basic",
+"permanence": "Resiliant",
+"placement": "",
+"source": "Match Prep",
+"text": "Basic value chip worth 5000¢",
+"status": "built",
+"note": "Emerald Chip: a basic value chip worth 5,000¢, dealt from the Paradise Ascent.",
+"show": {
+"kind": "std",
+"value": 5000
+},
+"list": {
+"type": "Basic",
+"payment": "1",
+"flip": "0 || 1",
+"worth": "5000¢",
+"movable": "Yes",
+"playable": "Yes",
+"party": "All",
+"permanence": "Resiliant",
+"source": "Match Prep"
+}
+},
+{
+"row": 107,
+"name": "Saphire Chip",
+"type": "Basic",
+"permanence": "Resiliant",
+"placement": "",
+"source": "Match Prep",
+"text": "Basic value chip worth 10,000¢",
+"status": "built",
+"note": "Sapphire Chip: a basic value chip worth 10,000¢, dealt from the Paradise Ascent (spelled Sapphire in the game).",
+"show": {
+"kind": "std",
+"value": 10000
+},
+"list": {
+"type": "Basic",
+"payment": "1",
+"flip": "0 || 1",
+"worth": "10,000¢",
+"movable": "Yes",
+"playable": "Yes",
+"party": "All",
+"permanence": "Resiliant",
+"source": "Match Prep"
+}
+},
+{
+"row": 108,
+"name": "Amber Chip",
+"type": "Basic",
+"permanence": "Resiliant",
+"placement": "",
+"source": "Match Prep",
+"text": "Basic value chip worth 25,000¢",
+"status": "built",
+"note": "Amber Chip: a basic value chip worth 25,000¢, dealt from the Paradise Ascent.",
+"show": {
+"kind": "std",
+"value": 25000
+},
+"list": {
+"type": "Basic",
+"payment": "1",
+"flip": "0 || 1",
+"worth": "25,000¢",
+"movable": "Yes",
+"playable": "Yes",
+"party": "All",
+"permanence": "Resiliant",
+"source": "Match Prep"
+}
+},
+{
+"row": 109,
+"name": "Diamond Chip",
+"type": "Basic",
+"permanence": "Resiliant",
+"placement": "",
+"source": "Match Prep",
+"text": "Basic value chip worth 50,000¢",
+"status": "built",
+"note": "Diamond Chip: a basic value chip worth 50,000¢, dealt from the Paradise Ascent.",
+"show": {
+"kind": "std",
+"value": 50000
+},
+"list": {
+"type": "Basic",
+"payment": "1",
+"flip": "0 || 1",
+"worth": "50,000¢",
+"movable": "Yes",
+"playable": "Yes",
+"party": "All",
+"permanence": "Resiliant",
+"source": "Match Prep"
+}
 }
 ];
