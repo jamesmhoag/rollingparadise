@@ -288,8 +288,9 @@ what you own, carry or wear is marked.
   purchases, Secret Shelf.
 - Lounge: the drink list with sips; buy, or play the barfly for it once per floor.
 - Sports Book: the seven sports, the odds table, one bet per game, settled while you are at the table.
-- Commitment: Challenge and Cheat tilts switched on or off (each adds or takes its share of the multiplier; some
-  open on later floors); position planner with spacing and stacking choices; everything left off the table is
+- Commitment: Challenge and Cheat tilts switched on or off (each adds or takes its share of the multiplier, and on a
+  win the same share of the opponent's worth is paid as a House bounty or taken as a House cut; some open on later
+  floors); position planner with spacing and stacking choices; everything left off the table is
   wagered.
 - **Tilts are played by the House.** A tilt that is on opens the bout once, then in each House phase from turn 2 the
   House may play it again. Its chance is `base + per × pressure`. A Roller's **pressure** is a weighted mix
@@ -304,8 +305,9 @@ what you own, carry or wear is marked.
   bout's Challenge tilts, drops Cheat tilts, and on a win opens the High Roller and grants a Suite Key Card.
 
 ### Winning, losing, leaving (**Winnings**, **Losings**, **Suite**, **Gift Shop**, **Gear**, **Paradise Ascent**)
-- Win: surviving chips, your fees restored, the opponent's fees, the wager times its multiplier, a chip per
-  Opportunity chip, Gold chips doubled. All of that is kept. Then one prize on top: bonus money (a quarter of the
+- Win: surviving chips, your fees restored, the opponent's fees, the wager times its multiplier, the multiplier
+  on your deployed shop chips (staked at their shop price), the tilt bounty or cut, a chip per Opportunity chip, Gold
+  chips doubled. All of that is kept. Then one prize on top: bonus money (a quarter of the
   opponent's starting worth, `PRIZES.bonus`) and one of their dice, two of their dice, or one of their tricks.
 - Lose: the position, the wager and two random dice. The run continues if you can raise chips (a winning ticket,
   or selling dice and tricks).
@@ -390,3 +392,49 @@ A first pass, checked by simulation (`npm run balance`). Bouts run about 4 turns
 afterwards. With the AI playing both sides and no shopping, a Technician clears floor 1 far more often than a
 Rascal, whose Bar is the smallest. The numbers that drive this are in `FLOORS` in `js/data.js` and
 `genOpponent` in `js/run.js`.
+
+### Tuning pass 1 (from the balance audit)
+The audit (`tests/audit/`, report in the project doc "Rolling Paradise balance audit") found floor 2 a wall for
+every class and most purchases a net loss, because the purse is both health and wager. Changes:
+
+- **Floor 2 opponents** 80 / 95 / 110, High Roller 160 (were 110 / 135 / 160, 240). This is a stopgap: see
+  *Enemy variation* below for the mechanical fix it should make way for.
+- **Spending pays back.** Trick upgrades `50 × (1 + q × (up + 1))` (was 100 ×), die upgrades `60 × floor × (1 + n)`
+  (was 100 ×), restocks `100 × (floor + restocks)` (was 200 ×), forges d6 60 / d8 120 / d10 800 / d20 2,500 (were
+  100 / 200 / 2,000 / 5,000), shop chip tiers Uncommon 80 / Rare 300 / Epic 1,500 (were 120 / 600 / 3,000). Drinks
+  scale by floor (×0.2, ×0.4, ×0.7, ×1) instead of jumping five-fold at floor 2. Shop chips you deploy are **staked
+  at their shop price**: a win pays the multiplier on that stake (`SHOP_CHIP_STAKE`), the survivors come back, a
+  loss takes them.
+- **Tilts carry their own reward.** The wager is only what does not fit on the table, and through floor 2 the purse
+  fits on the table, so the multiplier paid almost nothing: Challenges were pure risk and Cheats pure help. Each tilt
+  now also pays (Challenge) or takes (Cheat) `mult × opponent worth` on a win (`TILT_WORTH_SHARE`). Values: Hazard
+  0.25, Creature 0.35, Spawner 0.4, Calamity 0.5; Shield 0.25, Familiar 0.1, Position 0.15, Intervention 0.3. The
+  aim is a near-symmetric curve: a Challenge you can cover (a Cheat, or chips bought before the bout) nets a gain; a
+  Cheat that your build does not use costs a little.
+- **Level 0 jackets are cut for one class**, so the drawback lands on that class's strongest Coin stat (2 → 1) and
+  never zeroes a 1: Long → Technician (−Conviction), Leather → Hustler (−Charisma), Bomber → Rascal (−Cunning).
+  Leather on Rascal (Charisma 1 → 0) was the worst result in the audit.
+- The board stays 5 columns at base. Shrinking it widens the class gap; that question waits on this pass.
+
+### Enemy variation (the real fix for the floor 2 wall)
+Every opponent on a floor is the same recipe: a random class, the floor's dice pool, its class tricks plus a few,
+and a Bar filled to a worth target. Worth is the only dial, so difficulty can only be tuned by worth, and a floor
+feels like one wall. Ways to give opponents their own parameters and abilities, roughly in build order:
+
+1. **Temperaments.** A profile per opponent that sets its AI knobs (the audit's `draw`, `roll`, `bid` plans): a
+   *Saver* banks actions, a *Spender* bids every bid, a *Grinder* rolls everything. Same worth, different fights, and
+   a reason for the table 2 / table 3 choice.
+2. **Shaped positions.** Let worth buy shape instead of only chips: a low-worth opponent on a deep Bar, a rich one
+   on a shallow one. `genOpponent` already builds `dims`; add a per-opponent BVD roll on top of the class.
+3. **Opponent gear.** Opponents wear a jacket, drink, and carry a few shop chips (Clay, Little, an element chip),
+   read from the same tables the player shops from. This makes the shop chips' counters matter from both sides.
+4. **Signature tricks and named regulars.** The names in `OPPONENTS` are a cast: give each a signature trick or chip
+   (a Phishing Email taxes, a Piggy Bank saves Nest Eggs), so learning them is part of play.
+5. **Opponent tilts.** The House could tilt the opponent's side too (a Familiar for them, Hazards for them),
+   visible at the table before you sit down.
+6. **Friendly creatures.** Cheats currently remove risk (Shield, Familiar) but there is no creature that works for
+   you. A friendly creature Cheat would mirror the Creature Challenge, so the two can be balanced against each other.
+
+With (1) to (3) in, floor 2 worth can go back up toward the old curve, and difficulty comes from who you sit
+down with rather than how much they hold.
+
