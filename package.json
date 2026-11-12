@@ -7,6 +7,9 @@
   "scripts": {
     "start": "python3 -m http.server 8080",
     "test": "node tests/sim.mjs && node tests/ascent.mjs && node tests/flip.mjs && node tests/phases.mjs && node tests/chips.mjs && node tests/round13.mjs && node tests/tilts.mjs && node tests/round15.mjs && node tests/tuning.mjs",
-    "balance": "node tests/balance.mjs"
+    "balance": "node tests/balance.mjs",
+    "audit:boards": "node tests/audit/run.mjs boards 200 audit-boards.jsonl && node tests/audit/aggregate.mjs audit-boards.jsonl audit-boards.json",
+    "audit:singles": "node tests/audit/run.mjs all 150 audit-singles.jsonl && node tests/audit/aggregate.mjs audit-singles.jsonl audit-singles.json",
+    "audit:combos": "node tests/audit/combos.mjs audit-singles.json 150 audit-combos"
   }
 }
