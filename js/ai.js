@@ -23,12 +23,18 @@ export function evalTarget(b, s, e, tgt) {
       v += def.tax ? w : Math.min(share, w + shields * 0.4) - (B.hardOf(cell) > 0 ? share * 0.6 : 0); }
     return v;
   }
+  if (def.make) { // a maker: as many chips placed as it will make (least waste), on the stacks worth protecting
+    const n = def.make.n[0] + Math.floor(total / def.make.n[1]); let v = 0;
+    for (const { r, c } of cells) { const cell = t.grid[r][c]; v += Math.min(n, B.capacityLeft(t, cell)) * 10 + (def.type === 'investment' ? 0 : Math.max(0, B.cellWorth(cell)) * 0.2); }
+    return v - tgt.r * 0.01;
+  }
   if (def.approach === 'meter') { let col = 0; for (let r = 0; r < t.rows; r++) col += Math.max(0, B.cellWorth(t.grid[r][tgt.c])); return col - tgt.r * 3; }
   let v = 0; for (const { r, c } of cells) v += Math.max(0, B.cellWorth(t.grid[r][c])); return v + tgt.r * 0.1;
 }
-export function bestTarget(b, s, e) {
+// o.noise false: no random tie-break (the player's default aim, which must not touch the bout's dice)
+export function bestTarget(b, s, e, o = {}) {
   const valid = B.validTargets(b, s, e); let best = null, bv = -Infinity;
-  for (const tgt of valid) { const v = evalTarget(b, s, e, tgt) + b.rng.next() * 0.5; if (v > bv) { bv = v; best = tgt; } }
+  for (const tgt of valid) { const v = evalTarget(b, s, e, tgt) + (o.noise === false ? 0 : b.rng.next() * 0.5); if (v > bv) { bv = v; best = tgt; } }
   return best;
 }
 

@@ -28,7 +28,7 @@ export function chipName(ch) {
   if (ch.kind === 'bounty') return `${D.CREATURES[ch.creature]?.name} Bounty chip (${ch.value}¢)`;
   if (ch.kind === 'resist') return `Resist chip (r ${ch.r})`;
   if ((ch.kind === 'food' || ch.kind === 'dip') && ch.shop) return D.SHOP_CHIPS[ch.shop]?.name || 'Food chip';
-  if (ch.kind === 'fx') return `${D.SHOP_CHIPS[ch.shop]?.name || 'Effect chip'}${ch.life != null && ch.life < 99 ? ` (${ch.life} turn${ch.life === 1 ? '' : 's'})` : ''}`;
+  if (ch.kind === 'fx') return `${D.SHOP_CHIPS[ch.shop]?.name || 'Effect chip'}${ch.amt ? (ch.shop === 'steal' ? ` ${ch.amt}¢` : ` +${ch.amt}`) : ''}${ch.life != null && ch.life < 99 ? ` (${ch.life} turn${ch.life === 1 ? '' : 's'})` : ''}`;
   if (ch.kind !== 'std') return D.CHIPS[ch.kind].name;
   if (ch.resist) return D.SHOP_CHIPS[ch.resist]?.name || 'Shop chip';
   if (ch.frozen) return `Frozen ${ch.value}¢ chip`;
@@ -44,7 +44,7 @@ export function chipText(ch) {
   if (ch.kind === 'egg') return D.CHIPS.egg.text + hits + extra;
   if (ch.kind === 'resist') return `${D.CHIPS.resist.text} Fees under ${ch.r}¢ on this stack are deterred.`;
   if ((ch.kind === 'food' || ch.kind === 'dip') && ch.shop) return D.shopText(ch.shop) + (ch.dips != null ? ` ${ch.dips} dip${ch.dips === 1 ? '' : 's'} left.` : '');
-  if (ch.kind === 'fx') return `${D.shopText(ch.shop)} <span class="keep">Made at the table by ${D.TRICKS[ch.maker]?.name || 'a trick'}${ch.life >= 99 ? '; it lasts the bout' : `; ${ch.life} turn${ch.life === 1 ? '' : 's'} left`}.</span> <span class="v">An effect chip: no worth, takes stack height, cannot be bid. A fee that reaches it, or empties its stack, knocks it off. It does not leave the table with you.</span>`;
+  if (ch.kind === 'fx') return `${D.shopText(ch.shop)} <span class="keep">${ch.maker ? `Made at the table by ${D.TRICKS[ch.maker]?.name || 'a trick'}${ch.life >= 99 ? '; it lasts the bout' : `; ${ch.life} turn${ch.life === 1 ? '' : 's'} left`}.` : ch.amt ? `It carries ${ch.shop === 'steal' ? `${ch.amt}¢` : `+${ch.amt}`}.` : ''}</span> <span class="v">An effect chip: no worth, takes stack height, cannot be bid. A fee that reaches it, or empties its stack, knocks it off. It does not leave the table with you.</span>`;
   if (ch.kind !== 'std') return D.CHIPS[ch.kind].text + hits + extra + (ch.shop && D.SHOP_CHIPS[ch.shop] ? ` ${D.CHIP_TIERS[D.SHOP_CHIPS[ch.shop].tier].name} shop chip.` : '');
   if (ch.resist) { const X = D.SHOP_CHIPS[ch.resist]; if (!X) return 'Worth 1¢.';
     return `${D.shopText(ch.resist)} Worth ${X.seq ? ch.value : 1}¢${ch.n > 1 ? ` (merged from ${ch.n})` : ''}, ${X.place === 'top' ? 'goes on top of a stack' : 'deployed at the base of your stacks'}, not wagered.${ch.life != null ? ` ${ch.life} turn${ch.life === 1 ? '' : 's'} left.` : ''} ${D.CHIP_TIERS[X.tier].name} tier.${extra}`; }

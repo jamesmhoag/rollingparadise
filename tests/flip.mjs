@@ -4,7 +4,7 @@ const assert = (ok, msg) => { if (!ok) { console.error('FAIL', msg); process.exi
 const closeBoth = (bout) => { planPhase(bout, bout.sides[1]); assert(B.advance(bout), `close ${bout.phase}: ${B.needOf(bout, bout.sides[0])}`); };
 for (let seed = 1; seed <= 30; seed++) {
   const run = R.newRun('hustler', 'standard', seed), { bout } = R.startIntro(run), me = bout.sides[0];
-  const count = () => me.grid.flat().reduce((n, c) => n + c.chips.length, 0), before = count();
+  const count = () => me.grid.flat().reduce((n, c) => n + c.chips.filter((ch) => ch.kind !== 'fx').length, 0), before = count();
   const e = B.draw(bout, me, me.book[0].uid); closeBoth(bout);
   const spot = B.flippable(me)[0];
   const [d] = B.throwDice(bout, me, [], [spot]);

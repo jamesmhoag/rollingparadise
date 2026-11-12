@@ -14,8 +14,13 @@ is not built yet. Tab names are in **bold**.
 
 ### The bout (**Bout**, **Plays**, **Effects**, **Tricks**, **Targeting**, **Game**)
 - Goal: deplete the opponent's Worth before they deplete yours.
-- A turn has three planning phases, then the House plays it (see **The turn** below). Unused draws, rolls and
-  bids pay Power, Opportunity chips and chips stolen from the Stage.
+- A turn has three planning phases, then the House plays it (see **The turn** below). Draws, rolls and bids left
+  unused pay **as soon as their phase is passed**, as chips on the Meter at random spaces with room (lost if it is
+  full): unused draws make a **Power chip** carrying their Power (Conviction), unused rolls **Opportunity chips**
+  (Cunning), unused bids a **Steal chip** (Charisma) that steals from the Stage in the House phase. All added Power is
+  a Power chip on the Meter (Stir, an Investment trait, a Boost or Press bonus too); the next roll effect takes all
+  of them. Both sides' chips appear when the phase closes, so you see your opponent's build up. Each step pill says
+  in its hover what passing it gives; once passed it shows ✓ (all used) or what it kept.
 - A trick has a Trait (bid, no dice), a Roll effect (bid plus dice, scaled by the total) and a Bonus (full dice of
   the right type, condition met, matching class only).
 - Effects resolve in the workbook's order: Investments, Insurances, Expenses, Corrections.
@@ -36,9 +41,12 @@ is not built yet. Tab names are in **bold**.
   then calls Settle and rakes the paid chips to the Stage.
 - Trick cards show their multiplier (quality plus +0.25 per upgrade) and the tooltip and Trick Trader spell out
   what the next upgrade does to the roll total and the Trait. A phase tracker and the action feed stay on screen
-  for the whole bout. The feed shows the last few lines; **History** opens the whole match, by turn and phase, in a
-  list you can scroll back through (your own locked-in moves, your opponent's, and every call the House makes).
-  Hover a line to light up the spaces it touched.
+  for the whole bout. The feed is a **table**: a row per phase, headed by the phase and a note on what it does, with
+  what each side resolved in it in its own column (You, then your opponent). Things that cannot be put together take
+  another row for that side; a line repeated shows once with a count; House lines that belong to neither side span
+  both columns, and the House's call of a phase becomes the row header. The short view shows the last rows;
+  **History** opens the whole match the same way, by turn, to scroll back through. Hover an entry to light up the
+  spaces it touched.
 
 ### The turn
 Both Rollers go through the same three phases. A phase closes for both at once, and closing it ends that kind of
@@ -48,7 +56,8 @@ action for the turn.
 | --- | --- | --- | --- |
 | 1 · Draw | Click tricks in the Book to show them on the Run, up to Trickery. | At least one draw. | No more draws this turn. |
 | 2 · Roll | Two steps. **Pick**: dice from the Pouch, and top chips to flip, up to Proficiency; press Roll and all of them land in **the roll** together, showing their values. The throw stands. **Place**: put them on shown tricks; move them between tricks freely. | A throw, and every die in the roll that fits a shown trick on one. | No more rolling or moving dice. A die with nowhere to go **stays in the roll**, keeping its value, until a later turn's trick has room; it is never rerolled. |
-| 3 · Bid | Click your stacks to pick up a **hand** of chips (click a stack again for the chip under its top one), up to your bids left (Ingenuity), then click a trick: the whole hand is bid on it at once, one bid per chip. Dice rolled this turn can still be moved between tricks. A trick that already has a bid can take another; its BID slot becomes a **+** after the chips already on it. | At least one bid. | The House collects the bids and plays the turn. |
+| 3 · Bid | Click your stacks to pick up a **hand** of chips (click a stack again for the chip under its top one), up to your bids left (Ingenuity), then click a trick: the whole hand is bid on it at once, one bid per chip. Or click a trick (or the **+** sitting on
+top of its bid pile) first: then each stack you click bids its top chip straight onto that trick. Dice rolled this turn can still be moved between tricks. A trick that already has a bid can take another; its BID slot becomes a **+** after the chips already on it. | At least one bid. | The House collects the bids and plays the turn. |
 
 - The button that closes a phase is named for what comes next: **Roll** (done drawing), **Roll n** (throw the
   picked dice), **Bid** (done rolling), **Play** (commit the turn). Dice placed this turn and bids stay editable until
@@ -119,7 +128,9 @@ the ones that cannot be built yet, what is missing; `docs/CHIP-STATUS.md` is the
   (a plain Hamburger: +2 Roll, −1 Bid). Bun-Hamburger-Bun eaten from the top Bun is the whole burger. Food on top
   blocks bidding from that stack, and a fee knocks it off.
 - **Effect chips made by tricks.** An effect that works over several turns is a chip on the table, put there by the
-  trick at the space it aims at and doing its work in that trick's phase each turn until it wears off. These used
+  trick at the space it aims at and doing its work in that trick's phase each turn until it wears off. You aim a maker
+  at the area its chip belongs in: Investment makers at any Meter space with room (empty or not), Insurance and
+  Correction makers at a stack they protect or clear; the chips are placed when it plays. These used
   to be sold at the Chip Exchange; an effect a trick can make is not sold. Each has its maker (Investment: Empower →
   Power, Throttle → Control, Load → Boosted, Shave → Cheapened, Tinker → Upgrade (on a Meter space), Charm → Lucky,
   Stow → Nest Egg, Echo → Mimic (on top); Insurance: Cushion → Reducer, Ward Off → Ward, Recoil → Rebound, Electrify →
@@ -220,8 +231,9 @@ faces and each upgrade's badge; the rules are in `js/dice.js`.
 
 ### The Bluff (fourth phase)
 After Bid comes the Bluff. The bids are shown to both Rollers (you see what they bid on, and they see yours); then
-each Roller aims their bid tricks: click a trick, then a space, or keep the marked one. Aims stay hidden until the
-House plays them. The button after Bid reads **Bluff**, and in the Bluff it reads **Play**.
+every bid trick that needs a target is **aimed at its best one** (most impact, least waste, judged on the table as you
+can see it). Tweak an aim by clicking the trick, or its marked target on the table (again to cycle when two share
+it), then a new space. Aims stay hidden until the House plays them. The button after Bid reads **Bluff**, and in the Bluff it reads **Play**.
 
 ### Reading a trick
 A card shows how its total is made under the number: the dice, `+n linger` from the bid (turns × dice), `+n pow`
