@@ -81,6 +81,8 @@ export function initTips() {
   tipLoop();
 }
 export function refreshTip() { T.cur = null; }
+// re-render the tooltip that is showing, in place (for hovers whose content follows the pointer within an element)
+export function redrawTip() { const el = T.cur; if (!el || !T.el.classList.contains('show')) return; const c = typeof el._tip === 'function' ? el._tip() : el._tip; if (c) { if (c.nodeType) T.el.replaceChildren(c); else T.el.innerHTML = c; } }
 
 // ---------- scenes and panels ----------
 let scene = null, busy = false;

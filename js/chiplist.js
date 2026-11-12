@@ -219,7 +219,7 @@ export const CHIP_LIST = [
 "source": "Spawned",
 "text": "Deterent Chip Shocks Rollerof fees with any debt it creates, is broken if fee exceeds",
 "status": "built",
-"note": "Zap chip: a shop chip (Uncommon). A fee of 3¢ or less on its stack shocks the attacker; a bigger fee shorts it out.",
+"note": "Zap chip: made at the table by Electrify (Insurance, Technician). A fee of 3¢ or less on its stack shocks the attacker; a bigger fee shorts it out.",
 "show": {
 "kind": "std",
 "value": 1,
@@ -339,7 +339,7 @@ export const CHIP_LIST = [
 "source": "Chip Conversion",
 "text": "Chip can not be targeted by fee instances, but does not avoid extraneous fees frm fire, shock, virus, etc",
 "status": "built",
-"note": "Transpara-Chip: a shop chip (Rare).",
+"note": "Transpara-Chip: made at the table by Veil (Insurance, Rascal). The opponent cannot aim at its stack.",
 "show": {
 "kind": "std",
 "value": 1,
@@ -369,7 +369,7 @@ export const CHIP_LIST = [
 "source": "Stack Conversion",
 "text": "Chip Conversion that generates more boosting influence that turn",
 "status": "built",
-"note": "Power chip: a shop chip (Uncommon), +1 to your roll effects each turn for 4 turns.",
+"note": "Power chip: made at the table by Empower (Investment). In each Investment phase, +1 to your roll effects per chip, while it lasts.",
 "show": {
 "kind": "std",
 "value": 1,
@@ -399,7 +399,7 @@ export const CHIP_LIST = [
 "source": "Stack Conversion",
 "text": "Chip Conversion that generates more enfeebiling influence that turn",
 "status": "built",
-"note": "Control chip: a shop chip (Uncommon), −1 to your opponent's roll effects each turn for 4 turns.",
+"note": "Control chip: made at the table by Throttle (Investment, Rascal). In each Investment phase, −1 to your opponent's roll effects per chip, while it lasts.",
 "show": {
 "kind": "std",
 "value": 1,
@@ -429,7 +429,7 @@ export const CHIP_LIST = [
 "source": "Spawned",
 "text": "Match Limited Chip that can not be moved so any chips placed on top of it can not be affected by movement effects",
 "status": "built",
-"note": "Anchor chip: a shop chip (Uncommon).",
+"note": "Anchor chip: made at the table by Moor (Insurance, Hustler). Creatures, Scatter, the Tornado and the Black Hole cannot take from its stack.",
 "show": {
 "kind": "std",
 "value": 1,
@@ -721,7 +721,7 @@ export const CHIP_LIST = [
 "source": "Chip Conversion",
 "text": "Increases Dice Values for each Boosted chip in  the pile",
 "status": "built",
-"note": "Boosted chip: a shop chip (Rare). Every die you roll shows 1 more per Boosted chip in your position.",
+"note": "Boosted chip: made at the table by Load (Investment, Hustler). Every die you roll shows 1 more per Boosted chip in your position.",
 "show": {
 "kind": "std",
 "value": 1,
@@ -751,7 +751,7 @@ export const CHIP_LIST = [
 "source": "Chip Conversion",
 "text": "Decreases Dice Values for each Boosted chip in the pile",
 "status": "built",
-"note": "Cheapened chip: a shop chip (Rare), read as the opposite of Boosted: your opponent's dice show 1 less per Cheapened chip in your position.",
+"note": "Cheapened chip: made at the table by Shave (Investment, Technician): your opponent's dice show 1 less per Cheapened chip in your position.",
 "show": {
 "kind": "std",
 "value": 1,
@@ -781,7 +781,7 @@ export const CHIP_LIST = [
 "source": "Spawned",
 "text": "Cleanses negative valued chips leaving Basic Chips behind",
 "status": "built",
-"note": "Harmony chip: a shop chip (Rare).",
+"note": "Harmony chip: made at the table by Attune (Correction). In each Correction phase it clears a hazard or 1¢ of Debt nearby.",
 "show": {
 "kind": "std",
 "value": 1,
@@ -1265,7 +1265,7 @@ export const CHIP_LIST = [
 "source": "Space Conversion",
 "text": "Nullifies the highest value depleting effect each turn",
 "status": "built",
-"note": "Ward chip: a shop chip (Royal).",
+"note": "Ward chip: made at the table by Ward Off (Insurance). When the House settles, it cancels the largest fee charged to your position.",
 "show": {
 "kind": "std",
 "value": 1,
@@ -1294,7 +1294,7 @@ export const CHIP_LIST = [
 "source": "Stack Conversion",
 "text": "Create bumble bee chips and create Honey with Pollenate Bumble Bee Chips",
 "status": "built",
-"note": "Hive chip: a shop chip (Rare) on its own space. Every second turn each Hive chip in the stack sends out a Bumble Bee (up to 6). Each Hive chip takes a whole fee, like a Petal.",
+"note": "Hive chip: set on an empty space by the Familiar tilt (one play in three). Every second turn each Hive chip in the stack sends out a Bumble Bee (up to 6). Each Hive chip takes a whole fee, like a Petal.",
 "show": {
 "kind": "hive",
 "value": 0,
@@ -1348,7 +1348,7 @@ export const CHIP_LIST = [
 "source": "Stack Conversion",
 "text": "Has Sticky, Golden, and  Delicious chip effect properties allowing it to be consumed for temporary attribute bonuses",
 "status": "built",
-"note": "Honey chip: food (+1 Roll, +1 Bid for a turn). Sold at the Chip Exchange and made by Bumble Bees pollinating Flowers.",
+"note": "Honey chip: food (+1 Roll, +1 Bid for a turn), made only in the match, by Bumble Bees pollinating Flowers.",
 "show": {
 "kind": "food",
 "value": 0,
@@ -1660,7 +1660,7 @@ export const CHIP_LIST = [
 "source": "",
 "text": "",
 "status": "built",
-"note": "Upgrade chip: a shop chip (Epic). On your Meter each one puts a random die upgrade on every roll, for that roll only (a risk); bid on a trick it plays that trick one upgrade higher.",
+"note": "Upgrade chip: made at the table by Tinker (Investment), on a Meter space. Each one puts a random die upgrade on every roll, for that roll only (a risk).",
 "show": {
 "kind": "std",
 "value": 1,
@@ -1921,7 +1921,7 @@ export const CHIP_LIST = [
 "source": "",
 "text": "Chips can not be targeted when behind taller stacks of chips",
 "status": "built",
-"note": "Shadow chip: a shop chip (Uncommon).",
+"note": "Shadow chip: made at the table by Shade (Insurance). Its stack cannot be aimed at behind a taller stack.",
 "show": {
 "kind": "std",
 "value": 1,
@@ -1960,7 +1960,7 @@ export const CHIP_LIST = [
 "source": "",
 "text": "Each mimic chip on top of a pile cause each trick performed to be repeated that turn",
 "status": "built",
-"note": "Mimic chip: a shop chip (Epic). For each Mimic on top of your stacks, one of your tricks of each type, at random, plays again in that phase.",
+"note": "Mimic chip: made at the table by Echo (Investment, Rascal), on top of a stack. While it is on top, one of your tricks of each type, at random, plays again in that phase.",
 "show": {
 "kind": "std",
 "value": 1,
@@ -1979,7 +1979,7 @@ export const CHIP_LIST = [
 "source": "",
 "text": "Each reducer chip on top of a pile lowers targeted effect on the own of the chips",
 "status": "built",
-"note": "Reducer chip: a shop chip (Uncommon). Each fee on its stack is 1¢ smaller.",
+"note": "Reducer chip: made at the table by Cushion (Insurance). Each fee on its stack is 1¢ smaller per chip, while it lasts.",
 "show": {
 "kind": "std",
 "value": 1,
@@ -2334,7 +2334,7 @@ export const CHIP_LIST = [
 "source": "",
 "text": "Crack and Hatched conditions",
 "status": "built",
-"note": "Egg chip: food (+2 Roll, −1 Draw for 2 turns) and a Dragon egg: 5 hit instances, hatches a Dragon at your opponent after 5 hatch steps unless eaten or broken.",
+"note": "Egg chip: laid by a Dragon on its Roost (the Spawner tilt). Edible (+2 Roll, −1 Draw for 2 turns), or a Dragon egg: 5 hit instances, hatches a Dragon after 5 hatch steps unless eaten or broken.",
 "show": {
 "kind": "egg",
 "value": 0,

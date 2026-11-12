@@ -24,8 +24,12 @@ for (let seed = 1; seed <= 25; seed++) {
   assert(thrown && me.thrown && me.tray.length === thrown.length, 'every picked die lands in the roll together');
   assert(B.needOf(bout, me) && !B.advance(bout), 'a rolled die must go on a trick');
   assert(!B.place(bout, me, me.tray[0].id, e) === false, 'a die goes on a shown trick');
+  if (B.trayPlaceable(me)) { assert(B.needOf(bout, me) && !B.advance(bout), 'every rolled die that fits a trick must be used');
+    for (const d of me.tray.slice()) { const x = me.run.find((t) => !B.canPlace(bout, me, d.id, t)); if (x) B.place(bout, me, d.id, x); } }
+  const left = me.tray.length;
   planPhase(bout, opp);
   assert(B.advance(bout) && bout.phase === 'bid', 'Roll closes for both');
+  assert(me.tray.length === left, 'a die with nowhere to go stays in the roll, keeping its value');
   assert(!me.tray.length, 'dice left in the roll go back when rolling closes');
   assert(B.canMove(bout, me, e.dice[0].id), 'dice rolled this turn can still be moved while bidding');
   // Bid: more than one chip on the same trick

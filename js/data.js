@@ -228,6 +228,43 @@ export const TRICKS = {
     roll: { k: 'handoff', text: 'Move one of your Uranium chips onto the target stack. Its radiation is their problem now.' }, bonus: { cond: 'over:3', k: 'spread', text: 'Hands off one more Uranium chip next door.' } },
   fence: { name: 'Fence', type: 'correction', cls: 'hustler', die: 'd4', count: 2, side: 'none', approach: 'none', dist: 'hit',
     roll: { k: 'fence', text: 'Convert Debt chips on your position, up to the total, into Opportunity chips on your Meter.' }, bonus: { cond: 'match', k: 'blocks', text: 'Also adds 2 Block chips to your Meter.' } },
+  // --- Makers ---
+  // A maker places an effect chip on one of your stacks (or, for Tinker, a Meter space). The chip is physical: it
+  // takes stack height, a fee that reaches it knocks it off, Corrections move it. While it lasts it does its work in
+  // its trick's phase each turn. make: { chip, n: [base, per], life: [base, per] }: base + one more per `per` rolled.
+  // These chips used to be sold at the Chip Exchange; an effect a trick can make is not sold.
+  empower: { name: 'Empower', type: 'investment', cls: null, die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'hit', make: { chip: 'power', n: [1, 6], life: [2, 4] },
+    roll: { k: 'make', text: 'Place Power chips on the target stack (1, +1 per 6 rolled). In each Investment phase every Power chip adds 1 to your roll effects. They last 2 turns, +1 per 4 rolled.' }, bonus: { cond: 'match', k: 'spread', text: 'Places them on the neighbouring stacks too (Swipe).' } },
+  throttle: { name: 'Throttle', type: 'investment', cls: 'rascal', die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'hit', make: { chip: 'control', n: [1, 6], life: [2, 4] },
+    roll: { k: 'make', text: 'Place Control chips on the target stack (1, +1 per 6 rolled). In each Investment phase every Control chip takes 1 off your opponent\'s roll effects. They last 2 turns, +1 per 4 rolled.' }, bonus: { cond: 'evens', k: 'spread', text: 'Places them on the neighbouring stacks too (Swipe).' } },
+  load: { name: 'Load', type: 'investment', cls: 'hustler', die: 'd4', count: 2, side: 'self', approach: 'any', dist: 'hit', make: { chip: 'boosted', n: [1, 8], life: [1, 4] },
+    roll: { k: 'make', text: 'Place a Boosted chip on the target stack (+1 per 8 rolled): every die you roll shows 1 more per Boosted chip. It lasts 1 turn, +1 per 4 rolled.' }, bonus: { cond: 'match', k: 'spread', text: 'Places them on the neighbouring stacks too (Swipe).' } },
+  shave: { name: 'Shave', type: 'investment', cls: 'technician', die: 'd8', count: 2, side: 'self', approach: 'any', dist: 'hit', make: { chip: 'cheapened', n: [1, 10], life: [1, 5] },
+    roll: { k: 'make', text: 'Place a Cheapened chip on the target stack (+1 per 10 rolled): every die your opponent rolls shows 1 less per Cheapened chip. It lasts 1 turn, +1 per 5 rolled.' }, bonus: { cond: 'over:12', k: 'spread', text: 'Places them on the neighbouring stacks too (Swipe).' } },
+  tinker: { name: 'Tinker', type: 'investment', cls: null, die: 'd6', count: 1, side: 'self', approach: 'meter', dist: 'hit', make: { chip: 'upgrade', n: [1, 99], life: [1, 3] },
+    roll: { k: 'make', text: 'Place an Upgrade chip on the target Meter space: while it is there, every die you roll takes a random upgrade (good or bad) for that roll. It lasts 1 turn, +1 per 3 rolled.' }, bonus: { cond: 'over:5', k: 'spread', text: 'Places one on a neighbouring space too (Swipe).' } },
+  charm: { name: 'Charm', type: 'investment', cls: 'hustler', die: 'd4', count: 2, side: 'self', approach: 'any', dist: 'hit', make: { chip: 'lucky', n: [1, 6], life: [2, 4] },
+    roll: { k: 'make', text: 'Place Lucky chips on the target stack (1, +1 per 6 rolled). In each Investment phase each one has a 30% chance to put an Opportunity chip on your Meter. They last 2 turns, +1 per 4 rolled.' }, bonus: { cond: 'match', k: 'spread', text: 'Places them on the neighbouring stacks too (Swipe).' } },
+  stow: { name: 'Stow', type: 'investment', cls: null, die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'hit', make: { chip: 'nest', n: [1, 7], life: [99, 99] },
+    roll: { k: 'make', text: 'Place Nest Egg chips on the target stack (1, +1 per 7 rolled). They last the bout; each one still on your table when you win pays 15¢.' }, bonus: { cond: 'evens', k: 'spread', text: 'Places them on the neighbouring stacks too (Swipe).' } },
+  echo: { name: 'Echo', type: 'investment', cls: 'rascal', die: 'd8', count: 1, side: 'self', approach: 'any', dist: 'hit', make: { chip: 'mimic', n: [1, 99], life: [1, 3] },
+    roll: { k: 'make', text: 'Place a Mimic chip on top of the target stack: each phase while it is on top, one of your tricks of that type plays its roll effect again. It lasts 1 turn, +1 per 3 rolled.' }, bonus: { cond: 'over:6', k: 'spread', text: 'Places one on a neighbouring stack too (Swipe).' } },
+  cushion: { name: 'Cushion', type: 'insurance', cls: null, die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'hit', make: { chip: 'reducer', n: [1, 5], life: [2, 4] },
+    roll: { k: 'make', text: 'Place Reducer chips on the target stack (1, +1 per 5 rolled): every fee that lands on it is 1¢ smaller per chip. They last 2 turns, +1 per 4 rolled.' }, bonus: { cond: 'match', k: 'spread', text: 'Places them on the neighbouring stacks too (Swipe).' } },
+  wardoff: { name: 'Ward Off', type: 'insurance', cls: null, die: 'd8', count: 1, side: 'self', approach: 'any', dist: 'hit', make: { chip: 'ward', n: [1, 99], life: [1, 6] },
+    roll: { k: 'make', text: 'Place a Ward chip on the target stack: when the House settles, it cancels the largest fee charged to your position. It lasts 1 turn, +1 per 6 rolled.' }, bonus: { cond: 'over:6', k: 'spread', text: 'Places one on a neighbouring stack too (Swipe).' } },
+  recoil: { name: 'Recoil', type: 'insurance', cls: 'rascal', die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'hit', make: { chip: 'rebound', n: [1, 6], life: [2, 4] },
+    roll: { k: 'make', text: 'Place Rebound chips on the target stack (1, +1 per 6 rolled): each fee on it sends 2¢ of Debt back to the attacker per chip. They last 2 turns, +1 per 4 rolled.' }, bonus: { cond: 'evens', k: 'spread', text: 'Places them on the neighbouring stacks too (Swipe).' } },
+  electrify: { name: 'Electrify', type: 'insurance', cls: 'technician', die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'hit', make: { chip: 'zap', n: [1, 8], life: [2, 4] },
+    roll: { k: 'make', text: 'Place a Zap chip on the target stack (+1 per 8 rolled): a fee of 3¢ or less there shocks the attacker; a bigger one shorts it out. It lasts 2 turns, +1 per 4 rolled.' }, bonus: { cond: 'over:9', k: 'spread', text: 'Places them on the neighbouring stacks too (Swipe).' } },
+  moor: { name: 'Moor', type: 'insurance', cls: 'hustler', die: 'd4', count: 2, side: 'self', approach: 'any', dist: 'hit', make: { chip: 'anchor', n: [1, 99], life: [2, 3] },
+    roll: { k: 'make', text: 'Place an Anchor chip on the target stack: creatures, Scatter, the Tornado and the Black Hole cannot take from it, and Corrections do not move it. It lasts 2 turns, +1 per 3 rolled.' }, bonus: { cond: 'match', k: 'spread', text: 'Anchors the neighbouring stacks too (Swipe).' } },
+  veil: { name: 'Veil', type: 'insurance', cls: 'rascal', die: 'd4', count: 2, side: 'self', approach: 'any', dist: 'hit', make: { chip: 'transpara', n: [1, 99], life: [1, 3] },
+    roll: { k: 'make', text: 'Place a Transpara-Chip on the target stack: your opponent cannot aim at it (spreads, rain and hazards still reach it). It lasts 1 turn, +1 per 3 rolled.' }, bonus: { cond: 'evens', k: 'spread', text: 'Veils the neighbouring stacks too (Swipe).' } },
+  shade: { name: 'Shade', type: 'insurance', cls: null, die: 'd4', count: 2, side: 'self', approach: 'any', dist: 'hit', make: { chip: 'shadow', n: [1, 99], life: [2, 3] },
+    roll: { k: 'make', text: 'Place a Shadow chip on the target stack: it cannot be aimed at while the stack in front of it is taller. It lasts 2 turns, +1 per 3 rolled.' }, bonus: { cond: 'match', k: 'spread', text: 'Shades the neighbouring stacks too (Swipe).' } },
+  attune: { name: 'Attune', type: 'correction', cls: null, die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'hit', make: { chip: 'harmony', n: [1, 6], life: [2, 4] },
+    roll: { k: 'make', text: 'Place Harmony chips on the target stack (1, +1 per 6 rolled). In each Correction phase each one clears a hazard chip or 1¢ of Debt on its stack or the stacks around it, leaving a 1¢ chip in place of a hazard. They last 2 turns, +1 per 4 rolled.' }, bonus: { cond: 'match', k: 'spread', text: 'Places them on the neighbouring stacks too (Swipe).' } },
 };
 export const TRICK_IDS = Object.keys(TRICKS);
 
@@ -319,32 +356,32 @@ export const SHOP_CHIPS = {
     text: 'A stack holding one cures Poison chips.' },
   boom: { name: 'Black chip', tier: 3, resist: 'boom', verb: 'defuses', glyph: '◆',
     text: 'A stack holding one defuses Boom chips before they go off. It still takes Debt from a blast next door.' },
-  reducer: { name: 'Reducer chip', tier: 2, glyph: '◎', vars: { absorb: 1 }, list: 'Reducer Chip',
+  reducer: { name: 'Reducer chip', tier: 2, sold: false, from: 'trick:cushion', glyph: '◎', vars: { absorb: 1 }, list: 'Reducer Chip',
     text: (v) => `Every fee that lands on its stack is ${v.absorb}¢ smaller. Pierce goes straight through it.` },
-  anchor: { name: 'Anchor chip', tier: 2, glyph: '⚓', list: 'Anchor Chip',
+  anchor: { name: 'Anchor chip', tier: 2, sold: false, from: 'trick:moor', glyph: '⚓', list: 'Anchor Chip',
     text: () => 'Creatures, Scatter, the Tornado and the Black Hole cannot take chips from its stack.' },
-  nest: { name: 'Nest Egg chip', tier: 2, glyph: '◒', vars: { payout: 15 },
+  nest: { name: 'Nest Egg chip', tier: 2, sold: false, from: 'trick:stow', glyph: '◒', vars: { payout: 15 },
     text: (v) => `If it is still on the table when you win, it pays ${v.payout}¢ on top of your winnings.` },
-  rebound: { name: 'Rebound chip', tier: 3, glyph: '◐', vars: { reflect: 2 },
+  rebound: { name: 'Rebound chip', tier: 3, sold: false, from: 'trick:recoil', glyph: '◐', vars: { reflect: 2 },
     text: (v) => `Each fee on its stack sends ${v.reflect}¢ of Debt back to the attacker's front stack in the same lane. The fee is still charged.` },
-  lucky: { name: 'Lucky chip', tier: 3, glyph: '✦', vars: { chance: 0.3 },
-    text: (v) => `Each turn, a ${Math.round(v.chance * 100)}% chance to put an Opportunity chip on your Meter.` },
-  transpara: { name: 'Transpara-Chip', tier: 3, glyph: '◌', list: 'Transpara-Chip',
+  lucky: { name: 'Lucky chip', tier: 3, sold: false, from: 'trick:charm', glyph: '✦', vars: { chance: 0.3 },
+    text: (v) => `In each Investment phase, a ${Math.round(v.chance * 100)}% chance to put an Opportunity chip on your Meter.` },
+  transpara: { name: 'Transpara-Chip', tier: 3, sold: false, from: 'trick:veil', glyph: '◌', list: 'Transpara-Chip',
     text: () => 'Its stack cannot be aimed at by your opponent. Spreads, rain and hazards (fire, shock, corruption) still reach it.' },
   // from the workbook's chip list
   seed: { name: 'Seed chip', tier: 2, glyph: '❀', place: 'top', list: 'Seed p¢ Chip',
     text: () => 'Goes on top of a stack. If the stack has at least 2 chips when the bout starts, it sprouts into a Flower chip that blooms Petals around it each turn. Each Petal takes a whole fee.' },
   clay: { name: 'Clay chip', tier: 2, glyph: '▤', kind: 'clay', place: 'top', vars: { hits: 2 }, list: 'Clay Chip',
     text: (v) => `Goes on top of a stack. Blocks ${v.hits} entire fees, one per hit, then breaks. Fire on its stack bakes it into a Brick chip that takes twice as many. No worth.` },
-  harmony: { name: 'Harmony chip', tier: 3, glyph: '☯', vars: { per: 1 }, list: 'Harmony Chip',
-    text: (v) => `Each turn it clears ${v.per} hazard chip or ¢ of Debt from its stack or the stacks around it. A hazard chip it clears is replaced by a 1¢ chip if there is room.` },
-  power: { name: 'Power chip', tier: 2, glyph: '⚡︎', vars: { boost: 1, turns: 4 }, list: 'Power Chip',
-    text: (v) => `Each turn, your roll effects gain ${v.boost}. After ${v.turns} turns it settles into a plain 1¢ chip.` },
-  control: { name: 'Control chip', tier: 2, glyph: '⊘', vars: { enfeeble: 1, turns: 4 }, list: 'Control Chip',
-    text: (v) => `Each turn, your opponent's roll effects lose ${v.enfeeble}. After ${v.turns} turns it settles into a plain 1¢ chip.` },
-  ward: { name: 'Ward chip', tier: 4, glyph: '⛨', vars: { per: 1 }, list: 'Ward Chip',
+  harmony: { name: 'Harmony chip', tier: 3, sold: false, from: 'trick:attune', glyph: '☯', vars: { per: 1 }, list: 'Harmony Chip',
+    text: (v) => `In each Correction phase it clears ${v.per} hazard chip or ¢ of Debt from its stack or the stacks around it. A hazard chip it clears is replaced by a 1¢ chip if there is room.` },
+  power: { name: 'Power chip', tier: 2, sold: false, from: 'trick:empower', glyph: '⚡︎', vars: { boost: 1, turns: 4 }, list: 'Power Chip',
+    text: (v) => `In each Investment phase your roll effects gain ${v.boost}.` },
+  control: { name: 'Control chip', tier: 2, sold: false, from: 'trick:throttle', glyph: '⊘', vars: { enfeeble: 1, turns: 4 }, list: 'Control Chip',
+    text: (v) => `In each Investment phase your opponent's roll effects lose ${v.enfeeble}.` },
+  ward: { name: 'Ward chip', tier: 4, sold: false, from: 'trick:wardoff', glyph: '⛨', vars: { per: 1 }, list: 'Ward Chip',
     text: (v) => `Each turn the House cancels the ${v.per > 1 ? v.per + ' largest fees' : 'largest fee'} charged to your position.` },
-  shadow: { name: 'Shadow chip', tier: 2, glyph: '◗', list: 'Shadow Chip',
+  shadow: { name: 'Shadow chip', tier: 2, sold: false, from: 'trick:shade', glyph: '◗', list: 'Shadow Chip',
     text: () => 'Its stack cannot be aimed at while the stack in front of it in the lane is taller.' },
   tree: { name: 'Tree chip', tier: 3, glyph: '🌳', kind: 'tree', place: 'space', list: 'Tree Chip',
     text: () => 'Planted on an empty Bar space. It grows a chip taller each turn; at full height it drops a Seed on each stack around it (one per chip of height, up to 8). A fee that hits it fells it: it blocks that fee and falls into Wood chips on the spaces around it, one per chip of height. No worth.' },
@@ -352,13 +389,13 @@ export const SHOP_CHIPS = {
     text: () => 'Orbital: it goes up into your sky, not onto a stack. While it shines your Flowers bloom twice as many Petals, your Trees grow twice as fast, Puddles dry and eggs hatch faster.' },
   heli: { name: 'Heli-Chipter', tier: 3, glyph: '🚁', place: 'top', list: 'Heli-Chipter',
     text: () => 'Goes on top of a stack and lifts it: the stack is flying and plays from the bottom. Bids take its bottom chip and fees pay from the bottom up to the Heli-Chipter.' },
-  hive: { name: 'Hive chip', tier: 3, glyph: '🐝', kind: 'hive', place: 'space', vars: { hits: 1, every: 2, max: 6 }, list: 'Hive Chip',
+  hive: { name: 'Hive chip', tier: 3, sold: false, from: 'tilt:familiar', glyph: '🐝', kind: 'hive', place: 'space', vars: { hits: 1, every: 2, max: 6 }, list: 'Hive Chip',
     text: (v) => `A spawner on its own space (Hive chips stack together). Every ${v.every} turns each Hive chip in the stack sends out a Bumble Bee, up to ${v.max} bees. Each Hive chip takes one whole fee, like a Petal.` },
   battery: { name: 'Battery chip', tier: 3, glyph: '🔋', list: 'Battery Chip', tags: ['electric'],
     text: () => 'Energizes the electrical and electronic chips above it in its stack: each gets one more instance a turn (a Zap shocks one more stack, a Repeater repeats once more, a Forgetter forgets once more…).' },
   repeater: { name: 'Repeater chip', tier: 4, glyph: '⟳', place: 'top', list: 'Repeater Chip', tags: ['electronic'],
     text: () => 'Electronic. On top of a stack with n chips under it: each of your tricks whose dice total n plays its roll effect again (once more per Battery under it).' },
-  mimic: { name: 'Mimic chip', tier: 4, glyph: '🎭', place: 'top', list: 'Mimic Chip',
+  mimic: { name: 'Mimic chip', tier: 4, sold: false, from: 'trick:echo', glyph: '🎭', place: 'top', list: 'Mimic Chip',
     text: () => 'While it is on top of one of your stacks, each phase of the turn one of your tricks of that type, picked at random, plays its roll effect again. One repeat per Mimic on top.' },
   forgetter: { name: 'Forgetter chip', tier: 4, glyph: '⌀', place: 'top', list: 'Forgetter Chip', tags: ['electronic'],
     text: () => 'Electronic. On top of a stack with n chips under it: the first of your opponent\'s tricks each turn whose dice total n is forgotten (its roll effect does nothing). One more per Battery under it.' },
@@ -383,7 +420,7 @@ export const SHOP_CHIPS = {
   // food: eaten from the top of a stack for attribute bonuses that last `turns`. Some pair a penalty with a bigger bonus.
   chocolate: { name: 'Chocolate Chip', tier: 1, glyph: '🍫', kind: 'food', place: 'top', list: 'Chocolate Chip', food: { mods: { trickery: 1 }, turns: 2 },
     text: () => 'Food. Eat it from the top of a stack: +1 Draw for 2 turns.' },
-  honey: { name: 'Honey Chip', tier: 2, glyph: '🍯', kind: 'food', place: 'top', list: 'Honey Chip', food: { mods: { proficiency: 1, ingenuity: 1 }, turns: 1 },
+  honey: { name: 'Honey Chip', tier: 2, sold: false, from: 'bees', glyph: '🍯', kind: 'food', place: 'top', list: 'Honey Chip', food: { mods: { proficiency: 1, ingenuity: 1 }, turns: 1 },
     text: () => 'Food (sticky, golden). Eat it: +1 Roll and +1 Bid this turn.' },
   chipchip: { name: 'Chip Chip', tier: 1, glyph: '🥔', kind: 'food', place: 'top', list: 'Chip Chip', food: { mods: { charisma: 1 }, turns: 1, dip: true },
     text: () => 'Food. Eat it: +1 Steal this turn, doubled if you have a Dip chip with dip left.' },
@@ -395,19 +432,31 @@ export const SHOP_CHIPS = {
     text: () => 'Food. Eat it plain: +2 Roll but −1 Bid this turn. On a Bun and topped with a Bun, eat the top Bun for the whole burger: +1 Draw, Roll and Bid for 2 turns.' },
   bun: { name: 'Bun Chip', tier: 1, glyph: '🍞', kind: 'food', place: 'top', list: 'Bun Chip', food: { mods: { conviction: 1 }, turns: 1 },
     text: () => 'Food. Eat it: +1 Conviction this turn. On top of a Hamburger that sits on a Bun, it is the whole burger.' },
-  egg: { name: 'Egg Chip', tier: 2, glyph: '🥚', kind: 'egg', place: 'top', vars: { hits: 5, hatch: 5 }, list: 'Egg Chip', food: { mods: { proficiency: 2, trickery: -1 }, turns: 2 },
+  egg: { name: 'Egg Chip', tier: 2, sold: false, from: 'roost', glyph: '🥚', kind: 'egg', place: 'top', vars: { hits: 5, hatch: 5 }, list: 'Egg Chip', food: { mods: { proficiency: 2, trickery: -1 }, turns: 2 },
     text: () => 'A Dragon egg. Eat it raw: +2 Roll but −1 Draw for 2 turns. Leave it and it hatches a Dragon at your opponent after 5 hatch steps (one a turn, one more next to heat). It takes 5 whole fees before it breaks; broken, it never hatches.' },
-  zap: { name: 'Zap chip', tier: 2, glyph: 'ϟ', vars: { s: 3 }, list: 'Zap Chip', tags: ['electric'],
+  zap: { name: 'Zap chip', tier: 2, sold: false, from: 'trick:electrify', glyph: 'ϟ', vars: { s: 3 }, list: 'Zap Chip', tags: ['electric'],
     text: (v) => `Electric deterrent. A fee of ${v.s}¢ or less on its stack shocks the attacker: a Shocking chip lands on one of their front stacks (one more per Battery under it). A bigger fee breaks it.` },
-  boosted: { name: 'Boosted chip', tier: 3, glyph: '⇡', vars: { die: 1 }, list: 'Boosted Chip',
+  boosted: { name: 'Boosted chip', tier: 3, sold: false, from: 'trick:load', glyph: '⇡', vars: { die: 1 }, list: 'Boosted Chip',
     text: (v) => `Every die you roll shows ${v.die} more for each Boosted chip in your position.` },
-  cheapened: { name: 'Cheapened chip', tier: 3, glyph: '⇣', vars: { die: 1 }, list: 'Cheapened Chip',
+  cheapened: { name: 'Cheapened chip', tier: 3, sold: false, from: 'trick:shave', glyph: '⇣', vars: { die: 1 }, list: 'Cheapened Chip',
     text: (v) => `Every die your opponent rolls shows ${v.die} less (not below 0) for each Cheapened chip in your position.` },
-  upgrade: { name: 'Upgrade chip', tier: 4, glyph: '⬆', place: 'meter', list: 'Upgrade Chip',
-    text: () => 'Starts on your Meter. While it is there, each Upgrade chip puts a random die upgrade (good or bad) on every die you roll, for that roll only. Bid it on a trick and that trick plays one upgrade higher.' },
-  crown: { name: 'Crown chip', tier: 4, glyph: '♛', vars: { turns: 3 },
+  upgrade: { name: 'Upgrade chip', tier: 4, sold: false, from: 'trick:tinker', glyph: '⬆', place: 'meter', list: 'Upgrade Chip',
+    text: () => 'Lies on your Meter. While it is there, each Upgrade chip puts a random die upgrade (good or bad) on every die you roll, for that roll only. Bid it on a trick and that trick plays one upgrade higher.' },
+  crown: { name: 'Crown chip', tier: 4, sold: false, from: 'trick:brace', glyph: '♛', vars: { turns: 3 },
     text: (v) => `Its stack starts the bout Hardened for ${v.turns} turns: each fee takes only one chip.` },
 };
+// Chips a trick, a tilt or the table makes are not sold (`sold: false`); `from` says what makes them:
+// 'trick:<id>', 'tilt:<id>', 'bees' or 'roost'. They still deploy if an old save owns some.
+export const soldInShop = (id) => !!SHOP_CHIPS[id] && SHOP_CHIPS[id].sold !== false;
+export const SHOP_IDS = () => Object.keys(SHOP_CHIPS).filter(soldInShop);
+export function madeBy(id) {
+  const f = SHOP_CHIPS[id]?.from; if (!f) return null;
+  if (f.startsWith('trick:')) { const T = TRICKS[f.slice(6)]; return T ? `the ${T.name} trick (${TYPES[T.type].name}${T.cls ? ', ' + CLASSES[T.cls].name : ''})` : null; }
+  if (f.startsWith('tilt:')) return `the ${TILTS[f.slice(5)]?.name || f.slice(5)} tilt`;
+  return { bees: 'Bumble Bees pollinating your Flowers', roost: 'a Dragon on its Roost' }[f] || f;
+}
+// the trick that makes a chip, if any
+export const makerOf = (id) => Object.keys(TRICKS).find((k) => TRICKS[k].make?.chip === id) || null;
 // the hazards a shop chip stops: its own `resist` plus any in `also`
 export const resistsOf = (id) => { const X = SHOP_CHIPS[id]; return X?.resist ? [X.resist, ...(X.also || [])] : []; };
 export const shopVars = (id) => SHOP_CHIPS[id].vars || {};
@@ -476,10 +525,15 @@ export const TILTS = {
   spawner: { kind: 'challenge', name: 'Spawner', floor: 2, mult: 0.25, base: 0.15, per: 0.5, text: 'The House sets nests on your position that send a creature every third turn (every second, once you have lost a third of your chips). One in two is a Dragon Roost: it takes a Bar space and calls a Dragon that lays eggs on it.' },
   calamity: { kind: 'challenge', name: 'Calamity', floor: 3, mult: 0.4, base: 0.12, per: 0.45, text: 'The House starts disasters on your position: a Worm Hole, Inferno, Audit, Black Hole, Volcano, Tornado, Blizzard or B-52. A second one comes once you have lost half your chips.' },
   shield: { kind: 'cheat', name: 'Shield', floor: 1, mult: 0.15, base: 0.3, per: 0.6, text: 'The House drops Block chips on your Meter: more, and more often, the more your opponent has lost to the House.' },
-  familiar: { kind: 'cheat', name: 'Familiar', floor: 1, mult: 0.15, base: 0.35, per: 0.6, text: 'The House sends you a little friend that removes one Debt or hazard chip each turn and may chase creatures away. Up to three, as your opponent loses to the House.' },
+  familiar: { kind: 'cheat', name: 'Familiar', floor: 1, mult: 0.15, base: 0.35, per: 0.6, text: 'The House sends you a little friend that removes one Debt or hazard chip each turn and may chase creatures away. Up to three, as your opponent loses to the House. One play in three sets a Hive on an empty space of your position instead: it sends out Bumble Bees that sting creatures and pollinate your Flowers into Honey.' },
   position: { kind: 'cheat', name: 'Position', floor: 1, mult: 0.2, base: 0, per: 0, text: 'Adds +1 to Balance, Versatility and Depth for this bout. The House plays it when you sit down, so it does not grow during the bout.' },
   intervention: { kind: 'cheat', name: 'Intervention', floor: 3, mult: 0.3, base: 0, per: 0, text: 'Once, when you would go broke, the House restores your paid fees: half of them, up to all of them the more your opponent has lost to the House. It costs half your wager.' },
 };
+// What the House reads when it plays a tilt: a Roller's pressure is a weighted mix of the share of their starting
+// chips they have paid to the House (`lost`), the overkill and Meter overflow wasted on their side as a share of what
+// they started with (`overkill`), how full their Meter is (`fill`, 0 to 1) and the worth sitting in it as a share of
+// what they started with (`value`). Challenges read your pressure, Cheats your opponent's.
+export const TILT_PRESSURE = { lost: 1, overkill: 0.5, fill: 0.2, value: 0.3 };
 export const tiltChance = (key, pressure) => Math.min(0.95, TILTS[key].base + TILTS[key].per * pressure);
 
 // ---------- Floors and opponents ----------

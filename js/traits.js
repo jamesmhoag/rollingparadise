@@ -42,6 +42,8 @@ export const TRAITS = {
   disguised: { name: 'Disguised', derived: true, text: 'The opponent sees a different chip.' },
   regen: { name: 'Regen', derived: true, text: 'Paid to the Stage, it comes straight back (once).' },
   spawner: { name: 'Spawner', derived: true, text: 'It makes other chips or creatures.' },
+  made: { name: 'Made by', derived: true, text: 'The trick, tilt or creature that puts it on the table. Chips made at the table are not sold.' },
+  phase: { name: 'Works in', derived: true, text: 'The phase of the turn it does its work in.' },
 };
 
 // list rows for chips that are not shop chips
@@ -57,6 +59,8 @@ export function listRow(ch) {
   return name ? BY_NAME.get(name.toLowerCase()) || null : null;
 }
 const ELECTRIC = (id) => D.SHOP_CHIPS[id]?.tags || [];
+// when each effect chip does its work
+const PHASE_OF = { power: 'Investment', control: 'Investment', lucky: 'Investment', mimic: 'every phase', boosted: 'your roll', cheapened: 'their roll', upgrade: 'your roll', harmony: 'Correction', reducer: 'a fee landing', ward: 'the settle', rebound: 'a fee landing', zap: 'a fee landing', anchor: 'any move', transpara: 'their aim', shadow: 'their aim', nest: 'a win' };
 const OVER = ['debt', 'burn', 'acid', 'shock', 'corrupt', 'poison', 'boom', 'frost', 'lava', 'stray', 'hard', 'sticky'];
 const add = (out, k, v) => { if (v === undefined || v === null || v === false || v === '') return; out.push({ k, v: v === true ? 'Yes' : String(v), ...TRAITS[k] }); };
 // every trait a chip has, list ones first. o.cell: the stack it is in (for Wet), o.foe: seen by the opponent
@@ -64,6 +68,8 @@ export function traitsOf(ch, o = {}) {
   const out = [], row = listRow(ch);
   if (row?.list) for (const [k, v] of Object.entries(row.list)) add(out, k, v);
   const pay = ch.kind === 'std' || ch.kind === 'opp' || ch.kind === 'bounty', X = ch.shop && D.SHOP_CHIPS[ch.shop];
+  if (X?.from || ch.kind === 'fx') add(out, 'made', ch.maker ? D.TRICKS[ch.maker]?.name : D.madeBy(ch.shop));
+  if (X && PHASE_OF[ch.shop]) add(out, 'phase', PHASE_OF[ch.shop]);
   add(out, 'pays', pay ? `${ch.value}¢` : 'No');
   add(out, 'biddable', pay && !ch.gold && !ch.frozen);
   add(out, 'flippable', ch.kind === 'std' && !ch.gold && !ch.frozen);
@@ -93,4 +99,5 @@ export function flyerTraits(kind, sky) {
   const C = D.CREATURES[kind]; add(out, 'flying', C.layer === 'flying'); add(out, 'hits', C.hits || 'cannot be damaged'); if (C.bounty) add(out, 'pays', `${C.bounty}¢ Bounty`); add(out, 'timed', `${C.life} turn${C.life === 1 ? '' : 's'}`);
   return out;
 }
-export const traitsHtml = (list) => (list.length ? `<div class="traits">${list.map((t) => `<span class="trait ${t.derived ? 'der' : 'lst'}" title="${t.text}"><i>${t.name}</i> ${t.v}</span>`).join('')}</div>` : '');
+// a chip's traits as properties: key and value, two columns, only in verbose hovers (o.always: the Library)
+export const traitsHtml = (list, o = {}) => (list.length ? `<dl class="props${o.always ? '' : ' v'}">${o.title ? `<dt class="head">${o.title}</dt>` : ''}${list.map((t) => `<div class="${t.derived ? 'der' : 'lst'}" title="${t.text}"><dt>${t.name}</dt><dd>${t.v}</dd></div>`).join('')}</dl>` : '');

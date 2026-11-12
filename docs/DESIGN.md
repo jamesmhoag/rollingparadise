@@ -35,8 +35,10 @@ is not built yet. Tab names are in **bold**.
   arms at the two tricks being played and the spaces they land on at the same time, posts both calls to the feed,
   then calls Settle and rakes the paid chips to the Stage.
 - Trick cards show their multiplier (quality plus +0.25 per upgrade) and the tooltip and Trick Trader spell out
-  what the next upgrade does to the roll total and the Trait. A phase tracker and a four-line action
-  feed stay on screen for the whole bout.
+  what the next upgrade does to the roll total and the Trait. A phase tracker and the action feed stay on screen
+  for the whole bout. The feed shows the last few lines; **History** opens the whole match, by turn and phase, in a
+  list you can scroll back through (your own locked-in moves, your opponent's, and every call the House makes).
+  Hover a line to light up the spaces it touched.
 
 ### The turn
 Both Rollers go through the same three phases. A phase closes for both at once, and closing it ends that kind of
@@ -45,8 +47,8 @@ action for the turn.
 | Phase | What you do | Required before it closes | Closing it means |
 | --- | --- | --- | --- |
 | 1 · Draw | Click tricks in the Book to show them on the Run, up to Trickery. | At least one draw. | No more draws this turn. |
-| 2 · Roll | Pick dice from the Pouch, and top chips to flip, up to Proficiency. Press Roll: all of them land in **the roll** together, showing their values. Put them on shown tricks or leave them; move them between tricks freely. | At least one rolled die on a trick. | No more rolling or moving dice. Dice left in the roll go back to the Pouch (a flipped chip to the Meter). |
-| 3 · Bid | Click a stack to pick up its top chip, then click a trick to bid it. Dice rolled this turn can still be moved between tricks. Repeat until out of bids (Ingenuity). A trick that already has a bid can take another; its BID slot becomes a **+** after the chips already on it. | At least one bid. | The House collects the bids and plays the turn. |
+| 2 · Roll | Two steps. **Pick**: dice from the Pouch, and top chips to flip, up to Proficiency; press Roll and all of them land in **the roll** together, showing their values. The throw stands. **Place**: put them on shown tricks; move them between tricks freely. | A throw, and every die in the roll that fits a shown trick on one. | No more rolling or moving dice. A die with nowhere to go **stays in the roll**, keeping its value, until a later turn's trick has room; it is never rerolled. |
+| 3 · Bid | Click your stacks to pick up a **hand** of chips (click a stack again for the chip under its top one), up to your bids left (Ingenuity), then click a trick: the whole hand is bid on it at once, one bid per chip. Dice rolled this turn can still be moved between tricks. A trick that already has a bid can take another; its BID slot becomes a **+** after the chips already on it. | At least one bid. | The House collects the bids and plays the turn. |
 
 - The button that closes a phase is named for what comes next: **Roll** (done drawing), **Roll n** (throw the
   picked dice), **Bid** (done rolling), **Play** (commit the turn). Dice placed this turn and bids stay editable until
@@ -56,8 +58,26 @@ action for the turn.
   other's choice before making its own. The feed then posts what they did ("Low Ball rolls 3 + 4 onto Charge").
 - Rolling is **one throw a turn**. Undo in the Roll phase takes dice off tricks and back into the roll, but never
   undoes the throw, so you cannot look at values and pick again. Undo in Draw or Bid takes back that phase only.
+- **Click to undo**, until the phase is locked in: click a trick drawn this turn to put it back in the Book, a die on
+  a trick to take it back into the roll, a chip bid this turn to take it back to the stack it came from, a picked
+  die or chip to drop it from the throw, a stack in your hand to let it go.
+- **A phase you cannot act in is skipped on its own**: nothing to draw (an empty Book, no draws), no room or nothing
+  to roll, nothing to bid on or with, nothing to aim. The feed says so. A whole turn can pass this way, and the
+  draws, rolls and bids left unused still pay their rewards.
+- The limits are shown where they apply: a trick's dice (`1/2` beside its slots: a trick holds at most its dice
+  count, all of one type), the roll (`thrown 2/3` against Proficiency, and what is left in it), the steps (draws,
+  rolls and bids left), and a stack (`4/6 high`, **full** when it is). The Run has no limit.
 - A requirement is waived when it cannot be met: an empty Book, no shown trick with room for a die, no die or
   flippable chip, or no chip you could bid without going broke. A bid can never spend your last chip.
+
+### Overload
+A stack holds `3 + Balance` chips. When it is full:
+- A trick that adds chips to the stack it aims at (Block on the Meter, the maker tricks, Foretell, Conjure, Hand Off)
+  cannot aim at it: while aiming, full stacks are marked **FULL**.
+- Chips that would land there anyway (a Block trick's chips spilling past a full Meter, the Shield tilt, Opportunity
+  chips, a maker's spread onto a full neighbour) are **lost, like overkill**: the trick plays, the feed says how many
+  had no room, and nothing extra is added. This **Meter overflow** counts with wasted overkill toward the pressure the
+  House reads for its tilts.
 
 ### Debt
 A fee is paid in whole chips, from the top of the stack it lands on. The rule, in the order the House applies it:
@@ -92,21 +112,34 @@ The Library's **Chip list** tab shows all 97 rows with a status (built, partly b
 the ones that cannot be built yet, what is missing; `docs/CHIP-STATUS.md` is the same list as a document.
 - **Resist chips** come from Resist Cards (found in the dodgy corner, r 2 or 3): one sits at the base of a front
   Bar stack each bout and deters fees under r¢ on it — debt resistance, the way a Red chip resists fire.
-- **Food** (Chocolate, Honey, Chip Chip with Dip, Fish 'n Chip, Hamburger and Bun, Egg) is sold at the Chip Exchange
-  and goes on top of a stack. In the **Drink phase** that closes each round you may sip your drink once and eat one
+- **Food** (Chocolate, Chip Chip with Dip, Fish 'n Chip, Hamburger and Bun) is sold at the Chip Exchange and goes on
+  top of a stack; Honey (from Bumble Bees) and Eggs (from a Roost) are food made in the match. In the **Drink phase** that closes each round you may sip your drink once and eat one
   food chip (double-click it on top of one of your stacks); both work from the next turn. Food
   raises Draw, Roll, Bid or the unused-action rewards for a turn or more; some pair a penalty with a bigger bonus
   (a plain Hamburger: +2 Roll, −1 Bid). Bun-Hamburger-Bun eaten from the top Bun is the whole burger. Food on top
   blocks bidding from that stack, and a fee knocks it off.
+- **Effect chips made by tricks.** An effect that works over several turns is a chip on the table, put there by the
+  trick at the space it aims at and doing its work in that trick's phase each turn until it wears off. These used
+  to be sold at the Chip Exchange; an effect a trick can make is not sold. Each has its maker (Investment: Empower →
+  Power, Throttle → Control, Load → Boosted, Shave → Cheapened, Tinker → Upgrade (on a Meter space), Charm → Lucky,
+  Stow → Nest Egg, Echo → Mimic (on top); Insurance: Cushion → Reducer, Ward Off → Ward, Recoil → Rebound, Electrify →
+  Zap, Moor → Anchor, Veil → Transpara, Shade → Shadow; Correction: Attune → Harmony). How many and for how long come
+  from the roll total (`make` on the trick in `js/data.js`). Power, Control and Lucky act in the Investment phase,
+  Harmony in the Correction phase; the defensive ones when a fee or a move reaches them; Boosted, Cheapened and Upgrade
+  when dice are rolled; Mimic after each phase's tricks. An effect chip takes stack height, has no worth and cannot be
+  bid; a fee that reaches it, or empties its stack, knocks it off; it never leaves the table with you. The Crown chip
+  is retired: Brace makes Hardened chips. Shop chips an old save already owns still go on the table.
+- **Made in the match, never sold**: Hives come from the Familiar tilt (one play in three sets a Hive on an empty
+  space), Honey only from Bumble Bees pollinating Flowers, Dragon Eggs from a Dragon on its Roost (the Spawner tilt).
 - **Bounties**: a creature hovering over a stack soaks the fees that land there, and your Expenses can aim at
   creatures on either side. Once its Debt reaches its bounty (Fairy 25, UFO 50, Unicorn and Dragon 250, Mothership
   500) it is driven off and drops a Bounty chip worth that much; overkill past it goes on to the stack beneath and
   down the lane as usual. The chip can be bid but breaks if any fee reaches it; still on your table when the bout
   ends, win or lose, it pays its worth.
 - **Zap** (electric: a fee of 3¢ or less shocks the attacker, a bigger one shorts it out), **Boosted** (+1 to every
-  die you roll per chip) and **Cheapened** (−1 to every die your opponent rolls per chip), **Upgrade** (starts on the
-  Meter: each one puts a random die upgrade, good or bad, on every roll for that roll only; bid on a trick it plays
-  one upgrade higher).
+  die you roll per chip) and **Cheapened** (−1 to every die your opponent rolls per chip), **Upgrade** (on the Meter:
+  each one puts a random die upgrade, good or bad, on every roll for that roll only). Since round 15 these are made by
+  tricks (Electrify, Load, Shave, Tinker), not sold.
 - **Worm Hole** joins the Calamities (an empty Meter space that pulls chips through to the opponent's side). One in
   two **Spawner** tilts is a **Dragon Roost**: it calls a Dragon every third turn, which nests and lays an egg; while
   the egg sits there no Dragon comes, and a trick totalling 10 or more hatches it onto your opponent.
@@ -133,19 +166,19 @@ the ones that cannot be built yet, what is missing; `docs/CHIP-STATUS.md` is the
     when it lands, however big. Block and Counter chips are **fee cost** defence: each takes 1¢ of a fee.
   - **Dynamite**: Fuse (Expense, Technician) lights a stack of sticks on an empty space near its target. One burns
     down each turn; then every chip on the stacks around it is destroyed. Cleansing removes it.
-- Shop chips, sold at the Chip Exchange because no trick or table effect makes them. Each is worth 1¢ (Clay: 0),
+- Shop chips, sold at the Chip Exchange because no trick, tilt or table effect makes them. Each is worth 1¢ (Clay: 0),
   is not wagered, and comes back after a win if it survives. Most go at the base of a stack; Seed and Clay go on
   top. Their price comes from a tier (`CHIP_TIERS`: Common, Uncommon, Rare, Epic, Royal), which also sets the floor
   they are sold from:
   - resists: Red (Burning), Blue (Shocking), Yellow (Acid), Violet (Corrupting), Green (Poison), Black (Boom);
-  - from the chip list: Reducer (each fee on its stack is 1¢ smaller), Anchor (creatures, Scatter, Tornado and Black
-    Hole cannot take from its stack), Transpara-Chip (the opponent cannot aim at its stack), Seed, Clay, Harmony
-    (clears a hazard nearby each turn, leaving a 1¢ chip), Power and Control (+1 to your roll effects / −1 to theirs
-    each turn, for 4 turns), Ward (cancels the largest fee each turn), Shadow (cannot be aimed at behind a taller
-    stack);
-  - not on the list, kept: Orange (thaws Frost), Nest Egg (pays 15¢ if it survives a win), Rebound (2¢ of Debt back
-    to the attacker per fee), Lucky (30% a turn to make an Opportunity chip), Crown (stack starts Hardened for 3
-    turns).
+  - from the chip list: Seed, Clay, Tree, Sun, Heli-Chipter, Battery, the electronics (Repeater, Forgetter, Tesla,
+    Absorption, Sprinkler), Uranium, Big and Little chips, Spy, Fibonacci and Prime, and food (Chocolate, Chip Chip,
+    Dip, Fish 'n Chip, Hamburger, Bun);
+  - not on the list, kept: Orange (thaws Frost);
+  - moved off the shelf in round 15: Reducer, Anchor, Transpara, Harmony, Power, Control, Ward, Shadow, Nest Egg,
+    Rebound, Lucky, Zap, Boosted, Cheapened, Upgrade and Mimic are made by tricks (see **Effect chips made by
+    tricks**); Hive, Honey and Egg are made in the match; Crown is retired. `sold: false` and `from` on each in
+    `SHOP_CHIPS` say so.
   The numbers each effect reads are in `SHOP_CHIPS[id].vars`. Old saves carry Bumper, Mirror and Fog over to
   Reducer, Rebound and Transpara, and the old Orange chip to the new one.
 - Creatures (UFO, Fairy, Dragon, Mole, and from the 5¢ and 10¢ floors Unicorn and Mothership), Familiars, Spawners
@@ -213,12 +246,20 @@ works from the next turn. If you have nothing to sip or eat, the table moves str
 ### Effect chips
 Every effect, investment and tilt at work on a Roller lies on their table as a flat chip under the stacks: Power,
 Boost, Press or Pierce, Bend, Parlay, Enfeeble, Resist, Evade, Reflect, drink and food bonuses, Familiars,
-Interventions, the Position tilt, Nests, the Inferno, House Audit and Tornado, and Last call. A chip's size is the
+Interventions, the Position tilt, Nests, the Inferno, House Audit and Tornado, and Last call; and since round 15
+Subdued (an opponent's Saturate), Enfeebled next turn (Rattle's bonus), and Resist and Evade next turn (Endure's and
+Hop's bonuses), so an effect that carries over shows before it lands. Effects that last several turns on a stack are
+real chips in the stacks instead (see **Effect chips made by tricks**). A chip's size is the
 area it covers, in spaces squared: 1×1 for one thing, 2×2 for every roll effect, 3×3 for the whole position. Chips
 only stack with chips of the same size. Help lies in the Meter, harm in the Bar. Hover a space to read the effect
 chips lying on it. (Holes, Black Holes, Volcanoes, Worm Holes and Roosts are already space chips; creatures fly.)
 
 ### Hover detail
+A stack's hover reads top down: the **stack report** (height against its limit, worth, Debt, every chip in it), then
+the **top chip**, then the chip **under the pointer**: move the pointer down the space to point at the chips below
+the top one (the bottom of the space is the bottom of the stack); that chip lights up on the table. Each chip's
+traits are listed as **properties** (key and value, two columns), and only in verbose hovers.
+
 Right-click anywhere to switch every hover and the table prompts between verbose (rules spelled out) and concise
 (just the facts); the choice is remembered. A card, jacket or drink lists each attribute it changes, your value
 before and after, and what one point of it does. Dropping a card says what you lose. Hovering the METER or BAR label
@@ -251,8 +292,11 @@ what you own, carry or wear is marked.
   open on later floors); position planner with spacing and stacking choices; everything left off the table is
   wagered.
 - **Tilts are played by the House.** A tilt that is on opens the bout once, then in each House phase from turn 2 the
-  House may play it again. Its chance is `base + per × pressure`: for Challenges the pressure is the share of your
-  starting chips you have paid to the House, for Cheats the share your opponent has paid. Pressure also sets the
+  House may play it again. Its chance is `base + per × pressure`. A Roller's **pressure** is a weighted mix
+  (`TILT_PRESSURE`) of the share of their starting chips paid to the House, the overkill and Meter overflow wasted on
+  their side (as a share of their start), how full their Meter is, and the worth sitting in it (as a share of their
+  start). Challenges read your pressure, Cheats your opponent's; each tilt chip's hover shows the breakdown. Pressure
+  also sets the
   impact: more Holes, bigger creatures, more nests (and faster ones), a second Calamity; more Block chips, more
   Familiars, a bigger Intervention. Position is played at the start only. Each tilt that is on lies on the table
   as an effect chip showing the House's chance this turn.
@@ -294,6 +338,10 @@ what you own, carry or wear is marked.
 | Which chips the shop sells | Those no trick, bonus or table effect makes. Chips a trick makes (Gold, Block, Counter, the hazards) are not sold. |
 | What a shop chip costs | Its tier's price; the tier is how strong it is meant to feel until it has been tuned. |
 | Opponent strength | Generated per floor from the class tables; quality and dice improve each floor. |
+| Which chips leave the shop | Those whose effect is an Investment, Insurance, Expense or Correction effect over time (they modify a roll or effect, mitigate fees, or correct the table). The electronics, plants, food, weather, Big and Little chips, resists and Uranium stay: they are things, not effects. |
+| An overloaded stack or Meter | Like overkill: the trick plays, what has no room is lost, and a trick that adds chips cannot aim at a full stack. |
+| A phase you cannot act in | Skipped on its own, with a line in the feed; unused actions still pay. |
+| Dice left in the roll | They must be used: every die that fits a shown trick has to go on one before Roll closes. One that fits nowhere stays in the roll with its value until a trick has room. No effect rerolls yet. |
 
 ## Not built yet
 

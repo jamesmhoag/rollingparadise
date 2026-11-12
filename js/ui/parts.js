@@ -7,7 +7,7 @@ import { facesOf, faceValue } from '../dice.js';
 import { traitsOf, traitsHtml } from '../traits.js';
 
 const GLYPH = { opp: '★', block: '▣', counter: '✸', burn: '🔥', acid: '☣', shock: '⚡', corrupt: '☠', poison: '☘', boom: '💣', frost: '❄', lava: '🌋', flower: '✿', petal: '❀', clay: '▤', brick: '▦', dynamite: '🧨', tree: '🌳', wood: '▥', hard: '⛊', sticky: '◍', hive: '⬢', little: '•', egg: '🥚', hat: '🎩', doom: '☠', volcano: '🌋' };
-export const chipSig = (ch) => `k-${ch.kind} v${ch.value}${ch.gold ? ' gold' : ''}${ch.frozen ? ' frozen' : ''}${ch.feather > 0 ? ' feather' : ''}${ch.resist ? ' r-' + ch.resist : ''}${ch.wet > 0 ? ' wet' : ''}${ch.regen > 0 ? ' regen' : ''}${ch.big ? ' big' : ''}${ch.treasure ? ' treasure' : ''}`;
+export const chipSig = (ch) => `${ch.kind === 'fx' ? 'k-fx k-std' : 'k-' + ch.kind} v${ch.value}${ch.gold ? ' gold' : ''}${ch.frozen ? ' frozen' : ''}${ch.feather > 0 ? ' feather' : ''}${ch.resist ? ' r-' + ch.resist : ''}${ch.wet > 0 ? ' wet' : ''}${ch.regen > 0 ? ' regen' : ''}${ch.big ? ' big' : ''}${ch.treasure ? ' treasure' : ''}`;
 // how a chip looks to the Roller on side `viewer`: Doom chips look like 1¢ chips to their victim, a Spy to its
 // owner's opponent, a Cursed chip like Gold to everyone
 export function seenAs(ch, side, viewer = 0) {
@@ -16,7 +16,7 @@ export function seenAs(ch, side, viewer = 0) {
   if (ch.cursed) return { id: ch.id, kind: 'std', value: ch.value, gold: true };
   return ch;
 }
-export const chipGlyph = (ch) => (ch.kind === 'stray' ? '−' + ch.value : ch.kind === 'sticky' ? '◍' + ch.value : ch.kind === 'egg' ? '🥚' : ch.treasure ? '💰' : ch.big ? String(ch.value) : ch.kind === 'bounty' ? D.CREATURES[ch.creature]?.glyph || '★' : ch.kind === 'resist' ? `r${ch.r}` : ['food', 'dip'].includes(ch.kind) && ch.shop ? D.SHOP_CHIPS[ch.shop]?.glyph || '🍪' : ch.kind === 'std' ? (ch.resist ? (D.SHOP_CHIPS[ch.resist]?.seq ? `${D.SHOP_CHIPS[ch.resist].glyph}${ch.value}` : D.SHOP_CHIPS[ch.resist]?.glyph || '◆') : ch.frozen ? `❄${ch.value}` : D.denomOf(ch.value)?.glyph || String(ch.value)) : ch.kind === 'debt' ? '−' + ch.value : GLYPH[ch.kind] || '');
+export const chipGlyph = (ch) => (ch.kind === 'fx' ? D.SHOP_CHIPS[ch.shop]?.glyph || '✦' : ch.kind === 'stray' ? '−' + ch.value : ch.kind === 'sticky' ? '◍' + ch.value : ch.kind === 'egg' ? '🥚' : ch.treasure ? '💰' : ch.big ? String(ch.value) : ch.kind === 'bounty' ? D.CREATURES[ch.creature]?.glyph || '★' : ch.kind === 'resist' ? `r${ch.r}` : ['food', 'dip'].includes(ch.kind) && ch.shop ? D.SHOP_CHIPS[ch.shop]?.glyph || '🍪' : ch.kind === 'std' ? (ch.resist ? (D.SHOP_CHIPS[ch.resist]?.seq ? `${D.SHOP_CHIPS[ch.resist].glyph}${ch.value}` : D.SHOP_CHIPS[ch.resist]?.glyph || '◆') : ch.frozen ? `❄${ch.value}` : D.denomOf(ch.value)?.glyph || String(ch.value)) : ch.kind === 'debt' ? '−' + ch.value : GLYPH[ch.kind] || '');
 export function chipName(ch) {
   if (ch.kind === 'debt') return `${ch.value}¢ Debt chip`;
   if (ch.kind === 'stray') return `${ch.value}¢ of Debt on nothing`;
@@ -28,6 +28,7 @@ export function chipName(ch) {
   if (ch.kind === 'bounty') return `${D.CREATURES[ch.creature]?.name} Bounty chip (${ch.value}¢)`;
   if (ch.kind === 'resist') return `Resist chip (r ${ch.r})`;
   if ((ch.kind === 'food' || ch.kind === 'dip') && ch.shop) return D.SHOP_CHIPS[ch.shop]?.name || 'Food chip';
+  if (ch.kind === 'fx') return `${D.SHOP_CHIPS[ch.shop]?.name || 'Effect chip'}${ch.life != null && ch.life < 99 ? ` (${ch.life} turn${ch.life === 1 ? '' : 's'})` : ''}`;
   if (ch.kind !== 'std') return D.CHIPS[ch.kind].name;
   if (ch.resist) return D.SHOP_CHIPS[ch.resist]?.name || 'Shop chip';
   if (ch.frozen) return `Frozen ${ch.value}¢ chip`;
@@ -43,6 +44,7 @@ export function chipText(ch) {
   if (ch.kind === 'egg') return D.CHIPS.egg.text + hits + extra;
   if (ch.kind === 'resist') return `${D.CHIPS.resist.text} Fees under ${ch.r}¢ on this stack are deterred.`;
   if ((ch.kind === 'food' || ch.kind === 'dip') && ch.shop) return D.shopText(ch.shop) + (ch.dips != null ? ` ${ch.dips} dip${ch.dips === 1 ? '' : 's'} left.` : '');
+  if (ch.kind === 'fx') return `${D.shopText(ch.shop)} <span class="keep">Made at the table by ${D.TRICKS[ch.maker]?.name || 'a trick'}${ch.life >= 99 ? '; it lasts the bout' : `; ${ch.life} turn${ch.life === 1 ? '' : 's'} left`}.</span> <span class="v">An effect chip: no worth, takes stack height, cannot be bid. A fee that reaches it, or empties its stack, knocks it off. It does not leave the table with you.</span>`;
   if (ch.kind !== 'std') return D.CHIPS[ch.kind].text + hits + extra + (ch.shop && D.SHOP_CHIPS[ch.shop] ? ` ${D.CHIP_TIERS[D.SHOP_CHIPS[ch.shop].tier].name} shop chip.` : '');
   if (ch.resist) { const X = D.SHOP_CHIPS[ch.resist]; if (!X) return 'Worth 1¢.';
     return `${D.shopText(ch.resist)} Worth ${X.seq ? ch.value : 1}¢${ch.n > 1 ? ` (merged from ${ch.n})` : ''}, ${X.place === 'top' ? 'goes on top of a stack' : 'deployed at the base of your stacks'}, not wagered.${ch.life != null ? ` ${ch.life} turn${ch.life === 1 ? '' : 's'} left.` : ''} ${D.CHIP_TIERS[X.tier].name} tier.${extra}`; }

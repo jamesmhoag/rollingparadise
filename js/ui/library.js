@@ -55,8 +55,8 @@ const BOUT_CHIPS = {
   tree: 'Bought at the Chip Exchange; planted on an empty space.',
   wood: 'A felled Tree.',
   dynamite: 'Fuse (Technician) lights a stack of it on an empty space near its target.',
-  hard: 'Brace (Insurance, Technician) and the Crown chip.', sticky: 'Gum Up (Correction, Rascal), on an opponent\'s stack.', hive: 'Bought at the Chip Exchange.', little: 'Bought at the Chip Exchange.',
-  egg: 'A Roost\'s Dragon lays them; the Egg chip is sold as food.', hat: 'Conjure (Correction, Technician), and one in three Hazard tilts.', doom: 'Foretell (Correction), on an opponent\'s front stacks.', volcano: 'The Volcano Calamity.',
+  hard: 'Brace (Insurance, Technician).', sticky: 'Gum Up (Correction, Rascal), on an opponent\'s stack.', hive: 'The Familiar tilt, one play in three, on an empty space.', little: 'Bought at the Chip Exchange.',
+  egg: 'A Dragon lays them on its Roost (the Spawner tilt). Edible.', hat: 'Conjure (Correction, Technician), and one in three Hazard tilts.', doom: 'Foretell (Correction), on an opponent\'s front stacks.', volcano: 'The Volcano Calamity.',
 };
 
 function chipsTab(own) {
@@ -69,13 +69,18 @@ function chipsTab(own) {
   const frz = { kind: 'std', value: 7, frozen: true }, fea = { kind: 'std', value: 2, feather: 2 };
   out.push(entry([chipEl({ kind: 'std', value: 5 }), chipEl({ kind: 'std', value: 2 }), h('span', { class: 'dim', text: '→' }), tipped(chipEl(frz), () => chipTip(frz))], 'Frozen', ['Made by Chill: chips frozen into one, worth their sum.', D.CHIPS.frozen.text]));
   out.push(entry([chipEl({ kind: 'std', value: 2 }), h('span', { class: 'dim', text: '→' }), tipped(chipEl(fea), () => chipTip(fea))], 'Feather', ['Made by Float, for a few turns.', D.CHIPS.feather.text]));
-  out.push(sec('Shop chips', `Sold at the Chip Exchange because no trick or table effect makes them. Priced by tier: ${D.CHIP_TIERS.slice(1).map((t) => `<span class="tier" style="--tc:${t.color}">${t.name}</span> ${cents(t.price)}${t.floor > 1 ? ` from floor ${t.floor}` : ''}`).join(' ')}. Each is worth 1¢, goes at the base of a stack, is not wagered, and comes back after a win if it survives.`));
-  for (const id of Object.keys(D.SHOP_CHIPS).sort((a, b) => D.SHOP_CHIPS[a].tier - D.SHOP_CHIPS[b].tier)) {
+  out.push(sec('Shop chips', `Sold at the Chip Exchange because no trick, tilt or table effect makes them. Priced by tier: ${D.CHIP_TIERS.slice(1).map((t) => `<span class="tier" style="--tc:${t.color}">${t.name}</span> ${cents(t.price)}${t.floor > 1 ? ` from floor ${t.floor}` : ''}`).join(' ')}. Each is worth 1¢, goes at the base of a stack, is not wagered, and comes back after a win if it survives.`));
+  for (const id of D.SHOP_IDS().sort((a, b) => D.SHOP_CHIPS[a].tier - D.SHOP_CHIPS[b].tier)) {
     const X = D.SHOP_CHIPS[id], T = D.CHIP_TIERS[X.tier], ch = { kind: 'std', value: 1, resist: id }, vars = Object.entries(X.vars || {});
     out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), `${X.name} <span class="tier" style="--tc:${T.color}">${T.name}</span>`,
       [D.shopText(id), `${cents(D.shopPrice(id))} · from floor ${D.shopFloor(id)}${X.place === 'top' ? ' · goes on top' : ''}`, vars.length ? dim(`Tuning: ${vars.map(([k, v]) => `${k} ${v}`).join(', ')}`) : null, X.list ? dim(`From the chip list: ${X.list}`) : null], { own: own.shop(id) ? `Own ${own.shop(id)}` : null }));
   }
-  out.push(sec('Chips made at the table', 'They appear during a bout and are gone when it ends.'));
+  out.push(sec('Effect chips made by tricks', 'Investments, Insurances and Corrections that work over several turns put their effect on the table as a chip: the trick places it on a stack (or a Meter space) when it plays, and the chip does its work in that trick\'s phase each turn until it wears off. They take stack height, have no worth and cannot be bid; a fee that reaches one, or empties its stack, knocks it off. They are not sold and stay at the table.'));
+  for (const [id, X] of Object.entries(D.SHOP_CHIPS)) { const mk = D.makerOf(id); if (!mk) continue; const T = D.TRICKS[mk], ch = { kind: 'fx', value: 0, resist: id, shop: id, life: T.make.life[0], maker: mk };
+    out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), X.name, [D.shopText(id), `Made by <b>${T.name}</b> (${D.TYPES[T.type].name}${T.cls ? ', ' + D.CLASSES[T.cls].name : ''}): ${T.make.n[1] < 99 ? `${T.make.n[0]}, +1 per ${T.make.n[1]} rolled` : 'one'} on its target, for ${T.make.life[0] >= 99 ? 'the bout' : `${T.make.life[0]} turn${T.make.life[0] > 1 ? 's' : ''}, +1 per ${T.make.life[1]} rolled`}.`])); }
+  out.push(sec('Chips made at the table', 'They appear during a bout, from tricks, tilts, creatures and other chips, and are gone when it ends. None of them is sold.'));
+  for (const id of ['honey']) { const X = D.SHOP_CHIPS[id], ch = { kind: 'food', value: 0, shop: id, resist: id };
+    out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), X.name, [D.shopText(id), dim(`Made by: ${D.madeBy(id)} (from a Hive).`)])); }
   for (const k of ['opp', 'block', 'counter', 'debt', 'flower', 'petal', 'clay', 'brick', 'tree', 'wood', 'dynamite', 'hard', 'sticky', 'hive', 'little', 'egg', 'hat', 'doom', 'volcano']) { const ch = { kind: k, value: k === 'opp' ? 1 : k === 'debt' ? 3 : k === 'sticky' ? 3 : 0, ...(k === 'hard' ? { life: 3 } : {}), ...(D.INSTANCE_SHIELDS.includes(k) ? { hits: k === 'egg' ? 5 : 1 } : {}) };
     out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), D.CHIPS[k].name, [D.CHIPS[k].text, dim(`Made by: ${BOUT_CHIPS[k]}`)])); }
   for (const ch of [{ kind: 'std', value: 72, gold: true, treasure: true }, { kind: 'std', value: 1, gold: true, cursed: true }]) out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), ch.cursed ? 'Cursed chip' : 'Treasure chip', [ch.cursed ? D.CHIPS.cursed.text : D.CHIPS.treasure.text, dim('Made by: a sunk Ghost Ship.')]));

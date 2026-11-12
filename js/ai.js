@@ -86,14 +86,19 @@ function planDraw(b, s) {
 }
 
 function planRoll(b, s) {
-  // pick the dice that suit the shown tricks, throw them all, then put the values where they do the most
+  // dice left in the roll from an earlier turn must be used first; then pick the dice that suit the shown tricks,
+  // throw them all, and put the values where they do the most
+  const fill = () => { for (let guard = 0; guard < 20 && B.trayPlaceable(s); guard++) for (const d of s.tray.slice()) { const e = s.run.filter((x) => !B.canPlace(b, s, d.id, x)).sort((x, y) => prio(x) - prio(y))[0]; if (e) B.place(b, s, d.id, e); } };
+  fill();
   const open = s.run.filter((e) => e.state === 'shown' && e.dice.length < TRICKS[e.trick.id].count).sort((x, y) => prio(x) - prio(y) || y.dice.length - x.dice.length);
-  if (!open.length || !B.canAct(b, s)) return;
+  if (!open.length || !B.canThrowAny(s)) return;
   const wanted = open.map((e) => e.dice.find((d) => !d.chip)?.type || TRICKS[e.trick.id].die);
   const rank = (d) => { const k = wanted.indexOf(d.type); return k < 0 ? 99 - +d.type.slice(1) / 100 : k; };
   const room = open.reduce((n, e) => n + TRICKS[e.trick.id].count - e.dice.length, 0);
-  const n = Math.min(room, B.tipOf(s, 'proficiency'));
-  const ids = s.pouch.slice().sort((x, y) => rank(x) - rank(y)).slice(0, n).map((d) => d.id);
+  const n = Math.max(1, Math.min(room, B.tipOf(s, 'proficiency')));
+  let ids = s.pouch.slice().sort((x, y) => rank(x) - rank(y)).slice(0, n).map((d) => d.id);
+  if (!ids.some((id) => open.some((e) => !e.dice.find((d) => !d.chip) || e.dice.find((d) => !d.chip).type === s.pouch.find((d) => d.id === id).type))) { // make sure one of them fits
+    const fit = s.pouch.find((d) => open.some((e) => { const t = e.dice.find((x) => !x.chip)?.type; return !t || t === d.type; })); if (fit) ids = [fit.id, ...ids.filter((x) => x !== fit.id)].slice(0, n); }
   let flips = [];
   if (!ids.length) { const f = B.flippable(s).sort((x, y) => x.ch.value - y.ch.value)[0]; if (f) flips = [{ r: f.r, c: f.c }]; } // out of dice: flip a chip
   if (!B.throwDice(b, s, ids, flips)) return;
@@ -111,8 +116,7 @@ function planRoll(b, s) {
     }
     if (best) for (const d of best) B.place(b, s, d.id, e);
   }
-  // one rolled die must end up on a trick
-  if (!B.placedThisTurn(b, s)) for (const d of s.tray.slice()) { const e = s.run.find((x) => !B.canPlace(b, s, d.id, x)); if (e) { B.place(b, s, d.id, e); break; } }
+  fill(); // every die in the roll that fits a trick must go on one
 }
 
 function planBid(b, s) {
