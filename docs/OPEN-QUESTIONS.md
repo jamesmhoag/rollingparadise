@@ -32,8 +32,7 @@ comes from and the specific gaps.
 
 ## Tricks and dice (**Tricks**, **Dice**, **Splitting**)
 18. Rules for Splitting, and for the Rest conditional.
-19. (Built: all 22 dice upgrades, readings in DESIGN.md.) Should the use-dependent faces (Rig, Enchant, Encase) carry
-    over between bouts instead of resetting?
+19. (Answered: dice upgrades are permanent, including Rig, Enchant and Encase faces; only Upgrade chip effects reset.)
 
 ## The floor (**Floors**)
 20. The Secret Shop: what it sells and what "skip the next encounter" costs.
@@ -137,3 +136,11 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
 60. Unique Prizes are placeholders (card, d8, die upgrade, Scorch, d20). What should each creature give?
 61. Cheapened's list text repeats Boosted's; it is built as the opposite (your opponent's dice −1). Right?
 62. The Upgrade chip's roll ladder (Escalate, +1, Gamble, +1…) is mine. Which upgrades should it give, in what order?
+
+## Round 11 additions (Drink phase, creature attacks, effect chips)
+63. (Answered 58–62: eat and sip once a round in the Drink phase; creatures can be attacked on either side with
+    overkill going on; Bounty chips pay their worth only, for now; Upgrade chips give random upgrades.)
+64. Effect chips are drawn on the table but are not physical: fees, creatures and arrangements do not touch them.
+    Should knocking an effect chip off (with a fee, Scatter, a Tornado) end the effect?
+65. Big chips for big effects only stack with big chips. Should big *value* chips exist too (the list's Big Chip,
+    covering 5 spaces), and what are they worth?

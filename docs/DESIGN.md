@@ -93,17 +93,20 @@ the ones that cannot be built yet, what is missing; `docs/CHIP-STATUS.md` is the
 - **Resist chips** come from Resist Cards (found in the dodgy corner, r 2 or 3): one sits at the base of a front
   Bar stack each bout and deters fees under r¢ on it — debt resistance, the way a Red chip resists fire.
 - **Food** (Chocolate, Honey, Chip Chip with Dip, Fish 'n Chip, Hamburger and Bun, Egg) is sold at the Chip Exchange
-  and goes on top of a stack. Double-click a food chip on top of one of your stacks to eat it while you plan: it
+  and goes on top of a stack. In the **Drink phase** that closes each round you may sip your drink once and eat one
+  food chip (double-click it on top of one of your stacks); both work from the next turn. Food
   raises Draw, Roll, Bid or the unused-action rewards for a turn or more; some pair a penalty with a bigger bonus
   (a plain Hamburger: +2 Roll, −1 Bid). Bun-Hamburger-Bun eaten from the top Bun is the whole burger. Food on top
   blocks bidding from that stack, and a fee knocks it off.
-- **Bounties**: a creature hovering over one of your stacks soaks the fees that land there. Once its Debt reaches its
-  bounty (Fairy 25, UFO 50, Unicorn and Dragon 250, Mothership 500) it is driven off and drops a Bounty chip worth
-  that much. The chip can be bid but breaks if any fee reaches it; still on your table when the bout ends, win or
-  lose, it pays its worth and a Unique Prize (a card, a d8, a die upgrade, a Scorch trick, a d20).
+- **Bounties**: a creature hovering over a stack soaks the fees that land there, and your Expenses can aim at
+  creatures on either side. Once its Debt reaches its bounty (Fairy 25, UFO 50, Unicorn and Dragon 250, Mothership
+  500) it is driven off and drops a Bounty chip worth that much; overkill past it goes on to the stack beneath and
+  down the lane as usual. The chip can be bid but breaks if any fee reaches it; still on your table when the bout
+  ends, win or lose, it pays its worth.
 - **Zap** (electric: a fee of 3¢ or less shocks the attacker, a bigger one shorts it out), **Boosted** (+1 to every
   die you roll per chip) and **Cheapened** (−1 to every die your opponent rolls per chip), **Upgrade** (starts on the
-  Meter: every roll is upgraded — Escalate, +1, Gamble, more +1 — and bid on a trick it plays one upgrade higher).
+  Meter: each one puts a random die upgrade, good or bad, on every roll for that roll only; bid on a trick it plays
+  one upgrade higher).
 - **Worm Hole** joins the Calamities (an empty Meter space that pulls chips through to the opponent's side). One in
   two **Spawner** tilts is a **Dragon Roost**: it calls a Dragon every third turn, which nests and lays an egg; while
   the egg sits there no Dragon comes, and a trick totalling 10 or more hatches it onto your opponent.
@@ -182,6 +185,18 @@ bought, on a target face you pick, and the panel previews the faces each one lea
 Curse change how the die rolls. Up to 2 per die; the roll-time ones cannot be taken twice. A die's hover shows its
 faces and each upgrade's badge; the rules are in `js/dice.js`.
 
+### The Drink phase
+Each round ends with a Drink phase after the House has played: sip once, eat once, then Next turn. What you take
+works from the next turn. If you have nothing to sip or eat, the table moves straight on.
+
+### Effect chips
+Every effect, investment and tilt at work on a Roller lies on their table as a flat chip under the stacks: Power,
+Boost, Press or Pierce, Bend, Parlay, Enfeeble, Resist, Evade, Reflect, drink and food bonuses, Familiars,
+Interventions, the Position tilt, Nests, the Inferno, House Audit and Tornado, and Last call. A chip's size is the
+area it covers, in spaces squared: 1×1 for one thing, 2×2 for every roll effect, 3×3 for the whole position. Chips
+only stack with chips of the same size. Help lies in the Meter, harm in the Bar. Hover a space to read the effect
+chips lying on it. (Holes, Black Holes, Volcanoes, Worm Holes and Roosts are already space chips; creatures fly.)
+
 ### Hover detail
 Right-click anywhere to switch every hover and the table prompts between verbose (rules spelled out) and concise
 (just the facts); the choice is remembered. A card, jacket or drink lists each attribute it changes, your value
@@ -241,7 +256,7 @@ what you own, carry or wear is marked.
 | When tilt tiers are bought | Unlocked once per floor, then free to use for every bout on it. |
 | How a bout ends if neither side breaks | "Last call" is an addition: from turn 9 every Expense is multiplied by a factor that grows each turn. At turn 40 the most Worth wins. |
 | Debt (the **Debt** tab's five concepts) | "Knocked out by debt": reaching zero Worth loses the bout. |
-| Dice upgrades | All 22 from the workbook. Readings: "fill" moves value into the target (Divide: 1 from every face; Gift: half the highest; Devour: all of the lowest), Boost/Bonk ±2, Rig/Enchant/Encase change with use and reset each bout, Gamble ×2 and Curse ×3 on a random face each roll. Numbers in `DIE_VARS`. |
+| Dice upgrades | All 22 from the workbook. They are permanent, including faces that change with use (Rig, Enchant, Encase); only Upgrade chip effects are for one roll. Readings: "fill" moves value into the target (Divide: 1 from every face; Gift: half the highest; Devour: all of the lowest), Boost/Bonk ±2, Rig/Enchant/Encase change with use and reset each bout, Gamble ×2 and Curse ×3 on a random face each roll. Numbers in `DIE_VARS`. |
 | Which cards take a wallet slot | Benefit cards and the Royal Card do (Collectables C80: with no room for the Royal Card you drop one of your two starters). Membership, Suite Key, Punch and Paradise are passes and do not. Cards can be dropped from the kit at any time, except the Royal Card before floor 1. |
 | Membership Card discount | "Also gives the discount": 10% off at the Trick Trader, not stacking with a Trader Discount Card. |
 | Debt chip values | One Debt marker per stack showing the exact amount owed (it used to be split into 5, 2 and 1¢ chips, which read like money). |

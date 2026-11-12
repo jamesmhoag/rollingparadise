@@ -94,15 +94,15 @@ Library under **Chip list**. Fill in what a **Needs detail** row asks for and it
 | 50 | Honey Chip | Honey chip: food sold at the Chip Exchange (+1 Roll, +1 Bid for a turn). The Hive that makes it still needs detail. |
 | 51 | Wood Chip | Wood chip: falls from a felled Tree; blocks two entire fees. |
 | 52 | Chocolate Chip | Chocolate chip: food sold at the Chip Exchange (+1 Draw for 2 turns). |
-| 53 | Fairy Bounty Chip | Bounty system: a creature hovering over a stack soaks fees that land there; at 25¢ of Debt the Fairy is driven off and drops this chip. Pays 25¢ and a found card. |
-| 54 | Unicorn Bounty Chip | Bounty: at 250¢ of Debt. Pays 250¢ and a free die upgrade on your best die. |
-| 55 | UFO Bounty Chip | Bounty: at 50¢ of Debt. Pays 50¢ and a d8. |
-| 56 | Mothership Bounty Chip | Bounty: at 500¢ of Debt. Pays 500¢ and a d20. |
-| 57 | Dragon Bounty Chip | Bounty: at 250¢ of Debt. Pays 250¢ and a Scorch trick. |
+| 53 | Fairy Bounty Chip | Bounty system: a creature hovering over a stack (yours or your opponent's, and you can aim at it) soaks fees; overkill goes on to the stacks beneath. At 25¢ the Fairy is driven off and drops this chip, which pays its worth. |
+| 54 | Unicorn Bounty Chip | Bounty: at 250¢ of Debt. Pays 250¢. |
+| 55 | UFO Bounty Chip | Bounty: at 50¢ of Debt. Pays 50¢. |
+| 56 | Mothership Bounty Chip | Bounty: at 500¢ of Debt. Pays 500¢. |
+| 57 | Dragon Bounty Chip | Bounty: at 250¢ of Debt. Pays 250¢. |
 | 59 | Clay Chip | Clay chip: a shop chip (Uncommon). |
 | 60 | Brick Chip | Brick chip: fire bakes Clay. |
 | 61 | Acid Chip | Acid: Melt. |
-| 62 | Upgrade Chip | Upgrade chip: a shop chip (Epic). On your Meter it upgrades every roll (Escalate, +1, Gamble, more +1 as you add chips); bid on a trick it plays that trick one upgrade higher. |
+| 62 | Upgrade Chip | Upgrade chip: a shop chip (Epic). On your Meter each one puts a random die upgrade on every roll, for that roll only (a risk); bid on a trick it plays that trick one upgrade higher. |
 | 68 | Chip Chip | Chip Chip: food (+1 Steal for a turn, doubled when dipped). |
 | 69 | Dip Chip | Dip chip: a shop chip on its own space; the next 3 Chip Chips you eat are dipped for double. |
 | 70 | Dragon Roost Chip | Dragon Roost: one in two Spawner tilts is a Roost. It takes a Bar space and calls a Dragon every third turn, which nests and lays an egg. |

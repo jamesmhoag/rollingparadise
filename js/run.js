@@ -334,7 +334,7 @@ export function startIntro(run) {
 }
 export function startTable(run, prep) {
   const entry = prep.kind === 'boss' ? run.fs.boss : run.fs.tables[prep.idx], t = prep.tilts;
-  const extra = { position: t.position, resist: { ...run.plan.resist }, side: { holes: t.hazard, creatures: t.creature, spawners: t.spawner, shields: t.shield, familiars: t.familiar, interventions: t.intervention,
+  const extra = { position: t.position, resist: { ...run.plan.resist }, side: { positionTilt: t.position, holes: t.hazard, creatures: t.creature, spawners: t.spawner, shields: t.shield, familiars: t.familiar, interventions: t.intervention,
     calamities: Array.from({ length: t.calamity }, () => run.rng.pick(Object.keys(D.CALAMITIES))) } };
   const st = rollerStats(run, extra); const counts = validCounts(run, st.dims);
   for (const el of Object.keys(extra.resist)) extra.resist[el] = Math.min(extra.resist[el], owned(run, el));
@@ -359,7 +359,14 @@ export function startAscent(run) {
 }
 
 // Turn a finished bout into chips. Returns the breakdown and, on a win, the prizes on offer.
+// Dice upgrades are permanent, including faces that change with use (Rig, Enchant, Encase): copy the bout's dice
+// back to the run. Upgrade chip effects were rolled on throwaway copies and never get here.
+function keepDiceState(run, bout) {
+  const s = bout.sides[0], all = [...s.pouch, ...s.tray, ...s.run.flatMap((e) => e.dice)];
+  for (const d of run.dice) { const x = all.find((y) => y.id === d.id); if (x?.faces) d.faces = x.faces.map((f) => ({ ...f })); }
+}
 export function settle(run, ctx, bout) {
+  keepDiceState(run, bout);
   const sm = summary(bout, 0), rng = run.rng, lines = [], res = { win: sm.win, lines, prizes: null, news: [], sm };
   run.stats.bouts++; run.stats.turns += sm.turns; if (sm.win) run.stats.wins++; else run.stats.losses++;
   if (run.drink) { run.drink.sips = bout.sides[0].drink ? bout.sides[0].drink.sips : run.drink.sips; if (run.drink.sips <= 0) run.drink = null; }
@@ -387,7 +394,7 @@ export function settle(run, ctx, bout) {
   }
   // Bounty chips still on your table pay their worth and a Unique Prize, win or lose
   const bounty = sum(sm.bounties || [], (x) => x.value);
-  for (const x of sm.bounties || []) res.news.push(`${D.CREATURES[x.creature].name} Bounty chip: ${x.value}¢ and ${uniquePrize(run, x.creature)}.`);
+  for (const x of sm.bounties || []) res.news.push(`${D.CREATURES[x.creature].name} Bounty chip cashed in: ${x.value}¢.`);
   // table or High Roller
   const entry = ctx.kind === 'boss' ? run.fs.boss : run.fs.tables[ctx.idx];
   const wager = sm.intervened ? Math.floor(ctx.wager / 2) : ctx.wager;
@@ -427,17 +434,6 @@ export function settle(run, ctx, bout) {
   res.news.push(...resolveBets(run));
   res.total = sm.win ? res.base + res.winnings : run.purse;
   return res;
-}
-// the Unique Prize a creature's Bounty chip brings (CREATURES[kind].prize says what)
-function uniquePrize(run, kind) {
-  if (kind === 'ufo') { run.dice.push(mkDie(run, 'd8')); return 'a d8'; }
-  if (kind === 'mothership') { run.dice.push(mkDie(run, 'd20')); return 'a d20'; }
-  if (kind === 'dragon') { run.tricks.push(mkTrick(run, 'scorch', clamp(run.floor, 1, 4))); return 'a Scorch trick'; }
-  if (kind === 'fairy') { const pool = D.FIND_CARDS.filter((id) => !hasCard(run, id)); const id = run.rng.pick(pool.length ? pool : ['trading']); addCard(run, id); return `the ${D.CARDS[id].name}`; }
-  if (kind === 'unicorn') { const d = run.dice.slice().sort((a, b) => D.DICE[b.type].faces - D.DICE[a.type].faces).find((x) => (x.up || []).length < D.DIE_UPGRADE_MAX);
-    if (!d) return 'nothing (every die is fully upgraded)'; const opts = ['accelerate', 'stabilize', 'escalate'].filter((x) => !canUpgrade(d, x, D.DIE_UPGRADE_MAX));
-    if (!opts.length) return 'nothing'; const u = run.rng.pick(opts); upgradeFaces(d, u, 0, run.rng); return `${D.DIE_UPGRADES[u].name} on your ${d.type}`; }
-  return 'nothing';
 }
 // You always keep the winnings. Then one prize: 'die' (bonus money and one die), 'dice' (two dice), 'glean' (a trick)
 export const prizeBonus = (ctx) => Math.round((ctx.opp?.worth || 0) * D.PRIZES.bonus);

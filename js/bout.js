@@ -7,9 +7,9 @@
 // effect type for both Rollers at once and yields a step after each visible change.
 // Fees go out as Debt first; the House then settles every stack that took Debt.
 import { RNG, sum, clone, clamp, order1D } from './util.js';
-import { rollDie, boutCopy } from './dice.js';
+import { rollDie, boutCopy, facesOf, upgrade as upgradeFaces } from './dice.js';
 export { rollDie };
-import { TRICKS, TYPES, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, CREATURES, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS } from './data.js';
+import { DIE_UPGRADES, TRICKS, TYPES, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, CREATURES, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS } from './data.js';
 
 export const PHASES = ['draw', 'roll', 'bid'];
 export const LAST_CALL = 8;
@@ -180,7 +180,7 @@ function mkSide(b, spec, idx) {
     status: { resist: 0, resistNext: 0, evade: null, evadeNext: null, reflect: 0, reflectAll: false, enfeebleNext: 0 },
     mods: { boost: 0, enfeeble: 0, press: 0, bend: null, mul: 1, pierce: false },
     drink: spec.drink ? { ...spec.drink } : null, sipped: false, food: [], roostDragons: 0,
-    familiars: spec.familiars || 0, interventions: spec.interventions || 0, intervened: false, spawners: spec.spawners || 0, calamities: spec.calamities || [],
+    familiars: spec.familiars || 0, interventions: spec.interventions || 0, positionTilt: spec.positionTilt || 0, intervened: false, spawners: spec.spawners || 0, calamities: spec.calamities || [],
     bidsPaid: 0, dealt: 0, destroyed: 0, snap: null,
   };
   // hazard tilts: holes on random spaces
@@ -233,7 +233,7 @@ function mkCreature(b, side, arrive) {
 }
 function startTurn(b) {
   for (const s of b.sides) {
-    s.used = { draw: 0, roll: 0, bid: 0 }; s.turnBonus = {}; s.sipped = false; s.rolled = {}; s.thrown = false; s.heat = heat(b.turn);
+    s.used = { draw: 0, roll: 0, bid: 0 }; s.turnBonus = {}; s.rolled = {}; s.thrown = false; s.heat = heat(b.turn);
     for (const f of s.food || []) { for (const [k, v] of Object.entries(f.mods)) s.turnBonus[k] = (s.turnBonus[k] || 0) + v; f.turns--; } // food still working
     s.food = (s.food || []).filter((f) => f.turns > 0);
     s.mods = { boost: 0, enfeeble: s.status.enfeebleNext, press: 0, bend: null, mul: 1, pierce: false }; s.wardUsed = 0;
@@ -281,6 +281,7 @@ export function needOf(b, s) {
 }
 // Close the current phase for both Rollers. Returns false if either still owes its required action (unless forced).
 export function advance(b, force = false) {
+  if (b.phase === 'drink') return nextTurn(b);
   if (!PHASES.includes(b.phase)) return false;
   if (!force && b.sides.some((s) => needOf(b, s))) return false;
   const i = PHASES.indexOf(b.phase);
@@ -295,7 +296,8 @@ function homeTray(b, s) { const n = s.tray.length; for (const d of s.tray.splice
 // ---------- food ----------
 // Eat a food chip from the top of one of your stacks. Its bonus starts now and runs for its turns.
 export function canEat(b, s, r, c) {
-  if (!PHASES.includes(b.phase)) return 'Eat while you plan your turn.';
+  if (b.phase !== 'drink') return 'Eat in the Drink phase, at the end of the round.';
+  if (s.ate) return 'One food a round.';
   const cell = s.grid[r]?.[c], i = cell ? topSolid(cell) : -1;
   if (i < 0 || cell.chips[i].kind !== 'food') return 'Only a food chip on top of a stack can be eaten.';
   return null;
@@ -316,19 +318,25 @@ export function eat(b, s, r, c) {
   const cell = s.grid[r][c], f = foodOf(s, r, c);
   for (const ch of f.eat) { cell.chips.splice(cell.chips.indexOf(ch), 1); b.fx[ch.id] = 'void'; }
   if (f.dip) { f.dip.dips--; if (f.dip.dips <= 0) for (const x of allCells(s)) { const k = x.cell.chips.indexOf(f.dip); if (k >= 0) { x.cell.chips.splice(k, 1); b.fx[f.dip.id] = 'void'; } } }
-  for (const [k, v] of Object.entries(f.mods)) s.turnBonus[k] = (s.turnBonus[k] || 0) + v;
-  if (f.turns > 1) s.food.push({ mods: f.mods, turns: f.turns - 1, label: f.label });
+  s.ate = true; s.food.push({ mods: f.mods, turns: f.turns, label: f.label }); // works from the next turn
   emptyOut(b, cell);
   return f;
 }
 
 // ---------- planning ----------
+// The Drink phase closes each round: each Roller may sip their drink once and eat one food chip. What they take
+// works from the next turn.
+export const canSip = (b, s) => (b.phase !== 'drink' ? 'Sip in the Drink phase, at the end of the round.' : !s.drink || s.drink.sips <= 0 ? 'Nothing left to sip.' : s.sipped ? 'One sip a round.' : null);
 export function sip(b, s) {
-  if (!s.drink || s.drink.sips <= 0 || s.sipped) return false;
+  if (canSip(b, s)) return false;
   s.drink.sips--; s.sipped = true;
-  for (const [k, v] of Object.entries(s.drink.mods)) s.turnBonus[k] = (s.turnBonus[k] || 0) + v;
+  s.food.push({ mods: { ...s.drink.mods }, turns: 1, label: s.drink.name });
   return true;
 }
+// is there anything to do in the Drink phase?
+export const drinkUseful = (b, s) => !canSip(b, s) || allCells(s).some(({ r, c }) => !canEat(b, s, r, c));
+// close the Drink phase and start the next turn
+export function nextTurn(b) { if (b.phase !== 'drink' || b.over) return false; b.turn++; startTurn(b); return true; }
 const phaseGate = (b, want) => (b.phase === want ? null : PHASES.indexOf(b.phase) < PHASES.indexOf(want) ? `Lock in your ${PHASES[PHASES.indexOf(want) - 1]}s first.` : `${want === 'draw' ? 'Drawing' : want === 'roll' ? 'Rolling' : 'Bidding'} is over for this turn.`);
 export function canDraw(b, s, uid) {
   const gate = phaseGate(b, 'draw'); if (gate) return gate;
@@ -385,9 +393,12 @@ export function rollOut(b, s, dieId) {
 const countShop = (s, id, rows) => sum(allCells(s).filter((x) => !rows || x.r < s.dims.meterRows), (x) => x.cell.chips.filter((ch) => ch.shop === id).length);
 function rollWith(b, s, die) {
   const o = b.sides[1 - s.idx], U = countShop(s, 'upgrade', true);
-  const extra = [U >= 1 && 'escalate', U >= 3 && 'gamble'].filter((u) => u && !(die.up || []).includes(u));
-  let v = rollDie(b.rng, extra.length ? { ...die, up: [...(die.up || []), ...extra] } : die);
-  v += (U >= 2 ? 1 : 0) + Math.max(0, U - 3);
+  let v;
+  if (U) { // each Upgrade chip on your Meter puts a random upgrade on this roll only: a risk as much as a help
+    const ids = Object.keys(DIE_UPGRADES), temp = boutCopy(die); temp.faces = facesOf(die).map((f) => ({ ...f }));
+    for (let k = 0; k < U; k++) { const u = b.rng.pick(ids); temp.faces = upgradeFaces({ ...temp, up: [] }, u, b.rng.int(temp.faces.length), b.rng).faces; if (DIE_UPGRADES[u].roll && !temp.up.includes(u)) temp.up.push(u); }
+    v = rollDie(b.rng, temp);
+  } else v = rollDie(b.rng, die);
   v += countShop(s, 'boosted') * (shopVars('boosted').die || 0) - countShop(o, 'cheapened') * (shopVars('cheapened').die || 0);
   return Math.max(0, v);
 }
@@ -468,6 +479,8 @@ export function validTargets(b, s, e, payOnly) {
   // your opponent cannot aim at a Transpara stack, or a Shadow stack behind a taller one
   const veiled = (r, c) => hidden && (shopCount(t.grid[r][c], 'transpara') > 0 || (shopCount(t.grid[r][c], 'shadow') > 0 && r > 0 && solidCount(t.grid[r - 1][c]) > solidCount(t.grid[r][c])));
   const push = (r, c) => { if (r >= 0 && !veiled(r, c)) out.push(ref(t, r, c)); };
+  if (def.type === 'expense' && def.side === 'opp' && def.approach !== 'none') // creatures over your own stacks can be attacked too
+    for (const cr of b.creatures || []) if (cr.side === s.idx && !cr.gone && cr.r >= 0 && CREATURES[cr.kind]?.bounty) out.push(ref(s, cr.r, cr.c));
   switch (def.approach) {
     case 'front': for (let c = 0; c < C; c++) push(frontRow(t, c, payOnly), c); break;
     case 'rear': for (let c = 0; c < C; c++) push(rearRow(t, c, payOnly), c); break;
@@ -525,14 +538,14 @@ export function previewTotal(s, e) {
 
 // ---------- effects ----------
 // How a fee total is split over the stacks it covers: evenly, the first stacks taking the odd cents.
-function feeShares(o, def, cells, total, pierce) {
-  const hit = cells.filter(({ r, c }) => occupied(o.grid[r][c], pierce)); if (!hit.length || total <= 0) return [];
+function feeShares(o, def, cells, total, pierce, b) {
+  const hit = cells.filter(({ r, c }) => occupied(o.grid[r][c], pierce) || (b?.creatures || []).some((cr) => cr.side === o.idx && !cr.gone && cr.r === r && cr.c === c)); if (!hit.length || total <= 0) return [];
   const per = Math.floor(total / hit.length), rem = total % hit.length;
   return hit.map(({ r, c }, i) => ({ r, c, amt: def.tax ? Math.max(total, Math.ceil(Math.max(0, cellWorth(o.grid[r][c])) * Math.min(1, total / 10))) : per + (i < rem ? 1 : 0) })).filter((x) => x.amt > 0);
 }
 // Where a fee trick would land from an origin, as the table stands now.
 export function feePlan(b, s, e, origin) {
-  const def = TRICKS[e.trick.id]; if (def.roll.k !== 'fee' || def.dist === 'rain' || !e.dice.length || !origin) return null;
+  const def = TRICKS[e.trick.id]; if (def.roll.k !== 'fee' || def.dist === 'rain' || !e.dice.length || !origin || origin.side === s.idx) return null;
   const o = b.sides[1 - s.idx], bonus = bonusMet(s, e) ? def.bonus.k : null;
   const pierce = s.mods.pierce || bonus === 'pierce', total = previewTotal(s, e);
   const dist = bonus === 'spread' ? SPREAD[e.trick.id] || 'swipe' : bonus === 'aura' ? 'aura' : def.dist;
@@ -566,11 +579,12 @@ function engage(b, att, def, r, c, amount, o = {}) {
   if (open && amount < rr) return { placed: 0, notes: [`deterred by a Resist chip (r ${rr})`] };
   { // a creature hovering over the stack soaks the fee; enough Debt drives it off and it drops a Bounty chip
     const cr = (b.creatures || []).find((x) => x.side === def.idx && !x.gone && x.r === r && x.c === c && CREATURES[x.kind]?.bounty);
-    if (cr && !o.pierce) { cr.debt = (cr.debt || 0) + amount; const C = CREATURES[cr.kind];
+    if (cr && !o.pierce) { const C = CREATURES[cr.kind], take = Math.min(amount, C.bounty - (cr.debt || 0)); cr.debt = (cr.debt || 0) + take; amount -= take;
       if (cr.debt >= C.bounty) { cr.gone = true; cr.bountied = true; const chip = mkChip(b, 'bounty', C.bounty, { creature: cr.kind });
         if (capacityLeft(def, cell) > 0) pushChip(cell, chip); else addToMeter(b, def, [chip], { r, c }, 'spawn');
-        return { placed: 0, notes: [`soaked by the ${C.name}, which is driven off and drops a ${C.bounty}¢ Bounty chip`] }; }
-      return { placed: 0, notes: [`soaked by the ${C.name} (${cr.debt} of ${C.bounty}¢)`] }; }
+        notes.push(`${take}¢ to the ${C.name}, which is driven off and drops a ${C.bounty}¢ Bounty chip`); }
+      else notes.push(`${take}¢ soaked by the ${C.name} (${cr.debt} of ${C.bounty}¢)`);
+      if (amount <= 0) return { placed: 0, notes }; } // the rest goes on to the stack beneath
   }
   { // a Petal, Flower, Clay or Brick on top blocks the entire fee, however big (fee instance defence)
     const ti = topSolid(cell), top = ti >= 0 ? cell.chips[ti] : null;
@@ -800,14 +814,16 @@ function* play(b, s, e) {
   if (total >= 10) for (const { cell } of allCells(s)) if (cell.roost?.egg) { // a big trick hatches the egg on your Roost
     cell.roost.egg = false; b.creatures.push({ ...mkCreature(b, o.idx, b.turn + 1), kind: 'dragon', life: 2 });
     yield step(b, `${tag} hatches the egg on ${s.name}'s Dragon Roost: a Dragon flies at ${o.name}.`, [], 'bonus'); }
-  const t = targetSide(b, s, def);
+  let t = targetSide(b, s, def);
   const pierce = def.type === 'expense' && (fz.pierce || bonus === 'pierce');
   // re-find the origin: positions may have changed since the target was picked
   let origin = null;
   if (t && def.approach !== 'none') {
     const valid = validTargets(b, s, e, pierce), want = e.target || valid[0];
-    if (valid.length && want) origin = valid.slice().sort((x, y) => Math.abs(x.c - want.c) * 10 + Math.abs(x.r - want.r) - (Math.abs(y.c - want.c) * 10 + Math.abs(y.r - want.r)))[0];
+    const far = (x) => (x.side !== want.side ? 1000 : 0) + Math.abs(x.c - want.c) * 10 + Math.abs(x.r - want.r);
+    if (valid.length && want) origin = valid.slice().sort((x, y) => far(x) - far(y))[0];
     if (!origin) { yield step(b, `${tag} finds no target and fizzles.`, [], 'miss'); return; }
+    t = b.sides[origin.side]; // an Expense aimed at a creature over your own stack lands on your side
   }
   const dist = bonus === 'spread' ? SPREAD[e.trick.id] || 'swipe' : bonus === 'aura' ? 'aura' : def.dist;
   const cells = origin ? affected(b, t, def, origin, e.dice.length, { dist, payOnly: pierce }) : [];
@@ -816,7 +832,7 @@ function* play(b, s, e) {
     case 'fee': {
       const element = def.element && (def.bonus.k !== 'element' || bonus === 'element') ? def.element : null;
       const opts = { pierce, glean: bonus === 'glean' }, notes = new Set(); let placed = 0;
-      const send = (r, c, amt, el) => { const g = engage(b, s, o, r, c, amt, { ...opts, element: el }); placed += g.placed; for (const n of g.notes) notes.add(n.replace(/^\d+¢ /, '')); };
+      const send = (r, c, amt, el) => { const g = engage(b, s, t || o, r, c, amt, { ...opts, element: el }); placed += g.placed; for (const n of g.notes) notes.add(n.replace(/^\d+¢ /, '')); };
       const tail = () => (notes.size ? ` — partly ${[...notes].join(', ')}` : '');
       if (def.dist === 'rain') {
         const live = allCells(o).filter((x) => occupied(x.cell, pierce)); if (!live.length) { yield step(b, `${tag} finds nothing to hit.`, [], 'miss'); return; }
@@ -824,14 +840,14 @@ function* play(b, s, e) {
         let first = true; for (const [x, n] of counts) { send(x.r, x.c, n, first ? element : null); first = false; }
         yield step(b, `${tag} rains ${total} drops: ${placed}¢ of Debt lands${tail()}.`, [...counts.keys()].map((x) => ref(o, x.r, x.c)), placed ? 'play' : 'miss'); return;
       }
-      const hit = feeShares(o, def, cells, total, pierce);
+      const hit = feeShares(t || o, def, cells, total, pierce, b);
       if (!hit.length) { yield step(b, `${tag} comes to nothing.`, [], 'miss'); return; }
       hit.forEach(({ r, c, amt }, i) => send(r, c, amt, i === 0 ? element : null));
       if (def.plant === 'dynamite') { // light a stack of sticks on the empty space nearest the target
         const free = allCells(o).filter((x) => !x.cell.hole && !x.cell.chips.length).sort((x, y) => Math.abs(x.r - origin.r) + Math.abs(x.c - origin.c) - (Math.abs(y.r - origin.r) + Math.abs(y.c - origin.c)));
         if (free.length) { const n = clamp(Math.floor(total / 4), 2, o.dims.stackMax); for (let k = 0; k < n; k++) free[0].cell.chips.push(mkChip(b, 'dynamite')); notes.add(`${n} sticks of Dynamite lit`); }
       }
-      yield step(b, placed ? `${tag}: ${placed}¢ of Debt on ${hit.length} stack${hit.length > 1 ? 's' : ''}${tail()}.` : `${tag}: the fee is ${[...notes].join(', ') || 'lost'}.`, hit.map((x) => ref(o, x.r, x.c)), placed ? 'play' : 'miss'); return;
+      yield step(b, placed ? `${tag}: ${placed}¢ of Debt on ${hit.length} stack${hit.length > 1 ? 's' : ''}${tail()}.` : `${tag}: the fee is ${[...notes].join(', ') || 'lost'}.`, hit.map((x) => ref(t || o, x.r, x.c)), placed || notes.size ? 'play' : 'miss'); return;
     }
     case 'block': { const kind = bonus === 'counter' ? 'counter' : 'block'; const n = Math.min(total, 60);
       addToMeter(b, s, Array.from({ length: n }, () => mkChip(b, kind)), origin, 'spawn');
@@ -1165,8 +1181,37 @@ export function* resolve(b) {
     yield step(b, b.timeout ? `Last call. ${b.sides[b.winner].name} holds the most Worth.` : `${b.sides[1 - b.winner].name} is broke. ${b.sides[b.winner].name} wins the bout.`, [], 'over');
     return;
   }
-  b.turn++; startTurn(b); b.ctx = null;
-  yield step(b, '', [], 'turn');
+  b.phase = 'drink'; for (const s of b.sides) { s.sipped = false; s.ate = false; } b.ctx = null; openPhase(b);
+  yield step(b, '', [], 'drink');
+}
+
+// ---------- effect chips ----------
+// Every effect, investment and tilt at work on a Roller, as a chip lying on their table. `size` is how many spaces
+// square it covers: effects on one thing are 1, effects on every roll effect are 2, effects on the whole position
+// are 3. Only chips of the same size stack together. `zone`: the Meter for help, the Bar for harm.
+const STAT_SHORT = { trickery: 'Draw', ingenuity: 'Bid', proficiency: 'Roll', charisma: 'Steal', cunning: 'Opp', conviction: 'Power' };
+export function effectChips(b, s) {
+  const out = [], add = (key, name, glyph, value, size, good, text) => out.push({ key, name, glyph, value, size, zone: good ? 'meter' : 'bar', good, text });
+  const m = s.mods, st = s.status;
+  if (s.power) add('power', 'Power', '⚡', s.power, 1, true, 'Added to your next roll effect, then spent.');
+  if (m.boost) add('boost', 'Boost', '↑', m.boost, 2, true, 'Every other roll effect this turn gains this much.');
+  if (m.press) add('press', 'Press', '⇶', m.press, 2, true, 'Your Expenses this turn gain this much and pierce.');
+  else if (m.pierce) add('pierce', 'Pierce', '➹', '', 2, true, 'Your Expenses this turn ignore Block chips, Resist and Hardened stacks.');
+  if (m.bend != null) add('bend', 'Bend', '∿', m.bend, 2, true, 'Every die on these played tricks counts as this.');
+  if (m.mul && m.mul !== 1) add('parlay', 'Parlay', m.mul > 1 ? '×2' : '½', '', 2, m.mul > 1, `Your other roll effects this turn are ${m.mul > 1 ? 'doubled' : 'halved'}.`);
+  if (m.enfeeble) add('enfeeble', 'Enfeebled', '↓', m.enfeeble, 2, false, 'Every roll effect this turn loses this much.');
+  if (st.resist) add('resist', 'Resist', '⛉', st.resist, 3, true, 'Every fee charged to this position is reduced by this much.');
+  if (st.evade != null) add('evade', 'Evade', '〰', st.evade, 3, true, 'Any fee larger than this misses the position.');
+  if (st.reflect) add('reflect', 'Reflect', '◑', st.reflect, 3, true, `Up to this much of ${st.reflectAll ? 'every fee' : 'the next fee'} is sent back.`);
+  for (const [k, v] of Object.entries(s.turnBonus || {})) if (v) add('tb-' + k, `${v > 0 ? '+' : ''}${v} ${STAT_SHORT[k] || k}`, v > 0 ? '+' : '−', Math.abs(v), 1, v > 0, 'From a drink or food, this turn.');
+  (s.food || []).forEach((f, i) => add('food-' + i, f.label || 'Food', '🍴', f.turns, 1, true, `${Object.entries(f.mods).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${STAT_SHORT[k] || k}`).join(', ')} for ${f.turns} more turn${f.turns > 1 ? 's' : ''}.`));
+  if (s.familiars) add('familiar', 'Familiar', '🐾', s.familiars, 1, true, 'Clears a Debt or hazard chip each turn and may chase creatures away.');
+  if (s.interventions) add('intervention', 'Intervention', '✚', s.interventions, 1, true, 'Once, when you would go broke, your paid fees are restored.');
+  if (s.positionTilt) add('position', 'Position', '⊞', s.positionTilt, 2, true, 'Balance, Versatility and Depth raised for this bout.');
+  if (s.spawners) add('nest', 'Nest', '🪹', s.spawners, 1, false, 'Sends a creature every third turn.');
+  for (const cal of new Set(s.calamities)) if (['inferno', 'audit', 'tornado'].includes(cal)) add('cal-' + cal, CALAMITIES[cal].name, { inferno: '🔥', audit: '§', tornado: '🌪' }[cal], s.calamities.filter((x) => x === cal).length, cal === 'audit' ? 2 : 3, false, CALAMITIES[cal].text);
+  if (s.heat > 1) add('heat', 'Last call', '⏳', `×${s.heat.toFixed(2)}`, 3, false, 'Every Expense is multiplied; more each turn.');
+  return out;
 }
 
 // what each side walks away with
