@@ -40,10 +40,10 @@ export const STATS = {
 // ---------- Dice ----------
 export const DICE = {
   d4: { faces: 4, forge: { dice: 1, chips: 50, floor: 1 }, sell: 20 },
-  d6: { faces: 6, forge: { dice: 2, chips: 100, floor: 1 }, sell: 40 },
-  d8: { faces: 8, forge: { dice: 4, chips: 200, floor: 1 }, sell: 80 },
-  d10: { faces: 10, forge: { dice: 5, chips: 2000, floor: 2 }, sell: 200 },
-  d20: { faces: 20, forge: { dice: 20, chips: 5000, floor: 2 }, sell: 500 },
+  d6: { faces: 6, forge: { dice: 2, chips: 60, floor: 1 }, sell: 40 },
+  d8: { faces: 8, forge: { dice: 4, chips: 120, floor: 1 }, sell: 80 },
+  d10: { faces: 10, forge: { dice: 5, chips: 800, floor: 2 }, sell: 200 },
+  d20: { faces: 20, forge: { dice: 20, chips: 2500, floor: 2 }, sell: 500 },
 };
 // The workbook's 22 dice upgrades. A die has faces (1 to n to start); most upgrades change them when bought,
 // a few change how the die rolls. `target`: the buyer picks a face. `roll`: works when the die is rolled, so it
@@ -330,13 +330,14 @@ export const CHIPS = {
 export const CHIP_TIERS = [
   null,
   { name: 'Common', price: 20, floor: 1, color: '#c9d3e0' },
-  { name: 'Uncommon', price: 120, floor: 1, color: '#7dffb5' },
-  { name: 'Rare', price: 600, floor: 2, color: '#63c4ff' },
-  { name: 'Epic', price: 3000, floor: 3, color: '#b08cff' },
+  { name: 'Uncommon', price: 80, floor: 1, color: '#7dffb5' },
+  { name: 'Rare', price: 300, floor: 2, color: '#63c4ff' },
+  { name: 'Epic', price: 1500, floor: 3, color: '#b08cff' },
   { name: 'Royal', price: 15000, floor: 4, color: '#ffd76a' },
 ];
-// Shop chips are worth 1¢ like any other chip, are deployed at the base of your stacks, are not wagered,
-// and come back to you after a win if they survive. `resist`: the hazard a stack holding one is immune to.
+// Shop chips are worth 1¢ like any other chip and are deployed at the base of your stacks. They are staked at
+// their shop price: a win pays the wager multiplier on that stake (SHOP_CHIP_STAKE), and the chips that survive
+// come back to you. A loss takes them, as before. `resist`: the hazard a stack holding one is immune to.
 // `vars`: the numbers each effect reads, kept here so they can be tuned without touching the engine.
 // The chip object carries its shop id in `resist` (the field predates the specials) and in `shop`.
 // `kind`: a shop chip that is not a value chip (default: a 1¢ Royal Paradise chip). `place`: 'top' puts it on
@@ -461,6 +462,7 @@ export const makerOf = (id) => Object.keys(TRICKS).find((k) => TRICKS[k].make?.c
 export const resistsOf = (id) => { const X = SHOP_CHIPS[id]; return X?.resist ? [X.resist, ...(X.also || [])] : []; };
 export const shopVars = (id) => SHOP_CHIPS[id].vars || {};
 export const shopText = (id) => { const X = SHOP_CHIPS[id]; return typeof X.text === 'function' ? X.text(shopVars(id)) : X.text; };
+export const SHOP_CHIP_STAKE = true;
 export const shopPrice = (id) => SHOP_CHIPS[id].price ?? CHIP_TIERS[SHOP_CHIPS[id].tier].price;
 export const shopFloor = (id) => SHOP_CHIPS[id].floor ?? CHIP_TIERS[SHOP_CHIPS[id].tier].floor;
 // chips that lie over a stack rather than in it: they take no height, stay on top and are cleansed like hazards.
@@ -517,16 +519,18 @@ export const WAGER_BASE = 1.5; export const WAGER_BOSS = 3; export const DD_MAX 
 // Tilts are switched on or off for a bout. While one is on, the House may play it during the bout, in the House
 // phase. How often and how hard depends on the bout: the more you have lost to the House (your fees paid to the
 // Stage, as a share of what you started with) the harder Challenges hit; the more your opponent has lost to the House,
-// the stronger your Cheats. `floor`: the first floor that offers it. `mult`: what it adds to the wager multiplier.
+// the stronger your Cheats. `floor`: the first floor that offers it. `mult`: what it adds to (Challenge) or takes from
+// (Cheat) the wager multiplier. Early purses sit almost wholly on the table, so the wager alone rarely carries that;
+// the same share of the opponent's worth is also paid on a win: a House bounty for a Challenge, a House cut for a Cheat.
 // `base` and `per`: the House's chance to play it each turn, base + per × pressure.
 export const TILTS = {
-  hazard: { kind: 'challenge', name: 'Hazard', floor: 1, mult: 0.15, base: 0.25, per: 0.6, text: 'The House digs Holes in empty spaces of your position (one in three is a Magic Hat slipped under a stack). More of them, more often, the more you have lost to the House.' },
-  creature: { kind: 'challenge', name: 'Creature', floor: 1, mult: 0.2, base: 0.2, per: 0.6, text: 'The House sends creatures to your position. The more you have lost to the House, the more often, and the bigger the creatures it can call.' },
-  spawner: { kind: 'challenge', name: 'Spawner', floor: 2, mult: 0.25, base: 0.15, per: 0.5, text: 'The House sets nests on your position that send a creature every third turn (every second, once you have lost a third of your chips). One in two is a Dragon Roost: it takes a Bar space and calls a Dragon that lays eggs on it.' },
-  calamity: { kind: 'challenge', name: 'Calamity', floor: 3, mult: 0.4, base: 0.12, per: 0.45, text: 'The House starts disasters on your position: a Worm Hole, Inferno, Audit, Black Hole, Volcano, Tornado, Blizzard or B-52. A second one comes once you have lost half your chips.' },
-  shield: { kind: 'cheat', name: 'Shield', floor: 1, mult: 0.15, base: 0.3, per: 0.6, text: 'The House drops Block chips on your Meter: more, and more often, the more your opponent has lost to the House.' },
-  familiar: { kind: 'cheat', name: 'Familiar', floor: 1, mult: 0.15, base: 0.35, per: 0.6, text: 'The House sends you a little friend that removes one Debt or hazard chip each turn and may chase creatures away. Up to three, as your opponent loses to the House. One play in three sets a Hive on an empty space of your position instead: it sends out Bumble Bees that sting creatures and pollinate your Flowers into Honey.' },
-  position: { kind: 'cheat', name: 'Position', floor: 1, mult: 0.2, base: 0, per: 0, text: 'Adds +1 to Balance, Versatility and Depth for this bout. The House plays it when you sit down, so it does not grow during the bout.' },
+  hazard: { kind: 'challenge', name: 'Hazard', floor: 1, mult: 0.25, base: 0.25, per: 0.6, text: 'The House digs Holes in empty spaces of your position (one in three is a Magic Hat slipped under a stack). More of them, more often, the more you have lost to the House.' },
+  creature: { kind: 'challenge', name: 'Creature', floor: 1, mult: 0.35, base: 0.2, per: 0.6, text: 'The House sends creatures to your position. The more you have lost to the House, the more often, and the bigger the creatures it can call.' },
+  spawner: { kind: 'challenge', name: 'Spawner', floor: 2, mult: 0.4, base: 0.15, per: 0.5, text: 'The House sets nests on your position that send a creature every third turn (every second, once you have lost a third of your chips). One in two is a Dragon Roost: it takes a Bar space and calls a Dragon that lays eggs on it.' },
+  calamity: { kind: 'challenge', name: 'Calamity', floor: 3, mult: 0.5, base: 0.12, per: 0.45, text: 'The House starts disasters on your position: a Worm Hole, Inferno, Audit, Black Hole, Volcano, Tornado, Blizzard or B-52. A second one comes once you have lost half your chips.' },
+  shield: { kind: 'cheat', name: 'Shield', floor: 1, mult: 0.25, base: 0.3, per: 0.6, text: 'The House drops Block chips on your Meter: more, and more often, the more your opponent has lost to the House.' },
+  familiar: { kind: 'cheat', name: 'Familiar', floor: 1, mult: 0.1, base: 0.35, per: 0.6, text: 'The House sends you a little friend that removes one Debt or hazard chip each turn and may chase creatures away. Up to three, as your opponent loses to the House. One play in three sets a Hive on an empty space of your position instead: it sends out Bumble Bees that sting creatures and pollinate your Flowers into Honey.' },
+  position: { kind: 'cheat', name: 'Position', floor: 1, mult: 0.15, base: 0, per: 0, text: 'Adds +1 to Balance, Versatility and Depth for this bout. The House plays it when you sit down, so it does not grow during the bout.' },
   intervention: { kind: 'cheat', name: 'Intervention', floor: 3, mult: 0.3, base: 0, per: 0, text: 'Once, when you would go broke, the House restores your paid fees: half of them, up to all of them the more your opponent has lost to the House. It costs half your wager.' },
 };
 // What the House reads when it plays a tilt: a Roller's pressure is a weighted mix of the share of their starting
@@ -534,13 +538,14 @@ export const TILTS = {
 // they started with (`overkill`), how full their Meter is (`fill`, 0 to 1) and the worth sitting in it as a share of
 // what they started with (`value`). Challenges read your pressure, Cheats your opponent's.
 export const TILT_PRESSURE = { lost: 1, overkill: 0.5, fill: 0.2, value: 0.3 };
+export const TILT_WORTH_SHARE = 1; // × mult × opponent worth, paid (Challenge) or taken (Cheat) on a win
 export const tiltChance = (key, pressure) => Math.min(0.95, TILTS[key].base + TILTS[key].per * pressure);
 
 // ---------- Floors and opponents ----------
 export const FLOORS = [
   null,
   { name: 'Boogey Basement', line: 'These clowns and losers are just the stepping stones to greater Worth.', worth: [36, 44, 52], boss: 64, cut: 10 },
-  { name: 'Hustlers Haven', line: 'Beware, these rollers are no slouches. Cinch your purse strings on your way in.', worth: [110, 135, 160], boss: 240, cut: 100 },
+  { name: 'Hustlers Haven', line: 'Beware, these rollers are no slouches. Cinch your purse strings on your way in.', worth: [80, 95, 110], boss: 160, cut: 100 },
   { name: 'Rollers Suite', line: "You're doing it! Time to play with the high rollers. Do you have what it takes?", worth: [250, 300, 350], boss: 500, cut: 1000 },
   { name: 'Royal Paradise', line: 'This room is for royal rollers only. It sure would be a shame to dethrone them.', worth: [450, 550, 650], boss: 740, cut: 100000 },
 ];
@@ -609,11 +614,13 @@ export const RACER_WORDS = ['Lucky Seven', 'Hard Eight', 'Loose Change', 'Double
   'Little Joe', 'Big Red', 'Yo Eleven', 'Easy Six', 'Midnight', 'Ace Deuce', 'House Edge', 'Bad Beat'];
 
 // ---------- Gear ----------
+// `cls`: a level 0 jacket is cut for one class: its drawback lands on that class's strongest Coin stat (2 → 1)
+// rather than zeroing a 1. Other classes cannot wear it.
 export const JACKETS = {
   standard: { name: 'Standard', color: '#5b6378', effect: 'Functional', mods: {}, price: 0, level: 0 },
-  long: { name: 'Long', color: '#4b3a2a', effect: 'Concealing · Awkward', mods: { depth: 1, conviction: -1 }, price: 200, level: 0 },
-  leather: { name: 'Leather', color: '#1d1d22', effect: 'Rebellious · Inappropriate', mods: { versatility: 1, charisma: -1 }, price: 200, level: 0 },
-  bomber: { name: 'Bomber', color: '#5d6b3a', effect: 'Confident · Brutish', mods: { balance: 1, cunning: -1 }, price: 200, level: 0 },
+  long: { name: 'Long', color: '#4b3a2a', effect: 'Concealing · Awkward', mods: { depth: 1, conviction: -1 }, price: 200, level: 0, cls: 'technician' },
+  leather: { name: 'Leather', color: '#1d1d22', effect: 'Rebellious · Inappropriate', mods: { versatility: 1, charisma: -1 }, price: 200, level: 0, cls: 'hustler' },
+  bomber: { name: 'Bomber', color: '#5d6b3a', effect: 'Confident · Brutish', mods: { balance: 1, cunning: -1 }, price: 200, level: 0, cls: 'rascal' },
   rain: { name: 'Rain', color: '#e2c21c', effect: 'Practical · Unnecessary', mods: { cunning: 2, versatility: -1 }, price: 20000, level: 1 },
   sports: { name: 'Sports', color: '#c8463d', effect: 'Fashionable · Expected', mods: { charisma: 2, depth: -1 }, price: 20000, level: 1 },
   suede: { name: 'Suede', color: '#a8744a', effect: 'Luxurious · Uncomfortable', mods: { conviction: 2, balance: -1 }, price: 20000, level: 1 },

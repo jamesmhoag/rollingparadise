@@ -134,8 +134,6 @@ const BUY = {
     }
   },
 };
-export const CHIP_MIX = ['little', 'clay', 'reducer', 'power', 'control', 'nest'];
-export const FOOD_MIX = ['chocolate', 'chipchip', 'bun', 'honey', 'hamburger'];
 
 // A strategy: { buy: [...steps], frac, tilts:{}, dd, prize, barfly, jacket, knobs, plan:{spacing,stacking}, sellDown }
 // steps are names in BUY or ['chip', [ids]]

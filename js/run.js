@@ -46,7 +46,8 @@ export function dropCard(run, id) { if (!hasCard(run, id) || D.PASS_CARDS.includ
 export const price = (run, shop, base) => Math.max(1, Math.round(base * (hasCard(run, `discount_${shop}`) || (shop === 'trader' && hasCard(run, 'membership')) ? 0.9 : 1)));
 function spend(run, amt, label) { if (run.purse < amt) return false; run.purse -= amt; run.stats.spent += amt; ledger(run, label, -amt); return true; }
 
-export function newRun(cls, jacket = 'standard', seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0, gear = {}) {
+export function newRun(cls, jacketReq = 'standard', seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0, gear = {}) {
+  const jacket = jacketFits(cls, jacketReq) ? jacketReq : 'standard'; // a level 0 jacket only fits the class it was cut for
   const run = { v: 1, rng: new RNG(seed), seed, cls, jacket, wallet: gear.wallet || 'worn_cloth', pendingCard: null, floor: 0, purse: 0, nextId: 1, dice: [], tricks: [], chips: {},
     drink: null, cards: [], punches: 0, rest: null, suiteKey: false, phase: 'intro', fs: null, bets: [], news: [], ledger: [], ascent: null,
     plan: { spacing: 'row', stacking: 'maxed', counts: null, resist: {} },
@@ -158,7 +159,7 @@ function genShelf(run) {
   }
   return out;
 }
-export const restockCost = (run) => price(run, 'trader', 200 * (run.floor + run.fs.restocks));
+export const restockCost = (run) => price(run, 'trader', 100 * (run.floor + run.fs.restocks));
 export function restock(run) { if (!spend(run, restockCost(run), 'Trick Trader restock')) return false; run.fs.restocks++; run.fs.shop = genShelf(run); return true; }
 export function buyTrick(run, key) {
   const it = run.fs.shop.find((x) => x.key === key); if (!it || !spend(run, price(run, 'trader', it.cost), `Bought ${D.TRICKS[it.trick.id].name}`)) return false;
@@ -166,7 +167,7 @@ export function buyTrick(run, key) {
   if (run.fs.bought >= 5 && !hasCard(run, 'membership')) { run.cards.push('membership'); run.news.push('The Trick Trader slides you a Membership Card. The Secret Shelf is open.'); }
   return true;
 }
-export const upgradeCost = (run, t) => price(run, 'trader', 100 * (1 + t.q * (t.up + 1)));
+export const upgradeCost = (run, t) => price(run, 'trader', 50 * (1 + t.q * (t.up + 1)));
 export function upgradeTrick(run, uid) {
   const t = run.tricks.find((x) => x.uid === uid); if (!t || t.up >= 2 || run.fs.upgrades <= 0) return false;
   if (!spend(run, upgradeCost(run, t), `Upgraded ${D.TRICKS[t.id].name}`)) return false; t.up++; run.fs.upgrades--; return true;
@@ -204,7 +205,7 @@ export function sellDie(run, id) {
   const i = run.dice.findIndex((d) => d.id === id); if (i < 0 || run.dice.length <= 1) return false;
   const v = D.DICE[run.dice[i].type].sell; ledger(run, `Sold a ${run.dice[i].type}`, v); run.dice.splice(i, 1); run.purse += v; return true;
 }
-export const dieUpgradeCost = (run, d) => price(run, 'diesmith', 100 * Math.max(1, run.floor) * (1 + d.up.length));
+export const dieUpgradeCost = (run, d) => price(run, 'diesmith', 60 * Math.max(1, run.floor) * (1 + d.up.length));
 // why an upgrade cannot go on a die right now, or null
 export function dieUpgradeBlock(run, d, up) {
   const U = D.DIE_UPGRADES[up]; if (!U) return 'No such upgrade.';
@@ -234,11 +235,12 @@ function drinkMods(run, d) {
   if (d.stat === 'all') return Object.fromEntries(all.map((k) => [k, d.amt]));
   return { [d.stat]: d.amt };
 }
+const DRINK_FLOOR = [1, 0.2, 0.4, 0.7, 1]; // drinks get pricier floor by floor instead of jumping 5× at floor 2
 function genLounge(run, floor) {
   const rng = run.rng; const basic = rng.shuffle(D.DRINKS.slice(0, 6)); const list = [basic[0], basic[1]];
   list.push(floor >= 4 && rng.chance(0.5) ? D.DRINKS[8] : floor >= 2 ? rng.pick([D.DRINKS[6], D.DRINKS[7]]) : basic[2]);
   const happy = rng.chance(0.2);
-  return { happy, challenged: false, drinks: list.map((d) => ({ ...d, mods: drinkMods(run, d), cost: Math.round(d.cost * (happy ? 0.5 : 1) * (floor === 1 ? 0.2 : 1)) })),
+  return { happy, challenged: false, drinks: list.map((d) => ({ ...d, mods: drinkMods(run, d), cost: Math.round(d.cost * (happy ? 0.5 : 1) * (DRINK_FLOOR[floor] ?? 1)) })),
     challenger: genOpponent(run, floor, 14 * maxDenom(floor), { cols: 3, name: rng.pick(D.OPPONENTS), title: 'Barfly', q: Math.max(1, Math.min(3, floor) - 1) }) };
 }
 export const drinkCost = (run, d) => (run.punches >= 5 ? 0 : price(run, 'lounge', d.cost));
@@ -288,6 +290,12 @@ export function searchFloor(run) {
 export const newPrep = (run, kind, idx) => ({ kind, idx, tilts: Object.fromEntries(Object.keys(D.TILTS).map((k) => [k, 0])), dd: false });
 export const tiltOpen = (run, key) => (run.floor || 1) >= D.TILTS[key].floor;
 export function setTilt(run, prep, key, on) { if (on && !tiltOpen(run, key)) return false; prep.tilts[key] = on ? 1 : 0; return true; }
+// the tilts' net share: + for Challenges, − for Cheats
+export const tiltNet = (prep) => sum(Object.entries(prep.tilts), ([k, n]) => (n ? (D.TILTS[k].kind === 'challenge' ? 1 : -1) * D.TILTS[k].mult : 0));
+// what a won table pays for its tilts (a House bounty for Challenges, a House cut for Cheats) and for staked shop chips
+export const tiltPay = (ctx) => Math.round(D.TILT_WORTH_SHARE * (ctx.tiltNet || 0) * (ctx.opp?.worth || 0));
+export const chipStake = (resist) => sum(Object.entries(resist || {}), ([id, n]) => (D.SHOP_CHIPS[id] && D.soldInShop(id) ? n * D.shopPrice(id) : 0));
+export const chipStakePay = (ctx) => (D.SHOP_CHIP_STAKE ? Math.round(chipStake(ctx.resist) * (ctx.mult - 1)) : 0);
 export function multiplier(run, prep) {
   const base = prep.kind === 'boss' ? D.WAGER_BOSS : D.WAGER_BASE; let m = base;
   for (const [k, n] of Object.entries(prep.tilts)) if (n) m += (D.TILTS[k].kind === 'challenge' ? 1 : -1) * D.TILTS[k].mult;
@@ -347,7 +355,7 @@ export function startTable(run, prep) {
   for (const el of Object.keys(extra.resist)) extra.resist[el] = Math.min(extra.resist[el], owned(run, el));
   const bout = createBout({ seed: run.rng.int(2 ** 31), a: playerSpec(run, counts, extra), b: entry.opp, rules: { maxDenom: maxDenom(run.floor), felt: prep.kind === 'boss' ? 'royal' : D.feltId(entry.felt) } });
   const com = committed(bout);
-  return { bout, ctx: { kind: prep.kind, idx: prep.idx, opp: entry.opp, felt: prep.kind === 'boss' ? 'royal' : D.feltId(entry.felt), prep, wager: Math.max(0, run.purse - com), mult: multiplier(run, prep), committed: com, resist: extra.resist } };
+  return { bout, ctx: { kind: prep.kind, idx: prep.idx, opp: entry.opp, felt: prep.kind === 'boss' ? 'royal' : D.feltId(entry.felt), prep, wager: Math.max(0, run.purse - com), mult: multiplier(run, prep), tiltNet: tiltNet(prep), committed: com, resist: extra.resist } };
 }
 export function startLounge(run, drinkId) {
   const L = run.fs.lounge, st = rollerStats(run), d = L.drinks.find((x) => x.id === drinkId);
@@ -407,7 +415,8 @@ export function settle(run, ctx, bout) {
   const wager = sm.intervened ? Math.floor(ctx.wager / 2) : ctx.wager;
   if (sm.win) {
     const base = sm.survivors + sm.gold + sm.ownFees + sm.pendingBids + sm.opportunity + sm.nest + sm.seq + bounty + wager;
-    const winnings = sm.oppFees + Math.round(wager * (ctx.mult - 1));
+    const tilt = tiltPay(ctx), chipsWon = chipStakePay(ctx);
+    const winnings = Math.max(0, sm.oppFees + Math.round(wager * (ctx.mult - 1)) + tilt + chipsWon);
     lines.push(['Chips left in your position', sm.survivors], ['Your fees, restored from the Stage', sm.ownFees + sm.pendingBids]);
     if (sm.gold) lines.push(['Gold chips pay double', sm.gold]);
     if (sm.opportunity) lines.push(['A chip for every Opportunity chip', sm.opportunity]);
@@ -417,6 +426,8 @@ export function settle(run, ctx, bout) {
     lines.push(['Wager returned', wager]);
     if (sm.intervened) lines.push(['Intervention took half your wager', -(ctx.wager - wager)]);
     lines.push([`Fees ${ctx.opp.name} paid to the table`, sm.oppFees], [`Wager winnings ×${ctx.mult}`, Math.round(wager * (ctx.mult - 1))]);
+    if (chipsWon) lines.push([`Shop chips staked (${chipStake(ctx.resist)}¢) ×${ctx.mult}`, chipsWon]);
+    if (tilt) lines.push([tilt > 0 ? 'House bounty for your Challenges' : 'House cut for your Cheats', tilt]);
     lines.push(['Bids lost to the House', -(sm.bids - sm.pendingBids)]);
     if (sm.destroyed) lines.push(['Chips destroyed by hazards', -sm.destroyed]);
     entry.beaten = true; if (ctx.kind === 'boss' && run.floor >= 4 && !hasCard(run, 'paradise')) { run.cards.push('paradise'); res.news.push('The last High Roller hands over a Paradise Card. The Ascent is open to you.'); }
@@ -479,6 +490,7 @@ export function buildAscent(run, meta) {
   run.ascent = { ladder, step, start: step }; run.phase = 'ascent'; run.floor = 5; run.fs = null; run.cards = []; run.jacket = 'standard';
   return run.ascent;
 }
+export const jacketFits = (cls, id) => !D.JACKETS[id].cls || D.JACKETS[id].cls === cls;
 export const jacketAvailable = (run, id) => D.JACKETS[id].level <= Math.max(0, run.floor - 1);
 export function buyJacket(run, meta, id) {
   const J = D.JACKETS[id]; if (meta.jackets.includes(id) || !jacketAvailable(run, id)) return false;
