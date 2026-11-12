@@ -16,7 +16,16 @@ for (const [k, rs] of groups) {
   const buys = {}; for (const r of rs) for (const [b, c] of Object.entries(r.buys)) buys[b] = (buys[b] || 0) + c;
   const misses = {}; for (const r of rs) for (const [b, why] of Object.entries(r.misses || {})) { misses[b] ||= {}; misses[b][why] = (misses[b][why] || 0) + 1; }
   const reach = [1, 2, 3, 4].map((f) => rs.filter((r) => r.floor >= f).length / n);
-  summary.push({ name, cls, group: rs[0].group, n,
+  // first attempt at each table: retries after a loss (which depend on the sell-down policy) are left out
+  const LIB = ['none', 'intro', ...[1, 2, 3, 4].flatMap((f) => [`F${f} table 1`, `F${f} table 2/3`, `F${f} High Roller`])];
+  const ft = [0, 0, 0, 0, 0].map(() => [0, 0]); // [attempts, first-try wins] overall + per floor
+  for (const r of rs) {
+    const lost = new Set(r.lossAt.map((x) => LIB.indexOf(x)));
+    const last = r.cleared ? 13 : r.died && r.died !== 'intro' ? LIB.indexOf(r.died) : r.stage;
+    for (let st = 2; st <= last; st++) { const f = Math.floor((st - 2) / 3) + 1, w = lost.has(st) ? 0 : 1; ft[0][0]++; ft[0][1] += w; ft[f][0]++; ft[f][1] += w; }
+  }
+  const firstTry = ft.map(([a, w]) => (a ? w / a : null));
+  summary.push({ name, cls, group: rs[0].group, n, firstTry,
     winRate: cw / cb, boutsPerRun: cb / n, clearRate: rs.filter((r) => r.cleared).length / n,
     avgStage: mean(stage), seStage: sd(stage) / Math.sqrt(n), medianStage: STAGES[median], bestStage: STAGES[best],
     avgFloor: mean(floors), highestFloor: Math.max(...rs.map((r) => r.floor)), reach,

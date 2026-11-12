@@ -54,9 +54,16 @@ export const STRATEGIES = [
   S('+ play: bid one (bank Charisma)', 'B', { knobs: { bid: 'one' } }),
 ];
 
+// C. the same add-ons, bought FIRST each shop visit so the extra item is not starved by the standard buys
+export const PRIORITY = [
+  ...['forge', 'dieUpgrades', 'restock', 'bets'].map((x) => S(`first: ${x}`, 'C', { buy: [x, ...STANDARD.buy] })),
+  ...['little', 'clay', 'reducer', 'power', 'control', 'nest', 'seed', 'shadow', 'zap', 'anchor', 'boosted', 'cheapened', 'lucky', 'rebound', 'transpara', 'harmony', 'ward', 'chocolate', 'chipchip', 'bun', 'honey', 'hamburger']
+    .map((id) => S(`first: ${id} chips`, 'C', { buy: [['chip', [id], 0.2], ...STANDARD.buy] })),
+];
+
 if (isMainThread) {
   const [suite, nArg, out] = process.argv.slice(2);
-  const N = +nArg || 100, list = suite === 'boards' ? BOARDS : STRATEGIES;
+  const N = +nArg || 100, list = suite === 'boards' ? BOARDS : suite === 'priority' ? PRIORITY : STRATEGIES;
   const jobs = [];
   for (const x of list) for (const cls of CLASSES) for (let k = 0; k < N; k += 25)
     jobs.push({ name: x.name, group: x.group || '', board: x.board || {}, strat: x.strat, cls, seeds: Array.from({ length: Math.min(25, N - k) }, (_, i) => (k + i + 1) * 7919 + 13) });
