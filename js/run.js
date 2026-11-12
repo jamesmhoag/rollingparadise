@@ -95,7 +95,7 @@ export function genOpponent(run, floor, worthTarget, o = {}) {
   const why = { balance: [[`${K.name} class`, K.bvd.balance]].filter((x) => x[1]), versatility: [[`${K.name} class`, K.bvd.versatility]].filter((x) => x[1]), depth: [[`${K.name} class`, K.bvd.depth]].filter((x) => x[1]) };
   if (o.boss) { if (floor === 2 || floor === 3) tip[K.primary]++; bvd.balance++; why.balance.push(['High Roller', 1]); }
   if (o.weak) { tip.trickery = 1; tip.proficiency = 1; tip.ingenuity = 1; }
-  const dims = { cols: o.cols || 5, stackMax: 3 + bvd.balance, meterRows: 2 + bvd.versatility, barRows: 3 + bvd.depth };
+  const B0 = D.BASE_DIMS, dims = { cols: o.cols || B0.cols, stackMax: Math.max(1, B0.stackMax + bvd.balance), meterRows: Math.max(1, B0.meterRows + bvd.versatility), barRows: Math.max(1, B0.barRows + bvd.depth) };
   const pools = [null, ['d4', 'd6'], ['d6', 'd8'], ['d6', 'd8', 'd10'], ['d8', 'd8', 'd10', 'd10', 'd20']];
   const dice = Array.from({ length: o.weak ? 3 : 5 + f * 2 + (o.boss ? 2 : 0) }, () => mkDie(run, o.weak ? 'd4' : rng.pick(pools[f])));
   const q = o.q || Math.min(3, f); let ids = o.weak ? ['charge'] : [...K.tricks];
