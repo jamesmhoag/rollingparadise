@@ -100,9 +100,13 @@ export const CHIP_LIST = [
 "placement": "Empty Space",
 "source": "Spawned",
 "text": "Basic Deterent Chip deters damage instance under under r¢,  each resist chip is a stack tall and can not exceed max stack height in its value",
-"status": "needs",
-"note": "Need: what makes it, and which fees it deters. It sits on an empty space as its own stack, so does it guard the stacks around it, its lane, or the whole position? And what sets r?",
-"show": null
+"status": "built",
+"note": "Resist chip: made by Resist Cards (found in the dodgy corner; r 2 or 3). Sits at the base of a front Bar stack; fees under r¢ on it are deterred, like a Red chip keeps fire off.",
+"show": {
+"kind": "resist",
+"value": 0,
+"r": 2
+}
 },
 {
 "row": 9,
@@ -112,9 +116,13 @@ export const CHIP_LIST = [
 "placement": "Available Stack",
 "source": "Spawned",
 "text": "Deterent Chip Shocks Rollerof fees with any debt it creates, is broken if fee exceeds",
-"status": "needs",
-"note": "Need: the rule in plain terms. The values are s and f¢ and the text is cut off (\"is broken if fee exceeds…\"). Is it a shield that shocks the attacker, or a hazard?",
-"show": null
+"status": "built",
+"note": "Zap chip: a shop chip (Uncommon). A fee of 3¢ or less on its stack shocks the attacker; a bigger fee shorts it out.",
+"show": {
+"kind": "std",
+"value": 1,
+"resist": "zap"
+}
 },
 {
 "row": 10,
@@ -375,9 +383,13 @@ export const CHIP_LIST = [
 "placement": "Versatile",
 "source": "Chip Conversion",
 "text": "Increases Dice Values for each Boosted chip in  the pile",
-"status": "needs",
-"note": "Need: is it +1 to every die, or to each roll total? What makes it (the Power chip may already cover it)?",
-"show": null
+"status": "built",
+"note": "Boosted chip: a shop chip (Rare). Every die you roll shows 1 more per Boosted chip in your position.",
+"show": {
+"kind": "std",
+"value": 1,
+"resist": "boosted"
+}
 },
 {
 "row": 28,
@@ -387,9 +399,13 @@ export const CHIP_LIST = [
 "placement": "Versatle",
 "source": "Chip Conversion",
 "text": "Decreases Dice Values for each Boosted chip in the pile",
-"status": "needs",
-"note": "Need: the text repeats Boosted (\"for each Boosted chip\"). Is it −1 to the opponent's dice for each Cheapened chip? What makes it?",
-"show": null
+"status": "built",
+"note": "Cheapened chip: a shop chip (Rare), read as the opposite of Boosted: your opponent's dice show 1 less per Cheapened chip in your position.",
+"show": {
+"kind": "std",
+"value": 1,
+"resist": "cheapened"
+}
 },
 {
 "row": 29,
@@ -604,8 +620,8 @@ export const CHIP_LIST = [
 "placement": "Empty Space",
 "source": "Space Conversion",
 "text": "Any chips placed on top of the Worm Hole is transported it another empty space",
-"status": "needs",
-"note": "Need: what makes it, and whose empty space the chips land on (yours or your opponent's).",
+"status": "built",
+"note": "Worm Hole: a Calamity (Challenge tilt). Opens on an empty Meter space; chips that land on it are pulled through to your opponent's side.",
 "show": null
 },
 {
@@ -680,9 +696,13 @@ export const CHIP_LIST = [
 "placement": "Adajacent Stack",
 "source": "Stack Conversion",
 "text": "Has Sticky, Golden, and  Delicious chip effect properties allowing it to be consumed for temporary attribute bonuses",
-"status": "needs",
-"note": "Need: the \"Delicious\" bonus (which attributes, how much, for how long) and how a chip is eaten.",
-"show": null
+"status": "built",
+"note": "Honey chip: food sold at the Chip Exchange (+1 Roll, +1 Bid for a turn). The Hive that makes it still needs detail.",
+"show": {
+"kind": "food",
+"value": 0,
+"shop": "honey"
+}
 },
 {
 "row": 51,
@@ -708,9 +728,13 @@ export const CHIP_LIST = [
 "placement": "Targeted Stack",
 "source": "Chip Conversion",
 "text": "Can be consumed to gain temporary attribute bonuses",
-"status": "needs",
-"note": "Need: the \"Delicious\" bonus and how a chip is eaten; what converts a chip into Chocolate.",
-"show": null
+"status": "built",
+"note": "Chocolate chip: food sold at the Chip Exchange (+1 Draw for 2 turns).",
+"show": {
+"kind": "food",
+"value": 0,
+"shop": "chocolate"
+}
 },
 {
 "row": 53,
@@ -720,9 +744,13 @@ export const CHIP_LIST = [
 "placement": "",
 "source": "Chip Conversion",
 "text": "Drop after forcing a fairy into debt.  The chip can be used  and moved but is fragile and breaks with any instance of damage, can be exchanged for Royal Paradise Chips and a Unique Prize",
-"status": "needs",
-"note": "Need: how a creature is \"forced into debt\" (creatures have no Worth here) and what the Unique Prize is.",
-"show": null
+"status": "built",
+"note": "Bounty system: a creature hovering over a stack soaks fees that land there; at 25¢ of Debt the Fairy is driven off and drops this chip. Pays 25¢ and a found card.",
+"show": {
+"kind": "bounty",
+"value": 25,
+"creature": "fairy"
+}
 },
 {
 "row": 54,
@@ -732,9 +760,13 @@ export const CHIP_LIST = [
 "placement": "",
 "source": "Chip Conversion",
 "text": "Drop after forcing a Unicorn into debt.  The chip can be used  and moved but is fragile and breaks with any instance of damage, can be exchanged for Royal Paradise Chips and a Unique Prize",
-"status": "needs",
-"note": "Same as the Fairy Bounty chip.",
-"show": null
+"status": "built",
+"note": "Bounty: at 250¢ of Debt. Pays 250¢ and a free die upgrade on your best die.",
+"show": {
+"kind": "bounty",
+"value": 250,
+"creature": "unicorn"
+}
 },
 {
 "row": 55,
@@ -744,9 +776,13 @@ export const CHIP_LIST = [
 "placement": "",
 "source": "Chip Conversion",
 "text": "Drop after forcing a UFO into debt.  The chip can be used  and moved but is fragile and breaks with any instance of damage, can be exchanged for Royal Paradise Chips and a Unique Prize",
-"status": "needs",
-"note": "Same as the Fairy Bounty chip.",
-"show": null
+"status": "built",
+"note": "Bounty: at 50¢ of Debt. Pays 50¢ and a d8.",
+"show": {
+"kind": "bounty",
+"value": 50,
+"creature": "ufo"
+}
 },
 {
 "row": 56,
@@ -756,9 +792,13 @@ export const CHIP_LIST = [
 "placement": "",
 "source": "Chip Conversion",
 "text": "Drop after forcing a Mothership into debt.  The chip can be used  and moved but is fragile and breaks with any instance of damage, can be exchanged for Royal Paradise Chips and a Unique Prize",
-"status": "needs",
-"note": "Same as the Fairy Bounty chip.",
-"show": null
+"status": "built",
+"note": "Bounty: at 500¢ of Debt. Pays 500¢ and a d20.",
+"show": {
+"kind": "bounty",
+"value": 500,
+"creature": "mothership"
+}
 },
 {
 "row": 57,
@@ -768,9 +808,13 @@ export const CHIP_LIST = [
 "placement": "",
 "source": "Chip Conversion",
 "text": "Drop after forcing a Dragon into debt.  The chip can be used  and moved but is fragile and breaks with any instance of damage, can be exchanged for Royal Paradise Chips and a Unique Prize",
-"status": "needs",
-"note": "Same as the Fairy Bounty chip.",
-"show": null
+"status": "built",
+"note": "Bounty: at 250¢ of Debt. Pays 250¢ and a Scorch trick.",
+"show": {
+"kind": "bounty",
+"value": 250,
+"creature": "dragon"
+}
 },
 {
 "row": 58,
@@ -839,9 +883,13 @@ export const CHIP_LIST = [
 "placement": "",
 "source": "",
 "text": "",
-"status": "needs",
-"note": "Need: everything — the row has no type or text.",
-"show": null
+"status": "built",
+"note": "Upgrade chip: a shop chip (Epic). On your Meter it upgrades every roll (Escalate, +1, Gamble, more +1 as you add chips); bid on a trick it plays that trick one upgrade higher.",
+"show": {
+"kind": "std",
+"value": 1,
+"resist": "upgrade"
+}
 },
 {
 "row": 63,
@@ -911,9 +959,13 @@ export const CHIP_LIST = [
 "placement": "",
 "source": "",
 "text": "Can be dipped in a dip chip to increases value, and makes it delicious granting temporary bonus attributes",
-"status": "needs",
-"note": "Need: the \"Delicious\" bonus, the value a dip adds, and how many dips a Dip chip holds.",
-"show": null
+"status": "built",
+"note": "Chip Chip: food (+1 Steal for a turn, doubled when dipped).",
+"show": {
+"kind": "food",
+"value": 0,
+"shop": "chipchip"
+}
 },
 {
 "row": 69,
@@ -923,9 +975,14 @@ export const CHIP_LIST = [
 "placement": "",
 "source": "",
 "text": "Kinda like a puddle but its dip, which can be dipped with Chip Chips enough times to expose the space again",
-"status": "needs",
-"note": "Same as the Chip Chip.",
-"show": null
+"status": "built",
+"note": "Dip chip: a shop chip on its own space; the next 3 Chip Chips you eat are dipped for double.",
+"show": {
+"kind": "dip",
+"value": 0,
+"shop": "dip",
+"dips": 3
+}
 },
 {
 "row": 70,
@@ -935,8 +992,8 @@ export const CHIP_LIST = [
 "placement": "",
 "source": "",
 "text": "If present with a dragon will cause the dragon to nest after burning a chip, leaving a new dragon egg, dargon returns to burn a chip stack after nesting, but flies off if the roost has an egg on top",
-"status": "needs",
-"note": "Need: what places a Roost. The Dragon exists.",
+"status": "built",
+"note": "Dragon Roost: one in two Spawner tilts is a Roost. It takes a Bar space and calls a Dragon every third turn, which nests and lays an egg.",
 "show": null
 },
 {
@@ -947,8 +1004,8 @@ export const CHIP_LIST = [
 "placement": "",
 "source": "",
 "text": "Hatches a Dragon after the Owner Plays a trick with a 10 or higher value",
-"status": "needs",
-"note": "Need: whose tricks hatch it (\"the Owner\") and where the Dragon goes once hatched.",
+"status": "built",
+"note": "Dragon Egg: laid on a Roost. No Dragon comes while it sits there; play a trick totalling 10 or more and it hatches a Dragon onto your opponent.",
 "show": null
 },
 {
@@ -1231,9 +1288,13 @@ export const CHIP_LIST = [
 "placement": "",
 "source": "",
 "text": "Delicious and something to do with n values",
-"status": "needs",
-"note": "Need: the \"n values\" rule and the Delicious bonus.",
-"show": null
+"status": "built",
+"note": "Fish 'n Chip: food. +1 Conviction for every chip under it (n, up to 3) this turn.",
+"show": {
+"kind": "food",
+"value": 0,
+"shop": "fishchip"
+}
 },
 {
 "row": 94,
@@ -1243,9 +1304,13 @@ export const CHIP_LIST = [
 "placement": "",
 "source": "",
 "text": "Delicious if  cover top and bottom with bun chips",
-"status": "needs",
-"note": "Need: the Delicious bonus once covered by Buns.",
-"show": null
+"status": "built",
+"note": "Hamburger chip: food. Plain: +2 Roll, −1 Bid. Bun-Hamburger-Bun, eaten from the top Bun: +1 Draw, Roll and Bid for 2 turns.",
+"show": {
+"kind": "food",
+"value": 0,
+"shop": "hamburger"
+}
 },
 {
 "row": 95,
@@ -1255,9 +1320,13 @@ export const CHIP_LIST = [
 "placement": "",
 "source": "",
 "text": "Delicious if the top or bottom of burger chip",
-"status": "needs",
-"note": "Same as the Hamburger chip.",
-"show": null
+"status": "built",
+"note": "Bun chip: food (+1 Conviction), and the top and bottom of a burger.",
+"show": {
+"kind": "food",
+"value": 0,
+"shop": "bun"
+}
 },
 {
 "row": 96,
@@ -1267,9 +1336,13 @@ export const CHIP_LIST = [
 "placement": "",
 "source": "",
 "text": "Crack and Hatched conditions",
-"status": "needs",
-"note": "Need: the crack and hatch conditions and what hatches.",
-"show": null
+"status": "partial",
+"note": "Egg chip: food (+2 Roll, −1 Draw for 2 turns). Missing: crack and hatch conditions and what hatches.",
+"show": {
+"kind": "food",
+"value": 0,
+"shop": "egg"
+}
 },
 {
 "row": 97,

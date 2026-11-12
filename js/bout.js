@@ -9,7 +9,7 @@
 import { RNG, sum, clone, clamp, order1D } from './util.js';
 import { rollDie, boutCopy } from './dice.js';
 export { rollDie };
-import { TRICKS, TYPES, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS } from './data.js';
+import { TRICKS, TYPES, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, CREATURES, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS } from './data.js';
 
 export const PHASES = ['draw', 'roll', 'bid'];
 export const LAST_CALL = 8;
@@ -19,7 +19,9 @@ const investMult = (t) => 1 + (t.q - 1) * 0.5 + 0.25 * (t.up || 0);
 // the multiplier a trick applies to its roll total, and the size of its Trait
 export const multOf = (t) => (TRICKS[t.id].type === 'investment' ? investMult(t) : trickMult(t));
 export const traitOf = (t) => Math.max(1, Math.round(trickMult(t)));
-export const isPayable = (ch) => ch.kind === 'std' || ch.kind === 'opp';
+// a trick as it plays: one upgrade higher for each Upgrade chip bid on it
+export const effTrick = (e) => (e.upBoost ? { ...e.trick, up: (e.trick.up || 0) + e.upBoost } : e.trick);
+export const isPayable = (ch) => ch.kind === 'std' || ch.kind === 'opp' || ch.kind === 'bounty';
 export const isHazard = (ch) => HAZARD_KINDS.includes(ch.kind);
 export const isShield = (ch) => ch.kind === 'block' || ch.kind === 'counter' || INSTANCE_SHIELDS.includes(ch.kind);
 const SPREAD = { scorch: 'drop' };
@@ -120,12 +122,12 @@ export function barOrder(s, spacing, rng) {
 export function deploy(b, s, plan) {
   const cells = barOrder(s, plan.spacing, b.rng);
   if (!cells.length) return 0;
-  const base = [], rest = [], tops = [], spaces = [];
+  const base = [], rest = [], tops = [], spaces = [], meter = [];
   for (const g of plan.chips) for (let i = 0; i < g.count; i++) {
     if (!g.resist) { rest.push(mkChip(b, 'std', g.value)); continue; }
     const X = SHOP_CHIPS[g.resist] || {}, v = X.vars || {}, kind = X.kind || 'std';
-    const ch = mkChip(b, kind, kind === 'std' ? g.value : 0, { resist: g.resist, shop: g.resist, ...(v.hits ? { hits: v.hits } : {}), ...(v.turns ? { life: v.turns } : {}) });
-    (X.place === 'top' ? tops : X.place === 'space' ? spaces : base).push(ch);
+    const ch = mkChip(b, kind, kind === 'std' ? g.value : 0, { resist: g.resist, shop: g.resist, ...(v.hits ? { hits: v.hits } : {}), ...(v.turns ? { life: v.turns } : {}), ...(v.dips ? { dips: v.dips } : {}) });
+    (X.place === 'top' ? tops : X.place === 'space' ? spaces : X.place === 'meter' ? meter : base).push(ch);
   }
   let placed = 0;
   const put = (spot, ch) => { s.grid[spot.r][spot.c].chips.push(ch); placed += ch.value; };
@@ -157,6 +159,12 @@ export function deploy(b, s, plan) {
     }
     spot = spot || empty; if (spot) { s.grid[spot.r][spot.c].chips.push(ch); mergeSeq(b, s.grid[spot.r][spot.c]); }
   }
+  if (meter.length) addToMeter(b, s, meter);
+  // Resist chips from Resist Cards: at the base of a front Bar stack with room
+  for (const r of plan.resistChips || []) {
+    const spot = cells.slice().sort((x, y) => x.r - y.r).find((x) => solidCount(s.grid[x.r][x.c]) && open(x) && !s.grid[x.r][x.c].chips.some((ch) => ch.kind === 'resist'));
+    if (spot) s.grid[spot.r][spot.c].chips.unshift(mkChip(b, 'resist', 0, { r: Math.min(r, s.dims.stackMax) }));
+  }
   return placed;
 }
 export const barCapacity = (dims, holes = 0) => (dims.barRows * dims.cols - holes) * dims.stackMax;
@@ -171,7 +179,7 @@ function mkSide(b, spec, idx) {
     tray: [], used: { draw: 0, roll: 0, bid: 0 }, power: 0, turnBonus: {}, rolled: {},
     status: { resist: 0, resistNext: 0, evade: null, evadeNext: null, reflect: 0, reflectAll: false, enfeebleNext: 0 },
     mods: { boost: 0, enfeeble: 0, press: 0, bend: null, mul: 1, pierce: false },
-    drink: spec.drink ? { ...spec.drink } : null, sipped: false,
+    drink: spec.drink ? { ...spec.drink } : null, sipped: false, food: [], roostDragons: 0,
     familiars: spec.familiars || 0, interventions: spec.interventions || 0, intervened: false, spawners: spec.spawners || 0, calamities: spec.calamities || [],
     bidsPaid: 0, dealt: 0, destroyed: 0, snap: null,
   };
@@ -179,6 +187,16 @@ function mkSide(b, spec, idx) {
   const spots = b.rng.shuffle(allCells(s)).slice(0, spec.holes || 0);
   for (const { cell } of spots) cell.hole = true;
   // calamities that sit on the table take a Bar space of their own
+  // Worm Holes open on an empty Meter space; Dragon Roosts (one in two Spawners) take a Bar space
+  for (const cal of s.calamities) if (cal === 'wormhole') {
+    const free = allCells(s).filter((x) => x.r < d.meterRows && !x.cell.hole); if (free.length) b.rng.pick(free).cell.worm = true;
+  }
+  let nests = 0;
+  for (let k = 0; k < (spec.spawners || 0); k++) {
+    const free = allCells(s).filter((x) => x.r >= d.meterRows && !x.cell.hole);
+    if (b.rng.chance(0.5) && free.length) { const { cell } = b.rng.pick(free); cell.hole = true; cell.roost = { egg: false }; } else nests++;
+  }
+  s.spawners = nests;
   for (const cal of s.calamities) if (cal === 'blackhole' || cal === 'volcano') {
     const free = allCells(s).filter((x) => x.r >= d.meterRows && !x.cell.hole); if (!free.length) continue;
     const { cell } = b.rng.pick(free); cell.hole = true; if (cal === 'blackhole') cell.black = true; else cell.volcano = 4;
@@ -216,6 +234,8 @@ function mkCreature(b, side, arrive) {
 function startTurn(b) {
   for (const s of b.sides) {
     s.used = { draw: 0, roll: 0, bid: 0 }; s.turnBonus = {}; s.sipped = false; s.rolled = {}; s.thrown = false; s.heat = heat(b.turn);
+    for (const f of s.food || []) { for (const [k, v] of Object.entries(f.mods)) s.turnBonus[k] = (s.turnBonus[k] || 0) + v; f.turns--; } // food still working
+    s.food = (s.food || []).filter((f) => f.turns > 0);
     s.mods = { boost: 0, enfeeble: s.status.enfeebleNext, press: 0, bend: null, mul: 1, pierce: false }; s.wardUsed = 0;
     s.paidLast = s.paidTurn || 0; s.paidTurn = 0; // fees paid last turn, for Vengeance
     s.status.enfeebleNext = 0;
@@ -227,7 +247,7 @@ function startTurn(b) {
   b.creatures = b.creatures.filter((cr) => !cr.gone);
   b.phase = 'draw'; openPhase(b);
 }
-const snapshot = (s) => { s.snap = clone({ grid: s.grid, run: s.run, book: s.book, pouch: s.pouch, tray: s.tray, used: s.used, thrown: s.thrown }); };
+const snapshot = (s) => { s.snap = clone({ grid: s.grid, run: s.run, book: s.book, pouch: s.pouch, tray: s.tray, used: s.used, thrown: s.thrown, turnBonus: s.turnBonus, food: s.food }); };
 // When a phase opens, each Roller's table is recorded as the other may see it (`pub`) until this phase closes,
 // and as the point Undo returns to (`snap`).
 function openPhase(b) { for (const s of b.sides) { snapshot(s); s.pub = clone({ grid: s.grid, run: s.run }); } }
@@ -271,6 +291,36 @@ export function advance(b, force = false) {
 }
 function homeDie(b, s, d) { if (d.chip) addToMeter(b, s, [d.chip], null, 'spawn'); else { const { value, t, ...die } = d; void value; void t; s.pouch.push(die); } } // a flipped chip comes back to the Meter
 function homeTray(b, s) { const n = s.tray.length; for (const d of s.tray.splice(0)) homeDie(b, s, d); return n; }
+
+// ---------- food ----------
+// Eat a food chip from the top of one of your stacks. Its bonus starts now and runs for its turns.
+export function canEat(b, s, r, c) {
+  if (!PHASES.includes(b.phase)) return 'Eat while you plan your turn.';
+  const cell = s.grid[r]?.[c], i = cell ? topSolid(cell) : -1;
+  if (i < 0 || cell.chips[i].kind !== 'food') return 'Only a food chip on top of a stack can be eaten.';
+  return null;
+}
+export function foodOf(s, r, c) { // what eating the top chip here would give: { mods, turns, eat: chips, label }
+  const cell = s.grid[r][c], i = topSolid(cell), ch = cell.chips[i], X = SHOP_CHIPS[ch.shop] || {}, F = X.food || { mods: {}, turns: 1 };
+  const below = cell.chips.slice(0, i).filter((x) => !isHazard(x));
+  if (ch.shop === 'bun' && below.length >= 2 && below[below.length - 1].shop === 'hamburger' && below[below.length - 2].shop === 'bun')
+    return { mods: { trickery: 1, proficiency: 1, ingenuity: 1 }, turns: 2, eat: [ch, below[below.length - 1], below[below.length - 2]], label: 'the whole burger' };
+  let mods = { ...(F.mods || {}) }, label = X.name || 'it';
+  if (F.per) mods = { [F.per]: Math.min(3, below.length) };
+  if (F.dip) { const dip = allCells(s).map((x) => x.cell.chips.find((d) => d.kind === 'dip' && d.dips > 0)).find(Boolean);
+    if (dip) { mods = Object.fromEntries(Object.entries(mods).map(([k, v]) => [k, v * 2])); label += ', dipped'; return { mods, turns: F.turns || 1, eat: [ch], label, dip }; } }
+  return { mods, turns: F.turns || 1, eat: [ch], label };
+}
+export function eat(b, s, r, c) {
+  if (canEat(b, s, r, c)) return null;
+  const cell = s.grid[r][c], f = foodOf(s, r, c);
+  for (const ch of f.eat) { cell.chips.splice(cell.chips.indexOf(ch), 1); b.fx[ch.id] = 'void'; }
+  if (f.dip) { f.dip.dips--; if (f.dip.dips <= 0) for (const x of allCells(s)) { const k = x.cell.chips.indexOf(f.dip); if (k >= 0) { x.cell.chips.splice(k, 1); b.fx[f.dip.id] = 'void'; } } }
+  for (const [k, v] of Object.entries(f.mods)) s.turnBonus[k] = (s.turnBonus[k] || 0) + v;
+  if (f.turns > 1) s.food.push({ mods: f.mods, turns: f.turns - 1, label: f.label });
+  emptyOut(b, cell);
+  return f;
+}
 
 // ---------- planning ----------
 export function sip(b, s) {
@@ -326,9 +376,20 @@ export function rollOut(b, s, dieId) {
   if (canRollOut(b, s, dieId)) return null;
   const i = s.pouch.findIndex((d) => d.id === dieId), die = s.pouch.splice(i, 1)[0];
   // a die keeps its value for the turn, so undoing a plan never rerolls it
-  const d = { ...die, value: s.rolled[dieId] ?? (s.rolled[dieId] = rollDie(b.rng, die)), t: b.turn };
+  const d = { ...die, value: s.rolled[dieId] ?? (s.rolled[dieId] = rollWith(b, s, die)), t: b.turn };
   s.tray.push(d); s.used.roll++;
   return d;
+}
+// A die as your table rolls it: Upgrade chips on your Meter upgrade every roll; Boosted chips in your position
+// raise every die, Cheapened chips in your opponent's lower it.
+const countShop = (s, id, rows) => sum(allCells(s).filter((x) => !rows || x.r < s.dims.meterRows), (x) => x.cell.chips.filter((ch) => ch.shop === id).length);
+function rollWith(b, s, die) {
+  const o = b.sides[1 - s.idx], U = countShop(s, 'upgrade', true);
+  const extra = [U >= 1 && 'escalate', U >= 3 && 'gamble'].filter((u) => u && !(die.up || []).includes(u));
+  let v = rollDie(b.rng, extra.length ? { ...die, up: [...(die.up || []), ...extra] } : die);
+  v += (U >= 2 ? 1 : 0) + Math.max(0, U - 3);
+  v += countShop(s, 'boosted') * (shopVars('boosted').die || 0) - countShop(o, 'cheapened') * (shopVars('cheapened').die || 0);
+  return Math.max(0, v);
 }
 // Flip a standard chip: it lands as 0 or its worth and counts as a die of any type.
 export function canFlip(b, s, r, c) {
@@ -389,14 +450,14 @@ export function canBid(b, s, e, r, c) {
 export function bid(b, s, e, r, c) {
   if (canBid(b, s, e, r, c)) return null;
   const ch = s.grid[r][c].chips.pop();
-  e.bid.push(ch); e.bidValue += ch.value; e.state = 'bid'; s.used.bid++;
+  e.bid.push(ch); e.bidValue += ch.value; e.state = 'bid'; s.used.bid++; if (ch.shop === 'upgrade') e.upBoost = (e.upBoost || 0) + 1;
   if (!e.target) e.target = validTargets(b, s, e)[0] || null;
   return ch;
 }
 // Undo: back to where the current phase opened (or, in the Roll phase, to just after the throw).
 export function resetPlan(b, s) {
   const snap = clone(s.snap);
-  s.grid = snap.grid; s.run = snap.run; s.book = snap.book; s.pouch = snap.pouch; s.tray = snap.tray; s.used = snap.used; s.thrown = snap.thrown;
+  s.grid = snap.grid; s.run = snap.run; s.book = snap.book; s.pouch = snap.pouch; s.tray = snap.tray; s.used = snap.used; s.thrown = snap.thrown; s.turnBonus = snap.turnBonus; s.food = snap.food;
 }
 export const needsTarget = (e) => TRICKS[e.trick.id].approach !== 'none' && e.dice.length > 0;
 export function targetSide(b, s, def) { return def.side === 'opp' ? b.sides[1 - s.idx] : def.side === 'self' ? s : null; }
@@ -458,7 +519,7 @@ export function previewTotal(s, e) {
   const def = TRICKS[e.trick.id]; if (!e.dice.length) return 0;
   const linger = e.state === 'play' ? e.lingerTotal : clamp(e.bidValue - 1, 0, 20);
   const raw = sum(e.dice, (d) => d.value) + linger * e.dice.length + (def.type === 'investment' ? 0 : s.power) + (def.vengeance ? s.paidLast || 0 : 0);
-  const m = def.type === 'investment' ? investMult(e.trick) : trickMult(e.trick);
+  const m = def.type === 'investment' ? investMult(effTrick(e)) : trickMult(effTrick(e));
   return Math.max(0, Math.round(raw * m * (def.type === 'expense' ? s.heat || 1 : 1))) * (bonusMet(s, e) && def.bonus.k === 'double' ? 2 : 1);
 }
 
@@ -501,6 +562,16 @@ function engage(b, att, def, r, c, amount, o = {}) {
   const open = !o.pierce && !o.reflected;
   if (open && st.evade != null && amount > st.evade) return { placed: 0, notes: ['evaded'] };
   if (open && cell.chips.some((ch) => ch.feather > 0) && amount > cellWorth(cell)) return { placed: 0, notes: ['floated past a Feather'] };
+  const rr = Math.max(0, ...cell.chips.filter((ch) => ch.kind === 'resist').map((ch) => ch.r));
+  if (open && amount < rr) return { placed: 0, notes: [`deterred by a Resist chip (r ${rr})`] };
+  { // a creature hovering over the stack soaks the fee; enough Debt drives it off and it drops a Bounty chip
+    const cr = (b.creatures || []).find((x) => x.side === def.idx && !x.gone && x.r === r && x.c === c && CREATURES[x.kind]?.bounty);
+    if (cr && !o.pierce) { cr.debt = (cr.debt || 0) + amount; const C = CREATURES[cr.kind];
+      if (cr.debt >= C.bounty) { cr.gone = true; cr.bountied = true; const chip = mkChip(b, 'bounty', C.bounty, { creature: cr.kind });
+        if (capacityLeft(def, cell) > 0) pushChip(cell, chip); else addToMeter(b, def, [chip], { r, c }, 'spawn');
+        return { placed: 0, notes: [`soaked by the ${C.name}, which is driven off and drops a ${C.bounty}¢ Bounty chip`] }; }
+      return { placed: 0, notes: [`soaked by the ${C.name} (${cr.debt} of ${C.bounty}¢)`] }; }
+  }
   { // a Petal, Flower, Clay or Brick on top blocks the entire fee, however big (fee instance defence)
     const ti = topSolid(cell), top = ti >= 0 ? cell.chips[ti] : null;
     if (!o.pierce && top && top.kind === 'tree') return { placed: 0, notes: [fell(b, def, r, c)] };
@@ -521,6 +592,13 @@ function engage(b, att, def, r, c, amount, o = {}) {
     if (cols.length) { const cc = cols.includes(c) ? c : cols[0]; engage(b, def, att, frontRow(att, cc), cc, back, { reflected: true }); notes.push(`${back}¢ mirrored`); }
   }
   if (amount <= 0) return { placed: 0, notes };
+  { const ti = topSolid(cell); if (ti >= 0 && cell.chips[ti].kind === 'bounty') { b.fx[cell.chips[ti].id] = 'void'; cell.chips.splice(ti, 1); notes.push('a Bounty chip breaks'); } }
+  const zaps = att && !o.reflected ? cell.chips.filter((ch) => ch.shop === 'zap') : [];
+  if (zaps.length) {
+    if (amount <= (shopVars('zap').s || 0)) { const cols = [...Array(att.dims.cols).keys()].filter((x) => frontRow(att, x) >= 0);
+      if (cols.length) { const cc = b.rng.pick(cols), tc = att.grid[frontRow(att, cc)][cc]; if (!hasResist(tc, 'shock') && !iced(tc) && !tc.chips.some((ch) => ch.kind === 'shock')) tc.chips.push(mkHazard(b, 'shock')); notes.push('Zapped back'); } }
+    else { cell.chips.splice(cell.chips.indexOf(zaps[0]), 1); b.fx[zaps[0].id] = 'void'; notes.push('a Zap chip shorts out'); }
+  }
   markDue(cell, { pierce: o.pierce, glean: o.glean && att ? att.idx : null, element: o.element, att: att ? att.idx : null });
   setDebt(b, cell, debtOf(cell) + amount, 'debt');
   return { placed: amount, notes };
@@ -693,7 +771,7 @@ function recoup(b, s, n, both) {
 
 function* play(b, s, e) {
   const def = TRICKS[e.trick.id], o = b.sides[1 - s.idx], inv = def.type === 'investment';
-  const m = Math.max(1, Math.round(trickMult(e.trick)));
+  const m = Math.max(1, Math.round(trickMult(effTrick(e))));
   // Trait effect: every turn the trick is in play
   if (def.type === 'expense') {
     const cols = [...Array(o.dims.cols).keys()].filter((c) => frontRow(o, c) >= 0);
@@ -716,9 +794,12 @@ function* play(b, s, e) {
   const bonus = bonusMet(s, e) ? def.bonus.k : null;
   let total = sum(vals) + e.lingerTotal * e.dice.length;
   if (!inv) { total += fz.boost - fz.enfeeble + s.power + (def.type === 'expense' ? fz.press : 0) + (def.vengeance ? s.paidLast || 0 : 0); s.power = 0; }
-  total = Math.max(0, Math.round(total * (inv ? investMult(e.trick) : trickMult(e.trick) * fz.mul) * (def.type === 'expense' ? heat(b.turn) : 1)));
+  total = Math.max(0, Math.round(total * (inv ? investMult(effTrick(e)) : trickMult(effTrick(e)) * fz.mul) * (def.type === 'expense' ? heat(b.turn) : 1)));
   if (bonus === 'double') total *= 2;
   const tag = `${s.name}'s ${def.name} (${vals.join('+')}${bonus ? ', bonus' : ''})`;
+  if (total >= 10) for (const { cell } of allCells(s)) if (cell.roost?.egg) { // a big trick hatches the egg on your Roost
+    cell.roost.egg = false; b.creatures.push({ ...mkCreature(b, o.idx, b.turn + 1), kind: 'dragon', life: 2 });
+    yield step(b, `${tag} hatches the egg on ${s.name}'s Dragon Roost: a Dragon flies at ${o.name}.`, [], 'bonus'); }
   const t = targetSide(b, s, def);
   const pierce = def.type === 'expense' && (fz.pierce || bonus === 'pierce');
   // re-find the origin: positions may have changed since the target was picked
@@ -953,6 +1034,8 @@ function* ticks(b) {
     if (luck) luck -= addToMeter(b, s, Array.from({ length: luck }, () => mkChip(b, 'opp', 1)), null, 'spawn').length;
     if (luck) yield step(b, `${s.name}'s Lucky chip${lucky > 1 ? 's turn' : ' turns'} up ${luck} Opportunity chip${luck > 1 ? 's' : ''}.`, [], 'bonus');
     if (s.spawners && b.turn % 3 === 0) for (let k = 0; k < s.spawners; k++) b.creatures.push(mkCreature(b, s.idx, b.turn));
+    for (const { cell } of allCells(s)) if (cell.roost && !cell.roost.egg && b.turn % 3 === 0 && !b.creatures.some((x) => x.roost === cell.roost && !x.gone))
+      b.creatures.push({ ...mkCreature(b, s.idx, b.turn), kind: 'dragon', life: 2, roost: cell.roost });
     for (const cr of b.creatures.filter((x) => x.side === s.idx && !x.gone && x.arrive <= b.turn)) {
       let text = '', at = null;
       if (cr.kind === 'mole') { // digs up an empty space
@@ -971,7 +1054,13 @@ function* ticks(b) {
       }
       if (at) { cr.r = at.r; cr.c = at.c; }
       if (--cr.life <= 0) cr.gone = true;
+      if (cr.gone && cr.roost && !cr.bountied && !cr.roost.egg) { cr.roost.egg = true; text += ', nests and lays an egg on its Roost'; }
       yield step(b, `${text} in ${s.name}'s position${cr.gone ? ', then leaves' : ''}.`, at ? [ref(s, at.r, at.c)] : [], 'creature');
+    }
+    for (const { r, c, cell } of allCells(s)) if (cell.worm && cell.chips.length) { // pulled through to the other side
+      const o = b.sides[1 - s.idx], free = allCells(o).filter((x) => !x.cell.hole && !x.cell.chips.length), moving = cell.chips.splice(0);
+      if (free.length) { const x = b.rng.pick(free); x.cell.chips = moving; yield step(b, `${CALAMITIES.wormhole.name}: ${moving.length} chip${moving.length > 1 ? 's are' : ' is'} pulled through to ${o.name}'s side.`, [ref(s, r, c), ref(o, x.r, x.c)], 'hazard'); }
+      else { for (const ch of moving) { b.fx[ch.id] = 'void'; if (isPayable(ch)) s.destroyed += ch.value; } yield step(b, `${CALAMITIES.wormhole.name}: chips are lost in the void.`, [ref(s, r, c)], 'hazard'); }
     }
     for (const cal of s.calamities) {
       if (cal === 'inferno') { const live = allCells(s).filter((x) => solidCount(x.cell) && !x.cell.chips.some((ch) => ch.kind === 'burn') && !hasResist(x.cell, 'burn'));
@@ -1091,6 +1180,7 @@ export function summary(b, idx) {
     seq: sum(std.filter((ch) => ch.n > 1), (ch) => Math.max(0, ch.value - ch.n)),
     nest: std.filter((ch) => ch.resist === 'nest').length * (shopVars('nest').payout || 0),
     opportunity: chips.filter((ch) => ch.kind === 'opp').length,
+    bounties: chips.filter((ch) => ch.kind === 'bounty').map((ch) => ({ creature: ch.creature, value: ch.value })),
     ownFees: b.stage.paid[idx], oppFees: b.stage.paid[1 - idx], bids: s.bidsPaid,
     pendingBids: sum(s.run.filter((e) => e.state === 'play'), (e) => e.bidValue) + sum(s.run.filter((e) => e.state === 'bid'), (e) => e.bidValue),
     destroyed: s.destroyed, intervened: s.intervened, dealt: s.dealt,

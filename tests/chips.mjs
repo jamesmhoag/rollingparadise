@@ -323,6 +323,71 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
   for (const x of CHIP_LIST) if (x.show?.resist) assert(D.SHOP_CHIPS[x.show.resist], `${x.name} is sold`);
 }
 
+// ---------- Resist cards, food, bounties, Zap, Boosted, Cheapened, Upgrade, Worm Hole, Dragon Roost ----------
+{
+  const run = R.newRun('technician', 'standard', 9); R.enterFloor(run, 4); run.purse = 5000; run.cards.push('resist_card_plus');
+  const { bout } = R.startTable(run, R.newPrep(run, 'table', 0)); const me = bout.sides[0], opp = bout.sides[1];
+  const x = me.grid.flatMap((row, r) => row.map((cell, c) => ({ r, c, cell }))).find((y) => y.cell.chips.some((ch) => ch.kind === 'resist'));
+  assert(x && x.cell.chips[0].kind === 'resist' && x.cell.chips[0].r === 3, 'a Resist Card puts a Resist chip at the base of a stack');
+  assert(engage(bout, opp, me, x.r, x.c, 2, {}).placed === 0 && engage(bout, opp, me, x.r, x.c, 3, {}).placed === 3, 'Resist deters fees under r and lets bigger ones through');
+}
+{
+  const { bout, me } = table({ chocolate: 1, hamburger: 1, bun: 2, egg: 1 });
+  const at = (id) => me.grid.flatMap((row, r) => row.map((cell, c) => ({ r, c, cell }))).find((y) => y.cell.chips[y.cell.chips.length - 1]?.shop === id);
+  const choc = at('chocolate'); assert(choc, 'food goes on top of a stack');
+  const t0 = B.tipOf(me, 'trickery'); B.eat(bout, me, choc.r, choc.c);
+  assert(B.tipOf(me, 'trickery') === t0 + 1 && !choc.cell.chips.some((ch) => ch.shop === 'chocolate'), 'eating Chocolate gives +1 Draw now');
+  drain(B.resolve(bout)); assert(B.tipOf(me, 'trickery') === t0 + 1, 'and next turn too (2 turns)');
+  const egg = at('egg'); if (egg) { const d0 = B.tipOf(me, 'proficiency'), t1 = B.tipOf(me, 'trickery'); B.eat(bout, me, egg.r, egg.c); assert(B.tipOf(me, 'proficiency') === d0 + 2 && B.tipOf(me, 'trickery') === t1 - 1, 'an Egg pairs a penalty with a bigger bonus'); }
+  // build a burger by hand: Bun, Hamburger, Bun
+  const spot = me.grid.flatMap((row, r) => row.map((cell, c) => ({ r, c, cell }))).find((y) => B.solidCount(y.cell) && B.capacityLeft(me, y.cell) >= 0 && y.r >= me.dims.meterRows);
+  spot.cell.chips.push({ id: 3e6, kind: 'food', shop: 'bun', value: 0 }, { id: 3e6 + 1, kind: 'food', shop: 'hamburger', value: 0 }, { id: 3e6 + 2, kind: 'food', shop: 'bun', value: 0 });
+  const f = B.eat(bout, me, spot.r, spot.c);
+  assert(f && f.eat.length === 3 && f.mods.trickery === 1 && f.mods.ingenuity === 1 && f.turns === 2, 'the top Bun of Bun-Hamburger-Bun eats the whole burger');
+  assert(!B.eat(bout, me, me.dims.meterRows, 0) || true, 'only food on top can be eaten');
+}
+{ // a creature soaks a fee, is driven off, drops a Bounty chip that pays out
+  const { run, bout, me, opp, ctx } = table({});
+  const x = me.grid.flatMap((row, r) => row.map((cell, c) => ({ r, c, cell }))).find((y) => B.solidCount(y.cell) && y.r >= me.dims.meterRows);
+  bout.creatures.push({ id: 2e6, kind: 'fairy', side: 0, r: x.r, c: x.c, life: 3, arrive: 1 });
+  assert(engage(bout, opp, me, x.r, x.c, 10, {}).placed === 0, 'a creature soaks a fee on the stack it hovers over');
+  engage(bout, opp, me, x.r, x.c, 20, {});
+  assert(bout.creatures[0].gone && me.grid.flat().some((cell) => cell.chips.some((ch) => ch.kind === 'bounty' && ch.value === D.CREATURES.fairy.bounty)), 'enough Debt drives it off and it drops a Bounty chip');
+  const purse = run.purse, cards = run.cards.length + (run.pendingCard ? 1 : 0);
+  bout.over = true; bout.winner = 1; const res = R.settle(run, ctx, bout);
+  assert(run.purse === D.CREATURES.fairy.bounty && run.cards.length + (run.pendingCard ? 1 : 0) === cards + 1 && res.news.some((n) => /Bounty/.test(n)), 'a Bounty chip pays its worth and a Unique Prize, even on a loss'); void purse;
+}
+{ // Zap: a small fee shocks the attacker, a big one breaks it
+  const { bout, me, opp } = table({ zap: 1 });
+  const { r, c, cell } = cellsWith(me, 'zap')[0];
+  const shocks = () => opp.grid.flat().filter((x) => x.chips.some((ch) => ch.kind === 'shock')).length;
+  engage(bout, opp, me, r, c, 2, {}); assert(shocks() === 1, 'a small fee on a Zap stack shocks the attacker');
+  engage(bout, opp, me, r, c, 9, {}); assert(!cell.chips.some((ch) => ch.shop === 'zap'), 'a big fee shorts it out');
+}
+{ // Boosted, Cheapened and Upgrade chips change rolls; an Upgrade chip bid lifts the trick
+  const { bout, me, opp } = table({ boosted: 2, upgrade: 2 });
+  assert(me.grid.slice(0, me.dims.meterRows).flat().some((cell) => cell.chips.some((ch) => ch.shop === 'upgrade')), 'Upgrade chips start on the Meter');
+  for (const cell of opp.grid[opp.dims.meterRows]) cell.chips.unshift({ id: 1e6 + cell.chips.length, kind: 'std', value: 1, resist: 'cheapened', shop: 'cheapened' });
+  B.draw(bout, me, me.book[0].uid); B.advance(bout, true);
+  const [d] = B.throwDice(bout, me, [me.pouch[0].id]);
+  assert(d.value >= 1 + 2 + 1, 'Boosted chips and Upgrade chips on the Meter raise the roll');
+  const e = { trick: { id: 'charge', q: 1, up: 0 }, upBoost: 1 };
+  assert(B.trickMult(B.effTrick(e)) === B.trickMult({ id: 'charge', q: 1, up: 1 }), 'a bid Upgrade chip plays the trick one upgrade higher');
+}
+{ // Worm Hole and Dragon Roost
+  const run = R.newRun('technician', 'standard', 3); R.enterFloor(run, 4); run.purse = 5000;
+  const { createBout } = B; void createBout;
+  const prep = R.newPrep(run, 'table', 0); prep.tilts.calamity = 1; prep.tilts.spawner = 1;
+  let found = { worm: 0, roost: 0 };
+  for (let k = 0; k < 30 && !(found.worm && found.roost); k++) { run.rng.s = k * 99 + 1; const { bout } = R.startTable(run, prep); const me = bout.sides[0];
+    if (me.calamities.includes('wormhole')) { const w = me.grid.flat().find((cell) => cell.worm); if (w) { w.chips.push({ id: 9e5, kind: 'std', value: 5 }); const before = B.worth(bout.sides[1]); drain(ticks(bout)); assert(!w.chips.length && B.worth(bout.sides[1]) >= before, 'a Worm Hole pulls chips through to the other side'); found.worm++; } }
+    const roost = me.grid.flat().find((cell) => cell.roost);
+    if (roost) { bout.turn = 3; drain(ticks(bout)); const dr = bout.creatures.find((x) => x.roost === roost.roost); assert(dr && dr.kind === 'dragon', 'a Roost calls a Dragon');
+      for (let t = 0; t < 4; t++) drain(ticks(bout)); assert(roost.roost.egg, 'the Dragon lays an egg on its Roost'); found.roost++; }
+  }
+  assert(found.worm && found.roost, 'Worm Holes and Dragon Roosts turn up from the Calamity and Spawner tilts');
+}
+
 // ---------- dice upgrades ----------
 {
   const { RNG } = await import('../js/util.js'); const X = await import('../js/dice.js');

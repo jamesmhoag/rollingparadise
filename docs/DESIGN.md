@@ -90,6 +90,23 @@ The chip list from the workbook is kept in `docs/CHIP-LIST.tsv`; chips built fro
 is additive: chips the game had that are not on it stay in the game.
 The Library's **Chip list** tab shows all 97 rows with a status (built, partly built, needs detail) and, for
 the ones that cannot be built yet, what is missing; `docs/CHIP-STATUS.md` is the same list as a document.
+- **Resist chips** come from Resist Cards (found in the dodgy corner, r 2 or 3): one sits at the base of a front
+  Bar stack each bout and deters fees under r¢ on it — debt resistance, the way a Red chip resists fire.
+- **Food** (Chocolate, Honey, Chip Chip with Dip, Fish 'n Chip, Hamburger and Bun, Egg) is sold at the Chip Exchange
+  and goes on top of a stack. Double-click a food chip on top of one of your stacks to eat it while you plan: it
+  raises Draw, Roll, Bid or the unused-action rewards for a turn or more; some pair a penalty with a bigger bonus
+  (a plain Hamburger: +2 Roll, −1 Bid). Bun-Hamburger-Bun eaten from the top Bun is the whole burger. Food on top
+  blocks bidding from that stack, and a fee knocks it off.
+- **Bounties**: a creature hovering over one of your stacks soaks the fees that land there. Once its Debt reaches its
+  bounty (Fairy 25, UFO 50, Unicorn and Dragon 250, Mothership 500) it is driven off and drops a Bounty chip worth
+  that much. The chip can be bid but breaks if any fee reaches it; still on your table when the bout ends, win or
+  lose, it pays its worth and a Unique Prize (a card, a d8, a die upgrade, a Scorch trick, a d20).
+- **Zap** (electric: a fee of 3¢ or less shocks the attacker, a bigger one shorts it out), **Boosted** (+1 to every
+  die you roll per chip) and **Cheapened** (−1 to every die your opponent rolls per chip), **Upgrade** (starts on the
+  Meter: every roll is upgraded — Escalate, +1, Gamble, more +1 — and bid on a trick it plays one upgrade higher).
+- **Worm Hole** joins the Calamities (an empty Meter space that pulls chips through to the opponent's side). One in
+  two **Spawner** tilts is a **Dragon Roost**: it calls a Dragon every third turn, which nests and lays an egg; while
+  the egg sits there no Dragon comes, and a trick totalling 10 or more hatches it onto your opponent.
 - Also from the list, sold at the Chip Exchange: **Tree** (Rare; planted on an empty space, grows a chip a turn,
   seeds Flowers around it at full height, and a fee fells it into **Wood** chips that block two fees each), **Sun**
   (Rare; Flowers bloom twice as many Petals, Trees grow twice as fast), **Fibonacci** and **Prime** (Rare; go on top,

@@ -432,3 +432,14 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .k-tree { --c: #2f6b2a; --rim: #9fe08a; --edge: #4a2c12; --fg: #eaffd6; --bs: solid; } .k-wood { --c: #8a5a2a; --rim: #d9b07a; --edge: #3d2408; --fg: #fff3e0; --bs: double; }
 .k-std.r-sun { --c: #ffd76a; --rim: #fff3bf; --edge: #c96a12; --fg: #8a3f05; --bs: solid; --glow: 0 0 12px rgba(255, 215, 106, .9); }
 .k-std.r-fib { --c: #e8f4ff; --rim: #63c4ff; --edge: #1d4a66; --fg: #1d4a66; --bs: solid; } .k-std.r-prime { --c: #fff0f8; --rim: #ff86ea; --edge: #8a2d5a; --fg: #8a2d5a; --bs: solid; }
+
+/* food, bounties, resist, electric, upgrade, roost, worm hole */
+.k-food { --c: #fff3e0; --rim: #ff9f3a; --edge: #7a3f05; --fg: #4a2808; --bs: dotted; } .k-food i, .k-dip i, .k-bounty i { font-size: 13px; }
+.k-dip { --c: #f4ead2; --rim: #c98a2e; --edge: #6b4510; --bs: solid; }
+.k-bounty { --c: #f2c94c; --rim: #fff; --edge: #9a6d0c; --fg: #4a3200; --bs: double; --glow: 0 0 12px rgba(242, 201, 76, .9); }
+.k-resist { --c: #3a0d1e; --rim: #ff7096; --edge: #1d0406; --fg: #ffc2d1; --bs: solid; } .k-resist i { font-size: 10px; }
+.k-std.r-zap { --c: #f6e04a; --rim: #4a3a7a; --edge: #7a6a00; --fg: #2a1d52; --bs: solid; } .k-std.r-boosted { --c: #7dffb5; --rim: #eafff1; --edge: #1e6a39; --fg: #0f3d20; --bs: solid; }
+.k-std.r-cheapened { --c: #9fb0d8; --rim: #eef2f7; --edge: #3d4752; --fg: #1d2433; --bs: solid; } .k-std.r-upgrade { --c: #b08cff; --rim: var(--amber); --edge: #43307d; --fg: #fff; --bs: solid; --glow: 0 0 10px rgba(255, 215, 106, .7); }
+.cell.worm { background: radial-gradient(circle, #0b0719 20%, #3d1d7a 50%, rgba(125, 240, 255, .25) 70%, transparent 78%); border-color: #7df3ff; animation: swirl 2.4s linear infinite; }
+.cell.roost { background: radial-gradient(circle at 50% 70%, #6b4510 30%, #2c1d0d 60%, rgba(0, 0, 0, .3)); border-color: #c98a2e; } .cell.roost::after { content: '🪺'; position: absolute; inset: 0; display: grid; place-items: center; font-size: 20px; }
+.cell.roost.egg::after { content: '🥚'; } .cell.food { box-shadow: inset 0 0 0 1px rgba(255, 159, 58, .55); }

@@ -128,3 +128,12 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
     tab and in `docs/CHIP-STATUS.md`.
 57. Tree, Sun, Fibonacci and Prime have no listed source, so they are sold at the Chip Exchange (the rule for chips
     nothing makes). The list's prime sequence includes 1 and 9; the game uses true primes (2, 3, 5, 7, 11…).
+
+## Round 10 additions (food, bounties, Resist, Upgrade)
+58. Food bonuses and penalties are my first numbers (`SHOP_CHIPS[id].food`). Should eating cost an action, or be
+    limited to one per turn? Now it is free and unlimited while planning.
+59. Bounties: creatures soak fees on the stack they hover over. Should your own Expenses be able to target a creature
+    on your side to drive it off sooner?
+60. Unique Prizes are placeholders (card, d8, die upgrade, Scorch, d20). What should each creature give?
+61. Cheapened's list text repeats Boosted's; it is built as the opposite (your opponent's dice −1). Right?
+62. The Upgrade chip's roll ladder (Escalate, +1, Gamble, +1…) is mine. Which upgrades should it give, in what order?
