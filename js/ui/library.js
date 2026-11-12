@@ -62,7 +62,7 @@ const BOUT_CHIPS = {
 function chipsTab(own) {
   const out = [sec('Royal Paradise chips', 'The basic value chips. Your purse is changed into these when you set your position.')];
   for (const d of D.DENOMS) { const ch = { kind: 'std', value: d.value };
-    out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), `${d.value}¢ chip`, [`Dealt from floor ${d.floor}.`, d.value > 1 ? `Bid it and the trick lingers ${d.value - 1} turn${d.value > 2 ? 's' : ''}.` : 'Bids without lingering.', dim(d.value > 1 ? `A fee under ${d.value}¢ leaves Debt on it instead of paying it.` : 'Any fee of 1¢ or more pays it.')])); }
+    out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), D.denomName(d.value) + (d.name ? ` · ${cents(d.value)}` : ''), [d.floor >= D.ASCENT_FLOOR ? 'Dealt in the Paradise Ascent.' : `Dealt from floor ${d.floor}.`, d.value > 1 ? `Bid it and the trick lingers ${d.value - 1} turn${d.value > 2 ? 's' : ''}.` : 'Bids without lingering.', dim(d.value > 1 ? `A fee under ${d.value}¢ leaves Debt on it instead of paying it.` : 'Any fee of 1¢ or more pays it.')])); }
   out.push(sec('Chip upgrades', 'Changes made to a chip on the table, drawn on the chip.'));
   const gold = { kind: 'std', value: 5, gold: true };
   out.push(entry([chipEl({ kind: 'std', value: 5 }), h('span', { class: 'dim', text: '→' }), tipped(chipEl(gold), () => chipTip(gold))], 'Gold', ['Made by Gild (and sometimes a Fairy). Glows gold.', 'Cannot be bid. Pays double if it survives the bout.']));

@@ -25,22 +25,22 @@ export function planner(getExtra, onChange) {
     h('div', { class: 'row', style: { alignItems: 'flex-start', gap: '16px' } }, board, h('div', { class: 'col grow' }, denomBox, resistBox)),
     h('div', { class: 'row wrap' }, h('span', { class: 'cap', text: 'Spacing' }), spacing, h('span', { class: 'cap', text: 'Stacking' }), stacking),
     h('div', { class: 'row wrap' }, info, btn('Auto', () => { run.plan.counts = R.autoCounts(run, dims()); update(); }, '<b>Auto</b><p>Fill the Bar with the most valuable chips your purse affords, keeping some 1¢ chips to bid with.</p>', 'small'),
-      btn('Clear', () => { run.plan.counts = { 1: 0, 2: 0, 5: 0, 10: 0 }; update(); }, null, 'small')));
+      btn('Clear', () => { run.plan.counts = R.noCounts(); update(); }, null, 'small')));
   info.append(h('span', { class: 'stat', tip: '<b>Position worth</b><p>The chips you put in your Bar. This is what you can lose to fees and what you have to bid with.</p>' }, h('em', { text: 'On the table' }), worthEl),
     h('span', { class: 'stat', tip: '<b>Bar capacity</b><p>Bar rows × 5 spaces × stack height.</p>' }, h('em', { text: 'Chips' }), countEl));
   const dims = () => R.rollerStats(run, getExtra()).dims;
   const total = () => R.planCount(run.plan.counts, run.plan.resist);
   function change(fn) { fn(); update(); }
   function bump(v, n, ev) { const step = ev.shiftKey ? 10 : 1, c = run.plan.counts, cap = barCapacity(dims()); let k = step * n;
-    if (n > 0) k = Math.min(k, cap - total(), Math.floor((run.purse - R.planWorth(c)) / v)); else k = -Math.min(-k, c[v]);
+    if (n > 0) k = Math.min(k, cap - total(), Math.floor((run.purse - R.planWorth(c)) / v)); else k = -Math.min(-k, c[v] || 0);
     if (!k) { toast(n > 0 ? (cap - total() <= 0 ? 'Your Bar is full.' : 'Your purse does not stretch that far.') : 'None of those to remove.', 'warn'); return; }
-    change(() => { c[v] += k; }); }
+    change(() => { c[v] = (c[v] || 0) + k; }); }
   function update() {
     const d = dims(), extra = getExtra(); let c = run.plan.counts;
     for (const k of Object.keys(run.plan.resist)) run.plan.resist[k] = Math.min(run.plan.resist[k] || 0, R.owned(run, k));
     if (!c || R.planWorth(c) > run.purse || total() > barCapacity(d)) { // a fresh mix that leaves room for the shop chips you placed
       c = run.plan.counts = R.autoCounts(run, d);
-      for (const v of [1, 2, 5, 10]) { const over = total() - barCapacity(d); if (over <= 0) break; c[v] -= Math.min(c[v], over); }
+      for (const v of D.DENOM_VALUES) { const over = total() - barCapacity(d); if (over <= 0) break; c[v] -= Math.min(c[v] || 0, over); }
       if (total() > barCapacity(d)) run.plan.resist = {}; }
     const side = R.previewPosition(run, c, { position: extra.position, resist: run.plan.resist });
     // cells
@@ -60,8 +60,8 @@ export function planner(getExtra, onChange) {
       e.style.zIndex = 10 + col * 20 + lvl; e.style.opacity = 1; e.style.transform = `translate(${x}px, ${y}px)`; });
     for (const [k, e] of chips) if (!seen.has(k)) { const t = e.style.transform.replace(/ scale\([^)]*\)/, ''); e.style.opacity = 0; e.style.transform = `${t} scale(.2)`; chips.delete(k); setTimeout(() => e.remove(), 450); }
     // controls
-    const denoms = D.DENOMS.filter((x) => x.floor <= Math.max(1, Math.min(4, run.floor || 1)) || run.phase === 'ascent');
-    syncList(denomBox, denoms, (x) => x.value, (x) => { const n = h('b', { class: 'num' }); const row = h('div', { class: 'row' }, chipEl({ kind: 'std', value: x.value }), h('span', { class: 'grow', text: `${x.value}¢ chips` }),
+    const denoms = D.DENOMS.filter((x) => x.floor <= R.chipFloor(run));
+    syncList(denomBox, denoms, (x) => x.value, (x) => { const n = h('b', { class: 'num' }); const row = h('div', { class: 'row' }, chipEl({ kind: 'std', value: x.value }), h('span', { class: 'grow', text: x.name ? `${x.name} chips (${cents(x.value)})` : `${x.value}¢ chips` }),
       h('div', { class: 'stepper' }, btn('−', (ev) => bump(x.value, -1, ev), null, 'small'), n, btn('+', (ev) => bump(x.value, 1, ev), null, 'small'))); row._n = n; row._tip = () => `${chipTip({ kind: 'std', value: x.value })}<p class="dim">Hold Shift to change by 10.</p>`; row.classList.add('has-tip'); return row; },
     (row, x) => tween(row._n, c[x.value] || 0, undefined, 250));
     const owned = Object.keys(D.SHOP_CHIPS).filter((k) => R.owned(run, k) > 0);
@@ -89,31 +89,30 @@ export function prepScene(root, kind, idx) {
   entry.seen = true;
   const H = hud(D.FLOORS[run.floor].name, kind === 'boss' ? 'Head table · High Roller' : `Table ${idx + 1} · ${D.feltOf(entry.felt).name} felt`);
   const multEl = h('div', { class: 'mult num' }), wagerEl = h('b', { class: 'num gold-t' }), winEl = h('b', { class: 'num good' }), posEl = h('b', { class: 'num' });
-  const tiltBox = h('div', { class: 'col' }), tierBox = h('div', { class: 'row wrap' });
+  const tiltBox = h('div', { class: 'col' });
   const P = planner(() => ({ position: prep.tilts.position }), sync);
-  const ddBtn = btn('Double Down', () => { prep.dd = !prep.dd; if (prep.dd) for (const [k, T] of Object.entries(D.TILTS)) prep.tilts[k] = T.kind === 'challenge' ? Math.min(fs.lastWin.tilts[k] || 0, R.tiltCap(run, k)) : 0; P.update(); },
+  const ddBtn = btn('Double Down', () => { prep.dd = !prep.dd; if (prep.dd) for (const [k, T] of Object.entries(D.TILTS)) prep.tilts[k] = T.kind === 'challenge' && fs.lastWin.tilts[k] && R.tiltOpen(run, k) ? 1 : 0; P.update(); },
     '<b>Double Down</b><p>Only after a win. Doubles the wager multiplier (up to ×6) with the same Challenge tilts as your last bout and no Cheat tilts. Win it and the High Roller sees you next, and a Suite Key Card is yours.</p>');
-  const rows = Object.entries(D.TILTS).map(([k, T]) => { const n = h('b', { class: 'num' });
-    const minus = btn('−', () => { prep.tilts[k] = Math.max(0, prep.tilts[k] - 1); P.update(); }, null, 'small'), plus = btn('+', () => { if (prep.tilts[k] >= R.tiltCap(run, k)) return toast(R.tiltCap(run, k) ? 'That is every slot your unlocked tiers allow.' : `Unlock a ${T.kind} tier first.`, 'warn'); prep.tilts[k]++; P.update(); }, null, 'small');
-    const el = h('div', { class: `tilt ${T.kind}`, tip: () => `<b>${T.name}</b> <span class="dim">${T.kind === 'challenge' ? 'Challenge tilt — raises the multiplier' : 'Cheat tilt — lowers the multiplier'}</span><p>${T.text}</p><p class="dim">Slots by tier: ${T.cap.join(' / ')}. Each slot is worth ${D.TILT_TIERS.map((t) => t.inc).join(' / ')} of multiplier by tier.</p>` }, h('span', {}, `${T.kind === 'challenge' ? '+' : '−'} ${T.name}`), h('div', { class: 'stepper' }, minus, n, plus));
-    return { k, el, n, minus, plus }; });
+  // each tilt is on or off; while on, the House may play it during the bout
+  const rows = Object.entries(D.TILTS).map(([k, T]) => {
+    const tg = btn('Off', () => { if (prep.dd) return toast('Double Down keeps your last Challenges and no Cheats.', 'warn'); if (!R.setTilt(run, prep, k, !prep.tilts[k])) return toast(`Opens on floor ${T.floor}.`, 'warn'); P.update(); }, null, 'small');
+    const el = h('div', { class: `tilt ${T.kind}`, tip: () => `<b>${T.name}</b> <span class="dim">${T.kind === 'challenge' ? `Challenge tilt — +${T.mult} to the multiplier` : `Cheat tilt — −${T.mult} to the multiplier`}</span><p>${T.text}</p>${T.base || T.per ? `<p class="dim">The House's chance to play it each turn: ${Math.round(T.base * 100)}% plus up to ${Math.round(T.per * 100)}% more, as ${T.kind === 'challenge' ? 'you lose' : 'your opponent loses'} chips to the House.</p>` : ''}${R.tiltOpen(run, k) ? '' : `<p class="bad">Opens on floor ${T.floor}.</p>`}` },
+      h('span', {}, `${T.kind === 'challenge' ? '⚠' : '✚'} ${T.name}`), h('span', { class: 'dim', text: `${T.kind === 'challenge' ? '+' : '−'}${T.mult}` }), tg);
+    return { k, el, tg }; });
   tiltBox.append(...rows.map((r) => r.el));
-  const tierBtn = (tk) => { const b = btn('', () => { if (!R.unlockTier(run, tk)) { toast('You cannot afford that tier.', 'warn'); pulse(b, 'shake'); } P.update(); }, () => `<b>Unlock ${tk} tier ${fs.tiers[tk] + 1}</b><p>Opens more ${tk === 'challenge' ? 'Challenge' : 'Cheat'} tilt slots for the rest of this floor.</p>`, 'small'); return b; };
-  const tb = { challenge: tierBtn('challenge'), cheat: tierBtn('cheat') }; tierBox.append(tb.challenge, tb.cheat);
   const go = btn('Sit down', () => { if (P.worth() < 1) return toast('Put at least one chip in your position.', 'warn'); app.nav.bout(R.startTable(run, prep)); }, '<b>Sit down</b><p>Starts the bout. Once you sit you cannot go back to the shops, and every chip not in your position is wagered.</p>', 'big go');
 
   function sync() {
     H.update();
     const m = R.multiplier(run, prep), worth = P.worth(), wager = Math.max(0, run.purse - worth);
     tween(multEl, m, (n) => `×${n.toFixed(2)}`, 400); tween(posEl, worth, cents, 300); tween(wagerEl, wager, cents, 300); tween(winEl, Math.round(wager * m), cents, 400);
-    for (const r of rows) { tween(r.n, prep.tilts[r.k], undefined, 200); r.plus.classList.toggle('off', prep.dd || prep.tilts[r.k] >= R.tiltCap(run, r.k)); r.minus.classList.toggle('off', prep.dd || prep.tilts[r.k] <= 0); }
-    for (const tk of ['challenge', 'cheat']) { const n = fs.tiers[tk], T = D.TILT_TIERS[n]; swapText(tb[tk], T ? `Unlock ${tk} tier ${n + 1} · ${cents(T[tk])}` : `${tk} tiers maxed`); tb[tk].classList.toggle('off', !T || run.purse < T[tk]); }
+    for (const r of rows) { const on = !!prep.tilts[r.k]; swapText(r.tg, on ? 'On' : 'Off'); r.tg.classList.toggle('on', on); r.tg.classList.toggle('off', prep.dd || !R.tiltOpen(run, r.k)); r.el.classList.toggle('lit', on); }
     ddBtn.classList.toggle('on', prep.dd); ddBtn.classList.toggle('gone', !(kind === 'table' && fs.lastWin));
   }
   tiltBox.className = 'tilts';
   root.append(H.el, h('div', { class: 'page', style: { display: 'grid', gridTemplateColumns: '1fr 290px', gap: '16px' } },
     h('div', { class: 'col' }, h('div', { class: 'box' }, P.el),
-      h('div', { class: 'box col' }, h('div', { class: 'row between' }, h('span', { class: 'cap', tip: '<b>Tilts</b><p>Challenge tilts make the bout harder and raise your wager multiplier. Cheat tilts make it easier and lower it. Unlock a tier to open its slots; tiers last for the floor.</p>', text: 'Tilt the bout' }), tierBox), tiltBox)),
+      h('div', { class: 'box col' }, h('div', { class: 'row between' }, h('span', { class: 'cap', tip: '<b>Tilts</b><p>Switch tilts on or off. Challenge tilts make the bout harder and raise your wager multiplier; Cheat tilts make it easier and lower it.</p><p>While a tilt is on, the House may play it during the bout. The more you lose to the House, the harder your Challenges hit; the more your opponent loses to the House, the stronger your Cheats.</p>', text: 'Tilt the bout' })), tiltBox)),
     h('div', { class: 'col' }, oppBox(opp, 'Across the table'),
       h('div', { class: 'box col', tip: `<b>Wager</b><p>Every chip you do not put in your position is wagered. Win and it comes back multiplied; lose and it is gone. Table bouts start at ×${D.WAGER_BASE}, High Rollers at ×${D.WAGER_BOSS}.</p>` },
         h('div', { class: 'row between' }, h('span', { class: 'cap', text: 'Wager multiplier' }), multEl),

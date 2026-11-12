@@ -232,7 +232,21 @@ export const TRICKS = {
 export const TRICK_IDS = Object.keys(TRICKS);
 
 // ---------- Chips ----------
-export const DENOMS = [ { value: 1, floor: 1 }, { value: 2, floor: 2 }, { value: 5, floor: 2 }, { value: 10, floor: 3 } ];
+// The basic value chips. `floor`: the first floor whose tables deal them (5 = the Paradise Ascent). Up to 500¢ they
+// are Royal Paradise chips named by value; from 1000¢ the metal and gem chips go by name, with a short `glyph`.
+// `color`: the chip list's colour for it.
+export const DENOMS = [
+  { value: 1, floor: 1, color: 'White' }, { value: 2, floor: 2, color: 'Blue' }, { value: 5, floor: 2, color: 'Red' }, { value: 10, floor: 3, color: 'Yellow' },
+  { value: 25, floor: 3, color: 'Green' }, { value: 50, floor: 4, color: 'Purple' }, { value: 100, floor: 4, color: 'Orange' }, { value: 250, floor: 4, color: 'Black' },
+  { value: 500, floor: 5, color: 'White' }, { value: 1000, floor: 5, name: 'Silver', glyph: '1K' }, { value: 2500, floor: 5, name: 'Ruby', glyph: '2.5K' },
+  { value: 5000, floor: 5, name: 'Emerald', glyph: '5K' }, { value: 10000, floor: 5, name: 'Sapphire', glyph: '10K' }, { value: 25000, floor: 5, name: 'Amber', glyph: '25K' },
+  { value: 50000, floor: 5, name: 'Diamond', glyph: '50K' },
+];
+for (const d of DENOMS) if (d.value >= 25) d.list = d.value === 10000 ? 'Saphire Chip' : `${d.name || d.color} Chip`; // their rows on the chip list
+export const DENOM_VALUES = DENOMS.map((d) => d.value);
+export const denomOf = (v) => DENOMS.find((d) => d.value === v) || null;
+export const denomName = (v) => (denomOf(v)?.name ? `${denomOf(v).name} chip` : `Royal Paradise ${v}¢ chip`);
+export const ASCENT_FLOOR = 5;
 export const CHIPS = {
   std: { name: 'Royal Paradise chip', type: 'Basic', text: 'Basic value chip. Pays fees up to its value; a smaller fee leaves Debt chips on top instead. Can be bid.' },
   opp: { name: 'Opportunity chip', text: 'Earned during a bout for unused rolls. Worth 1¢ and can be bid. Fragile: lost at the end, but each one left pays a bonus chip if you win.' },
@@ -451,20 +465,22 @@ export const CALAMITIES = {
 // opponent's starting worth, paid with the one-die prize.
 export const PRIZES = { bonus: 0.25 };
 export const WAGER_BASE = 1.5; export const WAGER_BOSS = 3; export const DD_MAX = 6;
-export const TILT_TIERS = [
-  { inc: 0.01, challenge: 100, cheat: 500 }, { inc: 0.02, challenge: 1000, cheat: 5000 }, { inc: 0.05, challenge: 10000, cheat: 50000 },
-  { inc: 0.1, challenge: 100000, cheat: 500000 }, { inc: 0.2, challenge: 1000000, cheat: 5000000 },
-];
+// Tilts are switched on or off for a bout. While one is on, the House may play it during the bout, in the House
+// phase. How often and how hard depends on the bout: the more you have lost to the House (your fees paid to the
+// Stage, as a share of what you started with) the harder Challenges hit; the more your opponent has lost to the House,
+// the stronger your Cheats. `floor`: the first floor that offers it. `mult`: what it adds to the wager multiplier.
+// `base` and `per`: the House's chance to play it each turn, base + per × pressure.
 export const TILTS = {
-  hazard: { kind: 'challenge', name: 'Hazard', cap: [6, 6, 3, 0, 0], text: 'Adds a Hole to a random space of your position. Holes cannot hold chips. One in three is a Magic Hat under one of your stacks instead.' },
-  creature: { kind: 'challenge', name: 'Creature', cap: [3, 3, 2, 1, 1], text: 'A creature visits your position for a couple of turns, messes with it, then leaves.' },
-  spawner: { kind: 'challenge', name: 'Spawner', cap: [1, 1, 1, 1, 1], text: 'A nest that sends a new creature at your position every third turn. One in two is a Dragon Roost: it takes a Bar space and calls a Dragon, which burns a chip, then lays an egg on the Roost. While the egg sits there no Dragon comes; play a trick totalling 10 or more and it hatches a Dragon onto your opponent.' },
-  calamity: { kind: 'challenge', name: 'Calamity', cap: [0, 0, 0, 1, 1], text: 'A disaster that lasts the whole bout.' },
-  shield: { kind: 'cheat', name: 'Shield', cap: [5, 3, 3, 1, 0], text: 'Start with a full stack of Block chips on your Meter.' },
-  familiar: { kind: 'cheat', name: 'Familiar', cap: [2, 2, 2, 1, 1], text: 'A little friend that removes one Debt or hazard chip each turn and may chase creatures away.' },
-  position: { kind: 'cheat', name: 'Position', cap: [1, 1, 1, 1, 1], text: 'Adds +1 to Balance, Versatility and Depth in turn for this bout (max +2 each).' },
-  intervention: { kind: 'cheat', name: 'Intervention', cap: [0, 0, 0, 1, 1], text: 'Once, when you would go broke, your paid fees are restored to your position. It costs half your wager.' },
+  hazard: { kind: 'challenge', name: 'Hazard', floor: 1, mult: 0.15, base: 0.25, per: 0.6, text: 'The House digs Holes in empty spaces of your position (one in three is a Magic Hat slipped under a stack). More of them, more often, the more you have lost to the House.' },
+  creature: { kind: 'challenge', name: 'Creature', floor: 1, mult: 0.2, base: 0.2, per: 0.6, text: 'The House sends creatures to your position. The more you have lost to the House, the more often, and the bigger the creatures it can call.' },
+  spawner: { kind: 'challenge', name: 'Spawner', floor: 2, mult: 0.25, base: 0.15, per: 0.5, text: 'The House sets nests on your position that send a creature every third turn (every second, once you have lost a third of your chips). One in two is a Dragon Roost: it takes a Bar space and calls a Dragon that lays eggs on it.' },
+  calamity: { kind: 'challenge', name: 'Calamity', floor: 3, mult: 0.4, base: 0.12, per: 0.45, text: 'The House starts disasters on your position: a Worm Hole, Inferno, Audit, Black Hole, Volcano, Tornado, Blizzard or B-52. A second one comes once you have lost half your chips.' },
+  shield: { kind: 'cheat', name: 'Shield', floor: 1, mult: 0.15, base: 0.3, per: 0.6, text: 'The House drops Block chips on your Meter: more, and more often, the more your opponent has lost to the House.' },
+  familiar: { kind: 'cheat', name: 'Familiar', floor: 1, mult: 0.15, base: 0.35, per: 0.6, text: 'The House sends you a little friend that removes one Debt or hazard chip each turn and may chase creatures away. Up to three, as your opponent loses to the House.' },
+  position: { kind: 'cheat', name: 'Position', floor: 1, mult: 0.2, base: 0, per: 0, text: 'Adds +1 to Balance, Versatility and Depth for this bout. The House plays it when you sit down, so it does not grow during the bout.' },
+  intervention: { kind: 'cheat', name: 'Intervention', floor: 3, mult: 0.3, base: 0, per: 0, text: 'Once, when you would go broke, the House restores your paid fees: half of them, up to all of them the more your opponent has lost to the House. It costs half your wager.' },
 };
+export const tiltChance = (key, pressure) => Math.min(0.95, TILTS[key].base + TILTS[key].per * pressure);
 
 // ---------- Floors and opponents ----------
 export const FLOORS = [

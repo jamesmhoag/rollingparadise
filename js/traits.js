@@ -53,7 +53,7 @@ export function listRow(ch) {
   const X = ch.shop && D.SHOP_CHIPS[ch.shop];
   let name = X?.list || KIND_ROW[ch.kind];
   if (ch.kind === 'bounty') name = `${D.CREATURES[ch.creature]?.name} Bounty Chip`;
-  if (ch.kind === 'std' && !X) name = ch.cursed ? 'Cursed Chip' : ch.treasure ? 'Treasure Chip' : ch.frozen ? 'Frozen f¢ Chip' : ch.gold ? 'Golded 2*p¢ Chip' : ch.feather > 0 ? 'Feather p¢ Chip' : `Royal Paradise ${ch.value}¢ chip`;
+  if (ch.kind === 'std' && !X) name = ch.cursed ? 'Cursed Chip' : ch.treasure ? 'Treasure Chip' : ch.frozen ? 'Frozen f¢ Chip' : ch.gold ? 'Golded 2*p¢ Chip' : ch.feather > 0 ? 'Feather p¢ Chip' : (D.denomOf(ch.value)?.list || `Royal Paradise ${ch.value}¢ chip`);
   return name ? BY_NAME.get(name.toLowerCase()) || null : null;
 }
 const ELECTRIC = (id) => D.SHOP_CHIPS[id]?.tags || [];

@@ -48,10 +48,9 @@ for (let seed = 1; seed <= 60; seed++) {
     for (const t of run.tricks) if (run.purse > R.upgradeCost(run, t) * 4) R.upgradeTrick(run, t.uid);
     R.buyDrink(run, run.fs.lounge.drinks[0].id); R.searchFloor(run);
     if (run.purse > 50) R.placeBet(run, run.fs.book.events[0].key, 0, run.fs.book.min);
-    if (run.purse > 400) { R.unlockTier(run, 'challenge'); }
     const path = [0, 1 + (seed % 2)];
     for (let k = 0; k < 2 && alive; k++) {
-      const i = path[k], prep = R.newPrep(run, 'table', i); prep.tilts.hazard = Math.min(2, R.tiltCap(run, 'hazard')); prep.tilts.creature = Math.min(1, R.tiltCap(run, 'creature'));
+      const i = path[k], prep = R.newPrep(run, 'table', i); if (run.purse > 400) { R.setTilt(run, prep, 'hazard', true); R.setTilt(run, prep, 'creature', true); }
       if (k === 1 && run.fs.lastWin) prep.dd = true;
       run.plan.counts = null;
       const res = fight(R.startTable(run, prep));
