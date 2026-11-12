@@ -149,7 +149,7 @@ export function runOne(cls, seed, strat = {}) {
   const run = R.newRun(cls, strat.jacket || 'standard', seed);
   if (strat.plan) Object.assign(run.plan, strat.plan);
   const m = { cls, seed, bouts: 0, wins: 0, cbouts: 0, cwins: 0, turns: 0, timeouts: 0, purchases: 0, bets: 0, buys: {}, spent: 0, floor: 0, stage: 0, cleared: false,
-    maxPurse: 0, purseAt: {}, misses: {}, sold: 0, barfly: [0, 0], died: '', lossAt: [] };
+    maxPurse: 0, purseAt: {}, misses: {}, sold: 0, barfly: [0, 0], died: '', lossAt: [], vs: [] };
   const miss = (what, why) => { m.misses[what] ||= why; };
   const knobs = strat.knobs || null;
   const fight = (start, casino = true) => {
@@ -201,6 +201,8 @@ export function runOne(cls, seed, strat = {}) {
       const opp = boss ? run.fs.boss.opp : run.fs.tables[path[k]].opp;
       const before = run.stats.spent;
       const res = fight(R.startTable(run, prep));
+      // one row per table bout: floor, table step, opponent class, won, first attempt at this table
+      m.vs.push([f, k, opp.cls, res.win ? 1 : 0, m.lossAt.includes(STAGES[2 + (f - 1) * 3 + k]) ? 0 : 1]);
       if (res.win) { m.stage = 2 + (f - 1) * 3 + k; if (k < 2 || f < 4) shop(run, strat, m, miss); }
       else {
         losses++; m.lossAt.push(STAGES[2 + (f - 1) * 3 + k]);
