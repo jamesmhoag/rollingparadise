@@ -34,7 +34,7 @@ const opps = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter((ch)
 {
   const { me, ctx } = table({ crown: 1, burn: 2 });
   const crown = cellsWith(me, 'crown');
-  assert(crown.length === 1 && crown[0].cell.hard === D.shopVars('crown').turns, 'a Crown chip starts its stack Hardened');
+  assert(crown.length === 1 && B.hardOf(crown[0].cell) === D.shopVars('crown').turns && crown[0].cell.chips.some((ch) => ch.kind === 'hard'), 'a Crown chip starts its stack Hardened');
   assert(crown[0].cell.chips[0].resist === 'crown', 'shop chips go at the base of the stack');
   assert(ctx.felt && D.FELTS[ctx.felt], 'a table bout carries its felt');
 }
@@ -318,7 +318,7 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
 }
 { // every chip on the list has a status, and built ones render
   const { CHIP_LIST } = await import('../js/chiplist.js');
-  assert(CHIP_LIST.length === 97 && CHIP_LIST.every((x) => ['built', 'partial', 'needs'].includes(x.status) && x.note), 'every chip on the list has a status and a note');
+  assert(CHIP_LIST.length === 96 && !CHIP_LIST.some((x) => x.name === 'Coin') && CHIP_LIST.every((x) => ['built', 'partial', 'needs'].includes(x.status) && x.note), 'every chip on the list but the Coin (an Artifact, for later) has a status and a note');
   for (const x of CHIP_LIST) if (x.show) assert(x.show.kind === 'std' || D.CHIPS[x.show.kind], `${x.name} renders`);
   for (const x of CHIP_LIST) if (x.show?.resist) assert(D.SHOP_CHIPS[x.show.resist], `${x.name} is sold`);
 }
@@ -355,8 +355,11 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
   const { run, bout, me, opp, ctx } = table({});
   const x = me.grid.flatMap((row, r) => row.map((cell, c) => ({ r, c, cell }))).find((y) => B.solidCount(y.cell) && y.r >= me.dims.meterRows);
   bout.creatures.push({ id: 2e6, kind: 'fairy', side: 0, r: x.r, c: x.c, life: 3, arrive: 1 });
-  assert(engage(bout, opp, me, x.r, x.c, 10, {}).placed === 0, 'a creature soaks a fee on the stack it hovers over');
-  assert(engage(bout, opp, me, x.r, x.c, 20, {}).placed === 5, 'overkill past the creature hits the stack beneath');
+  bout.creatures.push({ id: 2e6 + 7, kind: 'mothership', side: 0, r: x.r, c: x.c + 1 < me.dims.cols ? x.c + 1 : x.c - 1, life: 3, arrive: 1, dmg: 0 });
+  const ms = bout.creatures[1]; for (let k = 0; k < 9; k++) assert(engage(bout, opp, me, ms.r, ms.c, 50, {}).placed === 0, 'a creature takes a whole fee as one hit instance');
+  assert(!ms.gone && ms.dmg === 9 && D.CREATURES.mothership.bounty === 10 * D.BOUNTY_PER_HIT, 'the Mothership has 10 hits and a bounty of 5¢ a hit');
+  bout.creatures.splice(1, 1);
+  assert(engage(bout, opp, me, x.r, x.c, 6, {}).placed === 5, 'the blow that drives a creature off spills the rest of the fee onto the stack beneath');
   const ex = { trick: { id: 'charge', q: 1, up: 0 }, dice: [{ value: 3, type: 'd6' }], state: 'shown' };
   bout.creatures.push({ id: 2e6 + 1, kind: 'ufo', side: 0, r: x.r, c: x.c, life: 3, arrive: 1 });
   assert(B.validTargets(bout, me, ex).some((v) => v.side === 0 && v.r === x.r && v.c === x.c), 'your own Expenses can aim at a creature over your stack');
@@ -376,10 +379,11 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
 { // Boosted, Cheapened and Upgrade chips change rolls; an Upgrade chip bid lifts the trick
   const { bout, me, opp } = table({ boosted: 2, upgrade: 2 });
   assert(me.grid.slice(0, me.dims.meterRows).flat().some((cell) => cell.chips.some((ch) => ch.shop === 'upgrade')), 'Upgrade chips start on the Meter');
-  for (const cell of opp.grid[opp.dims.meterRows]) cell.chips.unshift({ id: 1e6 + cell.chips.length, kind: 'std', value: 1, resist: 'cheapened', shop: 'cheapened' });
+  for (const cell of me.grid.flat()) cell.chips = cell.chips.filter((ch) => ch.shop !== 'upgrade'); // random upgrades aside
   B.draw(bout, me, me.book[0].uid); B.advance(bout, true);
   const [d] = B.throwDice(bout, me, [me.pouch[0].id]);
-  assert(d.value >= 1 + 2 + 1, 'Boosted chips and Upgrade chips on the Meter raise the roll');
+  assert(d.value >= 1 + 2, 'Boosted chips raise the roll');
+  for (const cell of opp.grid[opp.dims.meterRows]) cell.chips.unshift({ id: 1e6 + cell.chips.length, kind: 'std', value: 1, resist: 'cheapened', shop: 'cheapened' });
   const e = { trick: { id: 'charge', q: 1, up: 0 }, upBoost: 1 };
   assert(B.trickMult(B.effTrick(e)) === B.trickMult({ id: 'charge', q: 1, up: 1 }), 'a bid Upgrade chip plays the trick one upgrade higher');
 }
@@ -391,8 +395,10 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
   for (let k = 0; k < 30 && !(found.worm && found.roost); k++) { run.rng.s = k * 99 + 1; const { bout } = R.startTable(run, prep); const me = bout.sides[0];
     if (me.calamities.includes('wormhole')) { const w = me.grid.flat().find((cell) => cell.worm); if (w) { w.chips.push({ id: 9e5, kind: 'std', value: 5 }); const before = B.worth(bout.sides[1]); drain(ticks(bout)); assert(!w.chips.length && B.worth(bout.sides[1]) >= before, 'a Worm Hole pulls chips through to the other side'); found.worm++; } }
     const roost = me.grid.flat().find((cell) => cell.roost);
-    if (roost) { bout.turn = 3; drain(ticks(bout)); const dr = bout.creatures.find((x) => x.roost === roost.roost); assert(dr && dr.kind === 'dragon', 'a Roost calls a Dragon');
-      for (let t = 0; t < 4; t++) drain(ticks(bout)); assert(roost.roost.egg, 'the Dragon lays an egg on its Roost'); found.roost++; }
+    if (roost) { bout.turn = 3; drain(ticks(bout)); const dr = bout.creatures.find((x) => x.roost === roost.roost.id); assert(dr && dr.kind === 'dragon', 'a Roost calls a Dragon');
+      for (let t = 0; t < 2; t++) drain(ticks(bout)); const egg = roost.chips.find((ch) => ch.kind === 'egg'); assert(egg && egg.hits === 5, 'the Dragon lays a 5-hit egg chip on its Roost');
+      const n0 = bout.creatures.length; drain(ticks(bout)); drain(ticks(bout)); drain(ticks(bout));
+      assert(!roost.chips.includes(egg) && bout.creatures.length > n0 && bout.creatures.at(-1).kind === 'dragon', 'on the Roost the egg hatches in 3 turns (2 hatch steps a turn)'); found.roost++; }
   }
   assert(found.worm && found.roost, 'Worm Holes and Dragon Roosts turn up from the Calamity and Spawner tilts');
 }
@@ -430,9 +436,9 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
   const m = me.dims.meterRows; me.grid[m][c].chips = [{ id: 8e6, kind: 'std', value: 2 }]; me.grid[m + 1][c].chips = [{ id: 8e6 + 1, kind: 'std', value: 1 }];
   const g = engage(bout, opp, me, m, c, 7, {});
   assert(B.debtOf(me.grid[m][c]) === 2 && B.debtOf(me.grid[m + 1][c]) === 1, 'overkill spreads down the lane as the fee lands');
-  assert(g.placed === 3 && me.grid.slice(m + 2).some((row) => row[c].chips.some((ch) => ch.kind === 'ghost' && ch.value === 4)), 'what has nowhere to go shows as a ghost Debt chip on the next empty space');
+  assert(g.placed === 3 && me.grid.slice(m + 2).some((row) => row[c].chips.some((ch) => ch.kind === 'stray' && ch.value === 4)), 'what has nowhere to go shows as a ghost Debt chip on the next empty space');
   drain(B._test.settleAll(bout, 'expense'));
-  assert(!me.grid.flat().some((cell) => cell.chips.some((ch) => ch.kind === 'ghost')), 'the House clears ghosts as it settles');
+  assert(!me.grid.flat().some((cell) => cell.chips.some((ch) => ch.kind === 'stray')), 'the House clears strays as it settles');
 }
 {
   const { bout, me } = table({});

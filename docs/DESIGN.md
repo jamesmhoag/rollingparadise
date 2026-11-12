@@ -300,6 +300,27 @@ what you own, carry or wear is marked.
 
 What is needed to build these is listed in `docs/OPEN-QUESTIONS.md`.
 
+## Round 13: chips over, under and above the table
+
+- **Layers.** A space holds a stack (chips that take height), chips lying over it (Debt, hazards, Hardened, Sticky:
+  no height, always on top), Little chips (no height, only Littles go on them), creatures and bees in the flying
+  layer, and orbital chips (weather, vehicles) above them. A Big chip or Volcano covers a 2×2 block: the top-left
+  space holds the stack, the other three link to it.
+- **Hit instances.** Instance shields (Petal, Flower, Clay, Brick, Wood, Tree, Hive, Little, Egg) and creatures take
+  whole fees, one hit each. A creature's last hit drives it off; the rest of that fee spills onto the stack beneath.
+  Bounties pay 5¢ a hit. The Ghost has no hits; the Ghost Ship has 100 and drops Treasure.
+- **Water.** Rain and Sprinklers make Puddles (empty spaces, not playable until they dry a turn later) and wet
+  stacks (no burning, electricity passes on, freezing in the cold and in a Blizzard, faster plants). A flooded
+  Hole floats Wood.
+- **Electricity.** Lightning is the Zap trick's shock, a Zap chip's strike, Shocking chips and a Cloud's bolt.
+  Absorption soaks it, a Tesla grabs a strike a turn and sends it back, a Battery gives every electrical or
+  electronic chip above it one more instance.
+- **Electronics** read the count of chips under them: a Repeater replays your tricks whose dice total that, a
+  Forgetter negates your opponent's. A Mimic replays a random trick of each type.
+- **Weather** comes with the felt: Oceanic, Frosty and Earthen bring a Cloud, Molten the Sun, Lunar and Galactic
+  the Moon, Polar an occasional Blizzard; Frosty and Polar are cold. Calamities add the Tornado (2d6 strength), the
+  Blizzard, the B-52 (52¢ Boom chips) and Volcano chips.
+
 ## Balance
 
 A first pass, checked by simulation (`npm run balance`). Bouts run about 4 turns in the intro and 7 to 14

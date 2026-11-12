@@ -150,3 +150,26 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
     the House plays?
 67. A trick that loses its target keeps its aim and lands on nothing. Should it instead slide to the nearest stack
     (as it did before), maybe as a trick upgrade (the sheet's Overflow row)?
+
+## Round 13 additions (the rest of the chip list, traits)
+
+- **Traits.** Every chip's information (on the table and in the Library) lists its traits: the chip list's columns
+  (solid outline) and the traits the engine derives (dashed). The Library's **Traits** tab lists each trait and the
+  chips that carry it. Candidates for dropping: *Pays fees*, *Biddable*, *Flippable*, *Takes height*, *Fixed* and
+  *Element* overlap the list's Payment, Playable, Flip value, Stack amount, Movable and Association; the list's
+  *Association* column is empty for every chip. Which should stay?
+- **Moon.** Not on the list. Proposed: the tide (a Puddle spreads a space a turn) and a Ghost every fourth turn.
+- **Sticky on a buff.** Gum Up is aimed at the opponent, so sticking their Hardened chip helps them. Should Sticky
+  pick the first *debuff* when there is one?
+- **Doom** chips are knocked off by nothing but cleansing (fees go under them). Should a fee knock them off?
+- **Magic Hat** swallows one chip a turn. Too fast? Too slow?
+- **Big chips** cover four spaces (the clarification) rather than five (the list). They stack only on Big chips and
+  are never moved by Corrections. Can a Correction move a whole 2×2 block?
+- **Creature bounties** are now 5¢ a hit, so a 1-hit Unicorn pays 5¢ where it paid 250¢ before. Should rare
+  creatures pay more a hit?
+- **Hardened** is now a chip over the stack. Your own cleansing keeps it (it is a buff); a Cloud's rain and a
+  piercing fee remove it.
+- **"On high".** An idea to explore: the House playing tricks and challenge effects from above the table, chips
+  lost as triggers, chips stacked as a trick's deployment for its duration, rolls that make chips. Would that be
+  a new kind of tilt, or the House's own Run?
+- **Skipped for now:** Heavy and Metal (Burden).

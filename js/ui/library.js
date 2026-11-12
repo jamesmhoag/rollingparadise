@@ -7,10 +7,11 @@ import { upgrade as upgradeFaces, suggestFace } from '../dice.js';
 import { chipEl, chipTip, dieEl, dieTip, faceStrip, trickTip, pips, trickLook, upInfo, cardEl, cardTip, walletEl, jacketEl, jacketTip, drinkEl, feltEl } from './parts.js';
 import * as D from '../data.js';
 import { CHIP_LIST } from '../chiplist.js';
+import { TRAITS, traitsOf, traitsHtml, flyerTraits } from '../traits.js';
 import { multOf, traitOf } from '../bout.js';
 import { cents } from '../util.js';
 
-const TABS = [['chips', 'Chips'], ['list', 'Chip list'], ['tricks', 'Tricks'], ['dice', 'Dice'], ['cards', 'Cards'], ['drinks', 'Drinks'], ['wallets', 'Wallets'], ['jackets', 'Jackets'], ['felts', 'Felts']];
+const TABS = [['chips', 'Chips'], ['list', 'Chip list'], ['traits', 'Traits'], ['tricks', 'Tricks'], ['dice', 'Dice'], ['cards', 'Cards'], ['drinks', 'Drinks'], ['wallets', 'Wallets'], ['jackets', 'Jackets'], ['felts', 'Felts']];
 let tab = 'chips';
 
 const sec = (title, sub) => h('div', { class: 'lib-sec' }, h('h3', { text: title }), sub ? h('p', { class: 'sub', html: sub }) : null);
@@ -54,6 +55,8 @@ const BOUT_CHIPS = {
   tree: 'Bought at the Chip Exchange; planted on an empty space.',
   wood: 'A felled Tree.',
   dynamite: 'Fuse (Technician) lights a stack of it on an empty space near its target.',
+  hard: 'Brace (Insurance, Technician) and the Crown chip.', sticky: 'Gum Up (Correction, Rascal), on an opponent\'s stack.', hive: 'Bought at the Chip Exchange.', little: 'Bought at the Chip Exchange.',
+  egg: 'A Roost\'s Dragon lays them; the Egg chip is sold as food.', hat: 'Conjure (Correction, Technician), and one in three Hazard tilts.', doom: 'Foretell (Correction), on an opponent\'s front stacks.', volcano: 'The Volcano Calamity.',
 };
 
 function chipsTab(own) {
@@ -73,8 +76,13 @@ function chipsTab(own) {
       [D.shopText(id), `${cents(D.shopPrice(id))} · from floor ${D.shopFloor(id)}${X.place === 'top' ? ' · goes on top' : ''}`, vars.length ? dim(`Tuning: ${vars.map(([k, v]) => `${k} ${v}`).join(', ')}`) : null, X.list ? dim(`From the chip list: ${X.list}`) : null], { own: own.shop(id) ? `Own ${own.shop(id)}` : null }));
   }
   out.push(sec('Chips made at the table', 'They appear during a bout and are gone when it ends.'));
-  for (const k of ['opp', 'block', 'counter', 'debt', 'flower', 'petal', 'clay', 'brick', 'tree', 'wood', 'dynamite']) { const ch = { kind: k, value: k === 'opp' ? 1 : k === 'debt' ? 3 : 0 };
+  for (const k of ['opp', 'block', 'counter', 'debt', 'flower', 'petal', 'clay', 'brick', 'tree', 'wood', 'dynamite', 'hard', 'sticky', 'hive', 'little', 'egg', 'hat', 'doom', 'volcano']) { const ch = { kind: k, value: k === 'opp' ? 1 : k === 'debt' ? 3 : k === 'sticky' ? 3 : 0, ...(k === 'hard' ? { life: 3 } : {}), ...(D.INSTANCE_SHIELDS.includes(k) ? { hits: k === 'egg' ? 5 : 1 } : {}) };
     out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), D.CHIPS[k].name, [D.CHIPS[k].text, dim(`Made by: ${BOUT_CHIPS[k]}`)])); }
+  for (const ch of [{ kind: 'std', value: 72, gold: true, treasure: true }, { kind: 'std', value: 1, gold: true, cursed: true }]) out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), ch.cursed ? 'Cursed chip' : 'Treasure chip', [ch.cursed ? D.CHIPS.cursed.text : D.CHIPS.treasure.text, dim('Made by: a sunk Ghost Ship.')]));
+  out.push(sec('Creatures', `Chips over the table. Each fee instance on one takes a hit; the last drives it off for a Bounty chip of ${D.BOUNTY_PER_HIT}¢ a hit.`));
+  for (const [k, C] of Object.entries(D.CREATURES)) out.push(entry(h('span', { class: 'list-icon', text: C.glyph }), C.name, [C.text, traitsHtml(flyerTraits(k))]));
+  out.push(sec('Orbital chips', 'Weather and vehicles in the sky above the flying layer. Weather comes with the table\'s felt; vehicles with Calamities.'));
+  for (const [k, O] of Object.entries(D.ORBITALS)) out.push(entry(h('span', { class: 'list-icon', text: O.glyph }), O.name, [O.text, dim(`Comes with: ${Object.values(D.FELTS).filter((F) => F.weather?.includes(k)).map((F) => F.name + ' tables').join(', ') || (k === 'sun' ? 'the Sun chip' : 'a Calamity')}.`), traitsHtml(flyerTraits(k, true))]));
   out.push(sec('Hazard chips', 'Left by Expenses with an element. A shop chip of the matching colour makes a stack immune.'));
   for (const k of ['burn', 'acid', 'shock', 'corrupt', 'poison', 'boom', 'frost', 'lava']) { const ch = { kind: k, value: 0 }, by = leftBy(k), cure = Object.keys(D.SHOP_CHIPS).find((x) => D.resistsOf(x).includes(k));
     out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), D.CHIPS[k].name, [D.CHIPS[k].text, dim(`Left by: ${by.join(', ') || 'creatures and calamities'}${k === 'burn' ? ', the Dragon, Inferno and Volcano' : ''}.${cure ? ` Stopped by the ${D.SHOP_CHIPS[cure].name}.` : ''}`)])); }
@@ -164,7 +172,7 @@ function feltsTab(own) {
 
 // ---------- the workbook's chip list, every row ----------
 const STATUS = { built: ['Built', 'var(--good)'], partial: ['Partly built', 'var(--amber)'], needs: ['Needs detail', 'var(--bad)'] };
-const LIST_ICON = { 'UFO Chip': '🛸', 'Mothership Chip': '👾', 'Fairy Chip': '🧚', 'Unicorn Chip': '🦄', 'Dragon Chip': '🐉', 'Mole Chip': '🐭', 'Black Hole Chip': '🕳', 'Volcano Chip': '🌋', 'Tornado Chip': '🌪', 'Hole Chip': '◯', 'Hardened p¢ Chip': '⛊' };
+const LIST_ICON = { 'UFO Chip': '🛸', 'Mothership Chip': '👾', 'Fairy Chip': '🧚', 'Unicorn Chip': '🦄', 'Dragon Chip': '🐉', 'Mole Chip': '🐭', 'Black Hole Chip': '🕳', 'Volcano Chip': '🌋', 'Tornado Chip': '🌪', 'Hole Chip': '◯', 'Hardened p¢ Chip': '⛊', 'Cloud Chip': '☁', 'Blizzard Chip': '❄', 'Ghost Chip': '👻', 'Ghost Ship Chip': '🏴‍☠️', 'Puddle Chip': '💧', 'Bumble Bee Chip': '🐝', 'B 52¢ Chip': '✈', 'Dragon Roost Chip': '🪺', 'Worm Hole Chip': '🌀', 'Heavy Chip': '?', 'Metal Chip': '?' };
 let listFilter = 'all';
 function listTab(own, rerender) {
   const n = (st) => CHIP_LIST.filter((x) => st === 'all' || x.status === st).length;
@@ -177,12 +185,24 @@ function listTab(own, rerender) {
     const vis = x.show ? tipped(chipEl(x.show), () => chipTip(x.show)) : LIST_ICON[x.name] ? h('span', { class: 'list-icon', text: LIST_ICON[x.name] }) : h('span', { class: 'chip static k-missing' }, h('i', { text: '?' }));
     const meta = [x.type, x.permanence, x.placement, x.source].filter(Boolean).join(' · ');
     const el = entry(vis, `${x.name} <span class="tier" style="--tc:${color}">${label}</span>`, [x.text ? `<span class="dim">List:</span> ${x.text}` : '<span class="dim">List: no description.</span>', meta ? dim(meta) : null,
-      `<span style="color:${color}">${x.status === 'needs' ? '' : 'In the game: '}${x.note}</span>`], { own: x.show?.resist && own.shop(x.show.resist) ? `Own ${own.shop(x.show.resist)}` : null });
+      `<span style="color:${color}">${x.status === 'needs' ? '' : 'In the game: '}${x.note}</span>`, x.show ? traitsHtml(traitsOf(x.show)) : x.list ? traitsHtml(Object.entries(x.list).map(([k, v]) => ({ k, v, ...TRAITS[k] }))) : null], { own: x.show?.resist && own.shop(x.show.resist) ? `Own ${own.shop(x.show.resist)}` : null });
     el.classList.add(`st-${x.status}`); out.push(el);
   }
   return out;
 }
-const BUILD = { list: listTab, chips: chipsTab, tricks: tricksTab, dice: diceTab, cards: cardsTab, drinks: drinksTab, wallets: walletsTab, jackets: jacketsTab, felts: feltsTab };
+// every trait, where it comes from, and which chips carry it
+function traitsTab() {
+  const samples = [...CHIP_LIST.filter((x) => x.show).map((x) => ({ name: x.name, ch: x.show })),
+    ...['hard', 'sticky', 'hive', 'little', 'egg', 'hat', 'doom', 'volcano'].map((k) => ({ name: D.CHIPS[k].name, ch: { kind: k, value: 0, hits: 1, life: 2 } }))];
+  const has = new Map(Object.keys(TRAITS).map((k) => [k, new Set()]));
+  for (const x of samples) for (const t of traitsOf(x.ch)) has.get(t.k)?.add(x.name);
+  for (const x of CHIP_LIST) for (const k of Object.keys(x.list || {})) has.get(k)?.add(x.name);
+  const out = [sec('Chip traits', `Every chip's information lists its traits. <b style="color:var(--gold)">List traits</b> (solid outline) are the chip list's columns; <b style="color:var(--sky)">derived traits</b> (dashed) are how the engine treats chips but are not on the list yet. A derived trait that says it overlaps a list one may be redundant.`)];
+  for (const [k, T] of Object.entries(TRAITS)) { const names = [...has.get(k)];
+    out.push(entry(h('span', { class: `trait ${T.derived ? 'der' : 'lst'}`, text: T.name }), `${T.name} <span class="dim">${T.derived ? 'derived' : 'list'}</span>`, [T.text, dim(`${names.length} chip${names.length === 1 ? '' : 's'}${names.length ? ': ' + names.slice(0, 14).join(', ') + (names.length > 14 ? '…' : '') : ''}`)])); }
+  return out;
+}
+const BUILD = { traits: traitsTab, list: listTab, chips: chipsTab, tricks: tricksTab, dice: diceTab, cards: cardsTab, drinks: drinksTab, wallets: walletsTab, jackets: jacketsTab, felts: feltsTab };
 
 // o.title: opened from the title screen, so no run is in progress and only unlocked gear is marked
 export function openLibrary(start, o = {}) {
