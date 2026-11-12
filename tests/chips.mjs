@@ -290,7 +290,7 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
   opp.mods.boost = 6;
   const e = { uid: 3, trick: { id: 'saturate', q: 1, up: 0 }, dice: [{ value: 2, type: 'd6' }, { value: 2, type: 'd6' }], bid: [], bidValue: 1, lingerTotal: 0, lingerLeft: 0, state: 'play' };
   me.fz = { ...me.mods }; drain(B._test.play(bout, me, e));
-  assert(opp.mods.boost === 0 && me.mods.boost > 0 && opp.power === 0, 'Saturate boosts you and subdues their boosts (and Power on a match)');
+  assert(opp.mods.boost === 0 && me.mods.boost > 0 && B.powerOf(opp) === 0, 'Saturate boosts you and subdues their boosts (and Power on a match)');
 }
 
 // ---------- Tree, Wood, Sun, Fibonacci, Prime ----------
@@ -425,9 +425,9 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
 }
 {
   const { bout, me, opp } = table({});
-  me.status.resist = 3; me.mods.boost = 2; me.power = 1; opp.mods.enfeeble = 1;
+  me.status.resist = 3; me.mods.boost = 2; B.addPower(bout, me, 1); opp.mods.enfeeble = 1;
   const fx = B.effectChips(bout, me), fo = B.effectChips(bout, opp);
-  assert(fx.find((t) => t.key === 'resist').size === 3 && fx.find((t) => t.key === 'boost').size === 2 && fx.find((t) => t.key === 'power').size === 1, 'effects are chips sized by what they cover');
+  assert(fx.find((t) => t.key === 'resist').size === 3 && fx.find((t) => t.key === 'boost').size === 2 && !fx.find((t) => t.key === 'power') && B.powerOf(me) === 1, 'effects are chips sized by what they cover; Power is a real chip on the Meter');
   assert(fo.find((t) => t.key === 'enfeeble' && t.zone === 'bar' && !t.good), 'harmful effects lie in the Bar');
 }
 
@@ -446,7 +446,7 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
 }
 {
   const { bout, me } = table({});
-  me.power = 2;
+  for (const x of B.powerChips(me)) x.cell.chips.splice(x.cell.chips.indexOf(x.ch), 1); B.addPower(bout, me, 2);
   const e = { uid: 7, trick: { id: 'charge', q: 1, up: 0 }, dice: [{ value: 5, type: 'd6' }, { value: 2, type: 'd6' }], bid: [], bidValue: 2, state: 'bid' };
   const t = B.totalParts(me, e);
   assert(t.diceSum === 7 && t.linger === 2 && t.power === 2 && t.total === 11, 'a total of 11 is shown as 5 + 2, +2 linger, +2 Power');

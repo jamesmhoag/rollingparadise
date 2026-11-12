@@ -229,24 +229,25 @@ export const TRICKS = {
   fence: { name: 'Fence', type: 'correction', cls: 'hustler', die: 'd4', count: 2, side: 'none', approach: 'none', dist: 'hit',
     roll: { k: 'fence', text: 'Convert Debt chips on your position, up to the total, into Opportunity chips on your Meter.' }, bonus: { cond: 'match', k: 'blocks', text: 'Also adds 2 Block chips to your Meter.' } },
   // --- Makers ---
-  // A maker places an effect chip on one of your stacks (or, for Tinker, a Meter space). The chip is physical: it
+  // A maker places an effect chip where it belongs: Investments that work on your rolls on a Meter space (empty or
+  // not), Insurances and Corrections on the stack they protect or clear. You aim it there; it is placed when it plays. The chip is physical: it
   // takes stack height, a fee that reaches it knocks it off, Corrections move it. While it lasts it does its work in
   // its trick's phase each turn. make: { chip, n: [base, per], life: [base, per] }: base + one more per `per` rolled.
   // These chips used to be sold at the Chip Exchange; an effect a trick can make is not sold.
-  empower: { name: 'Empower', type: 'investment', cls: null, die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'hit', make: { chip: 'power', n: [1, 6], life: [2, 4] },
-    roll: { k: 'make', text: 'Place Power chips on the target stack (1, +1 per 6 rolled). In each Investment phase every Power chip adds 1 to your roll effects. They last 2 turns, +1 per 4 rolled.' }, bonus: { cond: 'match', k: 'spread', text: 'Places them on the neighbouring stacks too (Swipe).' } },
-  throttle: { name: 'Throttle', type: 'investment', cls: 'rascal', die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'hit', make: { chip: 'control', n: [1, 6], life: [2, 4] },
-    roll: { k: 'make', text: 'Place Control chips on the target stack (1, +1 per 6 rolled). In each Investment phase every Control chip takes 1 off your opponent\'s roll effects. They last 2 turns, +1 per 4 rolled.' }, bonus: { cond: 'evens', k: 'spread', text: 'Places them on the neighbouring stacks too (Swipe).' } },
-  load: { name: 'Load', type: 'investment', cls: 'hustler', die: 'd4', count: 2, side: 'self', approach: 'any', dist: 'hit', make: { chip: 'boosted', n: [1, 8], life: [1, 4] },
-    roll: { k: 'make', text: 'Place a Boosted chip on the target stack (+1 per 8 rolled): every die you roll shows 1 more per Boosted chip. It lasts 1 turn, +1 per 4 rolled.' }, bonus: { cond: 'match', k: 'spread', text: 'Places them on the neighbouring stacks too (Swipe).' } },
-  shave: { name: 'Shave', type: 'investment', cls: 'technician', die: 'd8', count: 2, side: 'self', approach: 'any', dist: 'hit', make: { chip: 'cheapened', n: [1, 10], life: [1, 5] },
-    roll: { k: 'make', text: 'Place a Cheapened chip on the target stack (+1 per 10 rolled): every die your opponent rolls shows 1 less per Cheapened chip. It lasts 1 turn, +1 per 5 rolled.' }, bonus: { cond: 'over:12', k: 'spread', text: 'Places them on the neighbouring stacks too (Swipe).' } },
+  empower: { name: 'Empower', type: 'investment', cls: null, die: 'd6', count: 2, side: 'self', approach: 'meter', dist: 'hit', make: { chip: 'power', n: [1, 6], life: [2, 4] },
+    roll: { k: 'make', text: 'Place Power chips on the target Meter space (1, +1 per 6 rolled). In each Investment phase every Power chip adds 1 to your roll effects. They last 2 turns, +1 per 4 rolled.' }, bonus: { cond: 'match', k: 'spread', text: 'Places them on the neighbouring spaces too (Swipe).' } },
+  throttle: { name: 'Throttle', type: 'investment', cls: 'rascal', die: 'd6', count: 2, side: 'self', approach: 'meter', dist: 'hit', make: { chip: 'control', n: [1, 6], life: [2, 4] },
+    roll: { k: 'make', text: 'Place Control chips on the target Meter space (1, +1 per 6 rolled). In each Investment phase every Control chip takes 1 off your opponent\'s roll effects. They last 2 turns, +1 per 4 rolled.' }, bonus: { cond: 'evens', k: 'spread', text: 'Places them on the neighbouring spaces too (Swipe).' } },
+  load: { name: 'Load', type: 'investment', cls: 'hustler', die: 'd4', count: 2, side: 'self', approach: 'meter', dist: 'hit', make: { chip: 'boosted', n: [1, 8], life: [1, 4] },
+    roll: { k: 'make', text: 'Place a Boosted chip on the target Meter space (+1 per 8 rolled): every die you roll shows 1 more per Boosted chip. It lasts 1 turn, +1 per 4 rolled.' }, bonus: { cond: 'match', k: 'spread', text: 'Places them on the neighbouring spaces too (Swipe).' } },
+  shave: { name: 'Shave', type: 'investment', cls: 'technician', die: 'd8', count: 2, side: 'self', approach: 'meter', dist: 'hit', make: { chip: 'cheapened', n: [1, 10], life: [1, 5] },
+    roll: { k: 'make', text: 'Place a Cheapened chip on the target Meter space (+1 per 10 rolled): every die your opponent rolls shows 1 less per Cheapened chip. It lasts 1 turn, +1 per 5 rolled.' }, bonus: { cond: 'over:12', k: 'spread', text: 'Places them on the neighbouring spaces too (Swipe).' } },
   tinker: { name: 'Tinker', type: 'investment', cls: null, die: 'd6', count: 1, side: 'self', approach: 'meter', dist: 'hit', make: { chip: 'upgrade', n: [1, 99], life: [1, 3] },
     roll: { k: 'make', text: 'Place an Upgrade chip on the target Meter space: while it is there, every die you roll takes a random upgrade (good or bad) for that roll. It lasts 1 turn, +1 per 3 rolled.' }, bonus: { cond: 'over:5', k: 'spread', text: 'Places one on a neighbouring space too (Swipe).' } },
-  charm: { name: 'Charm', type: 'investment', cls: 'hustler', die: 'd4', count: 2, side: 'self', approach: 'any', dist: 'hit', make: { chip: 'lucky', n: [1, 6], life: [2, 4] },
-    roll: { k: 'make', text: 'Place Lucky chips on the target stack (1, +1 per 6 rolled). In each Investment phase each one has a 30% chance to put an Opportunity chip on your Meter. They last 2 turns, +1 per 4 rolled.' }, bonus: { cond: 'match', k: 'spread', text: 'Places them on the neighbouring stacks too (Swipe).' } },
-  stow: { name: 'Stow', type: 'investment', cls: null, die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'hit', make: { chip: 'nest', n: [1, 7], life: [99, 99] },
-    roll: { k: 'make', text: 'Place Nest Egg chips on the target stack (1, +1 per 7 rolled). They last the bout; each one still on your table when you win pays 15¢.' }, bonus: { cond: 'evens', k: 'spread', text: 'Places them on the neighbouring stacks too (Swipe).' } },
+  charm: { name: 'Charm', type: 'investment', cls: 'hustler', die: 'd4', count: 2, side: 'self', approach: 'meter', dist: 'hit', make: { chip: 'lucky', n: [1, 6], life: [2, 4] },
+    roll: { k: 'make', text: 'Place Lucky chips on the target Meter space (1, +1 per 6 rolled). In each Investment phase each one has a 30% chance to put an Opportunity chip on your Meter. They last 2 turns, +1 per 4 rolled.' }, bonus: { cond: 'match', k: 'spread', text: 'Places them on the neighbouring spaces too (Swipe).' } },
+  stow: { name: 'Stow', type: 'investment', cls: null, die: 'd6', count: 2, side: 'self', approach: 'meter', dist: 'hit', make: { chip: 'nest', n: [1, 7], life: [99, 99] },
+    roll: { k: 'make', text: 'Place Nest Egg chips on the target Meter space (1, +1 per 7 rolled). They last the bout; each one still on your table when you win pays 15¢.' }, bonus: { cond: 'evens', k: 'spread', text: 'Places them on the neighbouring spaces too (Swipe).' } },
   echo: { name: 'Echo', type: 'investment', cls: 'rascal', die: 'd8', count: 1, side: 'self', approach: 'any', dist: 'hit', make: { chip: 'mimic', n: [1, 99], life: [1, 3] },
     roll: { k: 'make', text: 'Place a Mimic chip on top of the target stack: each phase while it is on top, one of your tricks of that type plays its roll effect again. It lasts 1 turn, +1 per 3 rolled.' }, bonus: { cond: 'over:6', k: 'spread', text: 'Places one on a neighbouring stack too (Swipe).' } },
   cushion: { name: 'Cushion', type: 'insurance', cls: null, die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'hit', make: { chip: 'reducer', n: [1, 5], life: [2, 4] },
@@ -376,7 +377,7 @@ export const SHOP_CHIPS = {
     text: (v) => `Goes on top of a stack. Blocks ${v.hits} entire fees, one per hit, then breaks. Fire on its stack bakes it into a Brick chip that takes twice as many. No worth.` },
   harmony: { name: 'Harmony chip', tier: 3, sold: false, from: 'trick:attune', glyph: '☯', vars: { per: 1 }, list: 'Harmony Chip',
     text: (v) => `In each Correction phase it clears ${v.per} hazard chip or ¢ of Debt from its stack or the stacks around it. A hazard chip it clears is replaced by a 1¢ chip if there is room.` },
-  power: { name: 'Power chip', tier: 2, sold: false, from: 'trick:empower', glyph: '⚡︎', vars: { boost: 1, turns: 4 }, list: 'Power Chip',
+  power: { name: 'Lasting Power chip', tier: 2, sold: false, from: 'trick:empower', glyph: '⚡︎', vars: { boost: 1, turns: 4 }, list: 'Power Chip',
     text: (v) => `In each Investment phase your roll effects gain ${v.boost}.` },
   control: { name: 'Control chip', tier: 2, sold: false, from: 'trick:throttle', glyph: '⊘', vars: { enfeeble: 1, turns: 4 }, list: 'Control Chip',
     text: (v) => `In each Investment phase your opponent's roll effects lose ${v.enfeeble}.` },
@@ -421,6 +422,9 @@ export const SHOP_CHIPS = {
   // food: eaten from the top of a stack for attribute bonuses that last `turns`. Some pair a penalty with a bigger bonus.
   chocolate: { name: 'Chocolate Chip', tier: 1, glyph: '🍫', kind: 'food', place: 'top', list: 'Chocolate Chip', food: { mods: { trickery: 1 }, turns: 2 },
     text: () => 'Food. Eat it from the top of a stack: +1 Draw for 2 turns.' },
+  // Made when a phase is passed with actions left unused (see REWARD in bout.js); they carry their amount (`amt`).
+  surge: { name: 'Power chip', tier: 1, sold: false, from: 'stat:conviction', glyph: '⚡', text: () => 'Power added to your table: from draws left unused (Conviction), Stir, an Investment trait, or a Boost or Press bonus. The next roll effect you play takes all your Power chips, adding what they carry, and spends them.' },
+  steal: { name: 'Steal chip', tier: 1, sold: false, from: 'stat:charisma', glyph: '🫳', text: () => 'Made from bids left unused (Charisma). In the House phase it steals what it carries from the Stage (your fees first, then your opponent\'s) onto your Meter, then it is gone.' },
   honey: { name: 'Honey Chip', tier: 2, sold: false, from: 'bees', glyph: '🍯', kind: 'food', place: 'top', list: 'Honey Chip', food: { mods: { proficiency: 1, ingenuity: 1 }, turns: 1 },
     text: () => 'Food (sticky, golden). Eat it: +1 Roll and +1 Bid this turn.' },
   chipchip: { name: 'Chip Chip', tier: 1, glyph: '🥔', kind: 'food', place: 'top', list: 'Chip Chip', food: { mods: { charisma: 1 }, turns: 1, dip: true },
@@ -454,6 +458,7 @@ export function madeBy(id) {
   const f = SHOP_CHIPS[id]?.from; if (!f) return null;
   if (f.startsWith('trick:')) { const T = TRICKS[f.slice(6)]; return T ? `the ${T.name} trick (${TYPES[T.type].name}${T.cls ? ', ' + CLASSES[T.cls].name : ''})` : null; }
   if (f.startsWith('tilt:')) return `the ${TILTS[f.slice(5)]?.name || f.slice(5)} tilt`;
+  if (f.startsWith('stat:')) return { conviction: 'draws left unused when the Draw phase is passed (Conviction), and other added Power', charisma: 'bids left unused when the Bid phase is passed (Charisma)' }[f.slice(5)] || f;
   return { bees: 'Bumble Bees pollinating your Flowers', roost: 'a Dragon on its Roost' }[f] || f;
 }
 // the trick that makes a chip, if any

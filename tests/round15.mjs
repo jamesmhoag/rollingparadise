@@ -25,7 +25,7 @@ for (const id of D.SHOP_IDS()) assert(!D.makerOf(id), `${D.SHOP_CHIPS[id].name} 
 // ---------- a maker trick places physical effect chips that work in their phase ----------
 {
   const { bout, me } = table();
-  const live = roomy(me);
+  const live = cells(me).find((x) => x.r < me.dims.meterRows && B.capacityLeft(me, x.cell) > 1 && !x.cell.hole); // Empower aims at a Meter space
   const e = entry('empower', [6, 6], { target: { side: 0, r: live.r, c: live.c } });
   const before = live.cell.chips.filter((ch) => ch.resist === 'power').length;
   drain(play(bout, me, e));
@@ -33,7 +33,7 @@ for (const id of D.SHOP_IDS()) assert(!D.makerOf(id), `${D.SHOP_CHIPS[id].name} 
   assert(made.length - before >= 1 && made.every((ch) => ch.maker === 'empower' && ch.life >= 2), 'Empower places Power chips on its target, with a lifetime');
   assert(!made.some((ch) => B.isPayable(ch)) && B.bidChip(me, live.r, live.c)?.kind !== 'fx', 'an effect chip has no worth and cannot be bid');
   me.mods.boost = 0; drain(chipPhase(bout, me, 'investment'));
-  assert(me.mods.boost === made.length, 'Power chips add to roll effects in the Investment phase');
+  assert(me.mods.boost === cells(me).reduce((n, x) => n + x.cell.chips.filter((ch) => ch.resist === 'power').length, 0) && me.mods.boost >= made.length, 'Power chips add to roll effects in the Investment phase (the spread put some next door)');
   const w0 = B.worth(me); assert(B.summary(bout, 0).resist.power == null && B.worth(me) === w0, 'chips made at the table are not yours to keep after the bout');
   // a fee that reaches an effect chip knocks it off
   const cell = live.cell; cell.chips.splice(0, cell.chips.length, ...cell.chips.filter((ch) => B.isFx(ch)).slice(0, 1), { id: 7e6, kind: 'std', value: 1 });

@@ -548,3 +548,32 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .tray-box .cap { position: absolute; right: 6px; bottom: 3px; font-size: 9px; opacity: .7; }
 .tray-cap { position: absolute; left: 950px; top: 418px; width: 120px; text-align: right; font-size: 9.5px; letter-spacing: .04em; color: var(--dim); pointer-events: none; }
 .feed .phases { padding-right: 70px; }
+
+/* ---------- round 16: the feed as a table, step rewards, bid onto a trick ---------- */
+.f-row { flex: none; display: grid; grid-template-columns: 74px 1fr 1fr; gap: 0 10px; min-height: 18px; align-items: start; transition: transform .45s var(--ease), opacity .4s; }
+.feed-lines .f-row { height: 18px; line-height: 18px; }
+.f-ph { font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: var(--amber); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-right: 1px solid rgba(255, 255, 255, .08); padding-right: 6px; }
+.f-ph.cont { color: transparent; }
+.f-ph small { display: block; text-transform: none; letter-spacing: 0; font-size: 10px; color: var(--dim); opacity: .8; line-height: 13px; white-space: normal; }
+.f-c { font-size: 12px; color: var(--dim); padding-left: 12px; position: relative; min-width: 0; border-radius: 4px; }
+.feed-lines .f-c { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.f-c::before { content: ''; position: absolute; left: 2px; top: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--fc, var(--dim)); }
+.f-c.you { --fc: var(--gold); } .f-c.them { --fc: var(--pink); } .f-c.house { --fc: var(--amber); } .f-c.empty::before { display: none; }
+.f-c.span { grid-column: 2 / span 2; }
+.f-row.now .f-c:not(.empty) { color: var(--cream); }
+.f-c:not(.empty):hover { background: rgba(255, 255, 255, .06); color: var(--cream); }
+.feed-hist .f-row { padding: 2px 0; border-top: 1px solid rgba(255, 255, 255, .04); line-height: 16px; }
+.feed-hist .f-c { white-space: normal; }
+.feed-hist .turn-h { display: grid; grid-template-columns: 74px 1fr 1fr; gap: 0 10px; }
+.feed-hist .turn-h span + span { color: var(--dim); }
+/* a passed step: all used (✓) or some kept (what they made) */
+.pill.step.allused::before { content: '✓'; position: absolute; right: -3px; top: -7px; font-size: 10px; color: var(--mint, #8fe3b0); }
+.pill.step.kept { opacity: .7; border-color: rgba(255, 215, 106, .5); }
+.pill.step.kept::before { content: attr(data-kept); position: absolute; right: -10px; top: -9px; white-space: nowrap; font-size: 9px; padding: 0 5px; border-radius: 7px; background: rgba(255, 215, 106, .18); color: var(--gold); }
+/* the + sits on top of a trick's bid pile; a trick picked to bid onto glows */
+.c-bid { position: relative; }
+.bidslot.more { visibility: hidden; }
+.bid-plus { position: absolute; z-index: 990; width: 20px; height: 20px; border-radius: 50%; border: 2px dashed #9fb0d8; background: rgba(9, 6, 24, .88); color: #cfe0ff; display: grid; place-items: center; font: 800 13px/1 inherit; cursor: pointer; pointer-events: auto; transition: left .3s, top .3s, box-shadow .3s; }
+.bid-plus:hover { border-color: var(--gold); color: var(--gold); }
+.bid-plus.picked { border-style: solid; border-color: var(--gold); color: var(--gold); box-shadow: 0 0 10px rgba(255, 215, 106, .7); }
+.bidslot.picked { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 10px rgba(255, 215, 106, .6); border-style: solid; }

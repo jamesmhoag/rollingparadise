@@ -219,3 +219,19 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
 - **Auto-skip** passes a phase with a short pause and a line in the feed. Should there be a setting to stop on every
   phase anyway?
 - **Bid hands.** Each chip in a hand is still one bid (Ingenuity). Should a whole stack bid at once cost one bid?
+
+## Round 16 additions (feed table, phase rewards as chips, aims, bids)
+
+- **"CAT"**: read as the step pills (Draw, Roll, Bid). Each says in its hover what passing it gives, and once passed
+  shows ✓ when everything was used or a badge with what it kept (`+2⚡`, `+1 opp`, `3¢ steal`). Was the CAT something
+  else?
+- **Power chips.** All added Power is now a Power chip on the Meter carrying its amount; the next roll effect spends
+  them all. The Empower-made chip is renamed **Lasting Power chip** to tell them apart. Better names?
+- **Steal chips** sit on the Meter and steal in the House phase (after the turn's fees reach the Stage). Should they
+  steal at once when Bid is passed, or sit somewhere else (by the Stage)?
+- Reward chips go to **random** Meter spaces with room, for both sides. Should yours go where you choose?
+- Rewards now take Meter room and can be knocked off by fees: the balance sim cleared slightly fewer floor-1 tables
+  (5 of 60 against 8). Worth a tuning look.
+- **Default aims** use the same judgement as the House's opponents (most impact, least waste), without its random
+  tie-break. Should the default ever leave a trick unaimed, so you must choose?
+- The feed table drops "The House calls …" lines into the row header. Any other lines you want folded in?
