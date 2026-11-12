@@ -221,7 +221,7 @@ export function upgradeDie(run, id, up, face = 0) {
 export const owned = (run, id) => run.chips[id] || 0;
 export const shopChipOpen = (run, id) => run.floor >= D.shopFloor(id);
 export function buyShopChip(run, id) {
-  if (!D.SHOP_CHIPS[id] || !shopChipOpen(run, id) || !spend(run, D.shopPrice(id), `Bought a ${D.SHOP_CHIPS[id].name}`)) return false;
+  if (!D.soldInShop(id) || !shopChipOpen(run, id) || !spend(run, D.shopPrice(id), `Bought a ${D.SHOP_CHIPS[id].name}`)) return false; // chips a trick or the table makes are not sold
   run.chips[id] = owned(run, id) + 1; return true;
 }
 export const buyResist = buyShopChip;

@@ -14,10 +14,12 @@ for (const id of Object.keys(D.SHOP_CHIPS)) {
 for (let t = 2; t < D.CHIP_TIERS.length; t++) assert(D.CHIP_TIERS[t].price > D.CHIP_TIERS[t - 1].price, 'higher tiers cost more');
 {
   const run = R.newRun('hustler', 'standard', 3); R.enterFloor(run, 1); run.purse = 100000;
-  assert(!R.buyShopChip(run, 'rebound'), 'a Rare chip is not sold on floor 1');
-  assert(R.buyShopChip(run, 'reducer') && run.purse === 100000 - D.shopPrice('reducer') && R.owned(run, 'reducer') === 1, 'an Uncommon chip is sold on floor 1 at its tier price');
+  assert(!R.buyShopChip(run, 'tree'), 'a Rare chip is not sold on floor 1');
+  assert(R.buyShopChip(run, 'seed') && run.purse === 100000 - D.shopPrice('seed') && R.owned(run, 'seed') === 1, 'an Uncommon chip is sold on floor 1 at its tier price');
   R.enterFloor(run, 2); const before = run.purse;
-  assert(R.buyShopChip(run, 'rebound') && before - run.purse === D.CHIP_TIERS[3].price, 'a Rare chip costs the Rare price from floor 2');
+  assert(R.buyShopChip(run, 'tree') && before - run.purse === D.CHIP_TIERS[3].price, 'a Rare chip costs the Rare price from floor 2');
+  run.purse = 1e9; R.enterFloor(run, 4);
+  for (const id of ['reducer', 'power', 'harmony', 'upgrade', 'boosted', 'hive', 'honey', 'egg', 'crown']) assert(!R.buyShopChip(run, id) && !D.SHOP_IDS().includes(id), `${D.SHOP_CHIPS[id].name} is made at the table, not sold`);
 }
 
 // a table bout with the given shop chips placed
@@ -78,7 +80,9 @@ const opps = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter((ch)
   const keep = D.SHOP_CHIPS.lucky.vars.chance; D.SHOP_CHIPS.lucky.vars.chance = 1;
   const { bout, me } = table({ lucky: 2 });
   const before = opps(me); drain(ticks(bout));
-  assert(opps(me) - before === 2, 'each Lucky chip can turn up an Opportunity chip');
+  assert(opps(me) === before, 'Lucky chips do nothing in the House phase');
+  drain(B._test.chipPhase(bout, me, 'investment'));
+  assert(opps(me) - before === 2, 'each Lucky chip can turn up an Opportunity chip, in the Investment phase');
   D.SHOP_CHIPS.lucky.vars.chance = keep;
 }
 
@@ -159,7 +163,7 @@ const freeCell = (s) => s.grid.flatMap((row, r) => row.map((cell, c) => ({ r, c,
   const { cell } = cellsWith(me, 'harmony')[0];
   cell.chips.push({ id: 5e6 + 2, kind: 'poison', value: 0, life: 99 });
   const hz = (x) => x.chips.some((ch) => ch.kind === 'poison');
-  drain(ticks(bout)); // poison acts first, then Harmony clears it
+  drain(B._test.chipPhase(bout, me, 'correction')); // Harmony works in the Correction phase
   assert(!hz(cell), 'Harmony clears a hazard nearby');
 }
 { // Power and Control chips

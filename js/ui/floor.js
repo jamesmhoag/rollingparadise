@@ -180,7 +180,7 @@ function traderPanel() {
 function exchangePanel() {
   const run = app.run, list = h('div', { class: 'items list' });
   const done = after(render);
-  const ids = Object.keys(D.SHOP_CHIPS).sort((a, b) => D.SHOP_CHIPS[a].tier - D.SHOP_CHIPS[b].tier);
+  const ids = D.SHOP_IDS().sort((a, b) => D.SHOP_CHIPS[a].tier - D.SHOP_CHIPS[b].tier); // effect chips made by tricks, tilts or bees are not sold
   function render() {
     syncList(list, ids, (k) => k, (k) => { const el = item(); el.prepend(chipEl({ kind: 'std', value: 1, resist: k })); el.append(btn('Buy', () => { tryDo(R.buyShopChip(run, k), el, !R.shopChipOpen(run, k) ? `Sold from floor ${D.shopFloor(k)}.` : null); done(); }, null, 'small')); el._tip = () => chipTip({ kind: 'std', value: 1, resist: k }) + (R.shopChipOpen(run, k) ? '' : `<p class="bad">Sold from floor ${D.shopFloor(k)}.</p>`); el.classList.add('has-tip'); return el; },
       (el, k) => { const X = D.SHOP_CHIPS[k], T = D.CHIP_TIERS[X.tier], open = R.shopChipOpen(run, k);
