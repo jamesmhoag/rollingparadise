@@ -454,3 +454,16 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .fxchip.s2 i { font-size: 22px; } .fxchip.s2 b { font-size: 14px; } .fxchip.s3 i { font-size: 32px; } .fxchip.s3 b { font-size: 18px; } .fxchip.s3 small, .fxchip.s2 small { font-size: 10px; }
 .fxchip.s1 small { display: none; }
 .scene.bout .cell { background-color: rgba(9, 6, 24, .16); }
+
+/* the card says how its total is made, and what it paid */
+.c-math { font-size: 9.5px; color: var(--dim); text-align: right; min-height: 12px; letter-spacing: .02em; } .c-paid { font-size: 9.5px; color: var(--amber); text-align: right; min-height: 12px; }
+/* parts of the table that cannot be used in this phase look inactive, but still show their data and hovers */
+.scene.bout:not(.ph-draw) .tcard:not(.open), .scene.bout.locked .tcard, .scene.bout:not(.ph-roll) .die:not(.on):not(.rolled), .scene.bout.thrown .die:not(.on):not(.rolled), .scene.bout.locked .die { filter: saturate(.35) brightness(.75); }
+.scene.bout.locked .controls .btn:not(.lib-btn), .scene.bout:not(.ph-bid):not(.ph-aim) .bidslot { opacity: .45; }
+.scene.bout.locked .cell { cursor: default; }
+/* tricks still in play: where they will land, for both Rollers */
+.cell.pend-me { box-shadow: inset 0 0 0 2px rgba(125, 240, 255, .55); } .cell.pend-opp { box-shadow: inset 0 0 0 2px rgba(255, 112, 150, .7), inset 0 0 14px rgba(255, 112, 150, .3); }
+.pend { position: absolute; font-size: 9px; text-align: center; pointer-events: none; z-index: 30; padding: 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pend.me { color: #7df3ff; } .pend.opp { color: #ff9ab5; }
+/* a fee shown landing on nothing */
+.k-ghost { --c: transparent; --rim: #e0555f; --edge: transparent; --fg: #ff9aa2; --bs: dashed; opacity: .65; } .k-ghost::before { box-shadow: none !important; }

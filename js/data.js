@@ -244,6 +244,7 @@ export const CHIPS = {
   petal: { name: 'Petal chip', text: 'Bloomed by a Flower. Blocks one entire fee, however big, and breaks: fee instance defence, where a Block chip only takes 1¢ of a fee\'s cost. Wilts after 2 turns.' },
   clay: { name: 'Clay chip', text: 'Blocks entire fees, one per hit, and breaks after its count of hits. Fire bakes it into Brick.' },
   brick: { name: 'Brick chip', text: 'Baked Clay. Takes twice as many fees as the clay did before it breaks.' },
+  ghost: { name: 'Ghost Debt', text: 'A fee that landed on nothing. It comes to nothing when the House settles.' },
   resist: { name: 'Resist chip', text: 'Debt resistance, made by Resist Cards. Fees smaller than its r on its stack are deterred entirely, the way a Red chip keeps fire off. It cannot exceed the stack height.' },
   food: { name: 'Food chip', text: 'Delicious. Double-click it while it is on top of one of your stacks to eat it for a bonus to your attributes.' },
   dip: { name: 'Dip chip', text: 'A bowl of dip on its own space. Each Chip Chip you eat is dipped first for twice the bonus, until the dip runs out.' },
@@ -353,7 +354,7 @@ export const shopVars = (id) => SHOP_CHIPS[id].vars || {};
 export const shopText = (id) => { const X = SHOP_CHIPS[id]; return typeof X.text === 'function' ? X.text(shopVars(id)) : X.text; };
 export const shopPrice = (id) => SHOP_CHIPS[id].price ?? CHIP_TIERS[SHOP_CHIPS[id].tier].price;
 export const shopFloor = (id) => SHOP_CHIPS[id].floor ?? CHIP_TIERS[SHOP_CHIPS[id].tier].floor;
-export const HAZARD_KINDS = ['debt', 'burn', 'acid', 'shock', 'corrupt', 'poison', 'boom', 'frost', 'lava'];
+export const HAZARD_KINDS = ['debt', 'burn', 'acid', 'shock', 'corrupt', 'poison', 'boom', 'frost', 'lava', 'ghost']; // ghost: a fee shown landing on nothing
 // shields that take a whole fee per hit (`hits` on the chip), not 1¢ like Block
 export const INSTANCE_SHIELDS = ['flower', 'petal', 'clay', 'brick', 'wood', 'tree'];
 export const SEQS = { fib: [1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377], prime: [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53] };
