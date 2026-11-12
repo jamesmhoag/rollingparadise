@@ -424,3 +424,11 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .k-frost { --c: #cfeeff; --rim: #ffffff; --edge: #4a8bb0; --fg: #1d5c8a; --bs: solid; --glow: 0 0 9px rgba(160, 225, 255, .9); }
 .k-lava { --c: #3a0d05; --rim: #ff7a1f; --edge: #000; --fg: #ffb36a; --bs: solid; --glow: 0 0 10px rgba(255, 110, 30, .9); animation: flicker .35s infinite alternate; }
 .k-std.r-frost { --c: #fff1e0; --rim: #ff9f3a; --edge: #7a3f05; --fg: #c96a12; --bs: solid; }
+
+/* the chip list in the Library */
+.k-missing { --c: #1a1530; --rim: #93a3c8; --edge: #0b0719; --fg: #93a3c8; --bs: dashed; }
+.list-icon { font-size: 26px; line-height: 32px; }
+.lib-e.st-needs { border-color: rgba(255, 112, 150, .35); } .lib-e.st-partial { border-color: rgba(255, 215, 106, .3); }
+.k-tree { --c: #2f6b2a; --rim: #9fe08a; --edge: #4a2c12; --fg: #eaffd6; --bs: solid; } .k-wood { --c: #8a5a2a; --rim: #d9b07a; --edge: #3d2408; --fg: #fff3e0; --bs: double; }
+.k-std.r-sun { --c: #ffd76a; --rim: #fff3bf; --edge: #c96a12; --fg: #8a3f05; --bs: solid; --glow: 0 0 12px rgba(255, 215, 106, .9); }
+.k-std.r-fib { --c: #e8f4ff; --rim: #63c4ff; --edge: #1d4a66; --fg: #1d4a66; --bs: solid; } .k-std.r-prime { --c: #fff0f8; --rim: #ff86ea; --edge: #8a2d5a; --fg: #8a2d5a; --bs: solid; }

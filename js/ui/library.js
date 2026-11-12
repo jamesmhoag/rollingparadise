@@ -6,10 +6,11 @@ import { app } from './app.js';
 import { upgrade as upgradeFaces, suggestFace } from '../dice.js';
 import { chipEl, chipTip, dieEl, dieTip, faceStrip, trickTip, pips, trickLook, upInfo, cardEl, cardTip, walletEl, jacketEl, jacketTip, drinkEl, feltEl } from './parts.js';
 import * as D from '../data.js';
+import { CHIP_LIST } from '../chiplist.js';
 import { multOf, traitOf } from '../bout.js';
 import { cents } from '../util.js';
 
-const TABS = [['chips', 'Chips'], ['tricks', 'Tricks'], ['dice', 'Dice'], ['cards', 'Cards'], ['drinks', 'Drinks'], ['wallets', 'Wallets'], ['jackets', 'Jackets'], ['felts', 'Felts']];
+const TABS = [['chips', 'Chips'], ['list', 'Chip list'], ['tricks', 'Tricks'], ['dice', 'Dice'], ['cards', 'Cards'], ['drinks', 'Drinks'], ['wallets', 'Wallets'], ['jackets', 'Jackets'], ['felts', 'Felts']];
 let tab = 'chips';
 
 const sec = (title, sub) => h('div', { class: 'lib-sec' }, h('h3', { text: title }), sub ? h('p', { class: 'sub', html: sub }) : null);
@@ -50,6 +51,8 @@ const BOUT_CHIPS = {
   petal: 'Bloomed by a Flower each turn.',
   clay: 'Bought at the Chip Exchange.',
   brick: 'Fire on a Clay chip bakes it.',
+  tree: 'Bought at the Chip Exchange; planted on an empty space.',
+  wood: 'A felled Tree.',
   dynamite: 'Fuse (Technician) lights a stack of it on an empty space near its target.',
 };
 
@@ -70,7 +73,7 @@ function chipsTab(own) {
       [D.shopText(id), `${cents(D.shopPrice(id))} · from floor ${D.shopFloor(id)}${X.place === 'top' ? ' · goes on top' : ''}`, vars.length ? dim(`Tuning: ${vars.map(([k, v]) => `${k} ${v}`).join(', ')}`) : null, X.list ? dim(`From the chip list: ${X.list}`) : null], { own: own.shop(id) ? `Own ${own.shop(id)}` : null }));
   }
   out.push(sec('Chips made at the table', 'They appear during a bout and are gone when it ends.'));
-  for (const k of ['opp', 'block', 'counter', 'debt', 'flower', 'petal', 'clay', 'brick', 'dynamite']) { const ch = { kind: k, value: k === 'opp' ? 1 : k === 'debt' ? 3 : 0 };
+  for (const k of ['opp', 'block', 'counter', 'debt', 'flower', 'petal', 'clay', 'brick', 'tree', 'wood', 'dynamite']) { const ch = { kind: k, value: k === 'opp' ? 1 : k === 'debt' ? 3 : 0 };
     out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), D.CHIPS[k].name, [D.CHIPS[k].text, dim(`Made by: ${BOUT_CHIPS[k]}`)])); }
   out.push(sec('Hazard chips', 'Left by Expenses with an element. A shop chip of the matching colour makes a stack immune.'));
   for (const k of ['burn', 'acid', 'shock', 'corrupt', 'poison', 'boom', 'frost', 'lava']) { const ch = { kind: k, value: 0 }, by = leftBy(k), cure = Object.keys(D.SHOP_CHIPS).find((x) => D.resistsOf(x).includes(k));
@@ -159,7 +162,27 @@ function feltsTab(own) {
   return out;
 }
 
-const BUILD = { chips: chipsTab, tricks: tricksTab, dice: diceTab, cards: cardsTab, drinks: drinksTab, wallets: walletsTab, jackets: jacketsTab, felts: feltsTab };
+// ---------- the workbook's chip list, every row ----------
+const STATUS = { built: ['Built', 'var(--good)'], partial: ['Partly built', 'var(--amber)'], needs: ['Needs detail', 'var(--bad)'] };
+const LIST_ICON = { 'UFO Chip': '🛸', 'Mothership Chip': '👾', 'Fairy Chip': '🧚', 'Unicorn Chip': '🦄', 'Dragon Chip': '🐉', 'Mole Chip': '🐭', 'Black Hole Chip': '🕳', 'Volcano Chip': '🌋', 'Tornado Chip': '🌪', 'Hole Chip': '◯', 'Hardened p¢ Chip': '⛊' };
+let listFilter = 'all';
+function listTab(own, rerender) {
+  const n = (st) => CHIP_LIST.filter((x) => st === 'all' || x.status === st).length;
+  const filters = h('div', { class: 'lib-tabs lib-sec' }, [['all', 'All'], ['built', 'Built'], ['partial', 'Partly built'], ['needs', 'Needs detail']].map(([k, label]) => {
+    const b = btn(`${label} ${n(k)}`, () => { listFilter = k; rerender(); }, null, 'small'); if (k === listFilter) b.classList.add('on'); return b; }));
+  const out = [sec('The chip list', `All ${CHIP_LIST.length} rows of the workbook's chip list (<code>docs/CHIP-LIST.tsv</code>): <b style="color:var(--good)">${n('built')} built</b>, <b style="color:var(--amber)">${n('partial')} partly built</b> (in the game in another form, or with a gap), <b style="color:var(--bad)">${n('needs')} need detail</b> before they can be made. Each red card says what is missing.`), filters];
+  for (const x of CHIP_LIST) {
+    if (listFilter !== 'all' && x.status !== listFilter) continue;
+    const [label, color] = STATUS[x.status];
+    const vis = x.show ? tipped(chipEl(x.show), () => chipTip(x.show)) : LIST_ICON[x.name] ? h('span', { class: 'list-icon', text: LIST_ICON[x.name] }) : h('span', { class: 'chip static k-missing' }, h('i', { text: '?' }));
+    const meta = [x.type, x.permanence, x.placement, x.source].filter(Boolean).join(' · ');
+    const el = entry(vis, `${x.name} <span class="tier" style="--tc:${color}">${label}</span>`, [x.text ? `<span class="dim">List:</span> ${x.text}` : '<span class="dim">List: no description.</span>', meta ? dim(meta) : null,
+      `<span style="color:${color}">${x.status === 'needs' ? '' : 'In the game: '}${x.note}</span>`], { own: x.show?.resist && own.shop(x.show.resist) ? `Own ${own.shop(x.show.resist)}` : null });
+    el.classList.add(`st-${x.status}`); out.push(el);
+  }
+  return out;
+}
+const BUILD = { list: listTab, chips: chipsTab, tricks: tricksTab, dice: diceTab, cards: cardsTab, drinks: drinksTab, wallets: walletsTab, jackets: jacketsTab, felts: feltsTab };
 
 // o.title: opened from the title screen, so no run is in progress and only unlocked gear is marked
 export function openLibrary(start, o = {}) {
@@ -168,7 +191,7 @@ export function openLibrary(start, o = {}) {
   const own = ownership(o.title);
   const tabBtns = TABS.map(([k, name]) => { const b = btn(name, () => { tab = k; render(); }, null, 'small'); b._k = k; return b; });
   tabs.append(...tabBtns);
-  function render() { for (const b of tabBtns) b.classList.toggle('on', b._k === tab); body.replaceChildren(...BUILD[tab](own)); body.parentElement?.parentElement?.scrollTo?.({ top: 0 }); }
+  function render() { for (const b of tabBtns) b.classList.toggle('on', b._k === tab); body.replaceChildren(...BUILD[tab](own, render)); body.parentElement?.parentElement?.scrollTo?.({ top: 0 }); }
   render();
   openPanel(h('div', { class: 'lib' }, h('div', { class: 'row between' }, h('div', {}, h('h2', { text: 'Library' }),
     h('p', { class: 'sub', text: own.run ? 'Everything in the game, as it looks on the table. What you own is marked in green.' : 'Everything in the game, as it looks on the table. Hover any piece for its full text.' })), btn('Close', () => closePanel(), null, 'small')), tabs, body), { wide: true });

@@ -304,7 +304,7 @@ export function autoCounts(run, dims, purse = run.purse, reserve = 0) {
 }
 // the saved chip mix, or a fresh one if it no longer fits the purse or the position
 export function validCounts(run, dims) {
-  const c = run.plan.counts, shop = sum(Object.entries(run.plan.resist || {}), ([k, n]) => Math.min(n, owned(run, k)));
+  const c = run.plan.counts, shop = sum(Object.entries(run.plan.resist || {}), ([k, n]) => Math.min(n, owned(run, k)) * (D.SHOP_CHIPS[k]?.place === 'space' ? dims.stackMax : 1)); // a Tree needs a whole space
   if (c && planWorth(c) <= run.purse && sum(Object.values(c)) + shop <= barCapacity(dims) && planWorth(c) > 0) return c;
   return autoCounts(run, dims, run.purse, shop);
 }
@@ -378,8 +378,8 @@ export function settle(run, ctx, bout) {
   const start = run.purse;
   if (ctx.kind === 'ascent') {
     const safe = run.purse - ctx.committed;
-    if (sm.win) { run.purse = safe + sm.survivors + sm.gold + sm.ownFees + sm.pendingBids + sm.oppFees + sm.opportunity + sm.nest;
-      lines.push(['Chips kept off the table', safe], ['Chips left in your position', sm.survivors], ['Your fees, restored', sm.ownFees + sm.pendingBids], [`${ctx.opp.name}'s fees`, sm.oppFees], ['Gold, Opportunity and Nest Egg bonus', sm.gold + sm.opportunity + sm.nest], ['Bids lost to the House', -sm.bids + sm.pendingBids]);
+    if (sm.win) { run.purse = safe + sm.survivors + sm.gold + sm.ownFees + sm.pendingBids + sm.oppFees + sm.opportunity + sm.nest + sm.seq;
+      lines.push(['Chips kept off the table', safe], ['Chips left in your position', sm.survivors], ['Your fees, restored', sm.ownFees + sm.pendingBids], [`${ctx.opp.name}'s fees`, sm.oppFees], ['Gold, Opportunity and Nest Egg bonus', sm.gold + sm.opportunity + sm.nest + sm.seq], ['Bids lost to the House', -sm.bids + sm.pendingBids]);
       run.ascent.step++; if (run.ascent.step >= run.ascent.ladder.length) run.phase = 'paradise';
     } else { run.purse = safe; lines.push(['Chips kept off the table', safe], ['Position lost', -ctx.committed]); run.phase = 'fallen'; }
     res.total = run.purse; ledger(run, sm.win ? `Ascent: beat ${ctx.opp.name}` : `Ascent: lost to ${ctx.opp.name}`, run.purse - start); return res;
@@ -388,12 +388,13 @@ export function settle(run, ctx, bout) {
   const entry = ctx.kind === 'boss' ? run.fs.boss : run.fs.tables[ctx.idx];
   const wager = sm.intervened ? Math.floor(ctx.wager / 2) : ctx.wager;
   if (sm.win) {
-    const base = sm.survivors + sm.gold + sm.ownFees + sm.pendingBids + sm.opportunity + sm.nest + wager;
+    const base = sm.survivors + sm.gold + sm.ownFees + sm.pendingBids + sm.opportunity + sm.nest + sm.seq + wager;
     const winnings = sm.oppFees + Math.round(wager * (ctx.mult - 1));
     lines.push(['Chips left in your position', sm.survivors], ['Your fees, restored from the Stage', sm.ownFees + sm.pendingBids]);
     if (sm.gold) lines.push(['Gold chips pay double', sm.gold]);
     if (sm.opportunity) lines.push(['A chip for every Opportunity chip', sm.opportunity]);
     if (sm.nest) lines.push(['Nest Egg chips hatch', sm.nest]);
+    if (sm.seq) lines.push(['Fibonacci and Prime chips grew', sm.seq]);
     lines.push(['Wager returned', wager]);
     if (sm.intervened) lines.push(['Intervention took half your wager', -(ctx.wager - wager)]);
     lines.push([`Fees ${ctx.opp.name} paid to the table`, sm.oppFees], [`Wager winnings ×${ctx.mult}`, Math.round(wager * (ctx.mult - 1))]);

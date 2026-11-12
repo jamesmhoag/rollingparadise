@@ -9,7 +9,7 @@
 import { RNG, sum, clone, clamp, order1D } from './util.js';
 import { rollDie, boutCopy } from './dice.js';
 export { rollDie };
-import { TRICKS, TYPES, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS } from './data.js';
+import { TRICKS, TYPES, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS } from './data.js';
 
 export const PHASES = ['draw', 'roll', 'bid'];
 export const LAST_CALL = 8;
@@ -40,6 +40,20 @@ const hasResist = (cell, el) => cell.chips.some((ch) => ch.resist && resistsOf(c
 // a stack topped by a Frozen chip cannot be burned, corrupted, shocked or changed
 export const iced = (cell) => { const i = topSolid(cell); return i >= 0 && !!cell.chips[i].frozen; };
 const isDynamite = (cell) => cell.chips.length > 0 && cell.chips.every((ch) => ch.kind === 'dynamite');
+const isTree = (cell) => cell.chips.length > 0 && cell.chips.every((ch) => ch.kind === 'tree');
+const hasShop = (s, id) => s.grid.some((row) => row.some((cell) => cell.chips.some((ch) => ch.shop === id)));
+// Fibonacci and Prime chips: two on top of each other merge into the next number after the larger
+function mergeSeq(b, cell) {
+  let merged = 0;
+  for (let i = cell.chips.length - 1; i > 0; i--) {
+    const up = cell.chips[i], dn = cell.chips[i - 1];
+    if (!up.shop || up.shop !== dn.shop || !SEQS[SHOP_CHIPS[up.shop]?.seq]) continue;
+    const seq = SEQS[SHOP_CHIPS[up.shop].seq], top = Math.max(up.value, dn.value);
+    dn.value = seq.find((v) => v > top) ?? top * 2; dn.n = (dn.n || 1) + (up.n || 1);
+    cell.chips.splice(i, 1); b.fx[up.id] = 'void'; b.fx[dn.id] = 'mutate'; merged++;
+  }
+  return merged;
+}
 // shop chips: `resist` holds the SHOP_CHIPS id
 export const shopCount = (cell, id) => cell.chips.filter((ch) => ch.resist === id).length;
 const anchored = (cell) => shopCount(cell, 'anchor') > 0;
@@ -106,12 +120,12 @@ export function barOrder(s, spacing, rng) {
 export function deploy(b, s, plan) {
   const cells = barOrder(s, plan.spacing, b.rng);
   if (!cells.length) return 0;
-  const base = [], rest = [], tops = [];
+  const base = [], rest = [], tops = [], spaces = [];
   for (const g of plan.chips) for (let i = 0; i < g.count; i++) {
     if (!g.resist) { rest.push(mkChip(b, 'std', g.value)); continue; }
     const X = SHOP_CHIPS[g.resist] || {}, v = X.vars || {}, kind = X.kind || 'std';
     const ch = mkChip(b, kind, kind === 'std' ? g.value : 0, { resist: g.resist, shop: g.resist, ...(v.hits ? { hits: v.hits } : {}), ...(v.turns ? { life: v.turns } : {}) });
-    (X.place === 'top' ? tops : base).push(ch);
+    (X.place === 'top' ? tops : X.place === 'space' ? spaces : base).push(ch);
   }
   let placed = 0;
   const put = (spot, ch) => { s.grid[spot.r][spot.c].chips.push(ch); placed += ch.value; };
@@ -126,14 +140,22 @@ export function deploy(b, s, plan) {
     for (const ch of rest) { const spot = cells.find(open); if (!spot) break; put(spot, ch); }
   }
   // chips that go on top: onto the stacks first, then any open space
+  for (const ch of spaces) { // needs an empty space: clear the shortest stack onto the others if there is none
+    let spot = cells.find((x) => !s.grid[x.r][x.c].chips.length);
+    if (!spot) { const short = cells.slice().sort((x, y) => s.grid[x.r][x.c].chips.length - s.grid[y.r][y.c].chips.length)[0], moving = s.grid[short.r][short.c].chips.splice(0);
+      for (const m of moving) { const to = cells.find((x) => x !== short && open(x)); if (to) s.grid[to.r][to.c].chips.push(m); else { s.grid[short.r][short.c].chips.push(m); } }
+      if (!s.grid[short.r][short.c].chips.length) spot = short; }
+    if (spot) s.grid[spot.r][spot.c].chips.push(ch); }
+  const D_SEQ = (ch) => !!SEQS[SHOP_CHIPS[ch.shop]?.seq]; // these merge on contact, so a full stack still takes one
   for (const ch of tops) {
-    let spot = cells.find((x) => open(x) && solidCount(s.grid[x.r][x.c]));
+    const topOf = (x) => s.grid[x.r][x.c].chips[s.grid[x.r][x.c].chips.length - 1];
+    let spot = (ch.shop && D_SEQ(ch) && cells.find((x) => topOf(x)?.shop === ch.shop)) || cells.find((x) => open(x) && solidCount(s.grid[x.r][x.c])); // like chips go together
     const empty = cells.find((x) => open(x) && !solidCount(s.grid[x.r][x.c]));
     if (!spot && empty) { // every stack is full: move one chip to an empty space to make room on top
       const full = cells.find((x) => solidCount(s.grid[x.r][x.c]) >= 2);
       if (full) { s.grid[empty.r][empty.c].chips.push(s.grid[full.r][full.c].chips.pop()); spot = full; }
     }
-    spot = spot || empty; if (spot) s.grid[spot.r][spot.c].chips.push(ch);
+    spot = spot || empty; if (spot) { s.grid[spot.r][spot.c].chips.push(ch); mergeSeq(b, s.grid[spot.r][spot.c]); }
   }
   return placed;
 }
@@ -176,6 +198,7 @@ export function createBout(opts) {
       if (shopCount(cell, 'crown')) cell.hard = Math.max(cell.hard, shopVars('crown').turns);
       const top = cell.chips[cell.chips.length - 1]; // a Seed on a stack of at least 2 sprouts into a Flower
       if (top?.shop === 'seed' && solidCount(cell) >= 2) { top.kind = 'flower'; top.value = 0; top.hits = 1; delete top.resist; }
+      mergeSeq(b, cell);
     }
     for (let k = 0; k < (spec.shields || 0); k++) addToMeter(b, s, Array.from({ length: s.dims.stackMax }, () => mkChip(b, 'block')));
     for (let k = 0; k < (spec.creatures || 0); k++) b.creatures.push(mkCreature(b, i, b.rng.range(1, 5)));
@@ -480,6 +503,7 @@ function engage(b, att, def, r, c, amount, o = {}) {
   if (open && cell.chips.some((ch) => ch.feather > 0) && amount > cellWorth(cell)) return { placed: 0, notes: ['floated past a Feather'] };
   { // a Petal, Flower, Clay or Brick on top blocks the entire fee, however big (fee instance defence)
     const ti = topSolid(cell), top = ti >= 0 ? cell.chips[ti] : null;
+    if (!o.pierce && top && top.kind === 'tree') return { placed: 0, notes: [fell(b, def, r, c)] };
     if (!o.pierce && top && INSTANCE_SHIELDS.includes(top.kind)) { top.hits = (top.hits || 1) - 1; if (top.hits <= 0) { cell.chips.splice(ti, 1); b.fx[top.id] = 'void'; } return { placed: 0, notes: [`blocked whole by a ${top.kind[0].toUpperCase() + top.kind.slice(1)} chip`] }; }
   }
   if (open && att && st.reflect > 0) {
@@ -601,7 +625,7 @@ function cleanse(b, s, n) {
 // lane into its spaces in a new order; row moves (up, down) slide whole stacks along a row. Anchored stacks,
 // Holes, Black Holes, Volcanoes and Dynamite stay put. Debt and hazards stay on their space, or follow the
 // chips to the nearest stack in the lane if their space ends up empty. Returns how many chips changed space.
-const fixedCell = (cell) => cell.hole || cell.black || cell.volcano > 0 || anchored(cell) || isDynamite(cell);
+const fixedCell = (cell) => cell.hole || cell.black || cell.volcano > 0 || anchored(cell) || isDynamite(cell) || isTree(cell);
 const valueOf = (ch) => (isPayable(ch) ? ch.value : 0);
 const ARRANGE = {
   front: { dir: 'front', key: () => 0 },
@@ -805,6 +829,14 @@ function transform(b, cell, i) {
   else if (k === 'poison' || k === 'boom') { if (cell.chips.filter(isPayable).length > 1) { cell.chips.splice(i, 1); v.kind = k; v.value = 0; v.life = HAZARD_LIFE[k]; cell.chips.push(v); } }
   else { v.kind = k; v.value = k === 'opp' ? 1 : 0; }
 }
+// A fee fells a Tree: it falls into Wood chips on the spaces around it, one per chip of height.
+function fell(b, s, r, c) {
+  const cell = s.grid[r][c], h = cell.chips.length; for (const ch of cell.chips.splice(0)) b.fx[ch.id] = 'void';
+  const spots = b.rng.shuffle(around(s, r, c).filter((x) => !x.cell.hole && !x.cell.black && capacityLeft(s, x.cell) > 0)).slice(0, Math.min(8, h));
+  if (spots.length < Math.min(8, h)) spots.push({ r, c, cell }); // the stump takes one too
+  for (const x of spots) pushChip(x.cell, mkChip(b, 'wood', 0, { hits: 2 }));
+  return `felled a Tree into ${spots.length} Wood chip${spots.length === 1 ? '' : 's'}`;
+}
 // What chips do on their own each turn: Flowers bloom, Petals wilt, Harmony clears, Dynamite burns down,
 // and temporary chips (Power, Control) settle into plain chips.
 function* growth(b, s) {
@@ -814,11 +846,25 @@ function* growth(b, s) {
     if (ch.kind === 'petal' && --ch.life <= 0) { cell.chips.splice(cell.chips.indexOf(ch), 1); b.fx[ch.id] = 'void'; }
     else if (ch.life != null && ch.shop && ch.kind === 'std' && --ch.life <= 0) { delete ch.resist; delete ch.shop; delete ch.life; b.fx[ch.id] = 'mutate'; }
   }
+  // trees grow; at full height they seed the stacks around them
+  const sun = hasShop(s, 'sun') ? 2 : 1;
+  for (const { r, c, cell } of cellsNow) {
+    if (!isTree(cell) || cell.chips[0].seeded) continue;
+    for (let k = 0; k < sun && cell.chips.length < s.dims.stackMax; k++) cell.chips.push(mkChip(b, 'tree', 0, { hits: 1 }));
+    if (cell.chips.length >= s.dims.stackMax) {
+      cell.chips[0].seeded = true;
+      const spots = around(s, r, c).filter((x) => solidCount(x.cell) >= 2 && capacityLeft(s, x.cell) > 0 && !x.cell.chips.some((ch) => ch.kind === 'flower')).slice(0, Math.min(8, cell.chips.length));
+      for (const x of spots) pushChip(x.cell, mkChip(b, 'flower', 0, { hits: 1 }));
+      if (spots.length) yield step(b, `${s.name}'s Tree is fully grown and seeds ${spots.length} Flower${spots.length > 1 ? 's' : ''}.`, spots.map((x) => ref(s, x.r, x.c)), 'bonus');
+    }
+  }
+  // fibonacci and prime chips merge
+  for (const { cell } of cellsNow) mergeSeq(b, cell);
   // flowers bloom one petal per chip they are rooted in, on the stacks around them
   const bloomed = [];
   for (const { r, c, cell } of cellsNow) {
     const fi = cell.chips.findIndex((ch) => ch.kind === 'flower'); if (fi < 0) continue;
-    const roots = Math.min(8, cell.chips.slice(0, fi).filter((ch) => !isHazard(ch)).length);
+    const roots = Math.min(8, cell.chips.slice(0, fi).filter((ch) => !isHazard(ch)).length * sun);
     const spots = b.rng.shuffle(around(s, r, c).filter((x) => !x.cell.hole && solidCount(x.cell) && capacityLeft(s, x.cell) > 0 && !x.cell.chips.some((ch) => ch.kind === 'petal' || ch.kind === 'flower'))).slice(0, roots);
     for (const x of spots) { pushChip(x.cell, mkChip(b, 'petal', 0, { hits: 1, life: 2 })); bloomed.push(ref(s, x.r, x.c)); }
   }
@@ -1041,7 +1087,8 @@ export function summary(b, idx) {
   return {
     win: b.winner === idx, turns: b.turn, timeout: !!b.timeout,
     survivors: sum(std.filter((ch) => !ch.resist), (ch) => ch.value) + sum(s.run.flatMap((e) => e.dice), (d) => (d.chip ? d.chip.value : 0)), gold: sum(std.filter((ch) => ch.gold), (ch) => ch.value),
-    resist: chips.filter((ch) => ch.shop && ch.resist).reduce((m, ch) => { m[ch.shop] = (m[ch.shop] || 0) + 1; return m; }, {}),
+    resist: chips.filter((ch) => ch.shop && ch.resist).reduce((m, ch) => { m[ch.shop] = (m[ch.shop] || 0) + (ch.n || 1); return m; }, {}),
+    seq: sum(std.filter((ch) => ch.n > 1), (ch) => Math.max(0, ch.value - ch.n)),
     nest: std.filter((ch) => ch.resist === 'nest').length * (shopVars('nest').payout || 0),
     opportunity: chips.filter((ch) => ch.kind === 'opp').length,
     ownFees: b.stage.paid[idx], oppFees: b.stage.paid[1 - idx], bids: s.bidsPaid,
