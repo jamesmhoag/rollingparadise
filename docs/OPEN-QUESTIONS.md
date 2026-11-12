@@ -186,3 +186,36 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
 - **Tilt tiers** are gone: no unlock costs, no slot counts. Tilts open by floor (Spawner from 2, Calamity and
   Intervention from 3). Should anything be paid to switch one on?
 - **The House's rates** (`base`, `per` and `mult` on each tilt in `js/data.js`) are first guesses to tune.
+
+## Round 15 additions (match history, effect chips, overload, turn flow)
+
+- **Which shop chips are effects.** Moved off the shelf: Reducer, Anchor, Transpara, Shadow, Ward, Rebound, Zap
+  (Insurance); Power, Control, Boosted, Cheapened, Upgrade, Lucky, Nest Egg, Mimic (Investment); Harmony (Correction).
+  Kept on the shelf as things rather than effects: the resist colours, Seed, Clay, Tree, Sun, Heli-Chipter, Battery,
+  Repeater, Forgetter, Tesla, Absorption, Sprinkler, Uranium, Big, Little, Spy, Fibonacci, Prime and the food.
+  Repeater and Forgetter modify effects too; should they move (and Battery with them)?
+- **The new maker tricks are placeholders**: Empower, Throttle, Load, Shave, Tinker, Charm, Stow, Echo, Cushion,
+  Ward Off, Recoil, Electrify, Moor, Veil, Shade, Attune. Classes, dice, bonuses and the `make` numbers (how many
+  chips, how many turns, from the roll total) are first guesses to tune. They are in the Trick Trader's pool now.
+- **Crown** is retired (Brace already makes Hardened chips). Bring it back as something else?
+- **Effect chips take stack height.** That makes them fight value chips for room, and a full stack cannot take one.
+  Should they lie over the stack instead (no height), like Hardened and Sticky?
+- **Effect chips and fees.** A fee that reaches one, or empties its stack, knocks it off. Should some (Anchor, Ward)
+  be sturdier?
+- **Every effect as a chip.** Status effects with no stack (Boost, Resist, Evade, Reflect, Press, Bend, Parlay, and now
+  Subdued and the next-turn ones) still lie as flat effect chips sized by what they cover, laid out by the table, not
+  aimed by the trick. Should those also be placed by their trick at a space (for example the Meter space nearest the
+  trick), and could a fee or a Correction then touch them?
+- **Hive from the Familiar tilt.** One play in three sets a Hive (1 to 3 chips) on an empty space, as a Cheat. Should
+  Hives come from the Spawner tilt instead, as a challenge that also helps?
+- **Overload.** Chips with no room are lost, like overkill, and count with wasted overkill as Meter overflow toward
+  the House's pressure. Should overflow instead spill to the next stack in the lane, or go to the Stage?
+- **Pressure weights** (`TILT_PRESSURE`: lost 1, overkill 0.5, Meter fill 0.2, Meter value 0.3). A full, rich Meter
+  makes the House lean on you harder. Is that the intent, or should a full Meter make Cheats easier for your
+  opponent instead?
+- **Leftover dice.** A die that fits no shown trick stays in the roll, keeping its value, and must be placed once a
+  trick has room. Should leftovers count against next turn's Proficiency? Should something ever let you reroll them
+  (the "benefit of an effect" you mentioned)? Nothing does yet.
+- **Auto-skip** passes a phase with a short pause and a line in the feed. Should there be a setting to stop on every
+  phase anyway?
+- **Bid hands.** Each chip in a hand is still one bid (Ingenuity). Should a whole stack bid at once cost one bid?
