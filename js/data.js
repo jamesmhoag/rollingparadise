@@ -476,7 +476,7 @@ export const SHOP_CHIPS = {
   dip: { name: 'Dip Chip', tier: 2, glyph: '🥣', kind: 'dip', place: 'space', vars: { dips: 3 }, list: 'Dip Chip',
     text: (v) => `A bowl on its own empty space. The next ${v.dips} Chip Chips you eat are dipped for twice the bonus.` },
   fishchip: { name: 'Fish ’n Chip', tier: 2, glyph: '🐟', kind: 'food', place: 'top', list: 'Fish "n Chip', food: { per: 'conviction', turns: 1 },
-    text: () => 'Food. Eat it: +1 Power-per-draw (Conviction) for every chip under it (n, up to 3) this turn.' },
+    text: () => 'Food. Eat it: +1 Power per unused roll (Conviction) for every chip under it (n, up to 3) this turn.' },
   hamburger: { name: 'Hamburger Chip', tier: 2, glyph: '🍔', kind: 'food', place: 'top', list: 'Hamburger Chip', food: { mods: { proficiency: 2, ingenuity: -1 }, turns: 1 },
     text: () => 'Food. Eat it plain: +2 Roll but −1 Bid this turn. On a Bun and topped with a Bun, eat the top Bun for the whole burger: +1 Draw, Roll and Bid for 2 turns.' },
   bun: { name: 'Bun Chip', tier: 1, glyph: '🍞', kind: 'food', place: 'top', list: 'Bun Chip', food: { mods: { conviction: 1 }, turns: 1 },
