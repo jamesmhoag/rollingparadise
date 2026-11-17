@@ -170,8 +170,9 @@ const overText = (left) => (left.length ? ` (${left.length} had no room on a ful
 export function mkMade(b, id) { const M = MADE_CHIPS[id]; return mkChip(b, 'made', M.value || 0, { model: id, hits: M.hits || 0, life: M.lasts === 'turns' ? M.turns || 3 : undefined, name: M.name }); }
 function placeMade(cell, ch, place, at) {
   const M = madeOf(ch), solid = cell.chips.filter((y) => !isHazard(y)).length;
-  const i = M.must === 'top' ? cell.chips.length : M.must === 'bottom' ? 0 : placeIndex(place, at, solid);
-  cell.chips.splice(i, 0, ch);
+  if ((M.must === 'sandwiched' && solid < 2) || (M.must === 'with' && solid < 1)) return false;
+  const i = M.must === 'top' ? cell.chips.length : M.must === 'bottom' ? 0 : M.must === 'sandwiched' ? 1 : placeIndex(place, at, solid);
+  cell.chips.splice(i, 0, ch); return true;
 }
 function placeFx(b, s, cell, id, life, maker) {
   if (capacityLeft(s, cell) <= 0 || cell.hole || cell.link) { s.overflow = (s.overflow || 0) + 1; return false; }
@@ -1182,7 +1183,7 @@ function* playChips(b, s, e, def, x) {
       if (kind === 'fee') { fees += engage(b, s, t, sp.r, sp.c, amt, { pierce: x.pierce }).placed; return; }
       if (isFxChip(chip)) { if (placeFx(b, t, cell, chip, R.life || 3, e.trick.id)) made++; else lost++; return; }
       if (capacityLeft(t, cell) <= 0) { lost++; return; }
-      if (MADE_CHIPS[chip]) { const mc = mkMade(b, chip); if (MADE_CHIPS[chip].must === 'alone' && solidCount(cell)) { lost++; return; } placeMade(cell, mc, R.place, R.at); b.fx[mc.id] = 'spawn'; made++; return; }
+      if (MADE_CHIPS[chip]) { const mc = mkMade(b, chip); if ((MADE_CHIPS[chip].must === 'alone' && solidCount(cell)) || !placeMade(cell, mc, R.place, R.at)) { lost++; return; } b.fx[mc.id] = 'spawn'; made++; (s.madeNew ||= []).push(mc.id); return; }
       const ch = HAZARD_LIFE[chip] ? mkHazard(b, chip) : mkChip(b, chip, kind === 'value' ? amt : chip === 'block' || chip === 'counter' ? 1 : 0);
       if (isHazard(ch)) cell.chips.push(ch); else cell.chips.splice(placeIndex(R.place, R.at, cell.chips.filter((y) => !isHazard(y)).length), 0, ch);
       b.fx[ch.id] = 'spawn'; made++; });
@@ -1426,7 +1427,7 @@ function* growth(b, s) {
     yield step(b, `An egg hatches in ${s.name}'s position: a Dragon flies at ${foe.name}.`, [ref(s, r, c)], 'creature');
   }
   // a Magic Hat swallows the chip sitting on it
-  for (const { r, c, cell } of cellsNow) { if (cell.chips[0]?.kind !== 'hat') continue; const v = cell.chips.findIndex((ch, i) => i > 0 && !isHazard(ch)); if (v < 0) continue;
+  for (const { r, c, cell } of cellsNow) { if (cell.chips[0]?.kind !== 'hat') continue; const v = cell.chips.findIndex((ch, i) => i > 0 && !isHazard(ch)); if (v < 0 || immuneTo(cell.chips[v], 'holes') || madeOf(cell.chips[v])?.move === 'flying') continue;
     const ch = cell.chips.splice(v, 1)[0]; b.fx[ch.id] = 'abduct'; if (isPayable(ch)) s.destroyed += ch.value;
     yield step(b, `A Magic Hat in ${s.name}'s position swallows a ${isPayable(ch) ? ch.value + '¢ ' : ''}chip.`, [ref(s, r, c)], 'hazard'); }
   // Uranium mutates a chip next to it
@@ -1645,6 +1646,112 @@ function* ticks(b) {
 }
 
 
+// ---------- made chips at work (chip maker: movement, reach, triggers, actions) ----------
+// A made chip's triggers fire in a phase (when tricks of that type played, or always for 'phase'), each turn in the
+// House phase, when it is made, when it is removed, or when a chip it watches is exposed on top of a stack. When one
+// fires, its actions work on every chip its reach covers. In the House phase it then moves by its movement rule.
+const findMade = (s, id) => { for (const x of allCells(s)) { const i = x.cell.chips.findIndex((ch) => ch.id === id); if (i >= 0) return { ...x, i, ch: x.cell.chips[i] }; } return null; };
+const topNon = (cell) => { for (let i = cell.chips.length - 1; i >= 0; i--) if (!isHazard(cell.chips[i])) return cell.chips[i]; return null; };
+const nameOfChip = (ch) => madeOf(ch)?.name || CHIP_KIND_NAMES[ch.kind] || ch.kind;
+const CHIP_KIND_NAMES = { std: 'Royal Paradise chip', block: 'Block chip', counter: 'Counter chip', debt: 'Debt chip', opp: 'Opportunity chip' };
+// the chips a made chip's reach covers: [{ x (where), ch }], never the chip itself
+function reachOf(b, s, at, M) {
+  const R = M.reach || { to: 'touching', range: 1 }, range = Math.max(1, Math.min(5, R.range || 1)), out = [];
+  const near = (x) => Math.max(Math.abs(x.r - at.r), Math.abs(x.c - at.c)) < range;
+  const sides = R.to === 'all' ? b.sides : R.to === 'theirs' ? [b.sides[1 - s.idx]] : [s];
+  if (R.to === 'touching' || R.to === 'touchingValue' || R.to === 'touchingHits') { // above and below in its stack, and the stacks within range
+    const cells = range > 1 ? allCells(s).filter(near) : [at];
+    for (const x of cells) x.cell.chips.forEach((ch, i) => { if (ch === at.ch || isHazard(ch)) return; if (x.cell === at.cell && range === 1 && Math.abs(i - at.i) !== 1) return;
+      if (R.to === 'touchingValue' && !(ch.value > 0)) return; if (R.to === 'touchingHits' && !(ch.hits > 0)) return; out.push({ x, ch }); });
+    return out;
+  }
+  for (const t of sides) for (const x of allCells(t)) {
+    if (['sameType', 'named', 'typed'].includes(R.to) && (t !== s || !near(x)) && range < 5) continue;
+    for (const ch of x.cell.chips) { if (ch === at.ch || isHazard(ch)) continue;
+      if (R.to === 'sameType' && !(ch.kind === at.ch.kind && ch.model === at.ch.model)) continue;
+      if (R.to === 'named' && nameOfChip(ch).toLowerCase() !== String(R.name || '').toLowerCase()) continue;
+      if (R.to === 'typed' && ch.kind !== R.kind && ch.model !== R.kind) continue;
+      out.push({ x: { ...x, side: t }, ch }); }
+  }
+  return out;
+}
+// move a chip one space; false if it cannot go there
+function moveChip(b, s, from, ch, dr, dc) {
+  const r = from.r + dr, c = from.c + dc; if (r < 0 || r >= s.rows || c < 0 || c >= s.dims.cols) return false;
+  const to = s.grid[r][c]; if (to.hole || to.link || capacityLeft(s, to) <= 0) return false;
+  const i = from.cell.chips.indexOf(ch); if (i < 0) return false; from.cell.chips.splice(i, 1);
+  const M = madeOf(ch); if (M?.move === 'toBottom' || M?.must === 'bottom') to.chips.unshift(ch); else if (M) placeMade(to, ch, 'over') || to.chips.push(ch); else pushChip(to, ch);
+  return true;
+}
+const DIRS = { left: [0, -1], right: [0, 1], up: [-1, 0], down: [1, 0], front: [-1, 0], back: [1, 0] };
+const buff = (n) => (n > 0 ? 'buffs' : 'debuffs');
+function act(b, s, A, target, M) {
+  const ch = target.ch, side = target.x.side || s;
+  switch (A.k) {
+    case 'move': { if (immuneTo(ch, 'moves') || ['anchored', 'flying'].includes(madeOf(ch)?.move)) return 0; const [dr, dc] = DIRS[A.dir || 'right'] || DIRS.right; return moveChip(b, side, target.x, ch, dr, dc) ? 1 : 0; }
+    case 'value': { const n = A.n ?? 1; if (immuneTo(ch, buff(n)) || !(isPayable(ch) || ch.kind === 'made')) return 0; ch.value = ch.kind === 'made' ? ch.value + n : Math.max(1, ch.value + n); b.fx[ch.id] = 'mutate'; return 1; }
+    case 'hits': { const n = A.n ?? 1; if (immuneTo(ch, buff(n)) || !(ch.hits > 0 || isInstance(ch) || ch.kind === 'made')) return 0; ch.hits = Math.max(0, (ch.hits || 0) + n); b.fx[ch.id] = 'mutate'; return 1; }
+    case 'power': { const n = A.n ?? 1; if (immuneTo(ch, buff(n))) return 0; ch.power = Math.max(0, (ch.power || 0) + n); b.fx[ch.id] = 'mutate'; return 1; }
+    case 'become': { const to = A.chip || 'std'; if (lastsOf(ch) === 'match' || ch.kind === 'debt') return 0;
+      if (MADE_CHIPS[to]) { const m = mkMade(b, to); Object.assign(ch, { kind: 'made', model: to, value: m.value, hits: m.hits, life: m.life, name: m.name }); }
+      else { for (const k of ['model', 'name', 'life', 'hits', 'power']) delete ch[k]; ch.kind = to; if (to === 'block' || to === 'counter') ch.value = 0; if (HAZARD_LIFE[to]) { ch.value = 0; ch.life = HAZARD_LIFE[to]; } }
+      b.fx[ch.id] = 'mutate'; return 1; }
+    default: return 0;
+  }
+  void M;
+}
+// one made chip's triggered work: its actions on everything its reach covers
+function fire(b, s, at, M) { let n = 0; const list = reachOf(b, s, at, M); for (const A of M.actions || []) for (const tg of list) n += act(b, s, A, tg, M); return { n, refs: [...new Set(list.map((tg) => tg.x))].map((x) => ref(x.side || s, x.r, x.c)) }; }
+// where a creature chip heads: a space next to it, one step toward its goal
+function creatureStep(b, s, at, M) {
+  const others = allCells(s).filter((x) => x.cell !== at.cell && !x.cell.hole && !x.cell.link);
+  const dist = (x) => Math.abs(x.r - at.r) + Math.abs(x.c - at.c);
+  const score = { nearest: (x) => (solidCount(x.cell) ? -dist(x) : -Infinity), tallest: (x) => solidCount(x.cell), richest: (x) => cellWorth(x.cell), poorest: (x) => (solidCount(x.cell) ? -cellWorth(x.cell) : -Infinity),
+    threat: (x) => x.cell.chips.filter(isHazard).length + debtOf(x.cell), effect: (x) => x.cell.chips.filter((ch) => ch.kind === 'made' || isFx(ch)).length, empty: (x) => (solidCount(x.cell) ? -Infinity : -dist(x)) }[M.move];
+  if (!score || !others.length) return null;
+  const goal = others.reduce((best, x) => (score(x) > score(best) || (score(x) === score(best) && dist(x) < dist(best)) ? x : best), others[0]);
+  if (score(goal) === -Infinity) return null;
+  return [Math.sign(goal.r - at.r), Math.sign(goal.c - at.c)];
+}
+function moveByRule(b, s, at, M) {
+  if (immuneTo(at.ch, 'moves')) return false;
+  if (['nearest', 'tallest', 'richest', 'poorest', 'threat', 'effect', 'empty'].includes(M.move)) { const st = creatureStep(b, s, at, M); return st ? moveChip(b, s, at, at.ch, st[0], st[1]) || (st[0] && st[1] ? moveChip(b, s, at, at.ch, st[0], 0) || moveChip(b, s, at, at.ch, 0, st[1]) : false) : false; }
+  if (M.move === 'jumping') { const opts = b.rng.shuffle([[0, 1], [0, -1], [1, 0], [-1, 0]]); return opts.some(([dr, dc]) => moveChip(b, s, at, at.ch, dr, dc)); }
+  if (M.move === 'shifting') return moveChip(b, s, at, at.ch, 0, 1) || moveChip(b, s, at, at.ch, 0, -1);
+  if (M.move === 'advancing') return moveChip(b, s, at, at.ch, -1, 0);
+  if (M.move === 'retreating') return moveChip(b, s, at, at.ch, 1, 0);
+  if (M.move === 'spreading') { // a copy of itself on a neighbouring stack that does not have one
+    const nb = allCells(s).filter((x) => Math.abs(x.r - at.r) + Math.abs(x.c - at.c) === 1 && solidCount(x.cell) && capacityLeft(s, x.cell) > 0 && !x.cell.chips.some((ch) => ch.model === at.ch.model));
+    if (!nb.length) return false; const x = b.rng.pick(nb), cp = mkMade(b, at.ch.model); if (!placeMade(x.cell, cp, 'over')) return false; b.fx[cp.id] = 'spawn'; return true; }
+  return false;
+}
+function* madeWork(b, s, when, tricksPlayed) {
+  const has = (M, on) => (M.triggers || []).some((tg) => tg.on === on && (on !== 'phase' && on !== 'effect' ? true : !tg.type || tg.type === when));
+  const mine = () => allCells(s).flatMap((x) => x.cell.chips.map((ch, i) => ({ ...x, i, ch }))).filter((y) => y.ch.kind === 'made' && madeOf(y.ch));
+  const said = [];
+  // made this phase
+  for (const id of s.madeNew || []) { const at = findMade(s, id); if (!at) continue; const M = madeOf(at.ch); if (has(M, 'created')) { const f = fire(b, s, at, M); if (f.n) said.push({ M, f, why: 'made' }); } }
+  s.madeNew = [];
+  if (when !== 'turn') for (const at of mine()) { const M = madeOf(at.ch);
+    if (has(M, 'phase') || (tricksPlayed && has(M, 'effect'))) { const f = fire(b, s, at, M); if (f.n) said.push({ M, f, why: TYPES[when]?.name || when }); } }
+  if (when === 'turn') {
+    // removed since last turn, and newly exposed on top
+    const now = new Map(mine().map((at) => [at.ch.id, at])), last = s.madeSeen || new Map();
+    for (const [id, was] of last) if (!now.has(id)) { const M = MADE_CHIPS[was.model]; const cell = s.grid[was.r]?.[was.c];
+      if (M && cell && (M.triggers || []).some((tg) => tg.on === 'removed')) { const f = fire(b, s, { r: was.r, c: was.c, cell, i: -1, ch: { id, kind: 'made', model: was.model } }, M); if (f.n) said.push({ M, f, why: 'removed' }); } }
+    const tops = new Set(allCells(s).map((x) => topNon(x.cell)).filter(Boolean)), lastTops = s.topsSeen || new Set(), exposed = [...tops].filter((ch) => !lastTops.has(ch.id));
+    for (const at of mine()) { const M = madeOf(at.ch);
+      if (has(M, 'turn')) { const f = fire(b, s, at, M); if (f.n) said.push({ M, f, why: 'turn' }); }
+      const w = (M.triggers || []).find((tg) => tg.on === 'exposed');
+      if (w && exposed.some((ch) => !w.what || nameOfChip(ch).toLowerCase() === String(w.what).toLowerCase() || ch.kind === w.what || ch.model === w.what)) { const f = fire(b, s, at, M); if (f.n) said.push({ M, f, why: 'exposed' }); } }
+    let moved = 0; for (const at of mine()) { const M = madeOf(at.ch); if (M.move && M.move !== 'still' && !['anchored', 'flying', 'toTop', 'toBottom'].includes(M.move)) { const at2 = findMade(s, at.ch.id); if (at2 && moveByRule(b, s, at2, M)) moved++; } }
+    if (moved) said.push({ M: { name: `${moved} made chip${moved > 1 ? 's' : ''}` }, f: { n: moved, refs: [] }, why: 'move' });
+    s.madeSeen = new Map(mine().map((at) => [at.ch.id, { r: at.r, c: at.c, model: at.ch.model }]));
+    s.topsSeen = new Set(allCells(s).map((x) => topNon(x.cell)?.id).filter(Boolean));
+  }
+  for (const x of said) yield step(b, x.why === 'move' ? `${x.M.name} move${x.f.n > 1 ? '' : 's'} in ${s.name}'s position.` : `${s.name}'s ${x.M.name} (${x.why}): works on ${x.f.n} chip${x.f.n === 1 ? '' : 's'}.`, x.f.refs, 'familiar');
+}
+
 // ---------- effect chips at work ----------
 // Effect chips (made by maker tricks, or brought from the shop in an old save) do their work in the phase of the
 // trick type they belong to: Power, Control and Lucky in the Investment phase, Harmony in the Correction phase.
@@ -1718,6 +1825,7 @@ export function* resolve(b) {
     const cxs = b.sides.map((s) => ({ phase: type, who: s.idx, uid: null }));
     yield* zip(b, b.sides.map((s, i) => sidePhase(b, s, type, cxs[i])), cxs);
     if (type === 'expense' && b.sides.some(anyDue)) { b.ctx = { phase: type }; yield step(b, 'The House settles the Debt.', [], 'settle'); yield* settleAll(b, type); }
+    for (const s of b.sides) { b.ctx = { phase: type, who: s.idx }; yield* madeWork(b, s, type, plays.some((p) => p.s === s && phaseOf(p.e.trick.id) === type)); }
   }
   for (const s of b.sides) s.fz = null;
   b.ctx = { phase: 'house' };
@@ -1729,6 +1837,7 @@ export function* resolve(b) {
     for (const d of e.dice) homeDie(b, s, d);
   }
   if (done) yield step(b, '', [], 'return');
+  for (const s of b.sides) { b.ctx = { phase: 'house', who: s.idx }; yield* madeWork(b, s, 'turn', false); }
   yield* ticks(b);
   b.ctx = { phase: 'house' };
   // who is broke?
@@ -1828,4 +1937,4 @@ export function summary(b, idx) {
 }
 
 // internals the tests drive directly
-export const _test = { engage, settleAll, feeShares, setDebt, ticks, play, sidePhase, growth, strike, water, newCreature, setHard, arrange, chipPhase, placeFx, addToMeter };
+export const _test = { madeWork, placeMade, engage, settleAll, feeShares, setDebt, ticks, play, sidePhase, growth, strike, water, newCreature, setHard, arrange, chipPhase, placeFx, addToMeter };

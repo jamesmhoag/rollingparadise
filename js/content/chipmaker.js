@@ -1,7 +1,7 @@
 // The chip maker: the vocabulary every chip is described in, and the chips made with it.
 // Every chip, old or made, can be read in these terms (chipmodel.js maps the existing ones). A made chip plays
-// entirely from its entry in MADE_CHIPS. Fields marked `planned` are saved and shown, and are played by a later
-// round of the engine; everything else is played now.
+// entirely from its entry in MADE_CHIPS. Still planned (saved, not yet played): footprints bigger than one space,
+// 'anything' on top ignoring the height cap, and immunity to blocking.
 
 // where a chip comes from
 export const SOURCES = { prep: 'Match prep (cheats and challenges)', shop: 'Chip shop', trick: 'A trick', chip: 'Another chip', royale: 'Paradise Royale casino', encounter: 'Found at the table' };
@@ -23,7 +23,7 @@ export const ON_TOP = { anything: 'Anything (no height cap)', fits: 'Anything th
 // what it shrugs off. Elements match the Resist system: a stack holding the chip resists them too.
 export const IMMUNE = { burn: 'Fire', frost: 'Ice', shock: 'Electricity', corrupt: 'Corruption', acid: 'Acid', poison: 'Poison', debt: 'Debt (fees pass it by)',
   moves: 'Being moved', holes: 'Falling in Holes', buffs: 'Buffs', debuffs: 'Debuffs', blocks: 'Blocking' };
-// planned: how it moves, and what its effect reaches
+// how it moves (in the House phase), and what its effect reaches
 export const MOVES = {
   still: 'Does not move', nearest: 'Creature: to the nearest stack', tallest: 'Creature: to the tallest stack', richest: 'Creature: to the highest value', poorest: 'Creature: to the lowest value',
   threat: 'Creature: to the biggest threat', effect: 'Creature: to the biggest effect', empty: 'Creature: to an empty space',
@@ -32,6 +32,8 @@ export const MOVES = {
 };
 export const REACH = { all: 'All chips', yours: 'All yours', theirs: 'All theirs', touching: 'Chips it touches', touchingValue: 'Touching chips with value', touchingHits: 'Touching chips with strength',
   sameType: 'Chips of its own type', named: 'Chips with a given name', typed: 'Chips of a given type' };
+// triggers: { on, type? (phase, effect), what? (exposed: a chip name or kind) }
+// actions: { k, dir? (move: left, right, up, down), n? (value, hits, power), chip? (become) }
 export const TRIGGERS = { turn: 'Each turn', created: 'When it is made', removed: 'When it is removed', exposed: 'When a chip is exposed', effect: 'When an effect of a type plays', phase: 'In a phase' };
 // row 10: what a chip's effect does to the chips it reaches
 export const ACTIONS = { move: 'Move them (left, right, up, down, or to an area)', value: 'Change their coin value', hits: 'Change their strength', power: 'Change their effect value', become: 'Turn them into another chip' };

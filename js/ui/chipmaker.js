@@ -31,7 +31,13 @@ export function chipMaker(id, classic, redraw, onCopy) {
   const text = (ks, value, area) => h(area ? 'textarea' : 'input', { ...(area ? { rows: 2, text: value } : { type: 'text', value }), onchange: (e) => set(ks, e.target.value) });
   const checks = (ks, o, list) => h('div', { class: 'b-checks' }, Object.entries(o).map(([k, l]) => h('label', { class: 'b-check' },
     h('input', { type: 'checkbox', ...(list.includes(k) ? { checked: 'checked' } : {}), onchange: (e) => set(ks, e.target.checked ? [...list, k] : list.filter((x) => x !== k)) }), l)));
-  const trigOn = (m.triggers || []).map((x) => x.on), actOn = (m.actions || []).map((x) => x.k);
+  const smallSelect = (list, value, on) => h('select', { onchange: (e) => on(e.target.value) }, list.map(([v, l]) => h('option', { value: v, ...(String(v) === String(value) ? { selected: 'selected' } : {}), text: l })));
+  const kinds = () => [['std', 'Royal Paradise chip'], ['block', 'Block chip'], ['counter', 'Counter chip'], ...['burn', 'shock', 'corrupt', 'acid', 'poison', 'frost'].map((k) => [k, D.CHIPS[k].name]), ...Object.entries(D.MADE_CHIPS).map(([k, v]) => [k, v.name])];
+  // a list of { key: kind, ...params }: one row per entry, a kind picker, its parameters, and remove; plus an add row
+  const listEditor = (list, key, vocab, kindKey, params) => h('div', { class: 'b-list' },
+    ...list.map((x, i) => { const upd = (nx) => set([key], list.map((y, j) => (j === i ? nx : y)));
+      return h('div', { class: 'row b-list-row' }, smallSelect(Object.entries(vocab), x[kindKey], (v) => upd({ [kindKey]: v })), params(x, upd), btn('✕', () => set([key], list.filter((_, j) => j !== i)), null, 'small')); }),
+    smallSelect([['', t('chipmaker.add')], ...Object.entries(vocab)], '', (v) => { if (v) set([key], [...list, { [kindKey]: v }]); }));
 
   const parts = [
     h('span', { class: 'cap', text: t('chipmaker.part.chip') }),
@@ -47,21 +53,23 @@ export function chipMaker(id, classic, redraw, onCopy) {
     h('span', { class: 'cap', text: t('chipmaker.part.size') }),
     field(t('chipmaker.height'), select(['height'], opts(HEIGHT), m.height), ['height']),
     field(t('chipmaker.foot'), select(['foot'], opts(FOOTPRINT), m.foot), ['foot'], m.foot !== 'basic' ? planned() : null),
-    field(t('chipmaker.must'), select(['must'], opts(MUST), m.must), ['must'], ['sandwiched', 'with'].includes(m.must) ? planned() : null),
+    field(t('chipmaker.must'), select(['must'], opts(MUST), m.must), ['must']),
     field(t('chipmaker.onTop'), select(['onTop'], opts(ON_TOP), m.onTop), ['onTop'], m.onTop === 'anything' ? planned() : null),
     h('span', { class: 'cap', text: t('chipmaker.part.immune') }),
-    field(t('chipmaker.immune'), checks(['immune'], IMMUNE, m.immune || []), ['immune'], (m.immune || []).some((k) => ['moves', 'holes', 'buffs', 'debuffs', 'blocks'].includes(k)) ? planned() : null),
-    h('span', { class: 'cap' }, t('chipmaker.part.behaviour'), ' ', planned()),
+    field(t('chipmaker.immune'), checks(['immune'], IMMUNE, m.immune || []), ['immune'], (m.immune || []).includes('blocks') ? planned() : null),
+    h('span', { class: 'cap', text: t('chipmaker.part.behaviour') }),
     field(t('chipmaker.move'), select(['move'], opts(MOVES), m.move), ['move']),
+    h('span', { class: 'cap', text: t('chipmaker.part.effect') }),
     field(t('chipmaker.reach'), h('div', { class: 'row' }, select(['reach', 'to'], opts(REACH), m.reach?.to || 'touching'),
+      m.reach?.to === 'named' ? h('input', { type: 'text', placeholder: t('chipmaker.reach.name'), value: m.reach?.name || '', onchange: (e) => set(['reach', 'name'], e.target.value) }) : null,
+      m.reach?.to === 'typed' ? select(['reach', 'kind'], kinds(), m.reach?.kind || 'std') : null,
       h('input', { type: 'number', min: 1, max: 5, value: m.reach?.range ?? 1, style: { width: '64px' }, title: t('chipmaker.range'), onchange: (e) => set(['reach', 'range'], Math.max(1, Math.min(5, Math.round(Number(e.target.value) || 1)))) })), ['reach']),
-    field(t('chipmaker.triggers'), checks(['triggers'], TRIGGERS, trigOn), null),
-    field(t('chipmaker.actions'), checks(['actions'], ACTIONS, actOn), null),
+    field(t('chipmaker.triggers'), listEditor(m.triggers || [], 'triggers', TRIGGERS, 'on', (x, upd) => (x.on === 'phase' || x.on === 'effect' ? smallSelect([['', t('chipmaker.anyPhase')], ...Object.entries(D.TYPES).map(([k, v]) => [k, v.name])], x.type || '', (v) => upd({ ...x, type: v || undefined }))
+      : x.on === 'exposed' ? h('input', { type: 'text', placeholder: t('chipmaker.exposed.what'), value: x.what || '', onchange: (e) => upd({ ...x, what: e.target.value || undefined }) }) : null)), ['triggers']),
+    field(t('chipmaker.actions'), listEditor(m.actions || [], 'actions', ACTIONS, 'k', (x, upd) => (x.k === 'move' ? smallSelect(['left', 'right', 'up', 'down'].map((d) => [d, t(`chipmaker.dir.${d}`)]), x.dir || 'right', (v) => upd({ ...x, dir: v }))
+      : x.k === 'become' ? smallSelect(kinds(), x.chip || 'std', (v) => upd({ ...x, chip: v }))
+        : h('input', { type: 'number', step: 1, value: x.n ?? 1, style: { width: '70px' }, title: t('chipmaker.amount'), onchange: (e) => upd({ ...x, n: Math.round(Number(e.target.value) || 0) }) }))), ['actions']),
   ];
-  // triggers and actions are lists of objects; the checkboxes add or drop whole entries
-  parts[parts.length - 2].querySelectorAll('input').forEach((el, i) => { const k = Object.keys(TRIGGERS)[i]; el.onchange = (e) => set(['triggers'], e.target.checked ? [...(m.triggers || []), { on: k }] : (m.triggers || []).filter((x) => x.on !== k)); });
-  parts[parts.length - 1].querySelectorAll('input').forEach((el, i) => { const k = Object.keys(ACTIONS)[i]; el.onchange = (e) => set(['actions'], e.target.checked ? [...(m.actions || []), { k }] : (m.actions || []).filter((x) => x.k !== k)); });
-
   const sample = { kind: 'made', model: id, value: m.value, hits: m.hits, life: m.lasts === 'turns' ? m.turns : undefined };
   return h('div', { class: 'b-maker' }, h('div', { class: 'b-fields' }, parts),
     h('div', {}, h('span', { class: 'cap', text: t('maker.preview') }), h('div', { class: 'b-card' }, h('div', { class: 'row' }, chipEl(sample), h('b', { text: m.name })),
