@@ -1,7 +1,7 @@
 // The floor: a map of places to visit between bouts, each opening as a panel.
 import { h, syncList, openPanel, closePanel, toast, btn, tween, pulse, swapText } from './core.js';
 import { app, hud, oppTip, trickTag, diceSummary } from './app.js';
-import { faceList, upgrade as upgradeFaces } from '../dice.js';
+import { faceList, upgrade as upgradeFaces, dieName } from '../dice.js';
 import { dieEl, dieTip, trickTip, trickWords, drinkTip, cardTip, chipEl, chipTip, cardEl, walletEl, jacketEl, drinkEl, feltStyle, passEl } from './parts.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
@@ -14,13 +14,13 @@ let rerender = () => {};
 // workbook's sketch: stairs up behind the head table, game tables in the middle, shops on one
 // wall, the House's book and the Lounge on the other, the way in at the bottom by the dodgy corner.
 const mirror = (plan) => Object.fromEntries(Object.entries(plan).map(([k, [x, y, w, hh]]) => [k, [900 - x - w, y, w, hh]]));
-const BASEMENT = { stairs: [390, 8, 120, 62], boss: [335, 84, 230, 132], kit: [40, 26, 190, 112], t0: [357, 376, 185, 124], t1: [245, 236, 185, 124], t2: [470, 236, 185, 124],
+const BASEMENT = { dice: [20, 494, 200, 96], stairs: [390, 8, 120, 62], boss: [335, 84, 230, 132], kit: [40, 26, 190, 112], t0: [357, 376, 185, 124], t1: [245, 236, 185, 124], t2: [470, 236, 185, 124],
   smith: [690, 26, 190, 122], trader: [690, 160, 190, 122], exchange: [690, 294, 190, 112], book: [20, 164, 200, 150], lounge: [20, 328, 200, 150], exit: [690, 418, 190, 96], search: [716, 528, 164, 82], entry: [380, 544, 140, 66] };
 const PLANS = {
   1: BASEMENT, 2: mirror(BASEMENT),
-  3: { smith: [20, 20, 190, 116], trader: [222, 20, 190, 116], exchange: [424, 20, 190, 116], stairs: [760, 14, 120, 62], boss: [656, 92, 224, 140], t1: [124, 176, 185, 124], t2: [344, 176, 185, 124], t0: [244, 340, 185, 124],
+  3: { dice: [716, 500, 164, 100], smith: [20, 20, 190, 116], trader: [222, 20, 190, 116], exchange: [424, 20, 190, 116], stairs: [760, 14, 120, 62], boss: [656, 92, 224, 140], t1: [124, 176, 185, 124], t2: [344, 176, 185, 124], t0: [244, 340, 185, 124],
     book: [20, 500, 210, 104], lounge: [452, 330, 240, 150], kit: [20, 330, 200, 112], exit: [716, 276, 164, 96], search: [716, 404, 164, 86], entry: [396, 544, 140, 66] },
-  4: { stairs: [390, 6, 120, 58], boss: [325, 72, 250, 136], t1: [140, 214, 185, 124], t0: [357, 270, 185, 124], t2: [575, 214, 185, 124], smith: [20, 26, 190, 116], trader: [20, 366, 190, 116], exchange: [690, 26, 190, 116],
+  4: { dice: [20, 152, 112, 200], stairs: [390, 6, 120, 58], boss: [325, 72, 250, 136], t1: [140, 214, 185, 124], t0: [357, 270, 185, 124], t2: [575, 214, 185, 124], smith: [20, 26, 190, 116], trader: [20, 366, 190, 116], exchange: [690, 26, 190, 116],
     book: [690, 366, 190, 124], lounge: [240, 398, 205, 130], kit: [460, 398, 190, 112], exit: [690, 506, 190, 92], search: [20, 500, 170, 92], entry: [380, 548, 140, 62] },
 };
 const FLOOR_HUE = { 1: '#7dffb5', 2: '#ff86ea', 3: '#7df3ff', 4: '#ffd76a' };
@@ -32,6 +32,7 @@ function furniture(kind) {
     case 'boss': return [h('i', { class: 'dais' }), h('i', { class: 'felt' }), ...s('seat', 4), h('i', { class: 'opp' })];
     case 'smith': return [h('i', { class: 'forge' }), h('i', { class: 'anvil', text: '⚒' })];
     case 'trader': return [...s('shelf', 3), h('i', { class: 'glyph', text: '🃏' })];
+    case 'dice': return [...s('shelf', 2), h('i', { class: 'glyph', text: '🎲' })];
     case 'exchange': return [h('i', { class: 'cage' }), h('i', { class: 'glyph', text: '🪙' })];
     case 'lounge': return [h('i', { class: 'barc' }), ...s('stool', 4), h('i', { class: 'glyph', text: '🍹' })];
     case 'book': return [...s('screen', 4), h('i', { class: 'glyph', text: '🏇' })];
@@ -77,6 +78,7 @@ export function hubScene(root) {
       tip: () => (fs.bossOpen ? oppTip(b.opp) : `<b>${b.opp.name}</b> <span class="dim">High Roller</span><p>Visible at the head table, but only their name. Beat table 1 and then one of tables 2 and 3, or win a Double Down, and they will see you. Beat them to take the stairs to the next floor.</p>`),
       on: () => { if (!fs.bossOpen) return toast('The High Roller will not see you yet.', 'warn'); if (run.purse < MIN_BUYIN) return toast(`You need at least ${cents(MIN_BUYIN)} to sit down.`, 'warn'); app.nav.prep('boss', 0); } });
     out.push({ k: 'smith', ico: '⚒️', name: 'Diesmith', sub: 'Forge, upgrade and sell dice.', tip: '<b>Diesmith</b><p>Melts several small dice into one bigger die, upgrades dice, and buys the ones you no longer need.</p>', on: () => smithPanel() });
+    out.push({ k: 'dice', ico: '🎲', name: 'Dice Shop', sub: `${R.diceShop(run).length} dice on the counter.`, tip: '<b>Dice Shop</b><p>Plain Glass, Plastic and Metal dice, and pricier Bone dice that each carry a trait of their own. Bone dice cannot be melted or modified.</p>', on: () => diceShopPanel() });
     out.push({ k: 'trader', ico: '🃏', name: 'Trick Trader', sub: `${fs.shop.length} trick${fs.shop.length === 1 ? '' : 's'} on the shelf.`, tag: R.hasCard(run, 'membership') ? 'Member' : null, tip: '<b>Trick Trader</b><p>Buy new tricks, upgrade the ones in your Book, or sell them. Buy 5 on one floor to earn a Membership Card.</p>', on: () => traderPanel() });
     out.push({ k: 'exchange', ico: '🪙', name: 'Chip Exchange', sub: `Chips up to ${R.maxDenom(run.floor)}¢ on this floor.`, tip: '<b>Chip Exchange</b><p>Shows which chip values this floor deals in and sells colourful chips that protect a stack from hazards.</p>', on: () => exchangePanel() });
     out.push({ k: 'lounge', ico: '🍹', name: 'Lounge', sub: fs.lounge.happy ? 'Happy hour! Drinks half price.' : 'A drink for the table.', tag: run.drink ? `${run.drink.name}` : null, tip: '<b>Lounge</b><p>Bring a drink to the table and sip it before a turn for a bonus. Pay for it, or challenge the Roller at the bar: the loser buys.</p>', on: () => loungePanel() });
@@ -130,7 +132,7 @@ function smithPanel() {
         el._tip = () => `<b>Forge a ${t}</b><p>Costs ${cents(R.forgeCost(run, t))} and your ${f.dice} smallest ${f.dice > 1 ? 'dice' : 'die'}${fod ? `: ${diceSummary(fod)}` : ' (you need more dice; you always keep at least one)'}.</p>`; el.classList.add('has-tip'); });
     syncList(pouch, run.dice, (d) => d.id + ':' + d.up.join() + ':' + faceList(d).join(), (d) => { const el = dieEl(d); el.onclick = () => { sel = sel === d.id ? null : d.id; face = null; render(); }; el._tip = () => dieTip(d, 'Click to sell or upgrade it.'); el.classList.add('has-tip'); return el; }, (el, d) => el.classList.toggle('sel', sel === d.id));
     const d = run.dice.find((x) => x.id === sel), acts = [];
-    if (d) { acts.push({ k: 'sell', name: `Sell this ${d.type}`, sub: 'The Diesmith pays in chips.', price: `+${cents(D.DICE[d.type].sell)}`, label: 'Sell', go: () => { tryDo(R.sellDie(run, d.id), null, 'Keep at least one die.'); sel = null; } });
+    if (d) { acts.push({ k: 'sell', name: `Sell this ${d.type}`, sub: 'The Diesmith pays in chips.', price: `+${cents(R.dieSellValue(d))}`, label: 'Sell', go: () => { tryDo(R.sellDie(run, d.id), null, 'Keep at least one die.'); sel = null; } });
       const vals = faceList(d); if (face == null || face >= vals.length) face = vals.indexOf(Math.max(...vals));
       for (const [u, U] of Object.entries(D.DIE_UPGRADES)) {
         const why = R.dieUpgradeBlock(run, d, u), after = faceList(upgradeFaces({ ...d, up: [...d.up], faces: d.faces?.map((f) => ({ ...f })) }, u, face));
@@ -146,6 +148,20 @@ function smithPanel() {
   render();
   openPanel(h('div', {}, head('Diesmith', 'Reforges dice into other types and can upgrade your dice as well.'),
     h('div', { class: 'cols2' }, h('div', {}, h('span', { class: 'cap', text: 'Forge' }), forgeBox), h('div', {}, h('span', { class: 'cap', text: 'Your pouch — pick a die' }), pouch, faceHint, facePick, actions))), { wide: true });
+}
+
+function diceShopPanel() {
+  const run = app.run, shelf = h('div', { class: 'items list' }), done = after(render);
+  function render() {
+    syncList(shelf, R.diceShop(run), (it) => it.key, (it) => { const el = item(it.die.mat === 'bone' ? 'bone' : '');
+      el.append(btn('Buy', () => { tryDo(R.buyShopDie(run, it.key), el); done(); }, null, 'small')); el.prepend(dieEl(it.die)); el._tip = () => dieTip(it.die); el.classList.add('has-tip'); return el; },
+    (el, it) => { const B = it.die.bone && D.BONE[it.die.bone];
+      setItem(el, dieName(it.die), B ? `${faceList(it.die).join(' ')} · ${D.upgradeText(B.up)} <span class="dim">Cannot be melted or modified.</span>` : `${faceList(it.die).join(' ')} <span class="dim">${D.MATERIALS[it.die.mat].text}</span>`, cents(R.dieCost(run, it)));
+      el.lastChild.classList.toggle('off', run.purse < R.dieCost(run, it)); });
+    if (!R.diceShop(run).length) syncList(shelf, [{ k: 0 }], (x) => x.k, () => h('p', { class: 'sub', text: 'Sold out until the next floor.' }));
+  }
+  render();
+  openPanel(h('div', {}, head('Dice Shop', 'Plain dice in Glass, Plastic and Metal, and Bone dice carved with a trait.'), shelf));
 }
 
 function trickItem(run, getT) {

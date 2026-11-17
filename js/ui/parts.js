@@ -3,7 +3,7 @@ import { h } from './core.js';
 import * as D from '../data.js';
 import { cents, cap } from '../util.js';
 import { multOf, traitOf } from '../bout.js';
-import { facesOf, faceValue } from '../dice.js';
+import { facesOf, faceValue, matOf, dieName } from '../dice.js';
 import { traitsOf, traitsHtml } from '../traits.js';
 
 const GLYPH = { opp: '★', block: '▣', counter: '✸', burn: '🔥', acid: '☣', shock: '⚡', corrupt: '☠', poison: '☘', boom: '💣', frost: '❄', lava: '🌋', flower: '✿', petal: '❀', clay: '▤', brick: '▦', dynamite: '🧨', tree: '🌳', wood: '▥', hard: '⛊', sticky: '◍', hive: '⬢', little: '•', egg: '🥚', hat: '🎩', doom: '☠', volcano: '🌋' };
@@ -64,11 +64,12 @@ export function faceStrip(d) {
 }
 export function dieTip(d, extra = '') {
   const ups = (d.up || []).map((u, k) => `<li><b style="color:${D.DIE_UPGRADES[u].color}">${D.DIE_UPGRADES[u].mark} ${D.DIE_UPGRADES[u].name}</b>${d.tgt?.[k] != null ? ` <span class="dim">face ${d.tgt[k] + 1}</span>` : ''}<span class="v"> — ${D.upgradeText(u)}</span></li>`).join('');
-  return `<b>${d.type}</b> <span class="faces">${faceStrip(d)}</span>${ups ? `<ul>${ups}</ul>` : ''}${extra ? `<p>${extra}</p>` : ''}`;
+  const M = D.MATERIALS[matOf(d)], B = d.bone && D.BONE[d.bone];
+  return `<b>${dieName(d)}</b> <span class="faces">${faceStrip(d)}</span>${B ? `<p><span class="k">${B.name}</span> Carved with ${D.DIE_UPGRADES[B.up].name}: ${D.upgradeText(B.up)}</p>` : ups ? `<ul>${ups}</ul>` : ''}<p class="dim v">${M.text}</p>${extra ? `<p>${extra}</p>` : ''}`;
 }
 // one badge per upgrade, so every upgrade a die carries can be read off the die itself
 export const dieMarks = (d) => ((d.up || []).length ? h('span', { class: 'ups' }, d.up.map((u) => h('b', { class: `u-${u}`, style: { '--uc': D.DIE_UPGRADES[u].color }, text: D.DIE_UPGRADES[u].mark }))) : null);
-export const dieClass = (d) => `${(d.up || []).length ? 'upg' : ''} ${(d.up || []).map((u) => 'u-' + u).join(' ')}`;
+export const dieClass = (d) => `m-${matOf(d)} ${(d.up || []).length ? 'upg' : ''} ${(d.up || []).map((u) => 'u-' + u).join(' ')}`;
 export const dieEl = (d, value, cls = '') => h('span', { class: `die static ${d.type} ${dieClass(d)} ${cls}` }, h('i', { text: value ?? d.type.slice(1) }), dieMarks(d));
 
 const fx = (m) => '×' + (m % 1 ? m.toFixed(2).replace(/0$/, '') : m);

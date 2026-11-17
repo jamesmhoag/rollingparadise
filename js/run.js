@@ -3,7 +3,7 @@
 import { RNG, sum, clamp } from './util.js';
 import * as D from './data.js';
 import { createBout, summary, barCapacity } from './bout.js';
-import { rollDie, boutCopy, upgrade as upgradeFaces, canUpgrade } from './dice.js';
+import { rollDie, boutCopy, upgrade as upgradeFaces, canUpgrade, canMelt, dieName, boneDie } from './dice.js';
 
 const META_KEY = 'rollingparadise.meta.v1', RUN_KEY = 'rollingparadise.run.v1';
 const store = () => { try { return globalThis.localStorage || null; } catch { return null; } };
@@ -32,7 +32,7 @@ export function loadRun() {
 const mkTrick = (run, id, q = 1, o = {}) => { const t = { uid: run.nextId++, id, q, wear: o.wear ?? D.WEAR.good, rar: o.rar || (o.foil ? 'foil' : 'basic') };
   if (o.foil) t.foil = o.foil; if (o.mis) t.mis = o.mis; if (o.gem) t.gem = true; return t; };
 const printOf = (t) => ({ foil: t.foil, rar: t.rar, mis: t.mis }); // a copy keeps the print, not the wear
-const mkDie = (run, type) => ({ id: run.nextId++, type, up: [] });
+const mkDie = (run, type, mat = D.DEFAULT_MAT) => ({ id: run.nextId++, type, mat, up: [] });
 const ledger = (run, label, amt) => { run.ledger.push({ label, amt, floor: run.floor }); if (run.ledger.length > 200) run.ledger.shift(); };
 export const hasCard = (run, id) => run.cards.includes(id);
 // wallet: benefit cards take a slot, passes do not
@@ -136,7 +136,7 @@ export function enterFloor(run, floor) {
     boss: { opp: genOpponent(run, floor, F.boss, { boss: true, name: rng.pick(D.BOSSES[floor]), title: 'High Roller' }), beaten: false, felt: 'royal' },
     bossOpen: false, lastWin: null, ddStreak: 0, tiers: { challenge: 0, cheat: 0 },
     shop: null, restocks: 0, bought: 0, secret: null, pack: null,
-    lounge: genLounge(run, floor), book: genBook(run, floor), searched: false,
+    lounge: genLounge(run, floor), book: genBook(run, floor), searched: false, dice: null,
   };
   run.fs.shop = genShelf(run);
   run.news = [`Floor ${floor}: ${F.name}. ${F.line}`];
@@ -226,7 +226,7 @@ export function buySecret(run, key) {
 export const forgeCost = (run, type) => price(run, 'diesmith', D.DICE[type].forge.chips);
 // dice given up in a forge: the cheapest ones you own
 export function forgeFodder(run, type) {
-  const n = D.DICE[type].forge.dice; const sorted = run.dice.slice().sort((a, b) => D.DICE[a.type].faces - D.DICE[b.type].faces || a.up.length - b.up.length);
+  const n = D.DICE[type].forge.dice; const sorted = run.dice.filter(canMelt).sort((a, b) => D.DICE[a.type].faces - D.DICE[b.type].faces || a.up.length - b.up.length);
   return sorted.length > n ? sorted.slice(0, n) : null; // must keep at least one die
 }
 export function forge(run, type) {
@@ -236,7 +236,7 @@ export function forge(run, type) {
 }
 export function sellDie(run, id) {
   const i = run.dice.findIndex((d) => d.id === id); if (i < 0 || run.dice.length <= 1) return false;
-  const v = D.DICE[run.dice[i].type].sell; ledger(run, `Sold a ${run.dice[i].type}`, v); run.dice.splice(i, 1); run.purse += v; return true;
+  const v = dieSellValue(run.dice[i]); ledger(run, `Sold a ${dieName(run.dice[i])}`, v); run.dice.splice(i, 1); run.purse += v; return true;
 }
 export const dieUpgradeCost = (run, d) => price(run, 'diesmith', 60 * Math.max(1, run.floor) * (1 + d.up.length));
 // why an upgrade cannot go on a die right now, or null
@@ -251,6 +251,25 @@ export function upgradeDie(run, id, up, face = 0) {
   if (!spend(run, dieUpgradeCost(run, d), `${D.DIE_UPGRADES[up].name} on a ${d.type}`)) return false;
   upgradeFaces(d, up, face, run.rng); return true;
 }
+// Dice Shop: plain Glass, Plastic and Metal dice, and Bone dice that carry a trait (content/dice.js)
+export const dieSellValue = (d) => Math.round(D.DICE[d.type].sell * (d.mat === 'bone' ? D.DICE_SHOP.boneMult / 2 : D.DICE_SHOP.mat[d.mat || D.DEFAULT_MAT] || 1));
+const diePrice = (floor, type, mat) => Math.round(D.DICE_SHOP.base[type] * (mat === 'bone' ? D.DICE_SHOP.boneMult : D.DICE_SHOP.mat[mat] || 1) * (D.DICE_SHOP.floorMult[floor] ?? 1));
+export function genDiceShop(run, floor = run.floor) {
+  const rng = run.rng, S = D.DICE_SHOP, types = D.COMPLEXITY.filter((t) => (S.from[t] || 1) <= floor);
+  const basic = Array.from({ length: S.basic }, (_, i) => { const mat = D.BASIC_MATS[i % D.BASIC_MATS.length], type = rng.pick(types);
+    return { key: run.nextId++, die: { type, mat, up: [] }, cost: diePrice(floor, type, mat) }; });
+  const bone = Array.from({ length: S.bone }, () => { const type = rng.pick(types), id = rng.pick(Object.keys(D.BONE));
+    return { key: run.nextId++, die: boneDie({}, type, id, rng), cost: diePrice(floor, type, 'bone') }; });
+  return basic.concat(bone).sort((a, b) => D.DICE[a.die.type].faces - D.DICE[b.die.type].faces || (a.die.mat === 'bone') - (b.die.mat === 'bone'));
+}
+export const diceShop = (run) => { if (!run.fs.dice) run.fs.dice = genDiceShop(run); return run.fs.dice; }; // stocked on the first visit to each floor's Dice Shop
+export const dieCost = (run, it) => price(run, 'dice', it.cost);
+export function buyShopDie(run, key) {
+  const it = diceShop(run).find((x) => x.key === key); if (!it || !spend(run, dieCost(run, it), `Bought a ${dieName(it.die)}`)) return false;
+  run.dice.push({ ...it.die, id: run.nextId++, up: [...it.die.up], tgt: it.die.tgt && [...it.die.tgt], faces: it.die.faces?.map((f) => ({ ...f })) });
+  run.fs.dice = run.fs.dice.filter((x) => x !== it); return true;
+}
+
 // Chip Exchange: shop chips are priced by their tier (D.CHIP_TIERS) and unlocked by the tier's floor
 export const owned = (run, id) => run.chips[id] || 0;
 export const shopChipOpen = (run, id) => run.floor >= D.shopFloor(id);

@@ -106,6 +106,15 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .die.d8 { --dc: #8cc0f2; --sh: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); --facet: conic-gradient(from 0deg at 50% 50%, rgba(255, 255, 255, .15) 0 25%, rgba(0, 0, 0, .22) 0 50%, rgba(0, 0, 0, .08) 0 75%, rgba(255, 255, 255, .5) 0); }
 .die.d10 { --dc: #ee9fd8; --sh: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%); --facet: conic-gradient(from 30deg at 50% 50%, rgba(255, 255, 255, .12) 0 16.6%, rgba(0, 0, 0, .2) 0 33.3%, rgba(0, 0, 0, .28) 0 50%, rgba(0, 0, 0, .1) 0 66.6%, rgba(255, 255, 255, .3) 0 83.3%, rgba(255, 255, 255, .55) 0); }
 .die.d20 { --dc: #f2c94c; --sh: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%); --facet: conic-gradient(from 22.5deg at 50% 50%, rgba(255, 255, 255, .2) 0 12.5%, rgba(0, 0, 0, .1) 0 25%, rgba(0, 0, 0, .24) 0 37.5%, rgba(0, 0, 0, .3) 0 50%, rgba(0, 0, 0, .18) 0 62.5%, rgba(0, 0, 0, .05) 0 75%, rgba(255, 255, 255, .35) 0 87.5%, rgba(255, 255, 255, .6) 0); }
+.die.d12 { --dc: #c79bf2; --sh: polygon(50% 0, 88% 14%, 100% 50%, 88% 86%, 50% 100%, 12% 86%, 0 50%, 12% 14%); --facet: conic-gradient(from 18deg at 50% 50%, rgba(255, 255, 255, .25) 0 20%, rgba(0, 0, 0, .12) 0 40%, rgba(0, 0, 0, .26) 0 60%, rgba(0, 0, 0, .08) 0 80%, rgba(255, 255, 255, .5) 0); }
+/* materials (content/dice.js): Plastic is the plain look; Glass is clear, Metal has a sheen, Bone is carved ivory */
+.die.m-glass::after { opacity: .62; background: linear-gradient(125deg, rgba(255, 255, 255, .85) 0 12%, transparent 13% 60%, rgba(255, 255, 255, .35) 61% 66%, transparent 67%), var(--facet, none), var(--dc); }
+.die.m-glass::before { opacity: .55; }
+.die.m-metal::after { background: linear-gradient(160deg, rgba(255, 255, 255, .7) 0 8%, rgba(0, 0, 0, .25) 30%, rgba(255, 255, 255, .45) 52%, rgba(0, 0, 0, .3) 78%, rgba(255, 255, 255, .2)), var(--facet, none), color-mix(in srgb, var(--dc) 45%, #b8c2cf); }
+.die.m-bone { --dc: color-mix(in srgb, var(--bc, #f1ead8) 30%, #efe3c2); }
+.die.m-bone::after { background: radial-gradient(circle at 30% 70%, rgba(120, 90, 40, .25) 0 6%, transparent 7%), radial-gradient(circle at 72% 30%, rgba(120, 90, 40, .2) 0 4%, transparent 5%), var(--facet, none), var(--dc); }
+.die.m-bone i { color: #5a3d1a; }
+.item.bone { border-color: #efe3c2; }
 .die i::before { content: ''; position: absolute; z-index: -1; left: 50%; top: 50%; width: 17px; height: 17px; translate: -50% -50%; border-radius: 50%; background: radial-gradient(circle, rgba(255, 255, 255, .6), rgba(255, 255, 255, 0) 70%); }
 .die.upg { --ring: drop-shadow(0 0 1.5px var(--amber)) drop-shadow(0 0 1.5px var(--amber)); }
 .die:not(.static):not(.fixed):hover { --br: 1.18; } .die.rolled { --ring: drop-shadow(0 0 1px #fff) drop-shadow(0 0 4px rgba(255, 255, 255, .7)); } .die.fixed { cursor: help; }
