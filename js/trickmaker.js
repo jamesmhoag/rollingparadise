@@ -1,15 +1,16 @@
 // Made tricks: the pure rules behind the trick maker (content/trickmaker.js has the vocabulary). No DOM.
 import { CONVERT, PLACE, DEPLOY, MAKES, BONUS, AIMS, ZONES } from './content/trickmaker.js';
 import { SHOP_CHIPS, CONDS, condText } from './data.js';
+import { MADE_CHIPS } from './content/chipmaker.js';
 
 export const isMade = (def) => def?.roll?.k === 'chips';
-export const makeName = (chip) => MAKES[chip]?.name || (SHOP_CHIPS[chip] ? `${SHOP_CHIPS[chip].name}s` : chip);
+export const makeName = (chip) => MAKES[chip]?.name || (MADE_CHIPS[chip] ? MADE_CHIPS[chip].name : SHOP_CHIPS[chip] ? `${SHOP_CHIPS[chip].name}s` : chip);
 export const makeKind = (chip) => MAKES[chip]?.kind || 'count';
 // an effect chip (SHOP_CHIPS) rather than one of the table's own chips: it is placed with a life in turns
-export const isFxChip = (chip) => !MAKES[chip] && !!SHOP_CHIPS[chip];
+export const isFxChip = (chip) => !MAKES[chip] && !MADE_CHIPS[chip] && !!SHOP_CHIPS[chip];
 // the area a deployment pattern covers, as the older DIST shapes (for hovers and highlights)
 export const DIST_OF = { hit: 'hit', line: 'poke', hook: 'hook', cone: 'burst', spiral: 'drop', left: 'swipe', right: 'swipe', sides: 'swipe', wave: 'wave', aura: 'aura' };
-export const makeChoices = () => [...Object.keys(MAKES), ...Object.keys(SHOP_CHIPS).filter((id) => !MAKES[id])];
+export const makeChoices = () => [...Object.keys(MAKES), ...Object.keys(MADE_CHIPS), ...Object.keys(SHOP_CHIPS).filter((id) => !MAKES[id])];
 export const condChoices = () => [...Object.keys(CONDS), 'over:N', 'under:N'];
 
 // Part 1: the instances a roll makes. vals: each die's value; total: the trick's total after multipliers.
