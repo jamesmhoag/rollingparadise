@@ -67,7 +67,7 @@ function howTo() {
     p('Debt', 'An Expense is a fee on the stacks it hits. The House pays it from the top of each stack, one whole chip at a time. What cannot cover the next chip stays on that stack as Debt, shown as one red marker with the amount; it already counts against Worth, and the chip goes once later fees bring the Debt up to its value. If a stack runs out of chips, the rest (overkill) moves to the next stack behind it in the same lane, never sideways. While aiming, the stacks show what the fee will pay, leave and carry.'),
     p('The Stage', 'Settled fees are stacked on the Stage in front of the House. The winner takes everything on it. Bids go to the House and are gone.'),
     p('Between bouts', 'Shop, drink, place bets, then set your position. Every chip you do not put on the table is wagered on the bout and comes back multiplied if you win.'),
-    p('Anything unclear?', 'Hover it. Every chip, die, trick, number and button explains itself. Right-click anywhere to switch hovers and prompts between verbose (the rules spelled out) and concise (just the facts).')));
+    p('Anything unclear?', 'Hover it. Every chip, die, trick, number and button explains itself. Right-click anywhere to switch hovers and prompts between verbose (the rules spelled out) and concise (just the facts). Scroll the mouse wheel over a hover to switch between Context (how it works and its numbers) and Guidance (what to do with it and when).')));
 }
 
 function selectScene(root) {
