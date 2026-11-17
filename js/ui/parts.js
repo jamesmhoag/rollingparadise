@@ -7,7 +7,14 @@ import { facesOf, faceValue, matOf, dieName } from '../dice.js';
 import { traitsOf, traitsHtml } from '../traits.js';
 
 const GLYPH = { opp: '★', block: '▣', counter: '✸', burn: '🔥', acid: '☣', shock: '⚡', corrupt: '☠', poison: '☘', boom: '💣', frost: '❄', lava: '🌋', flower: '✿', petal: '❀', clay: '▤', brick: '▦', dynamite: '🧨', tree: '🌳', wood: '▥', hard: '⛊', sticky: '◍', hive: '⬢', little: '•', egg: '🥚', hat: '🎩', doom: '☠', volcano: '🌋' };
-export const chipSig = (ch) => `${ch.kind === 'fx' ? 'k-fx k-std' : 'k-' + ch.kind} v${ch.value}${ch.gold ? ' gold' : ''}${ch.frozen ? ' frozen' : ''}${ch.feather > 0 ? ' feather' : ''}${ch.resist ? ' r-' + ch.resist : ''}${ch.wet > 0 ? ' wet' : ''}${ch.regen > 0 ? ' regen' : ''}${ch.big ? ' big' : ''}${ch.treasure ? ' treasure' : ''}`;
+// made chips take their face colour from their MADE_CHIPS entry, through one shared style sheet
+let madeCss = '';
+function madeColours() {
+  const css = Object.entries(D.MADE_CHIPS).map(([id, M]) => `.chip.mc-${id}{--c:${M.color || '#7df3ff'};--rim:#fff}`).join('');
+  if (css === madeCss || typeof document === 'undefined') return; madeCss = css;
+  let el = document.getElementById('made-chips'); if (!el) { el = document.createElement('style'); el.id = 'made-chips'; document.head.append(el); } el.textContent = css;
+}
+export const chipSig = (ch) => `${ch.kind === 'made' ? (madeColours(), `mc-${ch.model} `) : ''}${ch.kind === 'fx' ? 'k-fx k-std' : 'k-' + ch.kind} v${ch.value}${ch.gold ? ' gold' : ''}${ch.frozen ? ' frozen' : ''}${ch.feather > 0 ? ' feather' : ''}${ch.resist ? ' r-' + ch.resist : ''}${ch.wet > 0 ? ' wet' : ''}${ch.regen > 0 ? ' regen' : ''}${ch.big ? ' big' : ''}${ch.treasure ? ' treasure' : ''}`;
 // how a chip looks to the Roller on side `viewer`: Doom chips look like 1¢ chips to their victim, a Spy to its
 // owner's opponent, a Cursed chip like Gold to everyone
 export function seenAs(ch, side, viewer = 0) {
@@ -16,8 +23,9 @@ export function seenAs(ch, side, viewer = 0) {
   if (ch.cursed) return { id: ch.id, kind: 'std', value: ch.value, gold: true };
   return ch;
 }
-export const chipGlyph = (ch) => (ch.kind === 'fx' ? D.SHOP_CHIPS[ch.shop]?.glyph || '✦' : ch.kind === 'stray' ? '−' + ch.value : ch.kind === 'sticky' ? '◍' + ch.value : ch.kind === 'egg' ? '🥚' : ch.treasure ? '💰' : ch.big ? String(ch.value) : ch.kind === 'bounty' ? D.CREATURES[ch.creature]?.glyph || '★' : ch.kind === 'resist' ? `r${ch.r}` : ['food', 'dip'].includes(ch.kind) && ch.shop ? D.SHOP_CHIPS[ch.shop]?.glyph || '🍪' : ch.kind === 'std' ? (ch.resist ? (D.SHOP_CHIPS[ch.resist]?.seq ? `${D.SHOP_CHIPS[ch.resist].glyph}${ch.value}` : D.SHOP_CHIPS[ch.resist]?.glyph || '◆') : ch.frozen ? `❄${ch.value}` : D.denomOf(ch.value)?.glyph || String(ch.value)) : ch.kind === 'debt' ? '−' + ch.value : GLYPH[ch.kind] || '');
+export const chipGlyph = (ch) => (ch.kind === 'made' ? (ch.value ? String(ch.value) : (D.MADE_CHIPS[ch.model]?.name || '?')[0]) : ch.kind === 'fx' ? D.SHOP_CHIPS[ch.shop]?.glyph || '✦' : ch.kind === 'stray' ? '−' + ch.value : ch.kind === 'sticky' ? '◍' + ch.value : ch.kind === 'egg' ? '🥚' : ch.treasure ? '💰' : ch.big ? String(ch.value) : ch.kind === 'bounty' ? D.CREATURES[ch.creature]?.glyph || '★' : ch.kind === 'resist' ? `r${ch.r}` : ['food', 'dip'].includes(ch.kind) && ch.shop ? D.SHOP_CHIPS[ch.shop]?.glyph || '🍪' : ch.kind === 'std' ? (ch.resist ? (D.SHOP_CHIPS[ch.resist]?.seq ? `${D.SHOP_CHIPS[ch.resist].glyph}${ch.value}` : D.SHOP_CHIPS[ch.resist]?.glyph || '◆') : ch.frozen ? `❄${ch.value}` : D.denomOf(ch.value)?.glyph || String(ch.value)) : ch.kind === 'debt' ? '−' + ch.value : GLYPH[ch.kind] || '');
 export function chipName(ch) {
+  if (ch.kind === 'made') return `${D.MADE_CHIPS[ch.model]?.name || 'Made chip'}${ch.value ? ` (${ch.value}¢)` : ''}`;
   if (ch.kind === 'debt') return `${ch.value}¢ Debt chip`;
   if (ch.kind === 'stray') return `${ch.value}¢ of Debt on nothing`;
   if (ch.kind === 'hard') return `Hardened chip (${ch.life} turn${ch.life === 1 ? '' : 's'})`;
@@ -35,6 +43,8 @@ export function chipName(ch) {
   return `${ch.gold ? 'Gold ' : ''}${D.denomOf(ch.value)?.name ? `${D.denomOf(ch.value).name} chip (${ch.value.toLocaleString('en-US')}¢)` : `${ch.value}¢ Royal Paradise chip`}${ch.feather > 0 ? ' (Feathered)' : ''}`;
 }
 export function chipText(ch) {
+  if (ch.kind === 'made') { const M = D.MADE_CHIPS[ch.model] || {};
+    return `${M.text || 'A chip made in the chip maker.'} <span class="dim keep">${madeRules(M, ch)}</span>`; }
   const hits = ch.hits != null && ch.kind !== 'std' ? ` <span class="dim keep">${ch.hits} fee${ch.hits === 1 ? '' : 's'} left in it.</span>` : '';
   if (ch.kind === 'bounty') return D.CHIPS.bounty.text;
   if (ch.kind === 'stray') return `A fee that landed where there is nothing to pay it (${ch.why || 'empty space'}). It comes to nothing when the House settles.`;
@@ -52,6 +62,17 @@ export function chipText(ch) {
   const feather = ch.feather > 0 ? ` Feathered for ${ch.feather} more turn${ch.feather > 1 ? 's' : ''}: ${D.CHIPS.feather.text.replace(/^A chip turned light for a few turns: /, '')}` : '';
   if (ch.gold) return `Gold. Cannot be bid, but pays double (${ch.value * 2}¢) if it survives the bout.${feather}`;
   return extra + (ch.value === 1 ? 'Basic value chip. Bid it to play a trick this turn.' : `Basic value chip. A fee under ${ch.value}¢ leaves Debt on top of it instead of paying it. Bid it and the trick lingers ${ch.value - 1} turn${ch.value > 2 ? 's' : ''}, growing as it waits.`) + feather;
+}
+// a made chip's rules, in a sentence
+export function madeRules(M, ch = {}) {
+  const parts = [`Worth ${ch.value ?? M.value ?? 0}¢`];
+  const lasts = { paid: 'stays until a fee takes it', match: 'lasts the whole match: hits and fees cannot remove it', turn: 'gone at the end of the turn', turns: `lasts ${ch.life ?? M.turns ?? 3} more turn${(ch.life ?? M.turns) === 1 ? '' : 's'}`, hits: `takes ${ch.hits ?? M.hits} more whole fee${(ch.hits ?? M.hits) === 1 ? '' : 's'}` }[M.lasts];
+  if (lasts) parts.push(lasts);
+  if (M.height && M.height !== 'basic') parts.push(`${M.height} (${{ tiny: 'no height', short: 'half height', tall: 'double height' }[M.height]})`);
+  if (M.must && M.must !== 'any') parts.push(`must sit ${{ top: 'on top', bottom: 'at the bottom', sandwiched: 'between chips', alone: 'alone', with: 'with others' }[M.must]}`);
+  if (M.onTop === 'none') parts.push('nothing can go on it');
+  if (M.immune?.length) parts.push(`immune to ${M.immune.join(', ')}`);
+  return parts.join(' · ') + '.';
 }
 export const chipEl = (ch, cls = '') => h('span', { class: `chip static ${chipSig(ch)} ${cls}` }, h('i', { text: chipGlyph(ch) }));
 export const chipTip = (ch, o = {}) => `<b>${chipName(ch)}</b><p>${chipText(ch)}</p>${traitsHtml(traitsOf(ch, o))}`;

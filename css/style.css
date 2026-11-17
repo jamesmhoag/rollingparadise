@@ -604,3 +604,9 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .build select { background: #0d0a1c; color: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; font: inherit; font-size: 12.5px; width: 100%; }
 .b-card { background: #120e24; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 13px; } .b-card p { margin: 5px 0 0; } .b-card b { color: var(--gold); }
 .b-item.tool { font-weight: 700; } .b-entries > .btn { width: 100%; margin-bottom: 6px; }
+
+/* the chip maker */
+.b-planned { display: inline-block; margin-left: 6px; font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: #f2c94c; border: 1px solid rgba(242, 201, 76, .5); border-radius: 4px; padding: 0 4px; pointer-events: auto; }
+.b-checks { display: flex; flex-wrap: wrap; gap: 4px 12px; } .b-check { display: inline-flex; gap: 5px; align-items: center; font-size: 12.5px; }
+.b-card .row { gap: 10px; align-items: center; } .b-entries .cap { display: block; margin: 8px 4px 3px; }
+.build input[type=color] { width: 60px; height: 26px; background: none; border: 1px solid var(--line); border-radius: 6px; }

@@ -8,6 +8,7 @@
 // Fees go out as Debt first; the House then settles every stack that took Debt.
 import { RNG, sum, clone, clamp, order1D } from './util.js';
 import { instances, deployOrder, placeIndex, makeKind, isFxChip } from './trickmaker.js';
+import { MADE_CHIPS, HEIGHT } from './content/chipmaker.js';
 import { rollDie, boutCopy, facesOf, upgrade as upgradeFaces } from './dice.js';
 export { rollDie };
 import { DIE_UPGRADES, TRICKS, TYPES, QDIE, FOIL, WEAR, defOf, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, CREATURES, ORBITALS, FELTS, TILTS, TILT_PRESSURE, DENOM_VALUES, tiltChance, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS } from './data.js';
@@ -29,7 +30,15 @@ export const traitOf = (t) => Math.max(1, Math.round(trickMult(t)) + (t.mis?.tra
 export const qState = (e) => { const Q = QDIE[e.trick.q]; if (!Q || e.qroll == null) return null; return e.qroll <= Q.dud ? 'dud' : e.qroll >= Q.hot ? 'hot' : null; };
 // a trick as it plays: one foil tier higher for each Upgrade chip bid on it; Common strength on a dud quality die
 export const effTrick = (e) => { let t = e.trick; if (e.upBoost) t = { ...t, foil: (t.foil || 0) + e.upBoost }; if (qState(e) === 'dud') t = { ...t, q: 1 }; return t; };
-export const isPayable = (ch) => ch.kind === 'std' || ch.kind === 'opp' || ch.kind === 'bounty';
+// a chip made in the chip maker (kind 'made'): its rules are its MADE_CHIPS entry
+export const madeOf = (ch) => (ch?.kind === 'made' ? MADE_CHIPS[ch.model] || null : null);
+const lastsOf = (ch) => madeOf(ch)?.lasts;
+export const isPayable = (ch) => ch.kind === 'std' || ch.kind === 'opp' || ch.kind === 'bounty' || (ch.kind === 'made' && ch.value > 0 && lastsOf(ch) !== 'match');
+// takes a whole fee per hit (fee instance defence): Petals, Clay and the like, and made chips that last until broken
+export const isInstance = (ch) => INSTANCE_SHIELDS.includes(ch.kind) || (ch.kind === 'made' && lastsOf(ch) === 'hits' && (ch.hits || 0) > 0);
+// fees pass a made chip by when it lasts the match or is immune to Debt; a match chip cannot be destroyed either
+const passedBy = (ch) => ch.kind === 'made' && (lastsOf(ch) === 'match' || !!madeOf(ch)?.immune?.includes('debt'));
+const immuneTo = (ch, what) => lastsOf(ch) === 'match' || !!madeOf(ch)?.immune?.includes(what);
 export const isHazard = (ch) => HAZARD_KINDS.includes(ch.kind);
 // an effect chip a maker trick placed: it takes height and does its work in its phase, but has no worth
 export const isFx = (ch) => ch.kind === 'fx';
@@ -37,14 +46,17 @@ export const isShield = (ch) => ch.kind === 'block' || ch.kind === 'counter' || 
 const SPREAD = { scorch: 'drop' };
 
 // ---------- position helpers ----------
-export const cellWorth = (cell) => sum(cell.chips, (ch) => (isPayable(ch) ? ch.value : ch.kind === 'debt' ? -ch.value : 0));
+export const cellWorth = (cell) => sum(cell.chips, (ch) => (isPayable(ch) ? ch.value : ch.kind === 'debt' ? -ch.value : ch.kind === 'made' ? ch.value || 0 : 0));
 export const debtOf = (cell) => sum(cell.chips, (ch) => (ch.kind === 'debt' ? ch.value : 0));
 export const worth = (s) => sum(s.grid.flat(), cellWorth);
 export const occupied = (cell, payOnly) => cell.chips.some((ch) => isPayable(ch) || (!payOnly && isShield(ch)));
-const tiny = (ch) => ch.kind === 'little'; // Little chips take no height
-export const solidCount = (cell) => cell.chips.filter((ch) => !isHazard(ch) && !tiny(ch)).length;
+const tiny = (ch) => ch.kind === 'little' || madeOf(ch)?.height === 'tiny'; // Little chips take no height
+const heightOf = (ch) => HEIGHT[madeOf(ch)?.height]?.h ?? 1; // made chips can be short (½) or tall (2)
+export const solidCount = (cell) => cell.chips.reduce((t, ch) => (isHazard(ch) || tiny(ch) ? t : t + heightOf(ch)), 0);
+// a made chip that lets nothing on top of it closes its stack while it is the top chip
+const closed = (cell) => { for (let i = cell.chips.length - 1; i >= 0; i--) { const ch = cell.chips[i]; if (isHazard(ch)) continue; return madeOf(ch)?.onTop === 'none'; } return false; };
 // Holes, the parts of a Big chip or Volcano, Roosts and Puddles take nothing; a dormant Volcano leaves the space lower
-export const capacityLeft = (s, cell) => (cell.hole || cell.link || cell.roost || (cell.puddle && !cell.chips.length) ? 0 : Math.max(0, s.dims.stackMax - (cell.cut || 0) - solidCount(cell)));
+export const capacityLeft = (s, cell) => (cell.hole || cell.link || cell.roost || (cell.puddle && !cell.chips.length) || closed(cell) ? 0 : Math.max(0, Math.floor(s.dims.stackMax - (cell.cut || 0) - solidCount(cell))));
 // Hardened is a chip lying over the stack; its life is the turns left
 export const hardOf = (cell) => Math.max(0, ...cell.chips.filter((ch) => ch.kind === 'hard').map((ch) => ch.life));
 function setHard(b, cell, n) { const h0 = cell.chips.find((ch) => ch.kind === 'hard'); if (h0) h0.life = Math.max(h0.life, n); else { const h1 = mkChip(b, 'hard', 0, { life: n }); cell.chips.push(h1); b.fx[h1.id] = 'spawn'; } }
@@ -63,8 +75,8 @@ const topSolid = (cell) => { for (let i = cell.chips.length - 1; i >= 0; i--) if
 const topPayableIdx = (cell) => { if (lifted(cell)) { for (let i = 0; i < cell.chips.length; i++) if (isPayable(cell.chips[i])) return i; return -1; } for (let i = cell.chips.length - 1; i >= 0; i--) if (isPayable(cell.chips[i])) return i; return -1; };
 // the next chip a fee reaches: the top solid chip, or the bottom one under a Heli-Chipter. Doom chips are skipped.
 const nextPay = (cell, pierce) => { if (pierce) return topPayableIdx(cell); const L = lifted(cell), n = cell.chips.length;
-  for (let k = 0; k < n; k++) { const i = L ? k : n - 1 - k, ch = cell.chips[i]; if (!isHazard(ch) && ch.kind !== 'doom') return i; } return -1; };
-const hasResist = (cell, el) => cell.chips.some((ch) => ch.resist && resistsOf(ch.resist).includes(el));
+  for (let k = 0; k < n; k++) { const i = L ? k : n - 1 - k, ch = cell.chips[i]; if (!isHazard(ch) && ch.kind !== 'doom' && !passedBy(ch)) return i; } return -1; };
+const hasResist = (cell, el) => cell.chips.some((ch) => (ch.resist && resistsOf(ch.resist).includes(el)) || (ch.kind === 'made' && madeOf(ch)?.immune?.includes(el)));
 // a stack topped by a Frozen chip cannot be burned, corrupted, shocked or changed
 // A Frozen chip is frozen to the ground only when its stack stands in an iced-over Puddle. Anywhere else it is an
 // ordinary chip worth what it was made from: it can be bid, flipped, paid, burned or turned into another chip.
@@ -154,6 +166,13 @@ function addToMeter(b, s, chips, origin, from) {
 const overText = (left) => (left.length ? ` (${left.length} had no room on a full Meter and ${left.length === 1 ? 'is' : 'are'} lost)` : '');
 // Put an effect chip a maker trick made onto a stack: on top for chips that work from the top (Mimic), otherwise at
 // the base (above a Magic Hat). A full stack takes nothing: the chip is lost, like overkill.
+// a made chip, fresh from its MADE_CHIPS entry
+export function mkMade(b, id) { const M = MADE_CHIPS[id]; return mkChip(b, 'made', M.value || 0, { model: id, hits: M.hits || 0, life: M.lasts === 'turns' ? M.turns || 3 : undefined, name: M.name }); }
+function placeMade(cell, ch, place, at) {
+  const M = madeOf(ch), solid = cell.chips.filter((y) => !isHazard(y)).length;
+  const i = M.must === 'top' ? cell.chips.length : M.must === 'bottom' ? 0 : placeIndex(place, at, solid);
+  cell.chips.splice(i, 0, ch);
+}
 function placeFx(b, s, cell, id, life, maker) {
   if (capacityLeft(s, cell) <= 0 || cell.hole || cell.link) { s.overflow = (s.overflow || 0) + 1; return false; }
   const ch = mkChip(b, 'fx', 0, { shop: id, resist: id, life, maker });
@@ -914,7 +933,7 @@ function engage(b, att, def, r, c, amount, o = {}) {
   { // a Petal, Flower, Clay or Brick on top blocks the entire fee, however big (fee instance defence)
     const ti = nextPay(cell), top = ti >= 0 ? cell.chips[ti] : null; // a lifted stack meets the fee at its bottom
     if (!o.pierce && top && top.kind === 'tree') return { placed: 0, notes: [fell(b, def, r, c)] };
-    if (!o.pierce && top && INSTANCE_SHIELDS.includes(top.kind)) { top.hits = (top.hits || 1) - 1; if (top.hits <= 0) { cell.chips.splice(ti, 1); b.fx[top.id] = 'void'; } return { placed: 0, notes: [`blocked whole by a ${top.kind[0].toUpperCase() + top.kind.slice(1)} chip`] }; }
+    if (!o.pierce && top && isInstance(top)) { top.hits = (top.hits || 1) - 1; if (top.hits <= 0) { cell.chips.splice(ti, 1); b.fx[top.id] = 'void'; } return { placed: 0, notes: [`blocked whole by a ${top.kind[0].toUpperCase() + top.kind.slice(1)} chip`] }; }
   }
   if (open && att && st.reflect > 0) {
     const back = Math.min(st.reflect, amount); amount -= back; if (!st.reflectAll) st.reflect = 0;
@@ -996,7 +1015,7 @@ function* settleSide(b, s) {
     while (pool > 0) {
       const i = nextPay(cell, due.pierce); if (i < 0) break;
       const ch = cell.chips[i];
-      if (INSTANCE_SHIELDS.includes(ch.kind)) { blocked += pool; pool = 0; ch.hits = (ch.hits || 1) - 1; if (ch.hits <= 0) { cell.chips.splice(i, 1); b.fx[ch.id] = 'void'; } shieldNames.push(ch.kind); break; }
+      if (isInstance(ch)) { blocked += pool; pool = 0; ch.hits = (ch.hits || 1) - 1; if (ch.hits <= 0) { cell.chips.splice(i, 1); b.fx[ch.id] = 'void'; } shieldNames.push(ch.kind); break; }
       if (isShield(ch)) { cell.chips.splice(i, 1); b.fx[ch.id] = 'void'; pool--; blocked++; if (ch.kind === 'counter') counters++; continue; }
       if (isFx(ch)) { cell.chips.splice(i, 1); b.fx[ch.id] = 'void'; knocked++; continue; } // an effect chip is knocked off; it pays nothing
       if (hardOf(cell) > 0 && !due.pierce) { cell.chips.splice(i, 1); paidChips.push(ch); pool = Math.min(pool, due.prior); hardStop = true; break; }
@@ -1163,6 +1182,7 @@ function* playChips(b, s, e, def, x) {
       if (kind === 'fee') { fees += engage(b, s, t, sp.r, sp.c, amt, { pierce: x.pierce }).placed; return; }
       if (isFxChip(chip)) { if (placeFx(b, t, cell, chip, R.life || 3, e.trick.id)) made++; else lost++; return; }
       if (capacityLeft(t, cell) <= 0) { lost++; return; }
+      if (MADE_CHIPS[chip]) { const mc = mkMade(b, chip); if (MADE_CHIPS[chip].must === 'alone' && solidCount(cell)) { lost++; return; } placeMade(cell, mc, R.place, R.at); b.fx[mc.id] = 'spawn'; made++; return; }
       const ch = HAZARD_LIFE[chip] ? mkHazard(b, chip) : mkChip(b, chip, kind === 'value' ? amt : chip === 'block' || chip === 'counter' ? 1 : 0);
       if (isHazard(ch)) cell.chips.push(ch); else cell.chips.splice(placeIndex(R.place, R.at, cell.chips.filter((y) => !isHazard(y)).length), 0, ch);
       b.fx[ch.id] = 'spawn'; made++; });
@@ -1524,6 +1544,7 @@ function* ticks(b) {
       const i = topSolid(cell);
       if (i >= 0 && h.kind === 'burn' && cell.chips[i].kind === 'clay') { // fire bakes Clay into Brick
         const cl = cell.chips[i]; cl.kind = 'brick'; cl.hits = (cl.hits || 1) * 2; drop(); continue; }
+      if (i >= 0 && immuneTo(cell.chips[i], h.kind)) { drop(); continue; } // an immune chip puts the hazard out
       if (i >= 0) { const v = cell.chips.splice(i, 1)[0]; b.fx[v.id] = 'void'; if (isPayable(v)) { s.destroyed += v.value; burned += v.value; } }
       if (h.kind === 'lava') { // spills a Burning chip next door
         const adj = allCells(s).filter((x) => Math.abs(x.r - r) + Math.abs(x.c - c) === 1 && solidCount(x.cell) && !iced(x.cell) && !hasResist(x.cell, 'burn') && !x.cell.chips.some((ch) => ch.kind === 'burn'));
@@ -1734,6 +1755,7 @@ export function* resolve(b) {
     const st = s.status; st.resist = st.resistNext; st.resistNext = 0; st.evade = st.evadeNext; st.evadeNext = null; st.reflect = 0; st.reflectAll = false;
     for (const { cell } of allCells(s)) {
       if (!stuck(cell, 'hard')) for (const h0 of cell.chips.filter((ch) => ch.kind === 'hard')) if (--h0.life <= 0) { cell.chips.splice(cell.chips.indexOf(h0), 1); b.fx[h0.id] = 'void'; }
+      for (const m0 of cell.chips.filter((ch) => ch.kind === 'made' && (lastsOf(ch) === 'turn' || lastsOf(ch) === 'turns'))) if (lastsOf(m0) === 'turn' || --m0.life <= 0) { cell.chips.splice(cell.chips.indexOf(m0), 1); b.fx[m0.id] = 'void'; } // made chips run out
       for (const f0 of cell.chips.filter((ch) => isFx(ch) && ch.life < 99)) if (--f0.life <= 0) { cell.chips.splice(cell.chips.indexOf(f0), 1); b.fx[f0.id] = 'void'; } // effect chips wear off
       emptyOut(b, cell);
       for (const ch of cell.chips) { if (ch.feather > 0 && !stuck(cell, 'feather')) ch.feather--; if (ch.regen > 0 && !stuck(cell, 'regen') && --ch.regen <= 0) delete ch.regen; }
