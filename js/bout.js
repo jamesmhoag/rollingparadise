@@ -367,7 +367,7 @@ function* houseTilts(b, s) {
 
 // opts: { seed, a, b, rules:{ maxDenom, maxTurns } }  (a = player side 0, b = opponent side 1)
 export function createBout(opts) {
-  const b = { rng: new RNG(opts.seed), turn: 1, over: false, winner: null, stage: { paid: [0, 0] }, sides: [], log: [], fx: {}, nextId: 1,
+  const b = { rng: new RNG(opts.seed), turn: 1, over: false, winner: null, stage: { paid: [0, 0] }, pit: [[], []], sides: [], log: [], fx: {}, nextId: 1,
     rules: { maxDenom: 1, maxTurns: 40, ...(opts.rules || {}) }, creatures: [] };
   const F = FELTS[b.rules.felt] || {}; b.weather = F.weather || []; b.cold = !!F.cold;
   b.sides = [mkSide(b, opts.a, 0), mkSide(b, opts.b, 1)];
@@ -1044,7 +1044,7 @@ function* settleSide(b, s) {
     const paid = sum(paidChips, (ch) => ch.value); s.paidTurn = (s.paidTurn || 0) + paid;
     regen = paidChips.filter((ch) => ch.regen > 0); // Regen: a paid chip comes straight back, without its Regen
     for (const ch of regen) { paidChips.splice(paidChips.indexOf(ch), 1); delete ch.regen; if (capacityLeft(s, cell) > 0) pushChip(cell, ch); else addToMeter(b, s, [ch], { r, c }, null); b.fx[ch.id] = 'mutate'; }
-    for (const ch of paidChips) { if (due.glean != null && !addToMeter(b, b.sides[due.glean], [ch], null, null).length) continue; b.stage.paid[s.idx] += ch.value; b.fx[ch.id] = 'stage'; }
+    for (const ch of paidChips) { if (due.glean != null && !addToMeter(b, b.sides[due.glean], [ch], null, null).length) continue; b.stage.paid[s.idx] += ch.value; b.fx[ch.id] = 'stage'; toPit(b, s.idx, ch, 'fee'); }
     if (pool > 0 && topPayableIdx(cell) < 0) { // nothing left here to owe against: overkill goes down the lane
       const fear = haunted(b, s); if (!hardStop && !fear.has(r)) for (let rr = r + 1; rr < s.rows; rr++) { if (fear.has(rr)) break; if (occupied(s.grid[rr][c], due.pierce)) { behind = rr; break; } }
       if (behind >= 0) { carry = pool; const nx = s.grid[behind][c]; markDue(nx, { pierce: due.pierce, glean: due.glean, att: due.att }); setDebt(b, nx, debtOf(nx) + carry, 'debt'); }
@@ -1175,6 +1175,17 @@ function organize(b, s) {
     const cell = s.grid[r][c]; while (capacityLeft(s, cell) > 0 && chips.length) cell.chips.push(chips.shift());
   }
   for (const [cell, hs] of haz) for (const h of hs) { if (solidCount(cell)) cell.chips.push(h); else b.fx[h.id] = 'void'; }
+}
+// ---------- the Pit ----------
+// Every chip a Roller loses, kept as it was (value, order and count), under the House's arms: fees paid (which
+// make up their Stage total, so Gather, Steal and the like work on that total) and bids taken by the House.
+function toPit(b, si, ch, from) { if (!b.pit) return; b.pit[si].push({ id: ch.id, kind: ch.kind, value: ch.value, ...(ch.resist ? { resist: ch.resist, shop: ch.shop } : {}), ...(ch.gold ? { gold: true } : {}), from, turn: b.turn }); }
+// what is in a Roller's Pit now: their fees, oldest first, as far as their Stage total still holds them (chips taken
+// back leave from the top), then every bid the House has taken
+export function pitOf(b, si) {
+  const out = []; let left = b.stage.paid[si];
+  for (const ch of (b.pit?.[si] || []).filter((x) => x.from === 'fee')) { if (ch.value > left) break; out.push(ch); left -= ch.value; }
+  return out.concat((b.pit?.[si] || []).filter((x) => x.from === 'bid'));
 }
 function recoup(b, s, n, both) {
   let take = Math.min(n, b.stage.paid[s.idx]); b.stage.paid[s.idx] -= take;
@@ -1378,7 +1389,7 @@ function* play(b, s, e, opt = {}) {
         if (!solidCount(cell)) for (const ch of cell.chips.splice(0)) b.fx[ch.id] = 'void'; }
       let lost = 0;
       for (const ch of picked) { const free = allCells(o).filter((x) => capacityLeft(o, x.cell) > 0 && b.rng.chance(0.6));
-        if (free.length) pushChip(b.rng.pick(free).cell, ch); else if (isPayable(ch)) { b.stage.paid[o.idx] += ch.value; b.fx[ch.id] = 'stage'; lost += ch.value; } else b.fx[ch.id] = 'void'; }
+        if (free.length) pushChip(b.rng.pick(free).cell, ch); else if (isPayable(ch)) { b.stage.paid[o.idx] += ch.value; b.fx[ch.id] = 'stage'; toPit(b, o.idx, ch, 'fee'); lost += ch.value; } else b.fx[ch.id] = 'void'; }
       yield step(b, `${tag}: ${picked.length} chips scattered${lost ? `, ${lost}¢ fell to the Stage` : ''}.`, [], 'play'); return; }
   }
 }
@@ -1658,7 +1669,7 @@ function* ticks(b) {
     // Debt that has reached the value of the chip beneath it collects that chip
     for (const { cell } of allCells(s)) {
       for (;;) { const i = topPayableIdx(cell), d = debtOf(cell); if (i < 0 || !d || d < cell.chips[i].value) break;
-        const ch = cell.chips.splice(i, 1)[0]; b.stage.paid[s.idx] += ch.value; b.fx[ch.id] = 'stage'; setDebt(b, cell, d - ch.value); }
+        const ch = cell.chips.splice(i, 1)[0]; b.stage.paid[s.idx] += ch.value; b.fx[ch.id] = 'stage'; toPit(b, s.idx, ch, 'fee'); setDebt(b, cell, d - ch.value); }
       emptyOut(b, cell);
     }
   }
@@ -1868,7 +1879,7 @@ export function* resolve(b) {
   for (const s of b.sides) for (const e of s.run) if (e.state === 'bid') {
     e.lingerTotal = clamp(e.bidValue - 1, 0, 20); e.lingerLeft = e.lingerTotal; e.state = 'play';
     e.trick.wear = Math.max(0, (e.trick.wear ?? WEAR.good) - 1); // each play wears the trick (its condition, not its power)
-    for (const ch of e.bid) { b.fx[ch.id] = 'house'; delete ch.from; } e.paid = e.bid.map((ch) => ch.value); s.bidsPaid += e.bidValue; e.bid = []; any = true;
+    for (const ch of e.bid) { b.fx[ch.id] = 'house'; delete ch.from; toPit(b, s.idx, ch, 'bid'); } e.paid = e.bid.map((ch) => ch.value); s.bidsPaid += e.bidValue; e.bid = []; any = true;
   }
   b.ctx = { phase: 'bids' };
   if (any) yield step(b, 'The House collects the bids.', [], 'bid');
