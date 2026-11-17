@@ -78,7 +78,7 @@ export function madeRules(M, ch = {}) {
   if (M.move && M.move !== 'still') parts.push(CM.MOVES[M.move].toLowerCase());
   if (M.triggers?.length && M.actions?.length) {
     const when = M.triggers.map((x) => (x.on === 'phase' || x.on === 'effect') && x.type ? `${CM.TRIGGERS[x.on].toLowerCase()} (${D.TYPES[x.type]?.name})` : x.on === 'exposed' && x.what ? `when a ${x.what} is exposed` : CM.TRIGGERS[x.on].toLowerCase()).join(' or ');
-    const what = M.actions.map((x) => ({ move: `moves them ${x.dir || 'right'}`, value: `${(x.n ?? 1) >= 0 ? '+' : ''}${x.n ?? 1}¢ value`, hits: `${(x.n ?? 1) >= 0 ? '+' : ''}${x.n ?? 1} strength`, power: `${(x.n ?? 1) >= 0 ? '+' : ''}${x.n ?? 1} effect`, become: `turns them into ${D.MADE_CHIPS[x.chip]?.name || D.CHIPS[x.chip]?.name || 'Royal Paradise chips'}` }[x.k])).join(', ');
+    const what = M.actions.map((x) => ({ move: `moves them ${x.dir || 'right'}`, value: `${(x.n ?? 1) >= 0 ? '+' : ''}${x.n ?? 1}¢ value`, hits: `${(x.n ?? 1) >= 0 ? '+' : ''}${x.n ?? 1} strength`, power: `${(x.n ?? 1) >= 0 ? '+' : ''}${x.n ?? 1} effect`, become: `turns them into ${D.MADE_CHIPS[x.chip]?.name || D.CHIPS[x.chip]?.name || 'Royal Paradise chips'}`, pull: `pulls up to ${x.n ?? 5}¢ of chips out of ${x.from === 'theirs' ? 'the other' : x.from === 'both' ? 'either' : 'its own'} Pit${x.bids ? ' (bids too)' : ''}` }[x.k])).join(', ');
     parts.push(`${when}: ${what} on ${(CM.REACH[M.reach?.to || 'touching'] || '').toLowerCase()}${M.reach?.to === 'named' ? ` "${M.reach.name}"` : ''}${(M.reach?.range || 1) > 1 ? ` within ${M.reach.range}` : ''}`);
   }
   return parts.join(' · ') + '.';

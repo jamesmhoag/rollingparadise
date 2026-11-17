@@ -435,7 +435,7 @@ export function boutScene(root, bout, ctx, onDone) {
     for (const [id, w] of want) {
       let el = els.chips.get(id); const extra = w.s ? `scale(${w.s})` : '';
       if (!el) { el = mkChip(w.ch); els.chips.set(id, el);
-        if (fx[id] === 'from-stage') spawn(el, STAGE[w.side].x, STAGE[w.side].y, 'scale(.5)');
+        if (fx[id] === 'from-stage' || fx[id] === 'from-pit') spawn(el, STAGE[w.side].x, STAGE[w.side].y, 'scale(.5)');
         else if (fx[id] === 'debt') spawn(el, HOUSE.x, HOUSE.y + 30, 'scale(.5)'); // Debt is dealt out by the House
         else if (fx[id] === 'spawn' && !ui.first && !w.pit) spawn(el, w.x, STAGE_Y - 4, 'scale(.8)'); // made chips appear on the Stage, then land
         else if (ui.first) spawn(el, w.x, w.y - 46, '', Math.min(900, n * 5));

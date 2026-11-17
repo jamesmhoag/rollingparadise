@@ -4,7 +4,7 @@ import { RNG, sum, clamp } from './util.js';
 import * as D from './data.js';
 import { createBout, summary, barCapacity } from './bout.js';
 import { rollDie, boutCopy, matOf, dieName, boneDie } from './dice.js';
-import { forgeBlock, castFor, castMaterial, castFaces, rollers, rollsNeeded, mixDyes, dyePrice } from './forge.js';
+import { forgePlan, castOut, castFaces, dyePrice } from './forge.js';
 
 const META_KEY = 'rollingparadise.meta.v1', RUN_KEY = 'rollingparadise.run.v1';
 const store = () => { try { return globalThis.localStorage || null; } catch { return null; } };
@@ -240,30 +240,31 @@ export function buySecret(run, key) {
 
 // Diesmith: melt dice and cast a new one (forge.js). The old upgrades are retired; they live on as Bone dice.
 export const forgeCost = (run, type, dyes = []) => price(run, 'diesmith', D.DICE[type].forge.chips + dyePrice(dyes));
-// the pouch dice this forge would roll into the cast (and lose), or none when the Diesmith rolls its own
-export function castRollers(run, type, melt, dyes = []) {
-  if (!D.MELT.castFromPouch) return [];
-  const dice = melt.map((id) => run.dice.find((d) => d.id === id)).filter(Boolean), ck = castFor(dice.map(matOf));
-  return ck ? rollers(run.dice, type, dice).slice(0, rollsNeeded(ck, dyes)) : [];
-}
 export const forgeFloor = (type) => D.DICE[type].forge.floor;
+// the whole plan for a forge on this floor with this pouch (see forge.js forgePlan). melt: die ids
+export function forgePlanFor(run, type, melt, dyes = []) {
+  const dice = melt.map((id) => run.dice.find((d) => d.id === id)).filter(Boolean);
+  return forgePlan({ type, melt: dice, dyes, floor: run.floor, pouch: D.MELT.castFromPouch ? run.dice : null });
+}
+// the pouch dice this forge would roll into the cast (and lose)
+export const castRollers = (run, type, melt, dyes = []) => forgePlanFor(run, type, melt, dyes).rolled.filter(Boolean);
 // why this forge cannot happen right now, or null. melt: die ids
 export function forgeWhy(run, type, melt, dyes = []) {
   if (run.floor < forgeFloor(type)) return `The Diesmith casts ${type}s from floor ${forgeFloor(type)}.`;
-  const dice = melt.map((id) => run.dice.find((d) => d.id === id)); if (dice.some((d) => !d)) return 'Pick dice from your pouch.';
-  const why = forgeBlock({ type, melt: dice, dyes, pouch: run.dice }); if (why) return why;
+  if (melt.some((id) => !run.dice.some((d) => d.id === id))) return 'Pick dice from your pouch.';
+  const why = forgePlanFor(run, type, melt, dyes).why; if (why) return why;
   if (run.purse < forgeCost(run, type, dyes)) return 'You cannot afford that.';
   return null;
 }
-// Melt the dice, pay, cast. Returns { die, log } or null.
+// Melt the dice, pay, cast. Returns { die, log, rolled } or null.
 export function forge(run, type, melt, dyes = []) {
   if (forgeWhy(run, type, melt, dyes)) return null;
-  const dice = melt.map((id) => run.dice.find((d) => d.id === id)), castKey = castFor(dice.map(matOf)), mat = castMaterial(dice);
+  const P = forgePlanFor(run, type, melt, dyes), dice = melt.map((id) => run.dice.find((d) => d.id === id)), mat = castOut(P.castKey);
   spend(run, forgeCost(run, type, dyes), `Cast a ${D.MATERIALS[mat].name} ${type}`);
-  const rolled = castRollers(run, type, melt, dyes);
-  const { faces, log } = castFaces(run.rng, type, castKey, dyes, D.MELT.castFromPouch ? rolled : null);
+  const rolled = P.rolled.filter(Boolean);
+  const { faces, log } = castFaces(run.rng, type, P.castKey, P.played, D.MELT.castFromPouch ? P.rolled : null);
   run.dice = run.dice.filter((d) => !dice.includes(d) && !rolled.includes(d));
-  const die = { ...mkDie(run, type, mat), faces: faces.map((v) => ({ v })), cast: castKey, dyes: mixDyes(dyes) };
+  const die = { ...mkDie(run, type, mat), faces: faces.map((v) => ({ v })), cast: P.castKey, dyes: [...P.played] };
   run.dice.push(die); return { die, log, rolled };
 }
 export function sellDie(run, id) {
