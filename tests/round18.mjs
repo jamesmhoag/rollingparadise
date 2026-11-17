@@ -80,9 +80,29 @@ console.log('ok, round 18: dice materials, d12, Dice Shop, Bone dice');
   const melt = run2.dice.slice(0, 2).map((d) => d.id), before = run2.dice.length, purse = run2.purse;
   ok(!R.forgeWhy(run2, 'd6', melt, ['red']), 'two d6 melt into a d6');
   const res = R.forge(run2, 'd6', melt, ['red']);
-  ok(res && run2.dice.length === before - 1 && run2.dice.includes(res.die) && res.die.cast === 'plastic' && res.log.length === 2, 'the melted dice go, the new one joins the pouch');
+  ok(res && res.rolled.length === 2 && res.rolled.every((d) => d.type === 'd6' && !melt.includes(d.id)), 'the cast and the dye each roll a d6 from the pouch');
+  ok(res && run2.dice.length === before - 2 - 2 + 1 && run2.dice.includes(res.die) && !res.rolled.some((d) => run2.dice.includes(d)) && res.die.cast === 'plastic' && res.log.length === 2, 'the melted and rolled dice go, the new one joins the pouch');
   ok(run2.purse === purse - R.forgeCost(run2, 'd6', ['red']), 'the forging fee and the dye are paid');
   ok(R.forgeWhy(run2, 'd20', run2.dice.map((d) => d.id)), 'a d20 is not cast on floor 1');
+  // the cast's rolls come from the pouch: without spare dice of the new size there is no cast
+  const run3 = R.newRun('rascal', 'standard', 5); R.enterFloor(run3, 1); run3.purse = 1e5;
+  const d6s = run3.dice.filter((d) => d.type === 'd6'); run3.dice = d6s.slice(0, 2);
+  ok(/from your pouch/.test(R.forgeWhy(run3, 'd6', run3.dice.map((d) => d.id)) || ''), 'a cast needs a spare die of its size to roll');
+  run3.dice.push({ ...d6s[2], id: 'spare' });
+  ok(!R.forgeWhy(run3, 'd6', run3.dice.slice(0, 2).map((d) => d.id)), 'with one spare d6 it casts');
+  ok(R.castRollers(run3, 'd6', run3.dice.slice(0, 2).map((d) => d.id))[0] === run3.dice[2], 'the spare d6 is the one rolled');
+  // your own die's faces are what it rolls: a die of all 4s always changes the face showing 4
+  const fours = { type: 'd6', faces: [4, 4, 4, 4, 4, 4].map((v) => ({ v })) };
+  eq2(F.castFaces(fixed([1]), 'd6', 'plastic', [], [fours]).faces, [1, 2, 3, 0, 5, 6], 'a rolled pouch die lands on one of its own faces');
+  // two different primaries mix into one dye
+  eq2(F.mixDyes(['red', 'yellow']), ['orange'], 'Red + Yellow mix into Orange');
+  eq2(F.mixDyes(['red', 'blue', 'yellow']), ['purple', 'yellow'], 'Red + Blue mix into Purple; the Yellow plays alone');
+  eq2(F.mixDyes(['red', 'red']), ['red', 'red'], 'the same primary twice does not mix');
+  eq2(F.castFaces(fixed([1, 5, 2]), 'd6', 'metal', ['red', 'yellow']).faces, [7, 3, 3, 4, 7, 6], 'a Red + Yellow cast plays Orange');
+  ok(F.forgeBlock({ type: 'd4', melt: [{ type: 'd8', mat: 'metal' }], dyes: ['orange'] }), 'mixes are not bought: they come from two primaries');
+  ok(!F.forgeBlock({ type: 'd4', melt: [{ type: 'd8', mat: 'metal' }], dyes: ['red', 'yellow', 'red', 'blue'] }), 'two mixes fill the two dye slots');
+  ok(F.forgeBlock({ type: 'd4', melt: [{ type: 'd8', mat: 'metal' }], dyes: ['red', 'red', 'red'] }), 'three dyes that do not mix is too many');
+  ok(R.forgeCost(run2, 'd6', ['red', 'yellow']) === R.forgeCost(run2, 'd6', ['red']) + R.forgeCost(run2, 'd6', ['yellow']) - R.forgeCost(run2, 'd6'), 'a mix costs its two primaries');
   ok(R.dieUpgradeBlock(run2, run2.dice[0], 'boost') === R.RETIRED, 'old upgrades are retired');
   if (fails2.length) { console.log('FAIL ' + fails2.join('\nFAIL ')); process.exit(1); }
   console.log('ok, round 18: melting, casting, dyes, mixes and Diamond');

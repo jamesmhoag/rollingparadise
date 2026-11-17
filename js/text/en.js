@@ -149,6 +149,16 @@ export default {
   "floor.entry.sub": "Step out. Your run is saved.",
   "floor.entry.tip": "<b>Step out</b><p>Saves this run and goes back to the main menu. Continue from there to come back to this floor as you left it.</p><p class=\"dim\">You have one run at a time: starting a new run replaces this one.</p>",
   "floor.entry.saved": "Run saved. Continue from the main menu.",
+  // ---------- Diesmith ----------
+  "smith.dyes": "Dyes — up to {n} (two different primaries mix into one)",
+  "smith.dye.mixes": "<p>With {other}: <b>{mix}</b>. {text}</p>",
+  "smith.dye.full": "At most {n} dyes or dye mixes in one cast.",
+  "smith.dye.rolls": "Rolls {n} {n|die|dice} of the new size. +{price}.",
+  "smith.dye.mixed": "Mixed from {a} and {b}.",
+  "smith.dye.remove": "Click to take it out.",
+  "smith.rolls": "The cast rolls {n} {type} from your pouch: {dice}. They are lost with the melt.",
+  "smith.rolls.short": "<span class=\"bad\">The cast rolls {n} {type} from your pouch, and you have {have} to spare.</span> Buy one at the Dice Shop, or melt fewer.",
+  "smith.rolls.lost": "Rolls in {dice}.",
   // ---------- Build mode ----------
   "build.title": "Build",
   "build.status": "{n} {n|change|changes} in your draft, not yet in the project. They are live in this browser.",

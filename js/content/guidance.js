@@ -60,6 +60,8 @@ export const GUIDE = {
   // ---------- the floor ----------
   'room:smith': { name: 'Diesmith', def: 'The forge where dice are melted and cast.',
     how: ['Pick a size, pick dice to melt until there is enough volume, add dyes if you like, then Forge.',
+      'Each cast and dye rolls dice of the new size from your pouch, and those dice are lost with the melt: keep spares of that size.',
+      'Two different primary dyes in one cast mix: Red + Yellow is Orange, Red + Blue Purple, Blue + Yellow Green.',
       'Pick a single die to sell it instead.'] },
   'room:dice': { name: 'Dice Shop', def: 'A counter selling new dice.',
     how: ['Buy plain dice to grow your pouch or to melt at the Diesmith.', 'Bone dice carry a fixed trait and can never be changed.'] },

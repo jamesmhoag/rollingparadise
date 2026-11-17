@@ -128,7 +128,7 @@ function diceTab(own) {
   for (const C of Object.values(D.CASTS)) out.push(entry(h('span', { class: 'dim', text: C.mats.map((m) => D.MATERIALS[m].name).join(' + ') }), C.name, [C.text, dim(`Rolls ${C.dice} ${C.dice > 1 ? 'dice' : 'die'}.`)]));
   out.push(sec('Diamond patterns', D.DIAMOND.map((P) => `<b>${P.name}</b> (${P.when}): ${P.text}`).join('<br>')));
   out.push(sec('Dyes', `Up to ${D.MELT.maxDyes} per cast, added after the cast.`));
-  for (const Y of Object.values(D.DYES)) out.push(entry(h('span', { class: 'dim', text: cents(Y.price) }), `<span style="color:${Y.color}">●</span> ${Y.name}`, [Y.text, dim(`Rolls ${Y.dice} ${Y.dice > 1 ? 'dice' : 'die'}.`)]));
+  for (const Y of Object.values(D.DYES)) out.push(entry(h('span', { class: 'dim', text: Y.from ? Y.from.map((k) => D.DYES[k].name.replace(/ dye$/, '')).join(' + ') : cents(Y.price) }), `<span style="color:${Y.color}">●</span> ${Y.name}`, [Y.text, dim(`Rolls ${Y.dice} ${Y.dice > 1 ? 'dice' : 'die'} from your pouch.${Y.from ? ' Made by putting both primaries in one cast.' : ''}`)]));
   out.push(sec('Bone dice', `Sold at the Dice Shop. Each is carved with one of the old Diesmith upgrades, named in the past tense, and cannot be melted or modified. Faces shown on a d6, before → after (target face marked).`));
   const d6 = { type: 'd6', up: [] };
   for (const [u, U] of Object.entries(D.DIE_UPGRADES)) {
