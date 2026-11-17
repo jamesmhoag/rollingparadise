@@ -9,6 +9,7 @@
 import { RNG, sum, clone, clamp, order1D } from './util.js';
 import { instances, deployOrder, placeIndex, makeKind, isFxChip } from './trickmaker.js';
 import { MADE_CHIPS, HEIGHT } from './content/chipmaker.js';
+import { TUNING } from './content/tuning.js';
 import { rollDie, boutCopy, facesOf, upgrade as upgradeFaces } from './dice.js';
 export { rollDie };
 import { DIE_UPGRADES, TRICKS, TYPES, QDIE, FOIL, WEAR, defOf, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, CREATURES, ORBITALS, FELTS, TILTS, TILT_PRESSURE, DENOM_VALUES, tiltChance, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS } from './data.js';
@@ -551,11 +552,11 @@ export function eat(b, s, r, c) {
 // ---------- planning ----------
 // The Drink phase closes each round: each Roller may sip their drink once and eat one food chip. What they take
 // works from the next turn.
-export const canSip = (b, s) => (b.phase !== 'drink' ? 'Sip in the Drink phase, at the end of the round.' : !s.drink || s.drink.sips <= 0 ? 'Nothing left to sip.' : s.sipped ? 'One sip a round.' : null);
+export const canSip = (b, s) => (b.phase !== 'drink' ? 'Sip in the Drink phase, at the end of the round.' : !s.drink || s.drink.sips <= 0 ? 'Nothing left to sip.' : (s.sipped || 0) >= TUNING.drinks.sipsPerRound ? `${TUNING.drinks.sipsPerRound === 1 ? 'One sip' : `${TUNING.drinks.sipsPerRound} sips`} a round.` : null);
 export function sip(b, s) {
   if (canSip(b, s)) return false;
-  s.drink.sips--; s.sipped = true;
-  s.food.push({ mods: { ...s.drink.mods }, turns: 1, label: s.drink.name });
+  s.drink.sips--; s.sipped = (s.sipped || 0) + 1;
+  s.food.push({ mods: { ...s.drink.mods }, turns: TUNING.drinks.sipTurns, label: s.drink.name });
   return true;
 }
 // is there anything to do in the Drink phase?
@@ -1910,7 +1911,7 @@ export function* resolve(b) {
     yield step(b, b.timeout ? `Last call. ${b.sides[b.winner].name} holds the most Worth.` : `${b.sides[1 - b.winner].name} is broke. ${b.sides[b.winner].name} wins the bout.`, [], 'over');
     return;
   }
-  b.phase = 'drink'; for (const s of b.sides) { s.sipped = false; s.ate = false; } b.ctx = null; openPhase(b);
+  b.phase = 'drink'; for (const s of b.sides) { s.sipped = 0; s.ate = false; } b.ctx = null; openPhase(b);
   yield step(b, '', [], 'drink');
 }
 

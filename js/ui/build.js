@@ -8,6 +8,7 @@ import { t } from '../text.js';
 import { trickMaker, newTrick } from './trickmaker.js';
 import { chipMaker, newChip } from './chipmaker.js';
 import { classicChips } from '../chipmodel.js';
+import { tuner, TUNER_SECTIONS } from './tuner.js';
 import { classMaker, newClass, rosterMaker, newOpponent, rosterLabel, rosterSub } from './rostermaker.js';
 import { isMade } from '../trickmaker.js';
 
@@ -18,7 +19,7 @@ const GROUPS = [
   ['build.group.chips', ['CHIPS', 'SHOP_CHIPS', 'CHIP_TIERS', 'CREATURES', 'ORBITALS', 'CALAMITIES']],
   ['build.group.dice', ['DICE', 'MATERIALS', 'DICE_SHOP', 'BONE', 'MELT', 'CASTS', 'DYES', 'DIAMOND', 'DIE_VARS']],
   ['build.group.floors', ['FLOORS', 'OPPONENTS', 'BOSSES', 'FELTS', 'TILTS', 'TILT_PRESSURE', 'PRIZES']],
-  ['build.group.shops', ['DRINKS', 'SPORTS', 'JACKETS', 'CARDS', 'WALLETS', 'PASSES']],
+  ['build.group.shops', ['DRINKS', 'SPORTS', 'ODDS', 'JACKETS', 'CARDS', 'WALLETS', 'PASSES', 'DENOMS', 'WEAR']],
   ['build.group.words', ['TEXT', 'GUIDE']],
 ];
 const isObj = (x) => x && typeof x === 'object';
@@ -41,11 +42,16 @@ export function buildScene(root) {
   function drawStatus() { const n = B.count(); status.textContent = n ? t('build.status', { n }) : t('build.status.none'); }
   function drawTables() {
     const tool = (k, label) => h('button', { class: `b-item tool ${ui.tool === k ? 'on' : ''}`, text: label, onclick: () => { ui.tool = k; ui.key = null; ui.filter = ''; filter.value = ''; draw(); } });
-    tables.replaceChildren(h('span', { class: 'cap', text: t('build.group.makers') }), tool('tricks', t('maker.title')), tool('chips', t('chipmaker.title')), tool('classes', t('roster.class.title')), tool('roster', t('roster.title')),
+    tables.replaceChildren(h('span', { class: 'cap', text: t('build.group.makers') }), tool('tricks', t('maker.title')), tool('chips', t('chipmaker.title')), tool('classes', t('roster.class.title')), tool('roster', t('roster.title')), tool('tuner', t('tuner.title')),
       ...GROUPS.flatMap(([g, list]) => [h('span', { class: 'cap', text: t(g) }),
       ...list.filter((tb) => D.TABLES[tb]).map((tb) => h('button', { class: `b-item ${ui.tool === 'tables' && ui.table === tb ? 'on' : ''} ${B.changed(tb) ? 'ch' : ''}`, text: t(`build.table.${tb}`), onclick: () => { ui.tool = 'tables'; ui.table = tb; ui.key = null; ui.filter = ''; filter.value = ''; draw(); } }))]));
   }
   function drawEntries() {
+    if (ui.tool === 'tuner') {
+      filter.style.display = 'none'; if (!TUNER_SECTIONS.includes(ui.key)) ui.key = TUNER_SECTIONS[0];
+      entries.replaceChildren(...TUNER_SECTIONS.map((k) => h('button', { class: `b-item ${ui.key === k ? 'on' : ''} ${B.changed(D.subPath('TUNING', k)) ? 'ch' : ''}`, onclick: () => { ui.key = k; draw(); } }, h('b', { text: t(`tuner.${k}`) }))));
+      return;
+    }
     if (ui.tool === 'classes' || ui.tool === 'roster') {
       const roster = ui.tool === 'roster', T = roster ? D.ROSTER : D.CLASSES, keys = Object.keys(T); filter.style.display = '';
       if (!ui.key || !T[ui.key]) ui.key = keys[0];
@@ -85,6 +91,7 @@ export function buildScene(root) {
       h('b', { text: label(ui.table, k) }), label(ui.table, k) !== k ? h('small', { text: k }) : null)));
   }
   function drawEditor() {
+    if (ui.tool === 'tuner') { editor.replaceChildren(h('h2', { text: t(`tuner.${ui.key}`) }), h('p', { class: 'sub mono', text: ui.key === 'gear' ? '' : D.subPath('TUNING', ui.key) }), tuner(ui.key, draw, (tb) => { ui.tool = 'tables'; ui.table = tb; ui.key = null; draw(); })); return; }
     if (ui.tool === 'classes') { editor.replaceChildren(h('h2', { text: `${D.CLASSES[ui.key].hero} the ${D.CLASSES[ui.key].name}` }), h('p', { class: 'sub mono', text: D.subPath('CLASSES', ui.key) }), classMaker(ui.key, draw)); return; }
     if (ui.tool === 'roster') { editor.replaceChildren(h('h2', { text: rosterLabel(ui.key) }), h('p', { class: 'sub mono', text: D.subPath('ROSTER', ui.key) }), rosterMaker(ui.key, draw)); return; }
     if (ui.tool === 'chips') {

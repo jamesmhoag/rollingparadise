@@ -115,7 +115,7 @@ function tricksTab(own) {
   out.push(sec('Condition', 'Condition sets only what a trick sells for. Wear starts at 100 for Mint and drops 1 each time the trick plays; each condition\'s sale percentage is also its wear threshold. A Poor trick plays forever, just as well, but cannot be sold.'));
   for (const [k, C] of Object.entries(D.CONDITIONS)) out.push(entry(h('b', { text: C.name }), C.sell ? `Sells at ${Math.round(C.sell * 100)}%` : 'Trash only',
     [k === 'gem' ? 'Only out of foil packs, now and then. Mint until it first plays.' : k === 'mint' ? 'Every trick in a foil pack.' : k === 'excellent' ? 'Bought off the Trader\'s shelf (wear 75 and up).' : k === 'good' ? 'Your first Book starts here (wear 50 and up).' : 'Wear below 50.']));
-  out.push(sec('Foil packs', `Sold at the Trick Trader for ${cents(D.PACK_PRICE)} × quality × floor: ${D.PACKS.slice(1).map((P) => `${P.name} (floor ${P.floor}+)`).join(' · ')}. Five tricks of the set's quality, all Mint, one of them a rarer print.`));
+  out.push(sec('Foil packs', `Sold at the Trick Trader for ${cents(D.TUNING.shops.packPrice)} × quality × floor: ${D.PACKS.slice(1).map((P) => `${P.name} (floor ${P.floor}+)`).join(' · ')}. Five tricks of the set's quality, all Mint, one of them a rarer print.`));
   return out;
 }
 

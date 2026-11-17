@@ -139,7 +139,7 @@ export const misText = (t) => !t.mis ? '' : [t.mis.die && `prints ${t.mis.die} i
 // Better sets cost more and open as the floors do: 200¢ × quality × floor, above what the five sell for at Mint.
 export const PACKS = [null,
   { name: 'Common set', q: 1, floor: 1 }, { name: 'Fine set', q: 2, floor: 2 }, { name: 'Grand set', q: 3, floor: 3 }, { name: 'Royal set', q: 4, floor: 4 }];
-export const PACK_SIZE = 5, GEM_CHANCE = 0.08, PACK_PRICE = 200;
+// (pack size, price and gem chance are in content/tuning.js)
 
 export const APPROACH = {
   front: 'the front-most stack of a column',
@@ -569,7 +569,7 @@ export const CALAMITIES = {
 // After a win you always keep the money; then pick one prize. `bonus` is the bonus money, as a share of the
 // opponent's starting worth, paid with the one-die prize.
 export const PRIZES = { bonus: 0.25 };
-export const WAGER_BASE = 1.5; export const WAGER_BOSS = 3; export const DD_MAX = 6;
+// (wager multipliers are in content/tuning.js)
 // Tilts are switched on or off for a bout. While one is on, the House may play it during the bout, in the House
 // phase. How often and how hard depends on the bout: the more you have lost to the House (your fees paid to the
 // Stage, as a share of what you started with) the harder Challenges hit; the more your opponent has lost to the House,
@@ -592,7 +592,6 @@ export const TILTS = {
 // they started with (`overkill`), how full their Meter is (`fill`, 0 to 1) and the worth sitting in it as a share of
 // what they started with (`value`). Challenges read your pressure, Cheats your opponent's.
 export const TILT_PRESSURE = { lost: 1, overkill: 0.5, fill: 0.2, value: 0.3 };
-export const TILT_WORTH_SHARE = 1; // × mult × opponent worth, paid (Challenge) or taken (Cheat) on a win
 export const tiltChance = (key, pressure) => Math.min(0.95, TILTS[key].base + TILTS[key].per * pressure);
 
 // ---------- Floors and opponents ----------
@@ -749,12 +748,14 @@ import { MADE_CHIPS } from './content/chipmaker.js';
 export { MADE_CHIPS };
 import { ROSTER, BEHAVE, DEFAULT_BEHAVE } from './content/roster.js';
 export { ROSTER, BEHAVE, DEFAULT_BEHAVE };
+import { TUNING } from './content/tuning.js';
+export { TUNING };
 import { GUIDE } from './content/guidance.js';
 import TEXT from './text/en.js';
 import { MATERIALS as _MAT, DICE_SHOP as _DS, BONE as _BONE, MELT as _MELT, CASTS as _CASTS, DYES as _DYES, DIAMOND as _DIA } from './content/dice.js';
 export const TABLES = { CLASSES, BASE_DIMS, STATS, DICE, MATERIALS: _MAT, DICE_SHOP: _DS, BONE: _BONE, MELT: _MELT, CASTS: _CASTS, DYES: _DYES, DIAMOND: _DIA, DIE_VARS,
   TYPES, TRICKS, CHIPS, SHOP_CHIPS, CHIP_TIERS, CREATURES, ORBITALS, CALAMITIES, TILTS, TILT_PRESSURE, FELTS, FLOORS, BOSSES, OPPONENTS, DRINKS, SPORTS, JACKETS, CARDS, WALLETS,
-  PASSES, CONDITIONS, PACKS, QDIE, PRIZES, GUIDE, TEXT, MADE_CHIPS, ROSTER };
+  PASSES, CONDITIONS, PACKS, QDIE, PRIZES, GUIDE, TEXT, MADE_CHIPS, ROSTER, TUNING, ODDS, DENOMS, WEAR };
 const isObj = (x) => x && typeof x === 'object';
 // a path's steps: keys are joined by '.', and a '.' inside a key (as in text keys) is written '\\.'
 export const splitPath = (path) => path.split(/(?<!\\)\./).map((k) => k.replace(/\\\./g, '.'));
