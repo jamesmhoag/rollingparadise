@@ -740,3 +740,36 @@ export const STARTER_CARDS = ['discount_diesmith', 'discount_trader', 'discount_
   'business_charisma', 'business_cunning', 'business_conviction'];
 export const FIND_CARDS = ['resist_card', 'resist_card_plus', 'debit', 'note', 'note_dice', 'note_debt', 'note_house', 'note_hold', 'note_flip', 'trading', 'punch'];
 export const WALLET_SLOTS = 4;
+
+// ---------- content you can edit ----------
+// The tables the build mode can change, by name. Changes are stored as { 'TABLE.key.path': value } (see
+// content/overrides.js); applyContent sets each one, then rebuilds the lists worked out from the tables.
+import { OVERRIDES } from './content/overrides.js';
+import { GUIDE } from './content/guidance.js';
+import TEXT from './text/en.js';
+import { MATERIALS as _MAT, DICE_SHOP as _DS, BONE as _BONE, MELT as _MELT, CASTS as _CASTS, DYES as _DYES, DIAMOND as _DIA } from './content/dice.js';
+export const TABLES = { CLASSES, BASE_DIMS, STATS, DICE, MATERIALS: _MAT, DICE_SHOP: _DS, BONE: _BONE, MELT: _MELT, CASTS: _CASTS, DYES: _DYES, DIAMOND: _DIA, DIE_VARS,
+  TYPES, TRICKS, CHIPS, SHOP_CHIPS, CHIP_TIERS, CREATURES, ORBITALS, CALAMITIES, TILTS, TILT_PRESSURE, FELTS, FLOORS, BOSSES, OPPONENTS, DRINKS, SPORTS, JACKETS, CARDS, WALLETS,
+  PASSES, CONDITIONS, PACKS, QDIE, PRIZES, GUIDE, TEXT };
+const isObj = (x) => x && typeof x === 'object';
+// a path's steps: keys are joined by '.', and a '.' inside a key (as in text keys) is written '\\.'
+export const splitPath = (path) => path.split(/(?<!\\)\./).map((k) => k.replace(/\\\./g, '.'));
+export const subPath = (path, key) => `${path}.${String(key).replace(/\./g, '\\.')}`;
+export function getPath(path) { let o = TABLES; for (const k of splitPath(path)) { if (!isObj(o)) return undefined; o = o[k]; } return o; }
+// set one value; the containers on the way are made if missing. Returns the value it replaced.
+export function setPath(path, value) {
+  const ks = splitPath(path), last = ks.pop(); let o = TABLES;
+  for (const k of ks) { if (!isObj(o[k])) o[k] = {}; o = o[k]; }
+  const was = o[last]; o[last] = value; return was;
+}
+export function deletePath(path) { const ks = splitPath(path), last = ks.pop(); let o = TABLES; for (const k of ks) { o = o?.[k]; } if (isObj(o)) delete o[last]; }
+// lists worked out from the tables when the game loads, rebuilt after changes
+export function refreshDerived() {
+  TRICK_IDS.splice(0, TRICK_IDS.length, ...Object.keys(TRICKS));
+  FELT_POOL.splice(0, FELT_POOL.length, ...Object.keys(FELTS).filter((k) => FELTS[k].pool !== false));
+}
+export function applyContent(changes = {}) {
+  for (const [path, v] of Object.entries(changes)) if (TABLES[splitPath(path)[0]]) setPath(path, isObj(v) ? JSON.parse(JSON.stringify(v)) : v);
+  refreshDerived();
+}
+applyContent(OVERRIDES);

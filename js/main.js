@@ -7,6 +7,8 @@ import { prepScene, resultScene } from './ui/prep.js';
 import { suiteScene, giftScene, ascentScene, summaryScene, alleyScene, walletTip } from './ui/endgame.js';
 import { boutScene } from './ui/boutview.js';
 import { openLibrary } from './ui/library.js';
+import { buildScene } from './ui/build.js';
+import { loadDraft } from './build/draft.js';
 import * as D from './data.js';
 import * as R from './run.js';
 import { cents } from './util.js';
@@ -15,6 +17,7 @@ import { t } from './text.js';
 const nav = app.nav;
 nav.title = () => go(titleScene);
 nav.select = () => go(selectScene);
+nav.build = () => go(buildScene);
 nav.hub = () => go(hubScene);
 nav.prep = (kind, idx) => go((root) => prepScene(root, kind, idx));
 nav.bout = ({ bout, ctx }) => go((root) => { if (window.RP) window.RP.bout = bout; boutScene(root, bout, ctx, () => { const res = R.settle(app.run, ctx, bout); go((r) => resultScene(r, ctx, res)); }); });
@@ -52,7 +55,8 @@ function titleScene(root) {
         h('p', { class: 'sub', text: t('title.new.warn') }),
         h('div', { class: 'row' }, btn(t('title.new.keep'), () => closePanel(), null, 'go'), btn(t('title.new.over'), () => { R.clearRun(); closePanel(true); nav.select(); }, null, 'danger')))) : nav.select()), resume ? t('title.new.tip') : null, resume ? 'sign-btn p' : 'sign-btn'),
       btn(t('title.howto'), () => howTo(), null, 'sign-btn p'),
-      btn(t('title.library'), () => openLibrary(null, { title: true }), t('title.library.tip'), 'sign-btn')),
+      btn(t('title.library'), () => openLibrary(null, { title: true }), t('title.library.tip'), 'sign-btn'),
+      btn(t('title.build'), () => nav.build(), t('title.build.tip'), 'sign-btn p')),
     h('div', { class: 'stats records' },
       [[t('title.rec.runs'), meta.runs, t('title.rec.runs.tip')], [t('title.rec.best'), meta.best > 4 ? t('title.rec.ascent') : meta.best || '—', t('title.rec.best.tip')], [t('title.rec.crowns'), meta.crowns, t('title.rec.crowns.tip')], [t('title.rec.jackets'), meta.jackets.length, t('title.rec.jackets.tip')], [t('title.rec.wallets'), (meta.wallets || []).length, t('title.rec.wallets.tip')], [t('title.rec.atm'), cents(meta.atm), t('title.rec.atm.tip')]]
         .map(([a, b, t]) => h('span', { class: 'stat', tip: `<b>${a}</b><p>${t}</p>` }, h('em', { text: a }), h('b', { text: b })))))));
@@ -101,6 +105,7 @@ function selectScene(root) {
 }
 
 window.addEventListener('resize', fit);
+loadDraft(); // your build-mode changes, live in this browser
 fit(); initTips();
 app.meta = R.loadMeta();
 nav.title();
