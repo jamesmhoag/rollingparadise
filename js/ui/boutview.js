@@ -1,7 +1,7 @@
 // The table. Every chip, die, trick card and creature is one persistent element that is
 // moved, faded or flipped to follow the bout state, so nothing ever pops between states.
 import { h, tip, wait, tween, swapText, setOn, pulse, syncList, toast, btn, refreshTip, redrawTip, box, vc, detail, paint } from './core.js';
-import { chipSig, chipGlyph, chipName, chipText, chipTip, dieTip, trickTip, trickWord, trickWords, statTip, drinkTip, dieMarks, dieClass, trickLook, feltStyle, seenAs, traitsOf, traitsHtml } from './parts.js';
+import { chipSig, chipGlyph, chipName, chipText, chipTip, dieTip, trickTip, trickWord, trickWords, statTip, drinkTip, dieMarks, dieClass, trickLook, feltStyle, seenAs, traitsOf, traitsHtml, dieEl } from './parts.js';
 import { flyerTraits } from '../traits.js';
 import { openLibrary } from './library.js';
 import * as D from '../data.js';
@@ -9,6 +9,7 @@ import * as B from '../bout.js';
 import { planPhase, drinkPhase, bestTarget, seen as seenBy } from '../ai.js';
 import { sum } from '../util.js';
 import { t as tt } from '../text.js';
+import { facesOf } from '../dice.js';
 
 // the table: each position's Stage runs along its top (y 100-126), the positions below it, and the Pit between them
 const TOP = 128, CH = 44, PX = 570, OX = 710, CHIP = 32, STAGE_Y = 100;
@@ -35,12 +36,13 @@ export function boutScene(root, bout, ctx, onDone) {
   function cardLayout() {
     const out = new Map(), n = me.run.length, w = Math.min(122, Math.floor(626 / Math.max(1, n)) - 6);
     me.run.forEach((e, i) => out.set(e.uid, { x: 248 + i * (w + 6), y: 466, w, h: 242, open: true, e }));
-    const step = Math.min(34, Math.floor(262 / Math.max(1, me.book.length)));
-    me.book.forEach((t, i) => out.set(t.uid, { x: 16, y: 444 + i * step, w: 220, h: Math.min(30, step - 3), open: false, t }));
+    const drawing = bout.phase === 'draw', step = drawing ? Math.min(34, Math.floor(262 / Math.max(1, me.book.length))) : Math.min(9, Math.floor(120 / Math.max(1, me.book.length))); // the Book opens only while you draw
+    me.book.forEach((t, i) => out.set(t.uid, { x: 16, y: 444 + i * step, w: 220, h: drawing ? Math.min(30, step - 3) : 30, open: false, t, deck: !drawing }));
     return out;
   }
   const dieSlot = (cl, i) => ({ x: cl.x + 7 + (i % 3) * 36, y: cl.y + 50 + Math.floor(i / 3) * 36 });
-  const pouchSlot = (i, n) => { const per = n > 15 ? 6 : 5, st = n > 15 ? 30 : 36; return { x: 888 + (i % per) * st, y: 544 + Math.floor(i / per) * st }; };
+  const pouchSlot = (i, n) => { if (bout.phase !== 'roll' || me.thrown) return { x: 888 + Math.min(i, 30) * Math.min(10, 150 / Math.max(1, n)), y: 548 - (i % 2) * 2 }; // the Pouch opens only while you pick dice to roll
+    const per = n > 15 ? 6 : 5, st = n > 15 ? 30 : 36; return { x: 888 + (i % per) * st, y: 544 + Math.floor(i / per) * st }; };
   const traySlot = (i) => ({ x: 892 + (i % 5) * 36, y: 442 + Math.floor(i / 5) * 36 }); // the roll: room for two rows of dice
   // the Stage: what each Roller has paid, stacked in front of the House
   // the Pit: each Roller's lost chips, in the order they were lost, filling two stacks on their own side, then rising
@@ -276,6 +278,25 @@ export function boutScene(root, bout, ctx, onDone) {
 
   // ---------- element factories ----------
   function mkChip(ch) { const el = h('div', { class: `chip ${chipSig(ch)}` }, h('i', { text: chipGlyph(ch) })); el._sig = chipSig(ch); layer.append(el); return el; }
+  // ---------- the toss ----------
+  // Thrown dice leave the Pouch together, arc up over the roll and tumble down onto it as solid shapes, each side
+  // showing one of the die's real faces, and land with the rolled value up. Heavier dice (more faces) fly lower.
+  let tossN = 0;
+  function toss(el, d, value, from, to, k) {
+    const cs = getComputedStyle(el), dc = cs.getPropertyValue('--dc').trim() || '#f1ead8', sh = cs.getPropertyValue('--sh').trim() || 'none';
+    const vals = d.chip ? [value, 0, d.chip.value, 0, d.chip.value, 0] : (() => { const fs = facesOf(d).map((f) => f.v); const rest = fs.filter((v, i) => i !== fs.indexOf(value)); return [value, ...Array.from({ length: 5 }, (_, i) => rest[i % Math.max(1, rest.length)] ?? value)]; })();
+    const S = 30, half = S / 2, turns = ['rotateY(0deg)', 'rotateY(180deg)', 'rotateY(90deg)', 'rotateY(-90deg)', 'rotateX(90deg)', 'rotateX(-90deg)'];
+    const cube = h('div', { class: 'toss-cube', style: { width: S + 'px', height: S + 'px' } }, ...vals.map((v, i) => h('div', { class: 'toss-face', style: { transform: `${turns[i]} translateZ(${half}px)`, '--dc': dc, '--sh': sh }, text: String(v) })));
+    const box3 = h('div', { class: 'toss', style: { zIndex: 1300 } }, cube); layer.append(box3);
+    el.classList.add('tossing');
+    const faces = D.DICE[d.type]?.faces || 6, lift = Math.max(50, 130 - faces * 3), mx = (from.x + to.x) / 2, top = Math.min(from.y, to.y) - lift, spin = 2 + (k % 2);
+    const pos = (x, y, sc = 1) => `translate(${x}px, ${y}px) scale(${sc})`;
+    box3.animate([{ transform: pos(from.x, from.y, 0.9) }, { transform: pos(mx, top, 1.25), offset: 0.42 }, { transform: pos(to.x, to.y, 1), offset: 0.72 }, { transform: pos(to.x, to.y - 12, 1.04), offset: 0.84 }, { transform: pos(to.x, to.y, 1) }],
+      { duration: 950 / ui.speed, delay: (k % 8) * 70 / ui.speed, easing: 'cubic-bezier(.3,.1,.4,1)', fill: 'both' });
+    cube.animate([{ transform: 'rotateX(0deg) rotateY(0deg) rotateZ(0deg)' }, { transform: `rotateX(${300 * spin}deg) rotateY(${200 * spin}deg) rotateZ(40deg)`, offset: 0.6 }, { transform: `rotateX(${360 * spin}deg) rotateY(${360 * (spin - 1)}deg) rotateZ(0deg)`, offset: 0.84 }, { transform: `rotateX(${360 * spin}deg) rotateY(${360 * (spin - 1)}deg) rotateZ(0deg)` }],
+      { duration: 950 / ui.speed, delay: (k % 8) * 70 / ui.speed, easing: 'cubic-bezier(.2,.6,.3,1)', fill: 'both' })
+      .finished.then(() => { el.classList.remove('tossing'); box3.remove(); }, () => { el.classList.remove('tossing'); box3.remove(); });
+  }
   function mkDie(d) {
     const el = h('div', { class: `die ${d.chip ? 'flipc' : d.type} ${d.chip ? '' : dieClass(d)}`, onclick: () => clickDie(d.id) }, h('i', { text: d.type.slice(1) }), d.chip ? null : dieMarks(d));
     tip(el, () => {
@@ -375,10 +396,11 @@ export function boutScene(root, bout, ctx, onDone) {
     for (const e of me.run) { const cl = cards.get(e.uid); e.dice.forEach((d, i) => wantDice.set(d.id, { ...dieSlot(cl, i), d, value: d.value, rolled: true, on: true })); }
     for (const [id, w] of wantDice) {
       let el = els.dice.get(id); if (!el) { el = mkDie(w.d); els.dice.set(id, el); const from = (w.d.chip && els.flipFrom?.get(id)) || { x: w.x, y: w.y - 16 }; spawn(el, from.x, from.y, 'scale(.4)'); }
+      const from = /translate\(([-\d.]+)px, ([-\d.]+)px\)/.exec(el.style.transform);
       el.style.opacity = '1'; place(el, w.x, w.y); el.style.zIndex = w.on ? 6 : 4; el.classList.toggle('on', !!w.on); el.classList.toggle('rolled', !!w.rolled); el.classList.toggle('sel', (ui.mode === 'die' && ui.die === id) || !!w.picked);
       el.classList.toggle('fixed', !!w.on && !B.canMove(bout, me, id));
       const label = el.firstChild, text = w.rolled ? String(w.value) : w.d.type.slice(1);
-      if (w.rolled && !el._rolled) { el.classList.add('rolling'); let n = 0; const f = D.DICE[w.d.type].faces; const iv = setInterval(() => { label.textContent = w.d.chip ? (Math.random() < 0.5 ? 0 : w.d.chip.value) : 1 + Math.floor(Math.random() * f); if (++n > 7) { clearInterval(iv); label.textContent = el._text; el.classList.remove('rolling'); } }, 55); }
+      if (w.rolled && !el._rolled) { label.textContent = text; toss(el, w.d, w.value, from ? { x: +from[1], y: +from[2] } : { x: w.x, y: w.y + 90 }, { x: w.x, y: w.y }, tossN++); }
       else if (label.textContent !== text && !el.classList.contains('rolling')) label.textContent = text;
       el._text = text; el._rolled = !!w.rolled;
     }
@@ -467,9 +489,23 @@ export function boutScene(root, bout, ctx, onDone) {
  });
     // their roll shows as a row on top of their Run from the Bid (both throws land as it opens) until the dice are placed
     const oppRoll = opp.tray.length ? [{ uid: '__roll', roll: true }] : [];
-    syncList(oppRun, [...oppRoll, ...opp.run], (e) => e.uid, (e) => { if (e.roll) return h('div', { class: 'orow roll', tip: () => `<b>${opp.name}'s roll</b><p>${vc(`The dice they threw this turn: ${opp.tray.map((d) => `${d.value} (${d.chip ? 'a flipped chip' : d.type})`).join(', ')}. They put them on tricks in the Bluff; you see where as the House plays.`, 'Their throw: placed in the Bluff.')}</p>` }, h('b', { text: 'Their roll' }), h('span', { class: 'odice' }), h('span', { class: 'ostate', text: 'rolled' }));
-      const def = D.TRICKS[e.trick.id]; return h('div', { class: 'orow', style: { '--tc': D.TYPES[def.type].color }, tip: () => trickTip(e.trick, opp.cls, `<p class="live">${e.dice.length ? `Dice ${e.dice.map((d) => d.value).join(' + ')} → roll total <b>${B.previewTotal(opp, e)}</b>` : 'No dice on it.'}${e.state === 'bid' ? '<br>Bid on: it plays this turn.' : e.state === 'play' ? '<br>In play.' : '<br>Shown, not bid.'}</p>`) }, h('b', { text: def.name }), h('span', { class: 'odice' }), h('span', { class: 'ostate' })); },
-      (el, e) => { if (e.roll) return swapText(el.querySelector('.odice'), opp.tray.map((d) => d.value).join(' ')); swapText(el.querySelector('.odice'), e.dice.map((d) => d.value).join(' ')); swapText(el.querySelector('.ostate'), e.state === 'bid' ? 'bid' : e.state === 'play' ? (e.lingerLeft ? `lingers ${e.lingerLeft}` : 'in play') : 'shown'); el.classList.toggle('bid', e.state !== 'shown'); });
+    // their Run, a small mirror of yours: each trick as a card with its type, dice, roll total, bid and state; their
+    // roll above (from the Bid until they place it); their Book and Pouch below
+    const oDice = (list) => list.map((d) => dieEl(d.chip ? { type: 'd6', up: [] } : d, d.value, 'mini'));
+    syncList(oppRun, [...oppRoll, ...opp.run, { uid: '__kit', kit: true }], (e) => e.uid, (e) => {
+      if (e.kit) return h('div', { class: 'okit', tip: () => `<b>${opp.name}'s kit</b><p>${opp.book.length} trick${opp.book.length === 1 ? '' : 's'} in their Book and ${opp.pouch.length} dice in their Pouch.</p>` });
+      if (e.roll) return h('div', { class: 'ocard roll', tip: () => `<b>${opp.name}'s roll</b><p>${vc(`The dice they threw this turn: ${opp.tray.map((d) => `${d.value} (${d.chip ? 'a flipped chip' : d.type})`).join(', ')}. They put them on tricks in the Bluff; you see where as the House plays.`, 'Their throw: placed in the Bluff.')}</p>` }, h('b', { text: 'Their roll' }), h('div', { class: 'odice' }));
+      const def = D.TRICKS[e.trick.id];
+      return h('div', { class: 'ocard', style: { '--tc': D.TYPES[def.type].color }, tip: () => trickTip(e.trick, opp.cls, `<p class="live">${e.dice.length ? `Dice ${e.dice.map((d) => d.value).join(' + ')} → roll total <b>${B.previewTotal(opp, e)}</b>` : 'No dice on it.'}${e.state === 'bid' ? '<br>Bid on: it plays this turn.' : e.state === 'play' ? '<br>In play.' : '<br>Shown, not bid.'}</p>`) },
+        h('div', { class: 'ohead' }, h('b', { text: def.name }), h('span', { class: 'oreq', text: `${def.count}${def.die}` })), h('div', { class: 'odice' }), h('div', { class: 'ofoot' }, h('span', { class: 'ostate' }), h('b', { class: 'ototal' })));
+    }, (el, e) => {
+      if (e.kit) return swapText(el, `Book ${opp.book.length} · Pouch ${opp.pouch.length}`);
+      if (e.roll) return el.querySelector('.odice').replaceChildren(...oDice(opp.tray));
+      el.querySelector('.odice').replaceChildren(...oDice(e.dice));
+      swapText(el.querySelector('.ostate'), e.state === 'bid' ? `${e.bidValue}¢ bid` : e.state === 'play' ? (e.lingerLeft ? `lingers ${e.lingerLeft}` : 'in play') : 'shown');
+      swapText(el.querySelector('.ototal'), e.dice.length ? `= ${B.previewTotal(opp, e)}` : '');
+      el.classList.toggle('bid', e.state === 'bid'); el.classList.toggle('inplay', e.state === 'play');
+    });
     setOn(sipBtn, !ui.locked && !B.canSip(bout, me)); sipBtn.classList.toggle('gone', !me.drink);
     runEmpty.style.opacity = me.run.length ? 0 : 1;
     setOn(undoBtn, !ui.locked && (bout.phase === 'draw' ? me.used.draw > 0 : bout.phase === 'roll' ? selCount() > 0 : bout.phase === 'bid' ? me.used.bid > 0 : bout.phase === 'aim' ? B.placedThisTurn(bout, me) || ui.handAim.size > 0 : false));
