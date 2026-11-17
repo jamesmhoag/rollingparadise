@@ -9,20 +9,25 @@
 import { RNG, sum, clone, clamp, order1D } from './util.js';
 import { rollDie, boutCopy, facesOf, upgrade as upgradeFaces } from './dice.js';
 export { rollDie };
-import { DIE_UPGRADES, TRICKS, TYPES, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, CREATURES, ORBITALS, FELTS, TILTS, TILT_PRESSURE, DENOM_VALUES, tiltChance, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS } from './data.js';
+import { DIE_UPGRADES, TRICKS, TYPES, QDIE, FOIL, WEAR, defOf, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, CREATURES, ORBITALS, FELTS, TILTS, TILT_PRESSURE, DENOM_VALUES, tiltChance, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS } from './data.js';
 
 // The turn: Draw tricks; Roll (pick the dice; they are thrown as the Bid opens); Bid on tricks, seeing both rolls;
 // the Bluff ('aim'): put the rolled dice on tricks and confirm aims. Your opponent's dice and aims show as the House plays.
 export const PHASES = ['draw', 'roll', 'bid', 'aim']; // 'aim' is shown as the Bluff
 export const LAST_CALL = 8;
 export const heat = (turn) => (turn > LAST_CALL ? 1 + 0.25 * (turn - LAST_CALL) : 1);
-export const trickMult = (t) => QMULT[t.q] * (1 + 0.25 * (t.up || 0));
-const investMult = (t) => 1 + (t.q - 1) * 0.5 + 0.25 * (t.up || 0);
+// Quality sets the multiplier; a foil print multiplies it again (Investments, which multiply everything else, step
+// gently: +0.5 a quality, +0.25 a foil tier).
+const foilTier = (t) => Math.min(FOIL.length - 1, t.foil || 0);
+export const trickMult = (t) => QMULT[t.q] * (FOIL[foilTier(t)]?.mult || 1);
+const investMult = (t) => 1 + (t.q - 1) * 0.5 + 0.25 * foilTier(t);
 // the multiplier a trick applies to its roll total, and the size of its Trait
 export const multOf = (t) => (TRICKS[t.id].type === 'investment' ? investMult(t) : trickMult(t));
-export const traitOf = (t) => Math.max(1, Math.round(trickMult(t)));
-// a trick as it plays: one upgrade higher for each Upgrade chip bid on it
-export const effTrick = (e) => (e.upBoost ? { ...e.trick, up: (e.trick.up || 0) + e.upBoost } : e.trick);
+export const traitOf = (t) => Math.max(1, Math.round(trickMult(t)) + (t.mis?.trait || 0)); // a Misprint's Trait differs
+// a Grand or Royal trick's quality die, rolled when it is drawn: 'dud', 'hot' or null
+export const qState = (e) => { const Q = QDIE[e.trick.q]; if (!Q || e.qroll == null) return null; return e.qroll <= Q.dud ? 'dud' : e.qroll >= Q.hot ? 'hot' : null; };
+// a trick as it plays: one foil tier higher for each Upgrade chip bid on it; Common strength on a dud quality die
+export const effTrick = (e) => { let t = e.trick; if (e.upBoost) t = { ...t, foil: (t.foil || 0) + e.upBoost }; if (qState(e) === 'dud') t = { ...t, q: 1 }; return t; };
 export const isPayable = (ch) => ch.kind === 'std' || ch.kind === 'opp' || ch.kind === 'bounty';
 export const isHazard = (ch) => HAZARD_KINDS.includes(ch.kind);
 // an effect chip a maker trick placed: it takes height and does its work in its phase, but has no worth
@@ -526,6 +531,7 @@ export function draw(b, s, uid) {
   if (canDraw(b, s, uid)) return null;
   const i = s.book.findIndex((t) => t.uid === uid), trick = s.book.splice(i, 1)[0];
   const e = { uid, trick, dice: [], bid: [], bidValue: 0, target: null, state: 'shown', lingerLeft: 0, lingerTotal: 0, drawn: b.turn, bookAt: i };
+  const Q = QDIE[trick.q]; if (Q) e.qroll = s.rolled['q' + uid] ?? (s.rolled['q' + uid] = 1 + b.rng.int(Q.faces)); // the same roll if drawn again this turn
   s.run.push(e); s.used.draw++;
   return e;
 }
@@ -641,7 +647,7 @@ function takeLoose(s, dieId) {
 export function place(b, s, dieId, e) {
   if (canPlace(b, s, dieId, e)) return null;
   const d = takeLoose(s, dieId); e.dice.push(d); d.t = b.turn;
-  const type = realType(e) || TRICKS[e.trick.id].die; for (const x of e.dice) if (x.chip) x.type = type; // a flipped chip takes the type of the dice it joins
+  const type = realType(e) || defOf(e.trick).die; for (const x of e.dice) if (x.chip) x.type = type; // a flipped chip takes the type of the dice it joins
   return d;
 }
 export function unplace(b, s, dieId) { if (!canMove(b, s, dieId)) return null; const d = takeLoose(s, dieId); s.tray.push(d); return d; }
@@ -763,8 +769,9 @@ export function affected(b, t, def, origin, nDice, o = {}) {
   return cells;
 }
 export function bonusMet(s, e) {
-  const def = TRICKS[e.trick.id]; if (!e.dice.length) return false;
+  const def = defOf(e.trick); if (!e.dice.length) return false;
   if (def.cls && def.cls !== s.cls) return false;
+  if (qState(e) === 'hot') return true; // a hot quality die sets off the Bonus whatever the dice
   if (e.dice.length !== def.count || !e.dice.some((d) => d.type === def.die) || !e.dice.every((d) => d.type === def.die)) return false;
   const vals = e.dice.map((d) => d.value), total = sum(vals), cond = def.bonus.cond;
   if (cond === 'match') return vals.some((v, i) => vals.indexOf(v) !== i);
@@ -781,13 +788,15 @@ export function totalParts(s, e) {
   const dice = sum(e.dice, (d) => d.value), turns = e.state === 'play' ? e.lingerTotal : clamp(e.bidValue - 1, 0, 20);
   const linger = turns * e.dice.length, power = inv ? 0 : powerOf(s), venge = def.vengeance ? s.paidLast || 0 : 0;
   const mult = inv ? investMult(effTrick(e)) : trickMult(effTrick(e)), heatX = def.type === 'expense' ? s.heat || 1 : 1, double = bonusMet(s, e) && def.bonus.k === 'double';
-  return { dice: e.dice.map((d) => d.value), diceSum: dice, turns, linger, power, venge, mult, heat: heatX, double, total: previewTotal(s, e) };
+  return { dice: e.dice.map((d) => d.value), diceSum: dice, turns, linger, power, venge, plus: reprintPlus(e), mult, heat: heatX, double, total: previewTotal(s, e) };
 }
+// what a Reprint Expense adds: the Trait value on each die's instance
+const reprintPlus = (e) => (e.trick.rar === 'reprint' && TRICKS[e.trick.id].type === 'expense' ? traitOf(effTrick(e)) * e.dice.length : 0);
 // what a shown trick would do right now (for previews and the AI)
 export function previewTotal(s, e) {
   const def = TRICKS[e.trick.id]; if (!e.dice.length) return 0;
   const linger = e.state === 'play' ? e.lingerTotal : clamp(e.bidValue - 1, 0, 20);
-  const raw = sum(e.dice, (d) => d.value) + linger * e.dice.length + (def.type === 'investment' ? 0 : powerOf(s)) + (def.vengeance ? s.paidLast || 0 : 0);
+  const raw = sum(e.dice, (d) => d.value) + linger * e.dice.length + (def.type === 'investment' ? 0 : powerOf(s)) + (def.vengeance ? s.paidLast || 0 : 0) + reprintPlus(e);
   const m = def.type === 'investment' ? investMult(effTrick(e)) : trickMult(effTrick(e));
   return Math.max(0, Math.round(raw * m * (def.type === 'expense' ? s.heat || 1 : 1))) * (bonusMet(s, e) && def.bonus.k === 'double' ? 2 : 1);
 }
@@ -1122,10 +1131,12 @@ function recoup(b, s, n, both) {
 
 // opt.again: a Repeater or Mimic plays the roll effect once more (no trait) · opt.forgotten: a Forgetter negates it
 function* play(b, s, e, opt = {}) {
-  const def = TRICKS[e.trick.id], o = b.sides[1 - s.idx], inv = def.type === 'investment';
-  const m = Math.max(1, Math.round(trickMult(effTrick(e))));
+  const def = TRICKS[e.trick.id], o = b.sides[1 - s.idx], inv = def.type === 'investment', reprint = e.trick.rar === 'reprint';
+  // a Reprint's older rule: an Expense plays its roll effect once per die (each die plus the Trait value); the
+  // other types play the Trait once per die on the trick
+  const m = traitOf(effTrick(e)) * (reprint && def.type !== 'expense' ? Math.max(1, e.dice.length) : 1);
   // Trait effect: every turn the trick is in play
-  if (opt.again) { /* the roll effect only */ } else if (def.type === 'expense') {
+  if (opt.again || opt.instance) { /* the roll effect only */ } else if (def.type === 'expense') {
     const cols = [...Array(o.dims.cols).keys()].filter((c) => frontRow(o, c) >= 0);
     if (cols.length) { const c = b.rng.pick(cols), r = frontRow(o, c), g = engage(b, s, o, r, c, m, {});
       yield step(b, `${s.name} plays ${def.name}: ${g.placed ? `${g.placed}¢ of Debt on a front stack` : `the ${m}¢ trait fee is ${g.notes.join(', ') || 'lost'}`}.`, [ref(o, r, c)], 'play'); }
@@ -1139,17 +1150,23 @@ function* play(b, s, e, opt = {}) {
   }
   if (e.lingerLeft > 0 || !e.dice.length) return;
   if (opt.forgotten) { yield step(b, `${s.name}'s ${def.name} (${e.dice.map((d) => d.value).join('+')}) is forgotten: ${o.name}'s Forgetter negates it.`, [], 'miss'); return; }
+  if (reprint && def.type === 'expense' && !opt.instance && e.dice.length > 1) {
+    const bonus = bonusMet(s, e) ? def.bonus.k : null, plus = traitOf(effTrick(e));
+    for (const d of e.dice) yield* play(b, s, { ...e, dice: [d] }, { ...opt, instance: true, plus, bonus });
+    return;
+  }
 
   // Roll effect: on the last turn of the linger
   const own = def.roll.k === 'bend' || def.roll.k === 'parlay';
   const fz = s.fz || s.mods; // mods as they stood when the phase was called
   const vals = e.dice.map((d) => (!own && fz.bend != null ? fz.bend : d.value));
-  const bonus = bonusMet(s, e) ? def.bonus.k : null;
-  let total = sum(vals) + e.lingerTotal * e.dice.length;
+  const bonus = opt.bonus !== undefined ? opt.bonus : bonusMet(s, e) ? def.bonus.k : null;
+  let total = sum(vals) + e.lingerTotal * e.dice.length + (opt.plus || (reprint && def.type === 'expense' ? traitOf(effTrick(e)) : 0));
   if (!inv) { total += fz.boost - fz.enfeeble + 0 + (def.type === 'expense' ? fz.press : 0) + (def.vengeance ? s.paidLast || 0 : 0); }
   total = Math.max(0, Math.round(total * (inv ? investMult(effTrick(e)) : trickMult(effTrick(e)) * fz.mul) * (def.type === 'expense' ? heat(b.turn) : 1)));
   if (bonus === 'double') total *= 2;
-  const tag = `${opt.again ? `${opt.again}: ` : ''}${s.name}'s ${def.name} (${vals.join('+')}${bonus ? ', bonus' : ''})`;
+  const plusT = opt.plus || (reprint && def.type === 'expense' ? traitOf(effTrick(e)) : 0);
+  const tag = `${opt.again ? `${opt.again}: ` : ''}${s.name}'s ${def.name} (${vals.join('+')}${plusT ? ` +${plusT} Trait` : ''}${bonus ? ', bonus' : ''})`;
   if (total >= 10 && !opt.again) for (const { cell } of allCells(s)) if (cell.roost) for (const egg of cell.chips.filter((ch) => ch.kind === 'egg')) { // a big trick hatches the eggs on your Roost
     cell.chips.splice(cell.chips.indexOf(egg), 1); b.fx[egg.id] = 'void'; b.creatures.push(newCreature(b, 'dragon', o.idx, b.turn + 1));
     yield step(b, `${tag} hatches an egg on ${s.name}'s Dragon Roost: a Dragon flies at ${o.name}.`, [], 'bonus'); }
@@ -1612,6 +1629,7 @@ export function* resolve(b) {
   let any = false;
   for (const s of b.sides) for (const e of s.run) if (e.state === 'bid') {
     e.lingerTotal = clamp(e.bidValue - 1, 0, 20); e.lingerLeft = e.lingerTotal; e.state = 'play';
+    e.trick.wear = Math.max(0, (e.trick.wear ?? WEAR.good) - 1); // each play wears the trick (its condition, not its power)
     for (const ch of e.bid) { b.fx[ch.id] = 'house'; delete ch.from; } e.paid = e.bid.map((ch) => ch.value); s.bidsPaid += e.bidValue; e.bid = []; any = true;
   }
   b.ctx = { phase: 'bids' };

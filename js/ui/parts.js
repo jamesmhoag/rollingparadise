@@ -72,32 +72,36 @@ export const dieClass = (d) => `${(d.up || []).length ? 'upg' : ''} ${(d.up || [
 export const dieEl = (d, value, cls = '') => h('span', { class: `die static ${d.type} ${dieClass(d)} ${cls}` }, h('i', { text: value ?? d.type.slice(1) }), dieMarks(d));
 
 const fx = (m) => '×' + (m % 1 ? m.toFixed(2).replace(/0$/, '') : m);
-// what a trick's quality and upgrades do, spelled out
-export function upInfo(t) {
-  const base = { ...t, up: 0 }, T = D.TYPES[D.TRICKS[t.id].type], next = t.up < 2 ? { ...t, up: t.up + 1 } : null;
-  const trait = (x) => T.traitText(traitOf(x)).replace(/\.$/, '');
-  let s = `<p><span class="k">Power</span> The roll total is multiplied by <b>${fx(multOf(t))}</b>: ${D.QNAME[t.q]} quality gives ${fx(multOf(base))}`;
-  s += t.up ? `, and ${t.up === 1 ? 'its upgrade adds' : 'its 2 upgrades add'} <b>+${fx(multOf(t) - multOf(base)).slice(1)}</b> (+0.25 each).</p>` : '. Not upgraded.</p>';
-  if (traitOf(t) !== traitOf(base)) s += `<p class="up-line">Upgraded Trait: ${trait(t)} <span class="dim">(was ${traitOf(base)})</span>.</p>`;
-  if (next) s += `<p class="dim">Next upgrade at the Trick Trader: roll total ${fx(multOf(t))} → <b>${fx(multOf(next))}</b>${traitOf(next) !== traitOf(t) ? `, Trait ${traitOf(t)} → <b>${traitOf(next)}</b>` : ''}. For example a roll of 6 goes from ${Math.round(6 * multOf(t))} to ${Math.round(6 * multOf(next))}.</p>`;
-  else s += '<p class="dim">Fully upgraded (2 of 2).</p>';
+// what a trick's quality, print and condition do, spelled out
+export function printInfo(t) {
+  const plain = { id: t.id, q: t.q }, cond = D.CONDITIONS[D.condOf(t)];
+  let s = `<p><span class="k">Power</span> The roll total is multiplied by <b>${fx(multOf(t))}</b>: ${D.QNAME[t.q]} quality gives ${fx(multOf(plain))}`;
+  s += t.foil ? `, and the ${D.FOIL[Math.min(3, t.foil)].name} print makes it ${fx(multOf(t))}.</p>` : '.</p>';
+  s += `<p><span class="k">${D.QNAME[t.q]}</span> ${D.qdieText(t.q)}</p>`;
+  s += `<p class="dim"><span class="k">${cond.name}</span> Wear ${t.wear ?? D.WEAR.good}/100, 1 a play. ${cond.sell ? `Sells at ${Math.round(cond.sell * 100)}% of its price` : 'Cannot be sold, only trashed'}; condition never changes how it plays.</p>`;
   return s;
 }
-// quality and upgrades are drawn on the trick itself: q1–q4 frames, u1–u2 foil
-export const trickLook = (t) => `q${t.q} u${t.up || 0}`;
-export const pips = (t) => '●'.repeat(t.q) + (t.up ? `<span class="up">${'▲'.repeat(t.up)}</span>` : '');
+// what a Misprint or a Reprint plays differently (always shown: it changes the rules)
+export const printRule = (t) => (t.rar === 'misprint' ? `<p class="print-line"><span class="k">Misprint</span> ${D.misText(t)}.</p>` : t.rar === 'reprint' ? `<p class="print-line"><span class="k">Reprint</span> ${D.REPRINT[D.TRICKS[t.id].type]}</p>` : '');
+// quality and print are drawn on the trick itself: q1–q4 frames, f1–f3 foil, and a Misprint's or Reprint's look
+export const trickLook = (t) => `q${t.q}${t.foil ? ` f${Math.min(3, t.foil)}` : ''}${t.rar === 'misprint' || t.rar === 'reprint' ? ` ${t.rar}` : ''}`;
+// the words for a trick's quality and print, in place of marks: "Grand", "Grand Holo", "Fine Misprint"
+const rareWord = (t) => (D.rarityName(t) ? `<span class="rw ${trickLook(t)}">${D.rarityName(t)}</span>` : '');
+export const trickWords = (t) => `${D.QNAME[t.q]}${D.rarityName(t) ? ' ' + rareWord(t) : ''}`;
+// one word where room is short (a compact card): the print if it is rare, else the quality above Common
+export const trickWord = (t) => rareWord(t) || (t.q > 1 ? D.QNAME[t.q] : '');
 export function trickTip(t, viewerCls, live) {
-  const def = D.TRICKS[t.id], T = D.TYPES[def.type], mi = traitOf(t);
+  const def = D.defOf(t), T = D.TYPES[def.type], mi = traitOf(t);
   const classOk = !def.cls || def.cls === viewerCls;
   const tgt = def.approach === 'none' ? (def.dist === 'rain' ? 'Random stacks of your opponent.' : 'No target needed.')
     : `Targets ${D.APPROACH[def.approach]} in ${def.side === 'self' ? 'your own' : "your opponent's"} position. <b>${D.DIST[def.dist].name}</b>: ${D.DIST[def.dist].text}`;
-  return `<div class="tt-trick"><div class="tt-head"><b>${def.name}</b><span class="q">${pips(t)} ${D.QNAME[t.q]}${t.up ? ` · upgraded ${t.up}/2` : ''}</span></div>
+  return `<div class="tt-trick"><div class="tt-head"><b>${def.name}</b><span class="q">${trickWords(t)} · ${D.CONDITIONS[D.condOf(t)].name}</span></div>
     <div class="tt-type" style="color:${T.color}">${T.name}${def.cls ? ' · ' + D.CLASSES[def.cls].name : ' · Any class'} <span class="dim v">— ${T.text}</span></div>
     <p><span class="k">Trait</span> Bid a chip: ${T.traitText(mi)}</p>
     <p><span class="k">Roll</span> Bid with up to ${def.count} ${def.die}: ${def.roll.text}</p>
     <p class="${classOk ? '' : 'dim'}"><span class="k">Bonus</span> With ${def.count} ${def.die}${def.count > 1 ? ' dice' : ''}, if ${D.condText(def.bonus.cond)}: ${def.bonus.text}${classOk ? '' : ` <i>(${D.CLASSES[def.cls].name} only)</i>`}</p>
-    <p class="dim">${tgt}</p>
-    <div class="v">${upInfo(t)}</div><p class="dim">Dice may be loaded over several turns before you bid.</p>${live || ''}</div>`;
+    ${printRule(t)}<p class="dim">${tgt}</p>
+    <div class="v">${printInfo(t)}</div><p class="dim">Dice may be loaded over several turns before you bid.</p>${live || ''}</div>`;
 }
 export function statTip(k, v) {
   const S = D.STATS[k];

@@ -82,7 +82,7 @@ for (let seed = 1; seed <= 200; seed++) {
   for (const { cell } of opp.grid.flat().map((cell) => ({ cell }))) if (cell.chips.length && bout.rng.chance(0.3)) setDebt(bout, cell, bout.rng.range(1, 4));
   if (seed % 3 === 0) opp.grid[0][bout.rng.int(opp.dims.cols)].chips.push({ id: bout.nextId++, kind: 'block', value: 0 });
   const id = fees[seed % fees.length], def = D.TRICKS[id];
-  const e = { uid: 9999, trick: { id, q: 1 + (seed % 3), up: 0, uid: 9999 }, dice: Array.from({ length: 1 + (seed % def.count) }, (_, i) => ({ id: 'x' + i, type: def.die, value: 1 + ((seed * (i + 3)) % 12), t: 1, up: [] })), bid: [], bidValue: 1, state: 'play', lingerLeft: 0, lingerTotal: 0, target: null };
+  const e = { uid: 9999, trick: { id, q: 1 + (seed % 3), uid: 9999 }, dice: Array.from({ length: 1 + (seed % def.count) }, (_, i) => ({ id: 'x' + i, type: def.die, value: 1 + ((seed * (i + 3)) % 12), t: 1, up: [] })), bid: [], bidValue: 1, state: 'play', lingerLeft: 0, lingerTotal: 0, target: null };
   const origin = B.validTargets(bout, me, e)[0]; if (!origin) continue;
   const fc = B.forecastFee(bout, me, e, origin), plan = B.feePlan(bout, me, e, origin);
   if (!fc || plan.shares.some(() => false)) continue;

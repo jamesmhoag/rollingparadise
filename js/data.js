@@ -89,7 +89,52 @@ export const TYPES = {
 };
 export const QMULT = [0, 1, 2, 3, 4];
 export const QNAME = ['', 'Common', 'Fine', 'Grand', 'Royal'];
-export const TRICK_UPGRADE_MAX = 2; export const DIE_UPGRADE_MAX = 2;
+export const DIE_UPGRADE_MAX = 2;
+// Quality is unlocked by floor. Common and Fine tricks are reliable: they roll only their own small dice (d4, d6,
+// d8). Grand and Royal hit harder but less reliably: each time one is drawn it rolls a quality die (d10 or d20). A
+// low roll is a dud (the trick plays at Common strength that turn); a high roll sets off its Bonus whatever the dice.
+export const QDIE = [null, null, null, { die: 'd10', faces: 10, dud: 1, hot: 10 }, { die: 'd20', faces: 20, dud: 2, hot: 19 }];
+export const qdieText = (q) => { const Q = QDIE[q]; return Q ? `Rolls a ${Q.die} when drawn: ${Q.dud === 1 ? '1' : `1–${Q.dud}`} is a dud (Common strength this turn); ${Q.hot === Q.faces ? Q.hot : `${Q.hot}–${Q.faces}`} sets off the Bonus whatever the dice.` : 'Reliable: no quality die.'; };
+
+// A trick's condition sets only what it sells for. Wear starts at 100 for Mint and drops 1 each time the trick plays;
+// each condition's sale percentage is also its wear threshold. Poor tricks cannot be sold (the Trader trashes them)
+// but play forever, just as well as ever. Gem Mint comes only out of foil packs and is Mint until first played.
+export const CONDITIONS = {
+  gem: { name: 'Gem Mint', at: 100, sell: 2 }, mint: { name: 'Mint', at: 100, sell: 1 }, excellent: { name: 'Excellent', at: 75, sell: 0.75 },
+  good: { name: 'Good', at: 50, sell: 0.5 }, poor: { name: 'Poor', at: 0, sell: 0 },
+};
+export const WEAR = { mint: 100, excellent: 99, good: 74 }; // where each source starts: foil packs, the shelf, your first Book
+export const condOf = (t) => { const w = t.wear ?? WEAR.good; return w >= 100 ? (t.gem ? 'gem' : 'mint') : w >= 75 ? 'excellent' : w >= 50 ? 'good' : 'poor'; };
+
+// Rarity. Basic is the plain print. Foil multiplies the roll total in tiers; a Misprint has a modestly changed die or
+// Trait value (most of them for the better); a Reprint plays an older rule for its type, restoring a buff.
+export const FOIL = [null, { name: 'Foil', mult: 1.25 }, { name: 'Holo', mult: 1.5 }, { name: 'Prism', mult: 2 }];
+export const RARITY = {
+  basic: { name: 'Basic', text: 'The plain print.' },
+  foil: { name: 'Foil', text: 'A foil print multiplies the roll total: Foil ×1.25, Holo ×1.5, Prism ×2.' },
+  misprint: { name: 'Misprint', text: 'Printed with a changed value: its die or its Trait differs from the plain print.' },
+  reprint: { name: 'Reprint', text: 'Printed with an older rule for its type.' },
+};
+// the older rule each type's Reprint plays
+export const REPRINT = {
+  expense: 'Older rule: the roll effect plays once for each die, each instance worth that die plus the Trait value.',
+  insurance: 'Older rule: the Trait plays once for each die on the trick.',
+  investment: 'Older rule: the Trait plays once for each die on the trick.',
+  correction: 'Older rule: the Trait plays once for each die on the trick.',
+};
+export const rarityName = (t) => (t.foil ? FOIL[Math.min(3, t.foil)].name : t.rar && t.rar !== 'basic' ? RARITY[t.rar].name : '');
+// a trick's rules as printed on it: a Misprint's die differs from the plain print
+const printed = new Map();
+export function defOf(t) {
+  const d = t.mis?.die; if (!d) return TRICKS[t.id];
+  const k = t.id + ':' + d; if (!printed.has(k)) printed.set(k, { ...TRICKS[t.id], die: d }); return printed.get(k);
+}
+export const misText = (t) => !t.mis ? '' : [t.mis.die && `prints ${t.mis.die} instead of ${TRICKS[t.id].die}`, t.mis.trait && `Trait ${t.mis.trait > 0 ? '+' : ''}${t.mis.trait}`].filter(Boolean).join(', ');
+// Foil packs: five tricks of the set's quality, all Mint (each may be Gem Mint), one of them a rarer print.
+// Better sets cost more and open as the floors do: 200¢ × quality × floor, above what the five sell for at Mint.
+export const PACKS = [null,
+  { name: 'Common set', q: 1, floor: 1 }, { name: 'Fine set', q: 2, floor: 2 }, { name: 'Grand set', q: 3, floor: 3 }, { name: 'Royal set', q: 4, floor: 4 }];
+export const PACK_SIZE = 5, GEM_CHANCE = 0.08, PACK_PRICE = 200;
 
 export const APPROACH = {
   front: 'the front-most stack of a column',

@@ -1,7 +1,7 @@
 // Suites, the Gift Shop exit, the Paradise Ascent and the end of a run.
 import { h, syncList, toast, btn, tween, pulse, wait } from './core.js';
 import { app, hud, oppTip, trickTag } from './app.js';
-import { jacketTip, trickTip, pips, cardTip, dieTip } from './parts.js';
+import { jacketTip, trickTip, trickWords, cardTip, dieTip } from './parts.js';
 import { planner } from './prep.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
@@ -33,7 +33,7 @@ export function suiteScene(root, penthouse) {
   const offer = R.suiteOffer(run), dresser = h('div', { class: 'items list' });
   const J = jacketList((id) => { run.jacket = id; J.render(); H.update(); toast(`You change into the ${D.JACKETS[id].name} jacket.`); });
   function render() {
-    syncList(dresser, offer.filter((t) => !t.taken), (t) => t.uid, (t) => { const def = D.TRICKS[t.id]; return h('div', { class: 'item', style: { '--tc': D.TYPES[def.type].color }, tip: () => trickTip(t, run.cls) }, h('div', { class: 'main' }, h('b', { html: `${def.name} <span class="q">${pips(t)}</span>` }), h('small', { text: `${D.TYPES[def.type].name} · left on the dresser` })), btn('Take', () => { t.taken = true; run.tricks.push({ uid: t.uid, id: t.id, q: t.q, up: t.up }); render(); H.update(); toast(`${def.name} added to your Book.`); }, null, 'small')); });
+    syncList(dresser, offer.filter((t) => !t.taken), (t) => t.uid, (t) => { const def = D.TRICKS[t.id]; return h('div', { class: 'item', style: { '--tc': D.TYPES[def.type].color }, tip: () => trickTip(t, run.cls) }, h('div', { class: 'main' }, h('b', { html: `${def.name} <span class="q">${trickWords(t)}</span>` }), h('small', { text: `${D.TYPES[def.type].name} · left on the dresser` })), btn('Take', () => { t.taken = true; run.tricks.push({ uid: t.uid, id: t.id, q: t.q, up: t.up }); render(); H.update(); toast(`${def.name} added to your Book.`); }, null, 'small')); });
   }
   render();
   const K = D.CLASSES[run.cls];

@@ -1,5 +1,5 @@
 // Automated Roller. Plans a turn through the same API the player uses.
-import { TRICKS } from './data.js';
+import { TRICKS, defOf } from './data.js';
 import * as B from './bout.js';
 
 function cheapestBidSpot(s) {
@@ -94,12 +94,12 @@ function planDraw(b, s) {
 
 // The tricks the roll can feed: room left, and a die type that fits
 const room = (e) => e.state !== 'play' && e.dice.length < TRICKS[e.trick.id].count;
-const takes = (e, d) => { const t = e.dice.find((x) => !x.chip)?.type || TRICKS[e.trick.id].die; return d.chip || t === d.type; };
+const takes = (e, d) => { const t = e.dice.find((x) => !x.chip)?.type || defOf(e.trick).die; return d.chip || t === d.type; };
 function planRoll(b, s) {
   // pick the dice that suit the shown tricks; they are thrown as the Bid opens
   const open = s.run.filter(room).sort((x, y) => prio(x) - prio(y) || y.dice.length - x.dice.length);
   if (!open.length || !B.canThrowAny(s)) return;
-  const wanted = open.map((e) => e.dice.find((d) => !d.chip)?.type || TRICKS[e.trick.id].die);
+  const wanted = open.map((e) => e.dice.find((d) => !d.chip)?.type || defOf(e.trick).die);
   const rank = (d) => { const k = wanted.indexOf(d.type); return k < 0 ? 99 - +d.type.slice(1) / 100 : k; };
   const space = open.reduce((n, e) => n + TRICKS[e.trick.id].count - e.dice.length, 0) - s.tray.length;
   const n = Math.max(1, Math.min(space, B.tipOf(s, 'proficiency')));

@@ -4,7 +4,7 @@
 import { h, openPanel, closePanel, btn } from './core.js';
 import { app } from './app.js';
 import { upgrade as upgradeFaces, suggestFace } from '../dice.js';
-import { chipEl, chipTip, dieEl, dieTip, faceStrip, trickTip, pips, trickLook, upInfo, cardEl, cardTip, walletEl, jacketEl, jacketTip, drinkEl, feltEl } from './parts.js';
+import { chipEl, chipTip, dieEl, dieTip, faceStrip, trickTip, trickWords, trickLook, cardEl, cardTip, walletEl, jacketEl, jacketTip, drinkEl, feltEl } from './parts.js';
 import * as D from '../data.js';
 import { CHIP_LIST } from '../chiplist.js';
 import { TRAITS, traitsOf, traitsHtml, flyerTraits } from '../traits.js';
@@ -22,7 +22,7 @@ function entry(vis, name, lines, o = {}) {
 }
 const dim = (t) => `<span class="dim">${t}</span>`;
 const fx = (m) => '×' + (m % 1 ? m.toFixed(2).replace(/0$/, '') : m);
-const tagOf = (t) => h('span', { class: `tag-t trick ${trickLook(t)}`, style: { '--tc': D.TYPES[D.TRICKS[t.id].type].color } }, D.TRICKS[t.id].name, h('span', { class: 'q', html: pips(t) }));
+const tagOf = (t) => h('span', { class: `tag-t trick ${trickLook(t)}`, style: { '--tc': D.TYPES[D.TRICKS[t.id].type].color } }, D.TRICKS[t.id].name, h('span', { class: 'q', html: trickWords(t) }));
 const tipped = (el, fn) => { el._tip = fn; el.classList.add('has-tip'); return el; };
 const noUpgrades = (what) => sec('Upgrades', `${what} have no upgrades yet. When they do, they will be drawn on the piece itself, the way dice and tricks are.`);
 
@@ -99,16 +99,23 @@ function tricksTab(own) {
   for (const [type, T] of Object.entries(D.TYPES)) {
     out.push(sec(`${T.name}s`, `${T.text} Trait when bid with no dice: ${T.traitText(1)}`));
     for (const [id, def] of Object.entries(D.TRICKS)) { if (def.type !== type) continue;
-      const t = { id, q: 1, up: 0 }, n = own.trick(id);
+      const t = { id, q: 1 }, n = own.trick(id);
       out.push(entry(tipped(tagOf(t), () => trickTip(t, own.run?.cls)), def.name,
         [`${def.cls ? D.CLASSES[def.cls].name : 'Any class'} · ${def.count}${def.die} · ${def.approach === 'none' ? 'no target' : `${def.approach}, ${D.DIST[def.dist].name}`}`, `<span class="k">Roll</span> ${def.roll.text}`, `<span class="k">Bonus</span> ${D.condText(def.bonus.cond)}: ${def.bonus.text}`, def.early ? dim(`Swift: plays with the ${D.TYPES[def.early].name}s.`) : null, def.arrange ? dim(`Arrangement: moves chips in ${def.side === 'opp' ? 'your opponent\'s' : 'your'} position (${def.arrange.replace('opp-', '')}).`) : null], { own: n ? (n > 1 ? `In your book ×${n}` : 'In your book') : null }));
     }
   }
-  out.push(sec('Upgrades', `Quality (Common to Royal) sets the multiplier and is drawn as the frame; each of the ${D.TRICK_UPGRADE_MAX} Trick Trader upgrades adds +0.25 and a ▲, and gives the trick a moving foil. Upgrade cost: 100¢ × (1 + quality × (upgrades + 1)). Two upgrades per floor.`));
-  const steps = [{ q: 1, up: 0 }, { q: 2, up: 0 }, { q: 3, up: 0 }, { q: 4, up: 0 }, { q: 4, up: 1 }, { q: 4, up: 2 }].map((x) => ({ id: 'charge', ...x }));
-  for (const t of steps) out.push(entry(tipped(tagOf(t), () => trickTip(t, own.run?.cls)), `${D.QNAME[t.q]}${t.up ? ` · ${'▲'.repeat(t.up)} upgraded ${t.up}/${D.TRICK_UPGRADE_MAX}` : ''}`,
-    [`Roll total ${fx(multOf(t))} · Trait ${traitOf(t)}`, dim(`Investments: ${fx(multOf({ ...t, id: 'stir' }))}. Upgrade from here: ${t.up < D.TRICK_UPGRADE_MAX ? cents(100 * (1 + t.q * (t.up + 1))) : 'maxed'}.`)]));
-  out.push(entry(tagOf({ id: 'charge', q: 3, up: 1 }), 'What an upgrade says', [upInfo({ id: 'charge', q: 3, up: 1 })], { wide: true }));
+  out.push(sec('Quality', 'Quality (Common to Royal) sets the multiplier and is drawn as the frame. Better qualities open with the floors. Common and Fine are reliable; Grand and Royal hit harder but roll a quality die when drawn.'));
+  for (const q of [1, 2, 3, 4]) { const t = { id: 'charge', q };
+    out.push(entry(tipped(tagOf(t), () => trickTip(t, own.run?.cls)), D.QNAME[q], [`Roll total ${fx(multOf(t))} · Trait ${traitOf(t)}`, dim(`Investments: ${fx(multOf({ ...t, id: 'stir' }))}. ${D.qdieText(q)}`)])); }
+  out.push(sec('Rarity', 'How a trick is printed. The Trick Trader no longer upgrades tricks: better prints come in foil packs.'));
+  const prints = [{ rar: 'basic' }, { rar: 'foil', foil: 1 }, { rar: 'foil', foil: 2 }, { rar: 'foil', foil: 3 }, { rar: 'misprint', mis: { die: 'd8' } }, { rar: 'misprint', mis: { trait: 2 } }, { rar: 'reprint' }].map((x) => ({ id: 'charge', q: 1, ...x }));
+  for (const t of prints) out.push(entry(tipped(tagOf(t), () => trickTip(t, own.run?.cls)), t.foil ? D.FOIL[t.foil].name : D.RARITY[t.rar].name,
+    [t.foil ? `Roll total ${fx(multOf(t))} (×${D.FOIL[t.foil].mult} on Common)` : t.rar === 'misprint' ? `${D.RARITY.misprint.text} This one ${D.misText(t)}.` : t.rar === 'reprint' ? `${D.RARITY.reprint.text}` : D.RARITY.basic.text,
+      t.rar === 'reprint' ? dim(Object.entries(D.REPRINT).map(([k, v]) => `${D.TYPES[k].name}: ${v.replace('Older rule: ', '')}`).join(' ')) : null].filter(Boolean)));
+  out.push(sec('Condition', 'Condition sets only what a trick sells for. Wear starts at 100 for Mint and drops 1 each time the trick plays; each condition\'s sale percentage is also its wear threshold. A Poor trick plays forever, just as well, but cannot be sold.'));
+  for (const [k, C] of Object.entries(D.CONDITIONS)) out.push(entry(h('b', { text: C.name }), C.sell ? `Sells at ${Math.round(C.sell * 100)}%` : 'Trash only',
+    [k === 'gem' ? 'Only out of foil packs, now and then. Mint until it first plays.' : k === 'mint' ? 'Every trick in a foil pack.' : k === 'excellent' ? 'Bought off the Trader\'s shelf (wear 75 and up).' : k === 'good' ? 'Your first Book starts here (wear 50 and up).' : 'Wear below 50.']));
+  out.push(sec('Foil packs', `Sold at the Trick Trader for ${cents(D.PACK_PRICE)} × quality × floor: ${D.PACKS.slice(1).map((P) => `${P.name} (floor ${P.floor}+)`).join(' · ')}. Five tricks of the set's quality, all Mint, one of them a rarer print.`));
   return out;
 }
 

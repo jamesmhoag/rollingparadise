@@ -1,7 +1,7 @@
 // The table. Every chip, die, trick card and creature is one persistent element that is
 // moved, faded or flipped to follow the bout state, so nothing ever pops between states.
 import { h, tip, wait, tween, swapText, setOn, pulse, syncList, toast, btn, refreshTip, redrawTip, box, vc, detail } from './core.js';
-import { chipSig, chipGlyph, chipName, chipText, dieTip, trickTip, pips, statTip, drinkTip, dieMarks, dieClass, trickLook, feltStyle, seenAs, traitsOf, traitsHtml } from './parts.js';
+import { chipSig, chipGlyph, chipName, chipText, dieTip, trickTip, trickWord, trickWords, statTip, drinkTip, dieMarks, dieClass, trickLook, feltStyle, seenAs, traitsOf, traitsHtml } from './parts.js';
 import { flyerTraits } from '../traits.js';
 import { openLibrary } from './library.js';
 import * as D from '../data.js';
@@ -277,12 +277,12 @@ export function boutScene(root, bout, ctx, onDone) {
     layer.append(el); return el;
   }
   function mkCard(t) {
-    const def = D.TRICKS[t.id], T = D.TYPES[def.type];
+    const def = D.defOf(t), T = D.TYPES[def.type];
     const el = h('div', { class: `tcard ${trickLook(t)}`, style: { '--tc': T.color }, onclick: (ev) => clickCard(t.uid, ev), onmouseenter: () => { ui.card = t.uid; marks(); }, onmouseleave: () => { if (ui.card === t.uid) { ui.card = null; marks(); } } },
-      h('div', { class: 'c-compact' }, h('b', { text: def.name }), h('span', { class: 'req', text: `${def.count}${def.die}` }), h('span', { class: 'q', html: pips(t) })),
+      h('div', { class: 'c-compact' }, h('b', { text: def.name }), h('span', { class: 'req', text: `${def.count}${def.die}` }), h('span', { class: 'q', html: trickWord(t) })),
       h('div', { class: 'c-open' },
-        h('div', { class: 'c-name' }, h('b', { text: def.name }), h('span', { class: 'q', html: pips(t) })),
-        h('div', { class: 'c-type' }, T.name, h('span', { class: `xm ${t.up ? 'up' : ''}`, text: ` ${fmtX(B.multOf(t))}${'▲'.repeat(t.up || 0)}` }), h('span', { class: 'tgt', text: 'aim', 'data-act': 'target', tip: '<b>Aim</b><p>Change where this trick lands. While aiming, each stack shows what the fee would pay (gold), leave as Debt (red) and carry to the stack behind (pink).</p>' })),
+        h('div', { class: 'c-name' }, h('b', { text: def.name }), h('span', { class: 'q', html: trickWord(t) })),
+        h('div', { class: 'c-type' }, T.name, h('span', { class: `xm ${t.foil ? 'up' : ''}`, text: ` ${fmtX(B.multOf(t))}` }), h('span', { class: 'qd', tip: `<b>${D.QNAME[t.q]} quality</b><p>${D.qdieText(t.q)}</p>` }), h('span', { class: 'tgt', text: 'aim', 'data-act': 'target', tip: '<b>Aim</b><p>Change where this trick lands. While aiming, each stack shows what the fee would pay (gold), leave as Debt (red) and carry to the stack behind (pink).</p>' })),
         h('div', { class: 'c-slots', tip: `<b>Dice</b><p>${def.name} holds at most ${def.count} ${def.die}${def.count > 1 ? ' dice' : ''}, all of one type. A flipped chip takes the type of the dice it joins.</p>` }, Array.from({ length: def.count }, () => h('span', { class: 'slot', text: def.die }))),
         h('div', { class: 'c-bid' }, h('span', { class: 'bidslot', text: 'BID', 'data-act': 'bid' }), h('div', { class: 'c-math' })), // the roll breakdown sits beside the bid pile
         h('div', { class: 'c-text' }, h('p', {}, h('em', { text: 'Roll ' }), def.roll.text), h('p', { class: 'bonus' }, h('em', { text: 'Bonus ' }), def.bonus.text)),
@@ -344,13 +344,16 @@ export function boutScene(root, bout, ctx, onDone) {
         const def = D.TRICKS[t.id], met = B.bonusMet(me, e);
         el.querySelector('.bonus').classList.toggle('met', met); el.querySelector('.bonus').classList.toggle('na', !!def.cls && def.cls !== me.cls);
         el.querySelector('.tgt').classList.toggle('on', e.state === 'bid' && B.needsTarget(e));
+        const xm = el.querySelector('.xm'), qd = el.querySelector('.qd'), qs = B.qState(e), et = B.effTrick(e); // Upgrade chips and the quality die change the multiplier as it stands
+        swapText(xm, ` ${fmtX(B.multOf(et))}`); xm.classList.toggle('up', (et.foil || 0) > 0); xm.classList.toggle('dud', qs === 'dud');
+        swapText(qd, e.qroll != null ? `${D.QDIE[t.q].die}:${e.qroll}` : ''); qd.classList.toggle('dud', qs === 'dud'); qd.classList.toggle('hot', qs === 'hot');
         swapText(el.querySelector('.state'), e.state === 'play' ? (e.lingerLeft ? `lingers ${e.lingerLeft}` : 'in play') : e.state === 'bid' ? `${e.bidValue}¢ bid · ${e.bidValue > 1 ? `lingers ${e.bidValue - 1}` : 'plays now'}` : e.dice.length ? 'needs a bid' : 'shown');
         // bids stack in a pile, like a stack on the table; the BID ring rises with it, sitting on the top chip as a + (each 1¢ more lingers a turn longer)
         const slot = el.querySelector('.bidslot'), nb = e.bid.length;
         swapText(slot, nb ? '' : 'BID'); // with chips on it, the ring is drawn over the pile (with the chips) as a +
         tween(el.querySelector('.c-total .num'), B.previewTotal(me, e), (n) => (e.dice.length ? '= ' + Math.round(n) : ''));
         const P = B.totalParts(me, e), bits = e.dice.length ? [P.dice.join('+')] : [];
-        if (e.dice.length) { if (P.linger) bits.push(`+${P.linger} linger`); if (P.power) bits.push(`+${P.power} pow`); if (P.venge) bits.push(`+${P.venge} venge`); if (P.mult !== 1) bits.push(`×${+P.mult.toFixed(2)}`); if (P.heat !== 1) bits.push(`×${P.heat.toFixed(2)} call`); if (P.double) bits.push('×2'); }
+        if (e.dice.length) { if (P.linger) bits.push(`+${P.linger} linger`); if (P.power) bits.push(`+${P.power} pow`); if (P.venge) bits.push(`+${P.venge} venge`); if (P.plus) bits.push(`+${P.plus} trait`); if (P.mult !== 1) bits.push(`×${+P.mult.toFixed(2)}`); if (P.heat !== 1) bits.push(`×${P.heat.toFixed(2)} call`); if (P.double) bits.push('×2'); }
         swapText(el.querySelector('.c-math'), `${e.state === 'play' && e.paid ? `bid ${e.paid.join('+')}¢\n` : ''}${bits.join(' ')}`); // in play, the bid it was made with is recalled where its pile stood
         [...el.querySelectorAll('.slot')].forEach((sl, i) => sl.classList.toggle('full', i < e.dice.length));
       }

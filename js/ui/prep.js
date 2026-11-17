@@ -1,7 +1,7 @@
 // Commitment before a bout (wager, tilts, position) and the settlement after it.
 import { h, syncList, toast, btn, tween, wait, pulse, swapText } from './core.js';
 import { app, hud, oppTip, trickTag, diceSummary } from './app.js';
-import { chipEl, chipSig, chipGlyph, chipTip, dieEl, dieTip, statTip, trickTip, pips } from './parts.js';
+import { chipEl, chipSig, chipGlyph, chipTip, dieEl, dieTip, statTip, trickTip } from './parts.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
 import { barCapacity } from '../bout.js';
@@ -172,5 +172,5 @@ export function resultScene(root, ctx, res) {
   }
   totalEl._v = ctx.kind === 'intro' ? 0 : res.prizes ? ctx.committed + ctx.wager + betPay : undefined; totalEl.textContent = cents(totalEl._v ?? run.purse);
   setTimeout(reveal, 550);
-  void trickTip; void pips;
+  void trickTip;
 }

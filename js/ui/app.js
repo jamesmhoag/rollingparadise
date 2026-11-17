@@ -1,7 +1,7 @@
 // Shared state for the screens: the current run, the saved profile, and navigation.
 import { h, tween, syncList, btn } from './core.js';
 import { openLibrary } from './library.js';
-import { statTip, dieTip, trickTip, cardTip, jacketTip, drinkTip, pips, trickLook } from './parts.js';
+import { statTip, dieTip, trickTip, cardTip, jacketTip, drinkTip, trickWords, trickLook } from './parts.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
 import { cents } from '../util.js';
@@ -10,7 +10,7 @@ export const app = { run: null, meta: null, nav: {} };
 
 const KEYS6 = ['trickery', 'ingenuity', 'proficiency', 'charisma', 'cunning', 'conviction'];
 export const diceSummary = (dice) => { const m = {}; for (const d of dice) m[d.type] = (m[d.type] || 0) + 1; return Object.entries(m).sort((a, b) => a[0].slice(1) - b[0].slice(1)).map(([t, n]) => `${n}${t}`).join(' · '); };
-export const trickTag = (t, cls) => h('span', { class: `tag-t trick ${trickLook(t)}`, style: { '--tc': D.TYPES[D.TRICKS[t.id].type].color }, tip: () => trickTip(t, cls) }, D.TRICKS[t.id].name, h('span', { class: 'q', html: pips(t) }));
+export const trickTag = (t, cls) => h('span', { class: `tag-t trick ${trickLook(t)}`, style: { '--tc': D.TYPES[D.TRICKS[t.id].type].color }, tip: () => trickTip(t, cls) }, D.TRICKS[t.id].name, h('span', { class: 'q', html: trickWords(t) }));
 export function oppTip(o) {
   return `<b>${o.name}</b> <span class="dim">${o.title ? o.title + ' · ' : ''}${D.CLASSES[o.cls].name}</span>
     <p>Worth <b>${cents(o.worth)}</b> on the table. Position ${o.dims.meterRows} Meter + ${o.dims.barRows} Bar rows, stacks ${o.dims.stackMax} high.</p>
@@ -29,7 +29,7 @@ export function hud(place, sub) {
     syncList(stats, KEYS6, (k) => k, (k) => h('span', { class: 'stat', tip: () => statTip(k, R.rollerStats(run).v[k]) }, h('em', { text: D.STATS[k].short }), h('b', {})), (e, k) => { e.lastChild.textContent = st[k]; });
     const items = [
       { k: 'dice', text: `🎲 ${run.dice.length}`, tip: () => `<b>Pouch</b><p>${diceSummary(run.dice)}</p><ul>${run.dice.filter((d) => d.up.length).map((d) => `<li>${dieTip(d)}</li>`).join('')}</ul>` },
-      { k: 'tricks', text: `📖 ${run.tricks.length}`, tip: () => `<b>Book</b><ul>${run.tricks.map((t) => `<li>${D.TRICKS[t.id].name} <span class="q">${pips(t)}</span> <span class="dim">${D.TYPES[D.TRICKS[t.id].type].name}</span></li>`).join('')}</ul>` },
+      { k: 'tricks', text: `📖 ${run.tricks.length}`, tip: () => `<b>Book</b><ul>${run.tricks.map((t) => `<li>${D.TRICKS[t.id].name} <span class="q">${trickWords(t)} · ${D.CONDITIONS[D.condOf(t)].name}</span> <span class="dim">${D.TYPES[D.TRICKS[t.id].type].name}</span></li>`).join('')}</ul>` },
       { k: 'cards', text: `🃏 ${run.cards.length}`, tip: () => { const v = R.rollerStats(run).v; return `<b>Wallet</b>${run.cards.map((c) => `<div>${cardTip(c, v)}</div>`).join('') || '<p>Empty.</p>'}`; } },
       { k: 'jacket', text: `🧥 ${D.JACKETS[run.jacket].name}`, tip: () => jacketTip(run.jacket, R.rollerStats(run).v) },
     ];

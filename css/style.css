@@ -364,10 +364,20 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 /* trick quality frames (Common, Fine, Grand, Royal) and upgrade foil */
 .tag-t.trick.q2, .tcard.q2 { outline: 1px solid #cfd8e6 !important; } .tag-t.trick.q3, .tcard.q3 { outline: 2px solid var(--amber) !important; }
 .tag-t.trick.q4 { outline: 2px solid var(--amber); box-shadow: 0 0 10px rgba(255, 215, 106, .55), 0 0 0 4px rgba(176, 140, 255, .35); } .tcard.q4 { outline: 2px solid var(--amber) !important; outline-offset: 1px; }
-.tag-t.trick.u1, .tag-t.trick.u2 { background-image: linear-gradient(115deg, transparent 30%, rgba(125, 255, 181, .14) 45%, transparent 60%); background-size: 260% 100%; animation: foil 3.6s linear infinite; }
-.tag-t.trick.u2 { background-image: linear-gradient(115deg, transparent 20%, rgba(125, 255, 181, .22) 40%, rgba(255, 215, 106, .2) 50%, transparent 65%); }
-.tcard.u1, .tcard.u2 { background-image: linear-gradient(115deg, transparent 30%, rgba(125, 255, 181, .12) 45%, transparent 60%), linear-gradient(180deg, #1d1440, #0c0820); background-size: 260% 100%, 100% 100%; animation: foil 3.6s linear infinite; }
-.tcard.u2 { background-image: linear-gradient(115deg, transparent 20%, rgba(125, 255, 181, .2) 40%, rgba(255, 215, 106, .18) 50%, transparent 65%), linear-gradient(180deg, #1d1440, #0c0820); }
+/* round 17: rarity is drawn on the trick: f1 Foil, f2 Holo, f3 Prism (moving foil), a Misprint's offset ink, a Reprint's older paper */
+.tag-t.trick.f1, .tag-t.trick.f2, .tag-t.trick.f3 { background-image: linear-gradient(115deg, transparent 30%, rgba(125, 255, 181, .14) 45%, transparent 60%); background-size: 260% 100%; animation: foil 3.6s linear infinite; }
+.tag-t.trick.f2 { background-image: linear-gradient(115deg, transparent 20%, rgba(125, 255, 181, .22) 40%, rgba(255, 215, 106, .2) 50%, transparent 65%); }
+.tag-t.trick.f3 { background-image: linear-gradient(115deg, transparent 15%, rgba(255, 110, 199, .22) 32%, rgba(255, 215, 106, .22) 44%, rgba(125, 255, 181, .22) 56%, rgba(110, 200, 255, .22) 68%, transparent 82%); }
+.tcard.f1, .tcard.f2, .tcard.f3 { background-image: linear-gradient(115deg, transparent 30%, rgba(125, 255, 181, .12) 45%, transparent 60%), linear-gradient(180deg, #1d1440, #0c0820); background-size: 260% 100%, 100% 100%; animation: foil 3.6s linear infinite; }
+.tcard.f2 { background-image: linear-gradient(115deg, transparent 20%, rgba(125, 255, 181, .2) 40%, rgba(255, 215, 106, .18) 50%, transparent 65%), linear-gradient(180deg, #1d1440, #0c0820); }
+.tcard.f3 { background-image: linear-gradient(115deg, transparent 15%, rgba(255, 110, 199, .2) 32%, rgba(255, 215, 106, .2) 44%, rgba(125, 255, 181, .2) 56%, rgba(110, 200, 255, .2) 68%, transparent 82%), linear-gradient(180deg, #1d1440, #0c0820); }
+.tcard.misprint .c-name b, .tcard.misprint .c-compact b, .tag-t.trick.misprint { text-shadow: 1.5px 0 0 rgba(255, 110, 199, .65), -1px 0 0 rgba(110, 200, 255, .55); }
+.tcard.reprint, .tag-t.trick.reprint { filter: sepia(.35) saturate(.85); }
+.rw { font-weight: 700; letter-spacing: .5px; color: var(--good); } .rw.f2 { color: var(--gold); } .rw.f3 { background: linear-gradient(90deg, var(--pink), var(--gold), var(--good)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.rw.misprint { color: var(--pink); } .rw.reprint { color: #d9b98a; }
+.c-type .qd { margin-left: 5px; font-size: 10px; color: var(--dim); font-weight: 700; white-space: nowrap; text-transform: none; letter-spacing: 0; } .c-type .qd.dud { color: var(--bad); } .c-type .qd.hot { color: var(--gold); text-shadow: 0 0 6px var(--gold); }
+.c-type .xm.dud { color: var(--bad); }
+.print-line .k { color: var(--pink); }
 @keyframes foil { from { background-position: 130% 0, 0 0; } to { background-position: -130% 0, 0 0; } }
 
 /* ---------- shop chips ---------- */
