@@ -1,5 +1,5 @@
 // Commitment before a bout (wager, tilts, position) and the settlement after it.
-import { h, syncList, toast, btn, tween, wait, pulse, swapText } from './core.js';
+import { h, syncList, toast, btn, tween, wait, pulse, swapText, openPanel, closePanel } from './core.js';
 import { app, hud, oppTip, trickTag, diceSummary } from './app.js';
 import { chipEl, chipSig, chipGlyph, chipTip, dieEl, dieTip, statTip, trickTip } from './parts.js';
 import * as D from '../data.js';
@@ -127,11 +127,11 @@ export function prepScene(root, kind, idx) {
 export function resultScene(root, ctx, res) {
   const run = app.run, win = res.win, opp = ctx.opp;
   const lines = h('div', { class: 'list' }), totalEl = h('span', { class: 'total num' }), newsEl = h('ul', { class: 'news list' });
-  const titles = { intro: win ? 'Welcome to the Royal Paradise' : 'Not yet', lounge: win ? 'Drinks are on them' : 'This round is on you', ascent: win ? 'One step higher' : 'The fall' };
+  const titles = { intro: win ? 'Welcome to the Royal Paradise' : 'Not yet', bouncer: win ? 'Back in' : 'Not tonight', lounge: win ? 'Drinks are on them' : 'This round is on you', ascent: win ? 'One step higher' : 'The fall' };
   const cont = btn('Continue', () => next(), null, 'big go off');
   const prizeBox = h('div', { class: 'cols3 fade-t' }); let choice = null, picks = [], claimed = !res.prizes;
   const left = h('div', { class: 'col', style: { width: res.prizes ? '430px' : '560px' } },
-    h('h1', { text: titles[ctx.kind] || (win ? `${opp.name} is broke` : 'You are broke') }), h('p', { class: 'sub', text: win ? `Settled after ${res.sm.turns} turn${res.sm.turns > 1 ? 's' : ''}${res.sm.timeout ? ' — last call' : ''}.` : D.FLOORS[run.floor]?.line && ctx.kind !== 'intro' ? 'Losing is not a reward. You lost; you deserve nothing.' : 'Sit back down and try again.' }),
+    h('h1', { text: titles[ctx.kind] || (win ? `${opp.name} is broke` : 'You are broke') }), h('p', { class: 'sub', text: win ? `Settled after ${res.sm.turns} turn${res.sm.turns > 1 ? 's' : ''}${res.sm.timeout ? ' — last call' : ''}.` : D.FLOORS[run.floor]?.line && !['intro', 'bouncer'].includes(ctx.kind) ? 'Losing is not a reward. You lost; you deserve nothing.' : 'Sit back down and try again.' }),
     h('div', { class: 'box' }, lines, h('div', { class: 'row between', style: { marginTop: '10px' } }, h('span', { class: 'cap', text: 'Purse' }), totalEl)), newsEl, h('div', { class: 'row' }, cont));
   root.append(h('div', { class: 'page', style: { top: 0, display: 'flex', gap: '24px', justifyContent: 'center', alignItems: 'center' } }, left, res.prizes ? h('div', { class: 'col', style: { width: '700px' } }, h('h2', { text: 'Choose your prize' }), h('p', { class: 'sub', text: `Your winnings (${cents(res.winnings)}) are yours either way. Pick one prize on top, then what you want from it.` }), prizeBox, h('div', { class: 'row' }, h('span', { class: 'grow' }), claimBtn())) : null));
 
@@ -163,14 +163,19 @@ export function resultScene(root, ctx, res) {
   function next() {
     if (!claimed) return;
     if (run.purse > D.PURSE_LIMIT) { run.phase = 'ripped'; return app.nav.summary(); } // the purse rips
-    if (ctx.kind === 'intro') { if (!win) return app.nav.intro(); R.enterFloor(run, 1); return app.nav.hub(); }
+    if (ctx.kind === 'intro') { if (!win) return app.nav.intro(); const f = R.startFloor(run); if (f <= 1) { R.enterFloor(run, 1); return app.nav.hub(); }
+      // a pass kept from the last run takes you past the floor checks: up to its floor, or start at the bottom anyway
+      const go = (to) => { closePanel(true); R.enterFloor(run, to); app.nav.hub(); };
+      return openPanel(h('div', { class: 'col' }, h('h2', { text: `Your ${D.PASSES[f].name}` }), h('p', { class: 'sub', text: `It came with your wallet from your last run, and it gets you past the floor checks up to ${D.FLOORS[f].name}.` }),
+        h('div', { class: 'row' }, btn(`Take the elevator to ${D.FLOORS[f].name}`, () => go(f), null, 'go'), btn('Start in the Boogey Basement', () => go(1)))), { modal: true }); }
+    if (ctx.kind === 'bouncer') { if (!win) return app.nav.bouncer(); R.enterFloor(run, 1); return app.nav.hub(); }
     if (ctx.kind === 'lounge') return app.nav.hub();
     if (ctx.kind === 'ascent') return run.phase === 'ascent' ? app.nav.ascent() : app.nav.summary();
     if (ctx.kind === 'boss' && win) { const to = R.nextAfterBoss(run); if (to === 'floor') { R.enterFloor(run, run.floor + 1); return app.nav.hub(); } return app.nav.suite(to === 'penthouse'); }
     if (!win && R.brokeHint(run)) toast(R.brokeHint(run), 'warn');
     app.nav.hub();
   }
-  totalEl._v = ctx.kind === 'intro' ? 0 : res.prizes ? ctx.committed + ctx.wager + betPay : undefined; totalEl.textContent = cents(totalEl._v ?? run.purse);
+  totalEl._v = ctx.kind === 'intro' ? 0 : ctx.kind === 'bouncer' ? run.purse : res.prizes ? ctx.committed + ctx.wager + betPay : undefined; totalEl.textContent = cents(totalEl._v ?? run.purse);
   setTimeout(reveal, 550);
   void trickTip;
 }

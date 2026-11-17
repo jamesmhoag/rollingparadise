@@ -393,7 +393,9 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .gcard { position: relative; display: inline-flex; flex-direction: column; align-items: center; justify-content: space-between; flex: none; width: 52px; height: 72px; padding: 4px 3px; border-radius: 6px; color: var(--ink); text-align: center;
   background: linear-gradient(160deg, color-mix(in srgb, var(--gc) 85%, #fff), color-mix(in srgb, var(--gc) 70%, #000)); box-shadow: 0 0 0 1px rgba(255, 255, 255, .35) inset, 0 3px 8px rgba(0, 0, 0, .45); }
 .gcard em { font-style: normal; font-size: 7px; max-width: 100%; overflow: hidden; text-overflow: clip; white-space: nowrap; text-transform: uppercase; letter-spacing: .1em; opacity: .85; } .gcard b { font-size: 18px; line-height: 1; } .gcard small { font-size: 7.5px; line-height: 1.05; max-height: 17px; overflow: hidden; }
-.gcard.pass { border-radius: 10px; } .gcard.pass::before { content: ''; position: absolute; top: 3px; width: 10px; height: 3px; border-radius: 2px; background: rgba(0, 0, 0, .45); }
+.gcard.lanyard { border-radius: 10px; } .gcard.lanyard::before { content: ''; position: absolute; top: 3px; width: 10px; height: 3px; border-radius: 2px; background: rgba(0, 0, 0, .45); }
+/* a pass: a ticket, not a card, with a torn-off stub line */
+.gcard.gpass { width: 72px; height: 52px; border-radius: 4px; } .gcard.gpass::after { content: ''; position: absolute; top: 4px; bottom: 4px; right: 14px; border-right: 1.5px dashed rgba(255, 255, 255, .45); }
 .gcard.armed { box-shadow: 0 0 0 2px var(--bad), 0 3px 8px rgba(0, 0, 0, .45); }
 .gwallet { position: relative; display: inline-block; flex: none; width: 70px; height: 46px; border-radius: 6px 6px 9px 9px; background: linear-gradient(170deg, color-mix(in srgb, var(--wc) 85%, #fff), color-mix(in srgb, var(--wc) 75%, #000)); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25), 0 4px 10px rgba(0, 0, 0, .5); }
 .gwallet .flap { position: absolute; left: 0; right: 0; top: 0; height: 15px; border-radius: 6px 6px 50% 50%; background: color-mix(in srgb, var(--wc) 70%, #000); }

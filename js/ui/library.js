@@ -4,7 +4,7 @@
 import { h, openPanel, closePanel, btn } from './core.js';
 import { app } from './app.js';
 import { upgrade as upgradeFaces, suggestFace } from '../dice.js';
-import { chipEl, chipTip, dieEl, dieTip, faceStrip, trickTip, trickWords, trickLook, cardEl, cardTip, walletEl, jacketEl, jacketTip, drinkEl, feltEl } from './parts.js';
+import { chipEl, chipTip, dieEl, dieTip, faceStrip, trickTip, trickWords, trickLook, cardEl, cardTip, passEl, walletEl, jacketEl, jacketTip, drinkEl, feltEl } from './parts.js';
 import * as D from '../data.js';
 import { CHIP_LIST } from '../chiplist.js';
 import { TRAITS, traitsOf, traitsHtml, flyerTraits } from '../traits.js';
@@ -136,10 +136,12 @@ function diceTab(own) {
 
 // the Gift Shop stocks gear of level n once you leave from floor n + 1 or higher
 const shopFrom = (level) => (!level ? '' : level >= 4 ? ', leaving from the Ascent' : `, leaving from floor ${level + 1} or higher`);
-const cardKind = (id) => (D.PASS_CARDS.includes(id) ? 'Pass: does not take a wallet slot' : D.STARTER_CARDS.includes(id) ? 'Starter: two are dealt into your wallet' : D.FIND_CARDS.includes(id) ? 'Found in the dodgy corner' : 'Takes a wallet slot');
+const cardKind = (id) => (D.LANYARD_CARDS.includes(id) ? 'Lanyard: does not take a wallet slot' : D.STARTER_CARDS.includes(id) ? 'Starter: two are dealt into your wallet' : D.FIND_CARDS.includes(id) ? 'Found in the dodgy corner' : 'Takes a wallet slot');
 function cardsTab(own) {
-  const out = [sec('Cards', 'Benefit cards ride in your wallet; passes clip to your lanyard.')];
+  const out = [sec('Cards', 'Benefit cards ride in your wallet; Membership, Suite Key, Punch and Paradise cards clip to your lanyard.')];
   for (const id of Object.keys(D.CARDS)) out.push(entry(tipped(cardEl(id), () => cardTip(id)), D.CARDS[id].name, [D.CARDS[id].text, dim(cardKind(id))], { own: own.card(id) ? 'In your wallet' : null }));
+  out.push(sec('Passes', 'Passes are not cards. Every wallet holds one pass, in its own slot; reaching a floor puts its pass there in place of the last. You need one only to come back to a saved run: the pass for your floor (or a higher one) walks you in, and without it the Bouncer stops you and you start again at the Boogey Basement, with all your things. Keep the wallet in the alley and its pass comes into your next run, past the floor checks to its floor.'));
+  for (let f = 1; f < D.PASSES.length; f++) out.push(entry(passEl(f), D.PASSES[f].name, [D.PASSES[f].text], { own: own.run?.pass === f ? 'In your wallet' : null }));
   out.push(noUpgrades('Cards'));
   return out;
 }
@@ -157,7 +159,7 @@ function drinksTab(own) {
 }
 
 function walletsTab(own) {
-  const out = [sec('Wallets', 'The slots are drawn on the front; the number is what your two biggest dice must roll in the alley to keep its cards for your next run.')];
+  const out = [sec('Wallets', 'The slots are drawn on the front; the number is what your two biggest dice must roll in the alley to keep its cards (and its pass) for your next run. Every wallet also holds one pass.')];
   for (const [id, Wl] of Object.entries(D.WALLETS)) out.push(entry(walletEl(id), Wl.name,
     [`${Wl.slots} slot${Wl.slots > 1 ? 's' : ''} · keep on ${Wl.keep}+`, Wl.price ? `${cents(Wl.price)} in the Gift Shop${shopFrom(Wl.level)}${Wl.crown ? ', once you hold a Crown' : ''}.` : 'Free from the start.'],
     { own: own.walletOn(id) ? 'Carrying' : own.wallet(id) ? 'Unlocked' : null }));

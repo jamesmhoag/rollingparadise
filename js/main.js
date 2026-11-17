@@ -18,6 +18,7 @@ nav.hub = () => go(hubScene);
 nav.prep = (kind, idx) => go((root) => prepScene(root, kind, idx));
 nav.bout = ({ bout, ctx }) => go((root) => { if (window.RP) window.RP.bout = bout; boutScene(root, bout, ctx, () => { const res = R.settle(app.run, ctx, bout); go((r) => resultScene(r, ctx, res)); }); });
 nav.intro = () => nav.bout(R.startIntro(app.run));
+nav.bouncer = () => nav.bout(R.startBouncer(app.run));
 nav.lounge = (drinkId) => nav.bout(R.startLounge(app.run, drinkId));
 nav.suite = (penthouse) => go((root) => suiteScene(root, penthouse));
 nav.gift = () => go(giftScene);
@@ -25,6 +26,12 @@ nav.ascent = () => { R.saveRun(app.run); go(ascentScene); };
 nav.summary = () => go(summaryScene);
 nav.alley = () => go(alleyScene);
 
+// coming back to a saved run without the pass for your floor: the Bouncer stops you at the door
+function bouncerPanel(run) {
+  openPanel(h('div', { class: 'col' }, h('h2', { text: 'The Bouncer stops you' }),
+    h('p', { class: 'sub', text: `Your wallet ${run.pass ? `holds only the ${D.PASSES[run.pass].name}` : 'holds no pass'}, and you left from ${D.FLOORS[run.floor].name}. Beat the Bouncer to get back in: you start again at the Boogey Basement, with all your things.` }),
+    h('div', { class: 'row' }, btn('Face the Bouncer', () => { closePanel(true); nav.bouncer(); }, null, 'go'), btn('Not now', () => closePanel()))));
+}
 function titleScene(root) {
   const meta = app.meta = R.loadMeta(), saved = R.loadRun();
   const resume = saved && ['floor', 'ascent'].includes(saved.phase);
@@ -36,7 +43,7 @@ function titleScene(root) {
     h('div', { class: 'hotel neon-c', text: 'ROYAL PARADISE HOTEL & CASINO' }), sign,
     h('p', { class: 'tagline neon-p', text: 'Gamble your way to the top' }),
     h('div', { class: 'menu' },
-      resume ? btn('Continue', () => { app.run = saved; saved.phase === 'ascent' ? nav.ascent() : nav.hub(); }, `<b>Continue</b><p>${D.CLASSES[saved.cls].name}, ${saved.phase === 'ascent' ? 'on the Paradise Ascent' : `floor ${saved.floor}`}, ${cents(saved.purse)} in the purse.</p>`, 'sign-btn') : null,
+      resume ? btn('Continue', () => { app.run = saved; if (R.needsBouncer(saved)) return bouncerPanel(saved); saved.phase === 'ascent' ? nav.ascent() : nav.hub(); }, `<b>Continue</b><p>${D.CLASSES[saved.cls].name}, ${saved.phase === 'ascent' ? 'on the Paradise Ascent' : `floor ${saved.floor}`}, ${cents(saved.purse)} in the purse.</p>`, 'sign-btn') : null,
       btn('New run', () => (resume ? openPanel(h('div', { class: 'col' }, h('h2', { text: 'Start a new run?' }),
         h('p', { text: `You have a run in progress: ${D.CLASSES[saved.cls].name}, ${saved.phase === 'ascent' ? 'on the Paradise Ascent' : `floor ${saved.floor}`}, ${cents(saved.purse)} in the purse.` }),
         h('p', { class: 'sub', text: 'You can only have one run at a time. Starting a new one ends that run for good.' }),
@@ -86,7 +93,7 @@ function selectScene(root) {
     const k = (meta.kept || []).slice(0, D.WALLETS[wallet].slots); keptEl.textContent = k.length ? `On the dresser from your last run: ${k.map((c) => D.CARDS[c].name).join(', ')}` : ''; }
   sync();
   root.append(h('div', { class: 'page', style: { top: 0, padding: '22px 40px' } }, h('div', { class: 'row between' }, h('div', {}, h('h1', { text: 'Choose a Roller' }), h('p', { class: 'sub', text: 'Hover anything to see what it does. The doorman wants a word before you go in.' })),
-    h('div', { class: 'row' }, btn('Back', () => nav.title()), btn('Walk in', () => { app.run = R.newRun(cls, jacket, undefined, { wallet, kept: meta.kept }); meta.kept = []; meta.lastWallet = wallet; R.saveMeta(meta); nav.intro().then(() => { if (app.meta.seenHow) return toast('Beat the doorman to earn your welcome stake.'); app.meta.seenHow = true; R.saveMeta(app.meta); howTo(); }); }, '<b>Walk in</b><p>You start with an intro bout on house chips. Win it and the House stakes you 200¢ to enter floor 1.</p>', 'big go'))),
+    h('div', { class: 'row' }, btn('Back', () => nav.title()), btn('Walk in', () => { app.run = R.newRun(cls, jacket, undefined, { wallet, kept: meta.kept, pass: meta.keptPass }); meta.kept = []; meta.keptPass = 0; meta.lastWallet = wallet; R.saveMeta(meta); nav.intro().then(() => { if (app.meta.seenHow) return toast('Beat the doorman to earn your welcome stake.'); app.meta.seenHow = true; R.saveMeta(app.meta); howTo(); }); }, '<b>Walk in</b><p>You start with an intro bout on house chips. Win it and the House stakes you 200¢ to enter floor 1.</p>', 'big go'))),
     h('div', { style: { marginTop: '16px' } }, cards), h('div', { style: { marginTop: '14px' } }, jackets)));
 }
 

@@ -138,12 +138,18 @@ const CARD_LOOK = (id) => {
   if (id.startsWith('discount_')) return { c: '#2aa7c4', g: '%', k: 'Discount' };
   if (id.startsWith('business_')) { const st = Object.keys(D.CARDS[id].mods || {})[0]; return { c: '#ffd76a', g: '+1', k: D.STATS[st]?.short || 'Business' }; }
   if (id.startsWith('note')) return { c: '#f4efe2', g: '✉', k: 'Note', ink: '#3a2c14' };
-  const m = { royal: ['#7a2d7a', '♛', 'Royal'], paradise: ['#d4a52a', '✺', 'Paradise'], membership: ['#b08cff', 'M', 'Pass'], suite: ['#ff86ea', '⚿', 'Pass'], punch: ['#ff9f3a', '●●', 'Pass'], debit: ['#3c7fc4', '$', 'Debit'], trading: ['#7dffb5', '✧', 'Trading'] }[id] || ['#93a3c8', '?', 'Card'];
+  const m = { paradise: ['#d4a52a', '✺', 'Paradise'], membership: ['#b08cff', 'M', 'Member'], suite: ['#ff86ea', '⚿', 'Key'], punch: ['#ff9f3a', '●●', 'Punch'], debit: ['#3c7fc4', '$', 'Debit'], trading: ['#7dffb5', '✧', 'Trading'] }[id] || ['#93a3c8', '?', 'Card'];
   return { c: m[0], g: m[1], k: m[2] };
 };
 export function cardEl(id, cls = '') {
-  const L = CARD_LOOK(id), pass = D.PASS_CARDS.includes(id);
-  return h('span', { class: `gcard ${pass ? 'pass' : ''} ${cls}`, style: { '--gc': L.c, '--ink': L.ink || '#fff' } }, h('em', { text: L.k }), h('b', { text: L.g }), h('small', { text: D.CARDS[id].name.replace(/^.*?: /, '') }));
+  const L = CARD_LOOK(id), lanyard = D.LANYARD_CARDS.includes(id);
+  return h('span', { class: `gcard ${lanyard ? 'lanyard' : ''} ${cls}`, style: { '--gc': L.c, '--ink': L.ink || '#fff' } }, h('em', { text: L.k }), h('b', { text: L.g }), h('small', { text: D.CARDS[id].name.replace(/^.*?: /, '') }));
+}
+// a pass: not a card, it rides in the wallet's own pass slot
+export const passTip = (f) => `<b>${D.PASSES[f].name}</b><p>${D.PASSES[f].text}</p><p class="dim">Every wallet holds one pass, in its own slot. Once you are in, you need it only to come back to a saved run: without the pass for your floor (or a higher one), the Bouncer stops you and you start again at the Boogey Basement, with all your things.</p>`;
+export function passEl(f, cls = '') {
+  const P = D.PASSES[f]; const el = h('span', { class: `gcard gpass ${cls}`, style: { '--gc': P.color, '--ink': '#fff' } }, h('em', { text: 'Pass' }), h('b', { text: P.glyph }), h('small', { text: P.name.replace(/ Pass$/, '') }));
+  el._tip = () => passTip(f); el.classList.add('has-tip'); return el;
 }
 export function walletEl(id, cls = '') {
   const Wl = D.WALLETS[id];

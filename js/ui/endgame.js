@@ -1,7 +1,7 @@
 // Suites, the Gift Shop exit, the Paradise Ascent and the end of a run.
 import { h, syncList, toast, btn, tween, pulse, wait } from './core.js';
 import { app, hud, oppTip, trickTag } from './app.js';
-import { jacketTip, trickTip, trickWords, cardTip, dieTip } from './parts.js';
+import { jacketTip, trickTip, trickWords, cardTip, dieTip, passEl } from './parts.js';
 import { planner } from './prep.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
@@ -18,7 +18,7 @@ function jacketList(onPick, forSale) {
   render(); return { el: box, render };
 }
 
-export const walletTip = (id) => { const Wl = D.WALLETS[id]; return `<b>${Wl.name} wallet</b><p>Holds <b>${Wl.slots}</b> card${Wl.slots > 1 ? 's' : ''}. Passes (Royal, Membership, Suite Key, Punch) do not take a slot.</p><p>When the run ends in the alley, two of your best dice must total <b>${Wl.keep}+</b> to keep its cards for your next run.</p>`; };
+export const walletTip = (id) => { const Wl = D.WALLETS[id]; return `<b>${Wl.name} wallet</b><p>Holds <b>${Wl.slots}</b> card${Wl.slots > 1 ? 's' : ''}. Plus one pass, in its own slot. Lanyard cards (Membership, Suite Key, Punch, Paradise) do not take a slot.</p><p>When the run ends in the alley, two of your best dice must total <b>${Wl.keep}+</b> to keep its cards for your next run.</p>`; };
 function walletList(onBuy) {
   const run = app.run, meta = app.meta, box = h('div', { class: 'items list' });
   function render() {
@@ -80,25 +80,25 @@ export function alleyScene(root) {
   const run = app.run, roll = R.alleyRoll(run), Wl = R.walletOf(run);
   const dice = roll.dice.map((d) => h('span', { class: `die static big ${d.type}`, tip: () => dieTip(d) }, h('i', { text: '?' })));
   const total = h('span', { class: 'total num', text: '—' }), verdict = h('h2', { class: 'fade-t', style: { opacity: 0 } }), kept = h('div', { class: 'inv list' });
-  const cont = btn('Continue', () => { app.kept = roll.kept ? roll.cards : []; app.nav.summary(); }, null, 'big go off');
+  const cont = btn('Continue', () => { app.kept = roll.kept ? roll.cards : []; app.keptPass = roll.kept ? roll.pass : 0; app.nav.summary(); }, null, 'big go off');
   root.append(h('div', { class: 'page', style: { top: 0, display: 'grid', placeItems: 'center' } }, h('div', { class: 'col', style: { width: '620px', textAlign: 'center', alignItems: 'center', gap: '14px' } },
     h('h1', { class: 'neon-p', text: 'The Alley' }),
     h('p', { class: 'sub', text: 'Frenzied Rollers looking for a way back inside take your chips, your dice and your book. You get one roll to keep hold of your wallet.' }),
-    h('div', { class: 'box col', style: { alignItems: 'center', width: '100%' }, tip: () => walletTip(run.wallet) }, h('span', { class: 'cap', text: `${Wl.name} wallet · ${roll.cards.length} card${roll.cards.length === 1 ? '' : 's'} inside · needs ${roll.need}+` }),
+    h('div', { class: 'box col', style: { alignItems: 'center', width: '100%' }, tip: () => walletTip(run.wallet) }, h('span', { class: 'cap', text: `${Wl.name} wallet · ${roll.cards.length} card${roll.cards.length === 1 ? '' : 's'}${roll.pass ? ` and the ${D.PASSES[roll.pass].name}` : ''} inside · needs ${roll.need}+` }),
       h('div', { class: 'row', style: { gap: '18px', margin: '10px 0' } }, dice, h('span', { class: 'dim', text: '=' }), total), verdict, kept), cont)));
   (async () => {
     await wait(900);
-    if (!roll.cards.length) { verdict.textContent = 'Your wallet is empty. Nothing to hold on to.'; verdict.style.opacity = 1; return cont.classList.remove('off'); }
+    if (!roll.cards.length && !roll.pass) { verdict.textContent = 'Your wallet is empty. Nothing to hold on to.'; verdict.style.opacity = 1; return cont.classList.remove('off'); }
     for (let i = 0; i < dice.length; i++) { const el = dice[i], d = roll.dice[i], f = D.DICE[d.type].faces; el.classList.add('rolling'); for (let n = 0; n < 12; n++) { el.firstChild.textContent = 1 + Math.floor(Math.random() * f); await wait(70); } el.classList.remove('rolling'); el.firstChild.textContent = d.value; pulse(el); await wait(420); }
     total._v = 0; tween(total, roll.total, undefined, 700); await wait(900);
     verdict.textContent = roll.kept ? 'You keep your grip on the wallet.' : 'They get the wallet too.'; verdict.className = `fade-t ${roll.kept ? 'neon-c' : 'neon-p'}`; verdict.style.opacity = 1;
-    if (roll.kept) syncList(kept, roll.cards, (c) => c, (c) => h('span', { class: 'tag-t', tip: () => cardTip(c), text: D.CARDS[c].name }));
+    if (roll.kept) syncList(kept, [...(roll.pass ? ['pass'] : []), ...roll.cards], (c) => c, (c) => (c === 'pass' ? passEl(roll.pass) : h('span', { class: 'tag-t', tip: () => cardTip(c), text: D.CARDS[c].name })));
     await wait(500); cont.classList.remove('off');
   })();
 }
 
 export function summaryScene(root) {
-  const run = app.run, phase = run.phase, sum = R.endRun(run, app.meta, 'You', app.kept || []); app.run = null; app.kept = null;
+  const run = app.run, phase = run.phase, sum = R.endRun(run, app.meta, 'You', app.kept || [], app.keptPass || 0); app.run = null; app.kept = null; app.keptPass = null;
   const head = phase === 'ripped' ? ['Crushing defeat', 'Your purse held 999 trillion and then it did not. It ripped, and every last chip spilled across the floor. A unique form of victory.'] : phase === 'paradise' ? ['Paradise', 'There are no more Rollers. You are the best.'] : phase === 'fallen' ? ['The long way down', 'Your build stays on the steps, waiting for the next Roller.'] : ['The alley', 'They took the chips, the dice and the book. You kept your life.'];
   const worth = h('span', { class: 'total num' });
   const s = sum.stats, list = h('div', { class: 'scroll', style: { maxHeight: '300px' } }, sum.ledger.slice(-40).reverse().map((l) => h('div', { class: 'line' }, h('span', { text: `${l.floor ? 'F' + Math.min(l.floor, 4) + ' · ' : ''}${l.label}` }), h('span', { class: `amt ${l.amt >= 0 ? 'pos' : 'neg'}`, text: `${l.amt >= 0 ? '+' : '−'}${cents(Math.abs(l.amt))}` }))));

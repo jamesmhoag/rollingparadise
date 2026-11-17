@@ -688,7 +688,6 @@ export const CARDS = {
   business_charisma: { name: 'Business Card: Agent', text: '+1 Charisma.', mods: { charisma: 1 } },
   business_cunning: { name: 'Business Card: Fixer', text: '+1 Cunning.', mods: { cunning: 1 } },
   business_conviction: { name: 'Business Card: Closer', text: '+1 Conviction.', mods: { conviction: 1 } },
-  royal: { name: 'Royal Card', text: 'Received after winning your first bout. You need it in your wallet to walk into the casino. Once you are on the floor it does nothing more, and you can drop it to free the slot.' },
   paradise: { name: 'Paradise Card', text: 'Earned by beating the last High Roller. It opens the Paradise Ascent.' },
   membership: { name: 'Membership Card', text: 'Earned by buying 5 tricks on one floor. Opens the Trick Trader\'s Secret Shelf and takes 10% off everything the Trader sells.' },
   suite: { name: 'Suite Key Card', text: 'Earned by winning a Double Down. Opens a Suite after you beat the High Roller.' },
@@ -718,8 +717,19 @@ export const WALLETS = {
   fine_leather: { name: 'Fine Leather', color: '#4a2412', slots: 4, keep: 12, price: 100000, level: 2 },
   royal_luxury: { name: 'Royal Luxury', color: '#ffd76a', slots: 4, keep: 7, price: 10000000, level: 4, crown: true },
 };
-// passes are clipped to your lanyard and do not take a wallet slot. The Royal Card does take one (Collectables C80).
-export const PASS_CARDS = ['membership', 'suite', 'punch', 'paradise'];
+// these cards are clipped to your lanyard and do not take a wallet slot
+export const LANYARD_CARDS = ['membership', 'suite', 'punch', 'paradise'];
+// Passes are not cards: every wallet holds one, in its own slot. The Casino Pass is won from the Doorman and each
+// floor has its own pass, given as you reach it (it takes the slot from the last). Once you are in, a pass is not
+// needed again unless you leave: coming back to a saved run, the pass for your floor (or a higher one) walks you
+// straight in. Without it the Bouncer stops you, and beating him gets you back in at the Boogey Basement with all
+// your run's things. The pass stays with the wallet: keep the wallet in the alley and it is in your next run, where
+// it takes you past the floor checks to its floor; lose the wallet and the pass goes with it.
+export const PASSES = [null,
+  { name: 'Casino Pass', glyph: '♛', color: '#7a2d7a', text: 'Gets you through the casino doors. Won from the Doorman.' },
+  { name: 'Hustlers Haven Pass', glyph: '2', color: '#3c7fc4', text: 'Gets you onto Hustlers Haven, floor 2.' },
+  { name: 'Rollers Suite Pass', glyph: '3', color: '#ff86ea', text: 'Gets you onto the Rollers Suite, floor 3.' },
+  { name: 'Royal Paradise Pass', glyph: '4', color: '#d4a52a', text: 'Gets you onto Royal Paradise, floor 4.' }];
 export const PURSE_LIMIT = 999e12;
 export const STARTER_CARDS = ['discount_diesmith', 'discount_trader', 'discount_lounge', 'business_trickery', 'business_ingenuity', 'business_proficiency',
   'business_charisma', 'business_cunning', 'business_conviction'];

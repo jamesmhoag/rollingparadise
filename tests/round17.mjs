@@ -95,4 +95,32 @@ const entry = (trick, vals, extra = {}) => ({ uid: 'x' + trick.id, trick, dice: 
   R.saveRun(run); const back = R.loadRun();
   assert(back, 'the save loads'); { const t = back.tricks[0]; assert(t.foil === 2 && t.rar === 'foil' && t.up === undefined && t.wear === D.WEAR.good && B.trickMult(t) === 3, 'an upgraded trick loads as a Holo foil, at the same strength'); }
 }
-console.log('ok, round 17: condition, rarity, quality dice, foil packs');
+// ---------- passes: one slot per wallet, the Bouncer, and passes kept with the wallet ----------
+{
+  const run = R.newRun('hustler', 'standard', 21);
+  assert(run.pass === 0 && !D.CARDS.royal, 'no Royal Card: you start with no pass');
+  R.enterFloor(run, 1); assert(run.pass === 1, 'the casino entrance is a pass, in the wallet\'s pass slot');
+  assert(R.walletCards(run).length <= R.walletOf(run).slots, 'a pass does not take a card slot');
+  R.enterFloor(run, 2); assert(run.pass === 2, 'reaching a floor puts its pass in the slot, in place of the last');
+  assert(!R.needsBouncer(run), 'with the pass for your floor, a saved run walks straight back in');
+  run.pass = 1; assert(R.needsBouncer(run), 'without it, the Bouncer stops you');
+  const b = R.startBouncer(run); assert(b.ctx.kind === 'bouncer' && b.ctx.wager === 0, 'the Bouncer is a bout at the door, with nothing staked');
+  run.purse = 777; const tricks = run.tricks.length;
+  R.enterFloor(run, 1); assert(run.floor === 1 && run.purse === 777 && run.tricks.length === tricks, 'back in at the Boogey Basement with all your things');
+}
+{ // an old save: the Royal Card becomes the pass for the floor it was on; dropped, the Bouncer waits
+  globalThis.localStorage = { s: {}, getItem(k) { return this.s[k] ?? null; }, setItem(k, v) { this.s[k] = v; }, removeItem(k) { delete this.s[k]; } };
+  const run = R.newRun('hustler', 'standard', 22); R.enterFloor(run, 3); delete run.pass; run.cards = ['royal']; R.saveRun(run);
+  const a = R.loadRun(); assert(a.pass === 3 && !a.cards.includes('royal') && !R.needsBouncer(a), 'a Royal Card in an old save becomes the pass for its floor');
+  delete run.pass; run.cards = []; R.saveRun(run); assert(R.needsBouncer(R.loadRun()), 'an old save that dropped the Royal Card meets the Bouncer');
+}
+{ // the alley: the pass stays with the wallet
+  const meta = { jackets: ['standard'], wallets: ['worn_cloth'], kept: [], atm: 0, ladder: [], runs: 0, best: 0, crowns: 0 };
+  const run = R.newRun('hustler', 'standard', 23); R.enterFloor(run, 3); run.cards = [];
+  const roll = R.alleyRoll(run); assert(roll.pass === 3, 'the alley roll is for the wallet and the pass in it');
+  R.endRun(run, meta, 'You', [], 3); assert(meta.keptPass === 3, 'a wallet held on to keeps its pass');
+  const next = R.newRun('hustler', 'standard', 24, { kept: meta.kept, pass: meta.keptPass });
+  assert(next.pass === 3 && R.startFloor(next) === 3, 'in the next run the pass gets you past the floor checks to its floor');
+  R.endRun(next, meta, 'You', [], 0); assert(meta.keptPass === 0, 'lose the wallet and the pass goes with it');
+}
+console.log('ok, round 17: condition, rarity, quality dice, foil packs, passes');
