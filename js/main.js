@@ -81,7 +81,7 @@ function selectScene(root) {
       h('span', { class: 'cap', text: 'For each one left unused' }), statRow(K.c, ['charisma', 'cunning', 'conviction']),
       h('span', { class: 'cap', text: 'Position bonus' }), statRow(K.bvd, ['balance', 'versatility', 'depth']),
       h('span', { class: 'cap', text: 'Pouch' }), h('div', { class: 'dicebox' }, dice.map((type) => { const d = dieEl({ type }); d._tip = () => dieTip({ type }); d.classList.add('has-tip'); return d; })),
-      h('span', { class: 'cap', text: 'Book' }), h('div', { class: 'inv' }, K.tricks.map((tid) => { const t = { id: tid, q: 1 }; return h('span', { class: 'tag-t', style: { '--tc': D.TYPES[D.TRICKS[tid].type].color }, tip: () => trickTip(t, id) }, D.TRICKS[tid].name, h('span', { class: 'q', html: pips(t) })); })));
+      h('span', { class: 'cap', text: 'Book' }), h('div', { class: 'inv' }, K.tricks.map((tid) => { const t = { id: tid, q: 1 }; return h('span', { class: 'tag-t', style: { '--tc': D.TYPES[D.TRICKS[tid].type].color }, tip: () => trickTip(t, id) }, D.TRICKS[tid].name); })));
     el._id = id; return el; });
   cards.append(...els);
   const jb = meta.jackets.map((id) => { const b = btn(`🧥 ${D.JACKETS[id].name}`, () => { jacket = id; sync(); }, () => { const K = D.CLASSES[cls]; return jacketTip(id, { ...K.tip, ...K.c, ...K.bvd }) + `<p class="dim">Shown against the ${K.name}'s own numbers.</p>`; }, 'small'); b._id = id; return b; });
