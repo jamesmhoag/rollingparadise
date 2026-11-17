@@ -6,6 +6,7 @@
 //   rig: spent after it comes up · ench: multiplier that dwindles · enc: encased, grows each time it comes up
 // A die saved before faces existed has only `up`; its faces are worked out from it.
 import { DICE, DIE_UPGRADES, DIE_VARS, MATERIALS, DEFAULT_MAT, BONE, CASTS } from './data.js';
+import { t as tx } from './text.js';
 
 // a die's material (dice saved before materials existed are Plastic) and what that allows
 export const matOf = (die) => die.mat || DEFAULT_MAT;
@@ -64,10 +65,10 @@ function edit(fs0, u, t, rng) {
 
 // Can this upgrade go on this die? Returns a reason, or null.
 export function canUpgrade(die, u, max = 2) {
-  const U = DIE_UPGRADES[u]; if (!U) return 'No such upgrade.';
-  if (!canModify(die)) return `A ${MATERIALS[matOf(die)].name} die cannot be modified.`;
-  if ((die.up || []).length >= max) return `A die takes at most ${max} upgrades.`;
-  if (U.roll && die.up.includes(u)) return `${U.name} works when the die is rolled, so it cannot be taken twice.`;
+  const U = DIE_UPGRADES[u]; if (!U) return tx('dice.no-such-upgrade');
+  if (!canModify(die)) return tx('dice.a-die-cannot-be', { name: MATERIALS[matOf(die)].name });
+  if ((die.up || []).length >= max) return tx('dice.a-die-takes-at', { max });
+  if (U.roll && die.up.includes(u)) return tx('dice.works-when-the-die', { name: U.name });
   return null;
 }
 // Apply an upgrade to a die (mutates it). `t`: target face index, needed for target upgrades.

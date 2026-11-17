@@ -2,6 +2,7 @@
 import { CONVERT, PLACE, DEPLOY, MAKES, BONUS, AIMS, ZONES } from './content/trickmaker.js';
 import { SHOP_CHIPS, CONDS, condText } from './data.js';
 import { MADE_CHIPS } from './content/chipmaker.js';
+import { t as tx } from './text.js';
 
 export const isMade = (def) => def?.roll?.k === 'chips';
 export const makeName = (chip) => MAKES[chip]?.name || (MADE_CHIPS[chip] ? MADE_CHIPS[chip].name : SHOP_CHIPS[chip] ? `${SHOP_CHIPS[chip].name}s` : chip);
@@ -49,13 +50,13 @@ export const placeIndex = (place, at, n) => (place === 'under' ? 0 : place === '
 // The words on the card, worked out from the configuration
 export function describeRoll(def) {
   const R = def.roll, kind = makeKind(R.chip), dep = DEPLOY[R.deploy] || DEPLOY.hit;
-  const what = kind === 'pit' ? `Take up to the total in chips back out of ${MAKES[R.chip].pit === 'mine' ? 'your' : 'your opponent\'s'} Pit, the real chips, newest first`
-    : kind === 'fee' ? (R.convert === 'lump' ? 'Charge a fee equal to the total' : R.convert === 'precise' ? 'Charge a fee for each die, worth what it rolled' : 'Charge a 1¢ fee for each point of the total')
-    : kind === 'value' ? (R.convert === 'lump' ? 'Make one chip worth the total' : R.convert === 'precise' ? 'Make a chip for each die, worth what it rolled' : 'Make a 1¢ chip for each point of the total')
-      : (R.convert === 'lump' ? `Make one ${makeName(R.chip).replace(/s$/, '')}` : R.convert === 'precise' ? `Make one ${makeName(R.chip).replace(/s$/, '')} per die` : `Make one ${makeName(R.chip).replace(/s$/, '')} per point of the total`);
-  const where = def.approach === 'none' ? '' : `, ${dep.text} (${(AIMS[def.approach] || def.approach).toLowerCase()} of ${def.side === 'self' ? 'your' : def.side === 'any' ? 'either' : "your opponent's"} position)`;
-  const place = kind === 'fee' || kind === 'water' ? (kind === 'water' ? ', at the bottom of each space (no thickness)' : '') : `, ${PLACE[R.place]?.text || PLACE.over.text}${R.place === 'precise' ? ` (height ${R.at | 0})` : ''}`;
-  const life = isFxChip(R.chip) ? `, for ${R.life || 3} turns` : '';
+  const what = kind === 'pit' ? tx('trick.take-up-to-the', { v: MAKES[R.chip].pit === 'mine' ? 'your' : 'your opponent\'s' })
+    : kind === 'fee' ? (R.convert === 'lump' ? tx('trick.charge-a-fee-equal') : R.convert === 'precise' ? tx('trick.charge-a-fee-for') : tx('trick.charge-a-1-fee'))
+    : kind === 'value' ? (R.convert === 'lump' ? tx('trick.make-one-chip-worth') : R.convert === 'precise' ? tx('trick.make-a-chip-for') : tx('trick.make-a-1-chip'))
+      : (R.convert === 'lump' ? tx('trick.make-one', { replace: makeName(R.chip).replace(/s$/, '') }) : R.convert === 'precise' ? tx('trick.make-one-per-die', { replace: makeName(R.chip).replace(/s$/, '') }) : tx('trick.make-one-per-point', { replace: makeName(R.chip).replace(/s$/, '') }));
+  const where = def.approach === 'none' ? '' : tx('trick.of-position', { text: dep.text, toLowerCase: (AIMS[def.approach] || def.approach).toLowerCase(), v: def.side === 'self' ? 'your' : def.side === 'any' ? 'either' : "your opponent's" });
+  const place = kind === 'fee' || kind === 'water' ? (kind === 'water' ? tx('trick.at-the-bottom-of') : '') : `, ${PLACE[R.place]?.text || PLACE.over.text}${R.place === 'precise' ? tx('trick.height', { v: R.at | 0 }) : ''}`;
+  const life = isFxChip(R.chip) ? tx('trick.for-turns', { v: R.life || 3 }) : '';
   return `${what}${where}${place}${life}.`;
 }
 export function describeBonus(def) {
@@ -63,4 +64,4 @@ export function describeBonus(def) {
   const t = B.text({ ...def.bonus, chip: def.bonus.chip || 'block' }, makeName); return t.charAt(0).toUpperCase() + t.slice(1) + '.';
 }
 // a whole made trick in one line, for lists and the maker's preview
-export const summary = (def) => `${ZONES[def.side] || def.side} · ${CONVERT[def.roll.convert]?.name} · ${DEPLOY[def.roll.deploy]?.name} · if ${condText(def.bonus.cond)}: ${describeBonus(def)}`;
+export const summary = (def) => tx('trick.if', { v: ZONES[def.side] || def.side, name: CONVERT[def.roll.convert]?.name, name2: DEPLOY[def.roll.deploy]?.name, condText: condText(def.bonus.cond), describeBonus: describeBonus(def) });

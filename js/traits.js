@@ -3,59 +3,60 @@
 // and in the Library, so they can be compared and the redundant ones dropped.
 import * as D from './data.js';
 import { CHIP_LIST } from './chiplist.js';
+import { t as tx } from './text.js';
 
 export const TRAITS = {
   // ---- from the list's columns ----
-  type: { name: 'Type', list: true, text: 'The list\'s family: Basic, Defense, Hazard, Utility, Creature, Consumable…' },
-  payment: { name: 'Payment', list: true, text: 'What the chip pays toward a fee.' },
-  flip: { name: 'Flip value', list: true, text: 'What it lands as when flipped into a roll (0 or its worth).' },
-  worth: { name: 'Worth', list: true, text: 'Its value in your position.' },
-  movable: { name: 'Movable', list: true, text: 'Whether Corrections, Scatter and the like can move it.' },
-  playable: { name: 'Playable', list: true, text: 'Whether it can be bid on a trick.' },
-  state: { name: 'State', list: true, text: 'Organic, Inorganic and so on.' },
-  association: { name: 'Association', list: true, text: 'An element or group it belongs to.' },
-  party: { name: 'Party', list: true, text: 'Who can have it: All, a class…' },
-  permanence: { name: 'Permanence', list: true, text: 'Resiliant, Fragile, Temporary, Consuming…' },
-  pile: { name: 'Pile', list: true, text: 'Whose pile it sits in: the Roller\'s, the opponent\'s or both.' },
-  placement: { name: 'Placement', list: true, text: 'Where it can go: Versatile, an Empty Space, a Targeted Stack…' },
-  stack: { name: 'Stack amount', list: true, text: 'How much stack height it takes.' },
-  source: { name: 'Created from', list: true, text: 'What makes it: Match Prep, a Chip Conversion, Spawned…' },
+  type: { name: 'Type', list: true, text: tx('traits.the-list-s-family') },
+  payment: { name: 'Payment', list: true, text: tx('traits.what-the-chip-pays') },
+  flip: { name: tx('traits.flip-value'), list: true, text: tx('traits.what-it-lands-as') },
+  worth: { name: 'Worth', list: true, text: tx('traits.its-value-in-your') },
+  movable: { name: 'Movable', list: true, text: tx('traits.whether-corrections-scatter-and') },
+  playable: { name: 'Playable', list: true, text: tx('traits.whether-it-can-be') },
+  state: { name: 'State', list: true, text: tx('traits.organic-inorganic-and-so') },
+  association: { name: 'Association', list: true, text: tx('traits.an-element-or-group') },
+  party: { name: 'Party', list: true, text: tx('traits.who-can-have-it') },
+  permanence: { name: 'Permanence', list: true, text: tx('traits.resiliant-fragile-temporary-consuming') },
+  pile: { name: 'Pile', list: true, text: tx('traits.whose-pile-it-sits') },
+  placement: { name: 'Placement', list: true, text: tx('traits.where-it-can-go') },
+  stack: { name: tx('traits.stack-amount'), list: true, text: tx('traits.how-much-stack-height') },
+  source: { name: tx('traits.created-from'), list: true, text: tx('traits.what-makes-it-match') },
   // ---- derived: how the engine treats it ----
-  pays: { name: 'Pays fees', derived: true, text: 'Debt is paid with it, whole chips only. (Overlaps the list\'s Payment.)' },
-  biddable: { name: 'Biddable', derived: true, text: 'It can be bid from the top of a stack. (Overlaps the list\'s Playable.)' },
-  flippable: { name: 'Flippable', derived: true, text: 'It can be flipped into a roll. (Overlaps the list\'s Flip value.)' },
-  deterrent: { name: 'Deterrent', derived: true, text: 'Takes 1¢ of a fee and breaks (fee cost defence).' },
-  hits: { name: 'Hit instances', derived: true, text: 'How many whole fees it takes, whatever their size (fee instance defence).' },
-  height: { name: 'Takes height', derived: true, text: 'Whether it counts toward the stack\'s height. (Overlaps the list\'s Stack amount.)' },
-  overlay: { name: 'Lies over the stack', derived: true, text: 'Sits over the stack instead of in it: no height, stays on top, cleansed like a hazard.' },
-  timed: { name: 'Timed', derived: true, text: 'Turns left before it fades or settles. (Overlaps the list\'s Permanence: Temporary.)' },
-  hazard: { name: 'Hazard', derived: true, text: 'Works against the stack it is on each turn. (Overlaps the list\'s Type.)' },
-  element: { name: 'Element', derived: true, text: 'The hazard a stack holding it is immune to. (Overlaps the list\'s Association.)' },
-  electric: { name: 'Electrical', derived: true, text: 'Lightning: a Battery under it adds instances; Tesla and Absorption chips catch it.' },
-  electronic: { name: 'Electronic', derived: true, text: 'Powered: a Battery under it adds instances.' },
-  delicious: { name: 'Delicious', derived: true, text: 'It can be eaten from the top of a stack in the Drink phase.' },
-  wet: { name: 'Wet', derived: true, text: 'Watered: cannot burn, passes electricity on, freezes in the cold, grows plants faster.' },
-  flying: { name: 'Flying', derived: true, text: 'Off the table: ground effects (Tornado, holes, puddles) do not reach it.' },
-  orbital: { name: 'Orbital', derived: true, text: 'In the sky above the flying layer: weather and vehicles.' },
-  spaces: { name: 'Spaces', derived: true, text: 'How many spaces it covers (Big chips and Volcanoes cover four).' },
-  fixed: { name: 'Fixed', derived: true, text: 'Corrections do not move it. (Overlaps the list\'s Movable.)' },
-  disguised: { name: 'Disguised', derived: true, text: 'The opponent sees a different chip.' },
-  regen: { name: 'Regen', derived: true, text: 'Paid to the Stage, it comes straight back (once).' },
-  spawner: { name: 'Spawner', derived: true, text: 'It makes other chips or creatures.' },
-  made: { name: 'Made by', derived: true, text: 'The trick, tilt or creature that puts it on the table. Chips made at the table are not sold.' },
-  phase: { name: 'Works in', derived: true, text: 'The phase of the turn it does its work in.' },
+  pays: { name: tx('traits.pays-fees'), derived: true, text: tx('traits.debt-is-paid-with') },
+  biddable: { name: 'Biddable', derived: true, text: tx('traits.it-can-be-bid') },
+  flippable: { name: 'Flippable', derived: true, text: tx('traits.it-can-be-flipped') },
+  deterrent: { name: 'Deterrent', derived: true, text: tx('traits.takes-1-of-a') },
+  hits: { name: tx('traits.hit-instances'), derived: true, text: tx('traits.how-many-whole-fees') },
+  height: { name: tx('traits.takes-height'), derived: true, text: tx('traits.whether-it-counts-toward') },
+  overlay: { name: tx('traits.lies-over-the-stack'), derived: true, text: tx('traits.sits-over-the-stack') },
+  timed: { name: 'Timed', derived: true, text: tx('traits.turns-left-before-it') },
+  hazard: { name: 'Hazard', derived: true, text: tx('traits.works-against-the-stack') },
+  element: { name: 'Element', derived: true, text: tx('traits.the-hazard-a-stack') },
+  electric: { name: 'Electrical', derived: true, text: tx('traits.lightning-a-battery-under') },
+  electronic: { name: 'Electronic', derived: true, text: tx('traits.powered-a-battery-under') },
+  delicious: { name: 'Delicious', derived: true, text: tx('traits.it-can-be-eaten') },
+  wet: { name: 'Wet', derived: true, text: tx('traits.watered-cannot-burn-passes') },
+  flying: { name: 'Flying', derived: true, text: tx('traits.off-the-table-ground') },
+  orbital: { name: 'Orbital', derived: true, text: tx('traits.in-the-sky-above') },
+  spaces: { name: 'Spaces', derived: true, text: tx('traits.how-many-spaces-it') },
+  fixed: { name: 'Fixed', derived: true, text: tx('traits.corrections-do-not-move') },
+  disguised: { name: 'Disguised', derived: true, text: tx('traits.the-opponent-sees-a') },
+  regen: { name: 'Regen', derived: true, text: tx('traits.paid-to-the-stage') },
+  spawner: { name: 'Spawner', derived: true, text: tx('traits.it-makes-other-chips') },
+  made: { name: tx('traits.made-by'), derived: true, text: tx('traits.the-trick-tilt-or') },
+  phase: { name: tx('traits.works-in'), derived: true, text: tx('traits.the-phase-of-the') },
 };
 
 // list rows for chips that are not shop chips
-const KIND_ROW = { block: 'Block Chip', counter: 'Counter Chip', resist: 'Resist Chip', opp: 'Opportunity 1¢ Chip', debt: 'Debt -1¢ Chip', burn: 'Burning -1¢ Chip', corrupt: 'Corrupting -1¢ Chip',
-  shock: 'Shocking -1¢ Chip', poison: 'Poison -1¢  Chip', boom: 'Boom -5¢ Chip', dynamite: 'Dynamite Chip', acid: 'Acid Chip', flower: 'Flower Chip', petal: 'Petal Chip', tree: 'Tree Chip', wood: 'Wood Chip',
-  clay: 'Clay Chip', brick: 'Brick Chip', hard: 'Hardened p¢ Chip', sticky: 'Sticky f¢ Chip', hive: 'Hive Chip', little: 'Little Chip', egg: 'Egg Chip', hat: 'Magic Hat Chip', doom: 'Doom Chip', volcano: 'Volcano Chip' };
+const KIND_ROW = { block: tx('traits.block-chip'), counter: tx('traits.counter-chip'), resist: tx('traits.resist-chip'), opp: tx('traits.opportunity-1-chip'), debt: tx('traits.debt-1-chip'), burn: tx('traits.burning-1-chip'), corrupt: tx('traits.corrupting-1-chip'),
+  shock: tx('traits.shocking-1-chip'), poison: tx('traits.poison-1-chip'), boom: tx('traits.boom-5-chip'), dynamite: tx('traits.dynamite-chip'), acid: tx('traits.acid-chip'), flower: tx('traits.flower-chip'), petal: tx('traits.petal-chip'), tree: tx('traits.tree-chip'), wood: tx('traits.wood-chip'),
+  clay: tx('traits.clay-chip'), brick: tx('traits.brick-chip'), hard: tx('traits.hardened-p-chip'), sticky: tx('traits.sticky-f-chip'), hive: tx('traits.hive-chip'), little: tx('traits.little-chip'), egg: tx('traits.egg-chip'), hat: tx('traits.magic-hat-chip'), doom: tx('traits.doom-chip'), volcano: tx('traits.volcano-chip') };
 const BY_NAME = new Map(CHIP_LIST.map((x) => [x.name.replace(/^Royal /, 'Royale ').toLowerCase(), x]).concat(CHIP_LIST.map((x) => [x.name.toLowerCase(), x])));
 export function listRow(ch) {
   const X = ch.shop && D.SHOP_CHIPS[ch.shop];
   let name = X?.list || KIND_ROW[ch.kind];
-  if (ch.kind === 'bounty') name = `${D.CREATURES[ch.creature]?.name} Bounty Chip`;
-  if (ch.kind === 'std' && !X) name = ch.cursed ? 'Cursed Chip' : ch.treasure ? 'Treasure Chip' : ch.frozen ? 'Frozen f¢ Chip' : ch.gold ? 'Golded 2*p¢ Chip' : ch.feather > 0 ? 'Feather p¢ Chip' : (D.denomOf(ch.value)?.list || `Royal Paradise ${ch.value}¢ chip`);
+  if (ch.kind === 'bounty') name = tx('traits.bounty-chip', { name: D.CREATURES[ch.creature]?.name });
+  if (ch.kind === 'std' && !X) name = ch.cursed ? tx('traits.cursed-chip') : ch.treasure ? tx('traits.treasure-chip') : ch.frozen ? tx('traits.frozen-f-chip') : ch.gold ? tx('traits.golded-2-p-chip') : ch.feather > 0 ? tx('traits.feather-p-chip') : (D.denomOf(ch.value)?.list || tx('traits.royal-paradise-chip', { value: ch.value }));
   return name ? BY_NAME.get(name.toLowerCase()) || null : null;
 }
 const ELECTRIC = (id) => D.SHOP_CHIPS[id]?.tags || [];
@@ -77,18 +78,18 @@ export function traitsOf(ch, o = {}) {
   add(out, 'hits', D.INSTANCE_SHIELDS.includes(ch.kind) ? ch.hits ?? 1 : null);
   add(out, 'height', OVER.includes(ch.kind) || ch.kind === 'little' ? 'No' : 'Yes');
   add(out, 'overlay', OVER.includes(ch.kind));
-  add(out, 'timed', ch.life != null && ch.life < 50 ? `${ch.life} turn${ch.life === 1 ? '' : 's'}` : ch.feather > 0 ? `${ch.feather} turn${ch.feather === 1 ? '' : 's'} (Feather)` : null);
+  add(out, 'timed', ch.life != null && ch.life < 50 ? tx('feed.line-2', { life: ch.life }) : ch.feather > 0 ? tx('traits.feather', { feather: ch.feather }) : null);
   add(out, 'hazard', ['burn', 'acid', 'shock', 'corrupt', 'poison', 'boom', 'frost', 'lava', 'doom', 'hat', 'cursed'].includes(ch.kind) || ch.cursed || ch.shop === 'uranium');
   add(out, 'element', X?.resist && D.resistsOf(ch.shop).join(', '));
   add(out, 'electric', ch.kind === 'shock' || ELECTRIC(ch.shop).includes('electric'));
   add(out, 'electronic', ELECTRIC(ch.shop).includes('electronic'));
   add(out, 'delicious', ch.kind === 'food' || ch.kind === 'egg');
-  add(out, 'wet', ch.wet > 0 ? `${ch.wet} turn${ch.wet === 1 ? '' : 's'}` : null);
+  add(out, 'wet', ch.wet > 0 ? tx('traits.line', { wet: ch.wet }) : null);
   add(out, 'flying', o.cell ? o.cell.chips.some((x) => x.shop === 'heli') : ch.shop === 'heli');
   add(out, 'spaces', ch.big || ch.kind === 'volcano' ? 4 : null);
   add(out, 'fixed', ch.big || ['volcano', 'tree', 'dynamite'].includes(ch.kind) || ch.shop === 'anchor');
-  add(out, 'disguised', ch.kind === 'doom' || ch.shop === 'spy' || ch.cursed ? (ch.cursed ? 'looks like Gold' : 'looks like a 1¢ chip') : null);
-  add(out, 'regen', ch.regen > 0 ? `${ch.regen} turn${ch.regen === 1 ? '' : 's'}` : null);
+  add(out, 'disguised', ch.kind === 'doom' || ch.shop === 'spy' || ch.cursed ? (ch.cursed ? 'looks like Gold' : tx('traits.looks-like-a-1')) : null);
+  add(out, 'regen', ch.regen > 0 ? tx('traits.line-2', { regen: ch.regen }) : null);
   add(out, 'spawner', ch.kind === 'hive' || ch.kind === 'tree' || ch.kind === 'flower' || ch.kind === 'egg');
   return out;
 }

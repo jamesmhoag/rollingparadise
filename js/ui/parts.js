@@ -7,6 +7,7 @@ import { multOf, traitOf } from '../bout.js';
 import { facesOf, faceValue, matOf, dieName } from '../dice.js';
 import { traitsOf, traitsHtml } from '../traits.js';
 import { iconStyle, textureOf } from './icons.js';
+import { t as tx } from '../text.js';
 
 const GLYPH = { puddle: '💧', opp: '★', block: '▣', counter: '✸', burn: '🔥', acid: '☣', shock: '⚡', corrupt: '☠', poison: '☘', boom: '💣', frost: '❄', lava: '🌋', flower: '✿', petal: '❀', clay: '▤', brick: '▦', dynamite: '🧨', tree: '🌳', wood: '▥', hard: '⛊', sticky: '◍', hive: '⬢', little: '•', egg: '🥚', hat: '🎩', doom: '☠', volcano: '🌋' };
 // made chips take their face colour from their MADE_CHIPS entry, through one shared style sheet
@@ -27,48 +28,48 @@ export function seenAs(ch, side, viewer = 0) {
 }
 export const chipGlyph = (ch) => (ch.kind === 'made' ? (ch.value ? String(ch.value) : (D.MADE_CHIPS[ch.model]?.name || '?')[0]) : ch.kind === 'fx' ? D.SHOP_CHIPS[ch.shop]?.glyph || '✦' : ch.kind === 'stray' ? '−' + ch.value : ch.kind === 'sticky' ? '◍' + ch.value : ch.kind === 'egg' ? '🥚' : ch.treasure ? '💰' : ch.big ? String(ch.value) : ch.kind === 'bounty' ? D.CREATURES[ch.creature]?.glyph || '★' : ch.kind === 'resist' ? `r${ch.r}` : ['food', 'dip'].includes(ch.kind) && ch.shop ? D.SHOP_CHIPS[ch.shop]?.glyph || '🍪' : ch.kind === 'std' ? (ch.resist ? (D.SHOP_CHIPS[ch.resist]?.seq ? `${D.SHOP_CHIPS[ch.resist].glyph}${ch.value}` : D.SHOP_CHIPS[ch.resist]?.glyph || '◆') : ch.frozen ? `❄${ch.value}` : D.denomOf(ch.value)?.glyph || String(ch.value)) : ch.kind === 'debt' ? '−' + ch.value : GLYPH[ch.kind] || '');
 export function chipName(ch) {
-  if (ch.kind === 'made') return `${D.MADE_CHIPS[ch.model]?.name || 'Made chip'}${ch.value ? ` (${ch.value}¢)` : ''}`;
-  if (ch.kind === 'debt') return `${ch.value}¢ Debt chip`;
-  if (ch.kind === 'stray') return `${ch.value}¢ of Debt on nothing`;
-  if (ch.kind === 'hard') return `Hardened chip (${ch.life} turn${ch.life === 1 ? '' : 's'})`;
-  if (ch.kind === 'sticky') return `Sticky chip (${ch.value})${ch.stuck ? ` on ${ch.stuck}` : ''}`;
-  if (ch.kind === 'puddle') return ch.ice ? 'Iced-over Puddle chip' : 'Puddle chip';
-  if (ch.kind === 'egg') return `Dragon Egg${ch.prog ? ` (${ch.prog} of 5 to hatch)` : ''}`;
-  if (ch.treasure) return `Treasure chip (${ch.value} Gold)`;
-  if (ch.big) return `Big ${ch.value}¢ chip`;
-  if (ch.kind === 'bounty') return `${D.CREATURES[ch.creature]?.name} Bounty chip (${ch.value}¢)`;
-  if (ch.kind === 'resist') return `Resist chip (r ${ch.r})`;
-  if ((ch.kind === 'food' || ch.kind === 'dip') && ch.shop) return D.SHOP_CHIPS[ch.shop]?.name || 'Food chip';
-  if (ch.kind === 'fx') return `${D.SHOP_CHIPS[ch.shop]?.name || 'Effect chip'}${ch.amt ? ` ${ch.amt}¢` : ''}${ch.life != null && ch.life < 99 ? ` (${ch.life} turn${ch.life === 1 ? '' : 's'})` : ''}`;
+  if (ch.kind === 'made') return `${D.MADE_CHIPS[ch.model]?.name || tx('parts.made-chip')}${ch.value ? ` (${ch.value}¢)` : ''}`;
+  if (ch.kind === 'debt') return tx('parts.debt-chip', { value: ch.value });
+  if (ch.kind === 'stray') return tx('parts.of-debt-on-nothing', { value: ch.value });
+  if (ch.kind === 'hard') return tx('parts.hardened-chip', { life: ch.life });
+  if (ch.kind === 'sticky') return tx('parts.sticky-chip', { value: ch.value, v: ch.stuck ? ` on ${ch.stuck}` : '' });
+  if (ch.kind === 'puddle') return ch.ice ? tx('parts.iced-over-puddle-chip') : tx('parts.puddle-chip');
+  if (ch.kind === 'egg') return tx('parts.dragon-egg', { v: ch.prog ? tx('parts.of-5-to-hatch', { prog: ch.prog }) : '' });
+  if (ch.treasure) return tx('parts.treasure-chip-gold', { value: ch.value });
+  if (ch.big) return tx('parts.big-chip', { value: ch.value });
+  if (ch.kind === 'bounty') return tx('parts.bounty-chip', { name: D.CREATURES[ch.creature]?.name, value: ch.value });
+  if (ch.kind === 'resist') return tx('parts.resist-chip-r', { r: ch.r });
+  if ((ch.kind === 'food' || ch.kind === 'dip') && ch.shop) return D.SHOP_CHIPS[ch.shop]?.name || tx('parts.food-chip');
+  if (ch.kind === 'fx') return `${D.SHOP_CHIPS[ch.shop]?.name || tx('parts.effect-chip')}${ch.amt ? ` ${ch.amt}¢` : ''}${ch.life != null && ch.life < 99 ? tx('parts.line', { life: ch.life }) : ''}`;
   if (ch.kind !== 'std') return D.CHIPS[ch.kind].name;
-  if (ch.resist) return D.SHOP_CHIPS[ch.resist]?.name || 'Shop chip';
-  if (ch.frozen) return `Frozen ${ch.value}¢ chip`;
-  return `${ch.gold ? 'Gold ' : ''}${D.denomOf(ch.value)?.name ? `${D.denomOf(ch.value).name} chip (${ch.value.toLocaleString('en-US')}¢)` : `${ch.value}¢ Royal Paradise chip`}${ch.feather > 0 ? ' (Feathered)' : ''}`;
+  if (ch.resist) return D.SHOP_CHIPS[ch.resist]?.name || tx('parts.shop-chip');
+  if (ch.frozen) return tx('parts.frozen-chip', { value: ch.value });
+  return `${ch.gold ? 'Gold ' : ''}${D.denomOf(ch.value)?.name ? tx('parts.chip', { name: D.denomOf(ch.value).name, toLocaleString: ch.value.toLocaleString('en-US') }) : tx('parts.royal-paradise-chip', { value: ch.value })}${ch.feather > 0 ? ' (Feathered)' : ''}`;
 }
 export function chipText(ch) {
   if (ch.kind === 'made') { const M = D.MADE_CHIPS[ch.model] || {};
-    return `${M.text || 'A chip made in the chip maker.'} <span class="dim keep">${madeRules(M, ch)}</span>`; }
-  const hits = ch.hits != null && ch.kind !== 'std' ? ` <span class="dim keep">${ch.hits} fee${ch.hits === 1 ? '' : 's'} left in it.</span>` : '';
+    return `${M.text || tx('parts.a-chip-made-in')} <span class="dim keep">${madeRules(M, ch)}</span>`; }
+  const hits = ch.hits != null && ch.kind !== 'std' ? tx('parts.left-in-it', { hits: ch.hits }) : '';
   if (ch.kind === 'bounty') return D.CHIPS.bounty.text;
-  if (ch.kind === 'stray') return `A fee that landed where there is nothing to pay it (${ch.why || 'empty space'}). It comes to nothing when the House settles.`;
-  const extra = `${ch.wet > 0 ? ` <span class="keep" style="color:var(--sky)">Wet for ${ch.wet} turn${ch.wet === 1 ? '' : 's'}.</span>` : ''}${ch.regen > 0 ? ` <span class="keep good">Regen for ${ch.regen} turn${ch.regen === 1 ? '' : 's'}: paid to the Stage, it comes straight back.</span>` : ''}`;
+  if (ch.kind === 'stray') return tx('parts.a-fee-that-landed', { v: ch.why || 'empty space' });
+  const extra = `${ch.wet > 0 ? tx('parts.wet-for', { wet: ch.wet }) : ''}${ch.regen > 0 ? tx('parts.regen-for-paid-to', { regen: ch.regen }) : ''}`;
   if (ch.treasure) return D.CHIPS.treasure.text + extra;
-  if (ch.big) return D.shopText('big') + ` Worth ${ch.value}¢.` + extra;
+  if (ch.big) return D.shopText('big') + tx('parts.worth', { value: ch.value }) + extra;
   if (ch.kind === 'egg') return D.CHIPS.egg.text + hits + extra;
-  if (ch.kind === 'resist') return `${D.CHIPS.resist.text} Fees under ${ch.r}¢ on this stack are deterred.`;
-  if ((ch.kind === 'food' || ch.kind === 'dip') && ch.shop) return D.shopText(ch.shop) + (ch.dips != null ? ` ${ch.dips} dip${ch.dips === 1 ? '' : 's'} left.` : '');
-  if (ch.kind === 'fx') return `${D.shopText(ch.shop)} <span class="keep">${ch.maker ? `Made at the table by ${D.TRICKS[ch.maker]?.name || 'a trick'}${ch.life >= 99 ? '; it lasts the bout' : `; ${ch.life} turn${ch.life === 1 ? '' : 's'} left`}.` : ch.amt ? `It carries ${ch.amt}¢.` : ch.resist === 'power' ? 'Added Power (draws left unused, a trait or a bonus): it lasts this turn.' : ''}</span> <span class="v">An effect chip: no worth, takes stack height, cannot be bid. A fee that reaches it, or empties its stack, knocks it off. It does not leave the table with you.</span>`;
-  if (ch.kind !== 'std') return D.CHIPS[ch.kind].text + hits + extra + (ch.shop && D.SHOP_CHIPS[ch.shop] ? ` ${D.CHIP_TIERS[D.SHOP_CHIPS[ch.shop].tier].name} shop chip.` : '');
-  if (ch.resist) { const X = D.SHOP_CHIPS[ch.resist]; if (!X) return 'Worth 1¢.';
-    return `${D.shopText(ch.resist)} Worth ${X.seq ? ch.value : 1}¢${ch.n > 1 ? ` (merged from ${ch.n})` : ''}, ${X.place === 'top' ? 'goes on top of a stack' : 'deployed at the base of your stacks'}, not wagered.${ch.life != null ? ` ${ch.life} turn${ch.life === 1 ? '' : 's'} left.` : ''} ${D.CHIP_TIERS[X.tier].name} tier.${extra}`; }
+  if (ch.kind === 'resist') return tx('parts.fees-under-on-this', { text: D.CHIPS.resist.text, r: ch.r });
+  if ((ch.kind === 'food' || ch.kind === 'dip') && ch.shop) return D.shopText(ch.shop) + (ch.dips != null ? tx('parts.left', { dips: ch.dips }) : '');
+  if (ch.kind === 'fx') return tx('parts.an-effect-chip-no', { shopText: D.shopText(ch.shop), v: ch.maker ? tx('parts.made-at-the-table', { v: D.TRICKS[ch.maker]?.name || 'a trick', v2: ch.life >= 99 ? tx('parts.it-lasts-the-bout') : tx('parts.left-2', { life: ch.life }) }) : ch.amt ? tx('parts.it-carries', { amt: ch.amt }) : ch.resist === 'power' ? tx('parts.added-power-draws-left') : '' });
+  if (ch.kind !== 'std') return D.CHIPS[ch.kind].text + hits + extra + (ch.shop && D.SHOP_CHIPS[ch.shop] ? tx('parts.shop-chip-2', { name: D.CHIP_TIERS[D.SHOP_CHIPS[ch.shop].tier].name }) : '');
+  if (ch.resist) { const X = D.SHOP_CHIPS[ch.resist]; if (!X) return tx('parts.worth-1');
+    return tx('parts.worth-not-wagered-tier', { shopText: D.shopText(ch.resist), v: X.seq ? ch.value : 1, v2: ch.n > 1 ? tx('parts.merged-from', { n: ch.n }) : '', v3: X.place === 'top' ? 'goes on top of a stack' : 'deployed at the base of your stacks', v4: ch.life != null ? tx('parts.left-3', { life: ch.life }) : '', name: D.CHIP_TIERS[X.tier].name, extra }); }
   if (ch.frozen) return D.CHIPS.frozen.text;
-  const feather = ch.feather > 0 ? ` Feathered for ${ch.feather} more turn${ch.feather > 1 ? 's' : ''}: ${D.CHIPS.feather.text.replace(/^A chip turned light for a few turns: /, '')}` : '';
-  if (ch.gold) return `Gold. Cannot be bid, but pays double (${ch.value * 2}¢) if it survives the bout.${feather}`;
-  return extra + (ch.value === 1 ? 'Basic value chip. Bid it to play a trick this turn.' : `Basic value chip. A fee under ${ch.value}¢ leaves Debt on top of it instead of paying it. Bid it and the trick lingers ${ch.value - 1} turn${ch.value > 2 ? 's' : ''}, growing as it waits.`) + feather;
+  const feather = ch.feather > 0 ? tx('parts.feathered-for-more', { feather: ch.feather, replace: D.CHIPS.feather.text.replace(/^A chip turned light for a few turns: /, '') }) : '';
+  if (ch.gold) return tx('parts.gold-cannot-be-bid', { value: ch.value * 2, feather });
+  return extra + (ch.value === 1 ? tx('parts.basic-value-chip-bid') : tx('parts.basic-value-chip-a', { value: ch.value, value2: ch.value - 1, v: ch.value > 2 ? 's' : '' })) + feather;
 }
 // a made chip's rules, in a sentence
 export function madeRules(M, ch = {}) {
-  const parts = [`Worth ${ch.value ?? M.value ?? 0}¢`];
+  const parts = [tx('parts.worth-2', { v: ch.value ?? M.value ?? 0 })];
   const lasts = { paid: 'stays until a fee takes it', match: 'lasts the whole match: hits and fees cannot remove it', turn: 'gone at the end of the turn', turns: `lasts ${ch.life ?? M.turns ?? 3} more turn${(ch.life ?? M.turns) === 1 ? '' : 's'}`, hits: `takes ${ch.hits ?? M.hits} more whole fee${(ch.hits ?? M.hits) === 1 ? '' : 's'}` }[M.lasts];
   if (lasts) parts.push(lasts);
   if (M.height && M.height !== 'basic') parts.push(`${M.height} (${{ tiny: 'no height', short: 'half height', tall: 'double height' }[M.height]})`);
@@ -78,8 +79,8 @@ export function madeRules(M, ch = {}) {
   if (M.move && M.move !== 'still') parts.push(CM.MOVES[M.move].toLowerCase());
   if (M.triggers?.length && M.actions?.length) {
     const when = M.triggers.map((x) => (x.on === 'phase' || x.on === 'effect') && x.type ? `${CM.TRIGGERS[x.on].toLowerCase()} (${D.TYPES[x.type]?.name})` : x.on === 'exposed' && x.what ? `when a ${x.what} is exposed` : CM.TRIGGERS[x.on].toLowerCase()).join(' or ');
-    const what = M.actions.map((x) => ({ move: `moves them ${x.dir || 'right'}`, value: `${(x.n ?? 1) >= 0 ? '+' : ''}${x.n ?? 1}¢ value`, hits: `${(x.n ?? 1) >= 0 ? '+' : ''}${x.n ?? 1} strength`, power: `${(x.n ?? 1) >= 0 ? '+' : ''}${x.n ?? 1} effect`, become: `turns them into ${D.MADE_CHIPS[x.chip]?.name || D.CHIPS[x.chip]?.name || 'Royal Paradise chips'}`, pull: `pulls up to ${x.n ?? 5}¢ of chips out of ${x.from === 'theirs' ? 'the other' : x.from === 'both' ? 'either' : 'its own'} Pit${x.bids ? ' (bids too)' : ''}` }[x.k])).join(', ');
-    parts.push(`${when}: ${what} on ${(CM.REACH[M.reach?.to || 'touching'] || '').toLowerCase()}${M.reach?.to === 'named' ? ` "${M.reach.name}"` : ''}${(M.reach?.range || 1) > 1 ? ` within ${M.reach.range}` : ''}`);
+    const what = M.actions.map((x) => ({ move: `moves them ${x.dir || 'right'}`, value: `${(x.n ?? 1) >= 0 ? '+' : ''}${x.n ?? 1}¢ value`, hits: tx('parts.strength', { v: (x.n ?? 1) >= 0 ? '+' : '', v2: x.n ?? 1 }), power: tx('parts.effect', { v: (x.n ?? 1) >= 0 ? '+' : '', v2: x.n ?? 1 }), become: `turns them into ${D.MADE_CHIPS[x.chip]?.name || D.CHIPS[x.chip]?.name || tx('library.royal-paradise-chips')}`, pull: tx('parts.pulls-up-to-of', { v: x.n ?? 5, v2: x.from === 'theirs' ? 'the other' : x.from === 'both' ? 'either' : 'its own', v3: x.bids ? tx('parts.bids-too') : '' }) }[x.k])).join(', ');
+    parts.push(tx('parts.on', { when, what, toLowerCase: (CM.REACH[M.reach?.to || 'touching'] || '').toLowerCase(), v: M.reach?.to === 'named' ? ` "${M.reach.name}"` : '', v2: (M.reach?.range || 1) > 1 ? ` within ${M.reach.range}` : '' }));
   }
   return parts.join(' · ') + '.';
 }
@@ -95,9 +96,9 @@ export function faceStrip(d) {
     return `<span class="face${tag ? ' sp' : ''}">${v}${tag ? `<sup>${tag}</sup>` : ''}</span>`; }).join('');
 }
 export function dieTip(d, extra = '') {
-  const ups = (d.up || []).map((u, k) => `<li><b style="color:${D.DIE_UPGRADES[u].color}">${D.DIE_UPGRADES[u].mark} ${D.DIE_UPGRADES[u].name}</b>${d.tgt?.[k] != null ? ` <span class="dim">face ${d.tgt[k] + 1}</span>` : ''}<span class="v"> — ${D.upgradeText(u)}</span></li>`).join('');
+  const ups = (d.up || []).map((u, k) => `<li><b style="color:${D.DIE_UPGRADES[u].color}">${D.DIE_UPGRADES[u].mark} ${D.DIE_UPGRADES[u].name}</b>${d.tgt?.[k] != null ? tx('parts.face', { tgt: d.tgt[k] + 1 }) : ''}<span class="v"> — ${D.upgradeText(u)}</span></li>`).join('');
   const M = D.MATERIALS[matOf(d)], B = d.bone && D.BONE[d.bone];
-  return `<b>${dieName(d)}</b> <span class="faces">${faceStrip(d)}</span>${B ? `<p><span class="k">${B.name}</span> Carved with ${D.DIE_UPGRADES[B.up].name}: ${D.upgradeText(B.up)}</p>` : ups ? `<ul>${ups}</ul>` : ''}${d.cast ? `<p class="dim">Cast by the Diesmith: ${D.CASTS[d.cast].name}${(d.dyes || []).length ? ` with ${d.dyes.map((k) => D.DYES[k].name).join(', ')}` : ''}.</p>` : ''}<p class="dim v">${M.text}</p>${extra ? `<p>${extra}</p>` : ''}`;
+  return `<b>${dieName(d)}</b> <span class="faces">${faceStrip(d)}</span>${B ? tx('parts.carved-with', { name: B.name, name2: D.DIE_UPGRADES[B.up].name, upgradeText: D.upgradeText(B.up) }) : ups ? `<ul>${ups}</ul>` : ''}${d.cast ? tx('parts.cast-by-the-diesmith', { name: D.CASTS[d.cast].name, v: (d.dyes || []).length ? ` with ${d.dyes.map((k) => D.DYES[k].name).join(', ')}` : '' }) : ''}<p class="dim v">${M.text}</p>${extra ? `<p>${extra}</p>` : ''}`;
 }
 // one badge per upgrade, so every upgrade a die carries can be read off the die itself
 export const dieMarks = (d) => ((d.up || []).length ? h('span', { class: 'ups' }, d.up.map((u) => h('b', { class: `u-${u}`, style: { '--uc': D.DIE_UPGRADES[u].color }, text: D.DIE_UPGRADES[u].mark }))) : null);
@@ -108,14 +109,14 @@ const fx = (m) => '×' + (m % 1 ? m.toFixed(2).replace(/0$/, '') : m);
 // what a trick's quality, print and condition do, spelled out
 export function printInfo(t) {
   const plain = { id: t.id, q: t.q }, cond = D.CONDITIONS[D.condOf(t)];
-  let s = `<p><span class="k">Power</span> The roll total is multiplied by <b>${fx(multOf(t))}</b>: ${D.QNAME[t.q]} quality gives ${fx(multOf(plain))}`;
-  s += t.foil ? `, and the ${D.FOIL[Math.min(3, t.foil)].name} print makes it ${fx(multOf(t))}.</p>` : '.</p>';
+  let s = tx('parts.power-the-roll-total', { fx: fx(multOf(t)), QNAME: D.QNAME[t.q], fx2: fx(multOf(plain)) });
+  s += t.foil ? tx('parts.and-the-print-makes', { name: D.FOIL[Math.min(3, t.foil)].name, fx: fx(multOf(t)) }) : '.</p>';
   s += `<p><span class="k">${D.QNAME[t.q]}</span> ${D.qdieText(t.q)}</p>`;
-  s += `<p class="dim"><span class="k">${cond.name}</span> Wear ${t.wear ?? D.WEAR.good}/100, 1 a play. ${cond.sell ? `Sells at ${Math.round(cond.sell * 100)}% of its price` : 'Cannot be sold, only trashed'}; condition never changes how it plays.</p>`;
+  s += tx('parts.wear-100-1-a', { name: cond.name, v: t.wear ?? D.WEAR.good, v2: cond.sell ? `Sells at ${Math.round(cond.sell * 100)}% of its price` : tx('parts.cannot-be-sold-only') });
   return s;
 }
 // what a Misprint or a Reprint plays differently (always shown: it changes the rules)
-export const printRule = (t) => (t.rar === 'misprint' ? `<p class="print-line"><span class="k">Misprint</span> ${D.misText(t)}.</p>` : t.rar === 'reprint' ? `<p class="print-line"><span class="k">Reprint</span> ${D.REPRINT[D.TRICKS[t.id].type]}</p>` : '');
+export const printRule = (t) => (t.rar === 'misprint' ? tx('parts.misprint', { misText: D.misText(t) }) : t.rar === 'reprint' ? tx('parts.reprint', { REPRINT: D.REPRINT[D.TRICKS[t.id].type] }) : '');
 // quality and print are drawn on the trick itself: q1–q4 frames, f1–f3 foil, and a Misprint's or Reprint's look
 export const trickLook = (t) => `q${t.q}${t.foil ? ` f${Math.min(3, t.foil)}` : ''}${t.rar === 'misprint' || t.rar === 'reprint' ? ` ${t.rar}` : ''}`;
 // the words for a trick's quality and print, in place of marks: "Grand", "Grand Holo", "Fine Misprint"
@@ -126,25 +127,19 @@ export const trickWord = (t) => rareWord(t) || (t.q > 1 ? D.QNAME[t.q] : '');
 export function trickTip(t, viewerCls, live) {
   const def = D.defOf(t), T = D.TYPES[def.type], mi = traitOf(t);
   const classOk = !def.cls || def.cls === viewerCls;
-  const tgt = def.approach === 'none' ? (def.dist === 'rain' ? 'Random stacks of your opponent.' : 'No target needed.')
-    : `Targets ${D.APPROACH[def.approach]} in ${def.side === 'self' ? 'your own' : "your opponent's"} position. <b>${D.DIST[def.dist].name}</b>: ${D.DIST[def.dist].text}`;
-  return `<div class="tt-trick"><div class="tt-head"><b>${def.name}</b><span class="q">${trickWords(t)} · ${D.CONDITIONS[D.condOf(t)].name}</span></div>
-    <div class="tt-type" style="color:${T.color}">${T.name}${def.cls ? ' · ' + D.CLASSES[def.cls].name : ' · Any class'} <span class="dim v">— ${T.text}</span></div>
-    <p><span class="k">Trait</span> Bid a chip: ${T.traitText(mi)}</p>
-    <p><span class="k">Roll</span> Bid with up to ${def.count} ${def.die}: ${def.roll.text}</p>
-    <p class="${classOk ? '' : 'dim'}"><span class="k">Bonus</span> With ${def.count} ${def.die}${def.count > 1 ? ' dice' : ''}, if ${D.condText(def.bonus.cond)}: ${def.bonus.text}${classOk ? '' : ` <i>(${D.CLASSES[def.cls].name} only)</i>`}</p>
-    ${printRule(t)}<p class="dim">${tgt}</p>
-    <div class="v">${printInfo(t)}</div><p class="dim">Dice may be loaded over several turns before you bid.</p>${live || ''}</div>`;
+  const tgt = def.approach === 'none' ? (def.dist === 'rain' ? tx('parts.random-stacks-of-your') : tx('parts.no-target-needed'))
+    : tx('parts.targets-in-position', { APPROACH: D.APPROACH[def.approach], v: def.side === 'self' ? 'your own' : "your opponent's", name: D.DIST[def.dist].name, text: D.DIST[def.dist].text });
+  return tx('parts.trait-bid-a-chip', { name: def.name, trickWords: trickWords(t), name2: D.CONDITIONS[D.condOf(t)].name, color: T.color, name3: T.name, v: def.cls ? ' · ' + D.CLASSES[def.cls].name : tx('parts.any-class'), text: T.text, traitText: T.traitText(mi), count: def.count, die: def.die, text2: def.roll.text, v2: classOk ? '' : 'dim', condText: D.condText(def.bonus.cond), text3: def.bonus.text, v3: classOk ? '' : tx('parts.only', { name: D.CLASSES[def.cls].name }), printRule: printRule(t), tgt, printInfo: printInfo(t), v4: live || '' });
 }
 export function statTip(k, v) {
   const S = D.STATS[k];
-  return `<b>${S.name}${v != null ? ' ' + v : ''}</b> <span class="dim">${S.short}</span><p>${S.text}</p>${S.per ? `<p class="dim">Each point: ${S.per(1)}.</p>` : ''}`;
+  return `<b>${S.name}${v != null ? ' ' + v : ''}</b> <span class="dim">${S.short}</span><p>${S.text}</p>${S.per ? tx('parts.each-point', { per: S.per(1) }) : ''}`;
 }
 // What a change to an attribute does, said plainly. `cur`: the value now, if known.
 export function statChange(k, n, cur) {
   const S = D.STATS[k]; if (!S) return '';
   const t = S.per(Math.abs(n)), what = n > 0 ? t : t.replace(/\bmore\b/, 'fewer');
-  return `<li><b>${n > 0 ? '+' : ''}${n} ${S.name}</b>${cur != null ? ` <span class="dim">${cur} → ${cur + n}</span>` : ''}<span class="v"> — you ${what}.</span></li>`;
+  return tx('parts.you', { v: n > 0 ? '+' : '', n, name: S.name, v2: cur != null ? ` <span class="dim">${cur} → ${cur + n}</span>` : '', what });
 }
 const changes = (mods, v) => `<ul>${Object.entries(mods || {}).map(([k, n]) => statChange(k, n, v?.[k])).join('')}</ul>`;
 export function statRow(v, keys) {
@@ -153,16 +148,16 @@ export function statRow(v, keys) {
 export const money = (n) => cents(n);
 export function drinkTip(d) {
   const mods = Object.entries(d.mods).map(([k, n]) => `+${n} ${D.STATS[k].name}`).join(', ');
-  return `<b>${d.name}</b> <span class="dim">${d.verb}</span><p>${mods} for one turn per sip. ${d.sips} sip${d.sips === 1 ? '' : 's'}${d.max ? ' left' : ''}. Sip before you act.</p>`;
+  return tx('parts.for-one-turn-per', { name: d.name, verb: d.verb, mods, sips: d.sips, v: d.max ? ' left' : '' });
 }
 // v: your current attributes (rollerStats(run).v), so a +1 can say what it changes
 export function cardTip(id, v) {
   const c = D.CARDS[id];
-  return `<b>${c.name}</b>${c.mods ? changes(c.mods, v) : `<p>${c.text}</p>`}${c.mods ? '<p class="dim">Lose the card and you lose this.</p>' : ''}`;
+  return `<b>${c.name}</b>${c.mods ? changes(c.mods, v) : `<p>${c.text}</p>`}${c.mods ? tx('parts.lose-the-card-and') : ''}`;
 }
 export function jacketTip(id, v) {
   const J = D.JACKETS[id];
-  return `<b>${J.name} jacket</b> <span class="dim">${J.effect}</span>${Object.keys(J.mods).length ? changes(J.mods, v) : '<p>No modifiers.</p>'}${J.cls ? `<p class="dim">Cut for the ${D.CLASSES[J.cls].name}; no other class can wear it.</p>` : ''}`;
+  return tx('parts.jacket', { name: J.name, effect: J.effect, v: Object.keys(J.mods).length ? changes(J.mods, v) : tx('parts.no-modifiers'), v2: J.cls ? tx('parts.cut-for-the-no', { name: D.CLASSES[J.cls].name }) : '' });
 }
 
 // ---------- gear visuals ----------
@@ -179,7 +174,7 @@ export function cardEl(id, cls = '') {
   return h('span', { class: `gcard ${lanyard ? 'lanyard' : ''} ${cls}`, style: { '--gc': L.c, '--ink': L.ink || '#fff' } }, h('em', { text: L.k }), h('b', { text: L.g }), h('small', { text: D.CARDS[id].name.replace(/^.*?: /, '') }));
 }
 // a pass: not a card, it rides in the wallet's own pass slot
-export const passTip = (f) => `<b>${D.PASSES[f].name}</b><p>${D.PASSES[f].text}</p><p class="dim">Every wallet holds one pass, in its own slot. Once you are in, you need it only to come back to a saved run: without the pass for your floor (or a higher one), the Bouncer stops you and you start again at the Boogey Basement, with all your things.</p>`;
+export const passTip = (f) => tx('parts.every-wallet-holds-one', { name: D.PASSES[f].name, text: D.PASSES[f].text });
 export function passEl(f, cls = '') {
   const P = D.PASSES[f]; const el = h('span', { class: `gcard gpass ${cls}`, style: { '--gc': P.color, '--ink': '#fff' } }, h('em', { text: 'Pass' }), h('b', { text: P.glyph }), h('small', { text: P.name.replace(/ Pass$/, '') }));
   el._tip = () => passTip(f); el.classList.add('has-tip'); return el;
