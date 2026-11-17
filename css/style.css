@@ -634,3 +634,16 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .ocell.meter { background: rgba(125, 243, 255, .06); } .ocell .chip.xs { position: relative; width: 16px; height: 16px; } .ocell .chip.xs i { font-size: 7px; }
 .ocount { position: absolute; right: 1px; bottom: -1px; font-size: 8px; color: var(--gold); }
 .b-layout.painting input { cursor: crosshair; caret-color: transparent; } .b-layout.painting { touch-action: none; }
+
+/* ---------- the table, round 18: Stage strips, the Pit, the phase bar under the House's arms ---------- */
+.table-felt { top: 92px; height: 268px; }
+.pit { position: absolute; z-index: 1; border-radius: 14px; background: radial-gradient(ellipse at 50% 35%, rgba(0, 0, 0, .55), rgba(0, 0, 0, .25) 70%); box-shadow: inset 0 6px 18px rgba(0, 0, 0, .7), inset 0 -2px 6px rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .05); }
+.pot { width: 64px; top: auto; z-index: 2; font-size: 11px; } .pot em { font-size: 7px; }
+.stage-strip { position: absolute; height: 26px; z-index: 1; border-radius: 8px; border: 1px dashed rgba(255, 215, 106, .28); background: linear-gradient(180deg, rgba(255, 215, 106, .06), rgba(9, 6, 24, .3)); }
+.stage-strip span { position: absolute; top: 7px; font-size: 8px; letter-spacing: .4em; color: rgba(255, 215, 106, .45); pointer-events: none; } .stage-strip.s0 span { left: 8px; } .stage-strip.s1 span { right: 8px; }
+.phases { position: absolute; z-index: 3; display: flex; flex-direction: column; height: auto; border: 1px solid var(--line); border-radius: 8px; background: rgba(9, 6, 24, .7); overflow: hidden; }
+.phases span { line-height: 16px; font-size: 8.5px; letter-spacing: .12em; }
+.feed-head { position: absolute; right: 0; top: 0; z-index: 2; } .feed-head .btn { height: 18px; padding: 0 10px; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; border-radius: 0 10px 0 6px; }
+.chip.inpit { cursor: help; pointer-events: auto; filter: brightness(.82) saturate(.85); }
+.stick { z-index: 1000; } /* the House's arms reach over the Pit's stacks */
+.tcard.inplay { translate: 0 -12px; } /* tricks in play stand forward */
