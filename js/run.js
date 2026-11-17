@@ -52,7 +52,7 @@ export function resolvePending(run, dropId) {
 }
 export function dropCard(run, id) { if (!hasCard(run, id) || D.LANYARD_CARDS.includes(id)) return false; run.cards = run.cards.filter((x) => x !== id); return true; }
 // the Membership Card carries the Trader's discount as well; the two do not stack
-export const price = (run, shop, base) => Math.max(1, Math.round(base * (hasCard(run, `discount_${shop}`) || (shop === 'trader' && hasCard(run, 'membership')) ? 0.9 : 1)));
+export const price = (run, shop, base) => Math.max(1, Math.round(base * (hasCard(run, `discount_${shop}`) || (shop === 'trader' && hasCard(run, 'membership')) ? D.TUNING.shops.discount : 1)));
 function spend(run, amt, label) { if (run.purse < amt) return false; run.purse -= amt; run.stats.spent += amt; ledger(run, label, -amt); return true; }
 
 export function newRun(cls, jacketReq = 'standard', seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0, gear = {}) {
@@ -177,12 +177,12 @@ function genShelf(run) {
   const own = new Set(run.tricks.map((t) => t.id));
   for (const cls of ['hustler', 'rascal', 'technician', null]) {
     const pool = D.TRICK_IDS.filter((id) => D.TRICKS[id].cls === cls); const fresh = pool.filter((id) => !own.has(id));
-    const id = rng.pick(fresh.length ? fresh : pool); const q = clamp(f + (rng.chance(0.2) ? 1 : 0) - (rng.chance(0.25) ? 1 : 0), 1, 4);
-    out.push({ key: run.nextId++, trick: mkTrick(run, id, q, { wear: D.WEAR.excellent }), cost: 50 * f * q }); // off the shelf: Excellent
+    const id = rng.pick(fresh.length ? fresh : pool); const S = D.TUNING.shops, q = clamp(f + (rng.chance(S.shelfUp) ? 1 : 0) - (rng.chance(S.shelfDown) ? 1 : 0), 1, 4);
+    out.push({ key: run.nextId++, trick: mkTrick(run, id, q, { wear: D.WEAR.excellent }), cost: S.trickPrice * f * q }); // off the shelf: Excellent
   }
   return out;
 }
-export const restockCost = (run) => price(run, 'trader', 100 * (run.floor + run.fs.restocks));
+export const restockCost = (run) => price(run, 'trader', D.TUNING.shops.restock * (run.floor + run.fs.restocks));
 export function restock(run) { if (!spend(run, restockCost(run), 'Trick Trader restock')) return false; run.fs.restocks++; run.fs.shop = genShelf(run); return true; }
 export function buyTrick(run, key) {
   const it = run.fs.shop.find((x) => x.key === key); if (!it || !spend(run, price(run, 'trader', it.cost), `Bought ${D.TRICKS[it.trick.id].name}`)) return false;
@@ -193,7 +193,7 @@ export function buyTrick(run, key) {
 // Foil packs: no more upgrades at the Trader; better tricks come in better sets. Five tricks of the set's quality,
 // all Mint (each may be Gem Mint); four plain prints (some Foil) and one rarer: a Misprint, a Reprint or a high foil.
 export const packOpen = (run, q) => run.floor >= D.PACKS[q].floor;
-export const packCost = (run, q) => price(run, 'trader', D.PACK_PRICE * q * Math.max(1, run.floor));
+export const packCost = (run, q) => price(run, 'trader', D.TUNING.shops.packPrice * q * Math.max(1, run.floor));
 const STEP_DIE = ['d4', 'd6', 'd8'];
 function misprint(rng, id) {
   const die = D.TRICKS[id].die, k = STEP_DIE.indexOf(die), good = rng.chance(0.75); // most misprints come out better
@@ -202,9 +202,10 @@ function misprint(rng, id) {
 }
 export function rollPack(run, q) {
   const rng = run.rng, pool = D.TRICK_IDS.filter((id) => !D.TRICKS[id].cls || D.TRICKS[id].cls === run.cls || rng.chance(0.3));
-  return Array.from({ length: D.PACK_SIZE }, (_, k) => {
-    const id = rng.pick(pool), o = { wear: D.WEAR.mint, gem: rng.chance(D.GEM_CHANCE) };
-    if (k < D.PACK_SIZE - 1) { if (rng.chance(0.2)) o.foil = 1; }
+  const S = D.TUNING.shops;
+  return Array.from({ length: S.packSize }, (_, k) => {
+    const id = rng.pick(pool), o = { wear: D.WEAR.mint, gem: rng.chance(S.gemChance) };
+    if (k < S.packSize - 1) { if (rng.chance(S.packFoil)) o.foil = 1; }
     else { const r = rng.next(); if (r < 0.35) { o.rar = 'misprint'; o.mis = misprint(rng, id); } else if (r < 0.65) o.rar = 'reprint'; else o.foil = rng.chance(0.25 + 0.1 * q) ? 3 : 2; }
     return mkTrick(run, id, q, o);
   });
@@ -307,9 +308,9 @@ function genLounge(run, floor) {
   list.push(floor >= 4 && rng.chance(0.5) ? D.DRINKS[8] : floor >= 2 ? rng.pick([D.DRINKS[6], D.DRINKS[7]]) : basic[2]);
   const happy = rng.chance(0.2);
   return { happy, challenged: false, drinks: list.map((d) => ({ ...d, mods: drinkMods(run, d), cost: Math.round(d.cost * (happy ? 0.5 : 1) * (DRINK_FLOOR[floor] ?? 1)) })),
-    challenger: genOpponent(run, floor, 14 * maxDenom(floor), { cols: 3, name: rng.pick(D.OPPONENTS), title: 'Barfly', q: Math.max(1, Math.min(3, floor) - 1) }) };
+    challenger: genOpponent(run, floor, D.TUNING.tables.barChallengerWorth * maxDenom(floor), { cols: D.TUNING.tables.barCols, name: rng.pick(D.OPPONENTS), title: 'Barfly', q: Math.max(1, Math.min(3, floor) - 1) }) };
 }
-export const drinkCost = (run, d) => (run.punches >= 5 ? 0 : price(run, 'lounge', d.cost));
+export const drinkCost = (run, d) => (run.punches >= D.TUNING.shops.freeDrinkPunches ? 0 : price(run, 'lounge', d.cost));
 function pourDrink(run, d) { run.drink = { id: d.id, name: d.name, verb: d.verb, sips: d.sips, max: d.sips, mods: d.mods }; }
 export function buyDrink(run, id) {
   const d = run.fs.lounge.drinks.find((x) => x.id === id); if (!d) return false; const cost = drinkCost(run, d);
@@ -319,7 +320,7 @@ export function buyDrink(run, id) {
 }
 
 // ---------- sports book ----------
-function oddsFor(p) { const fair = (1 / p - 1) * 0.95; let best = D.ODDS[D.ODDS.length - 1]; for (const o of D.ODDS) if (o[1] <= fair) { best = o; break; } return { pay: best[1], label: best[2] }; }
+function oddsFor(p) { const fair = (1 / p - 1) * D.TUNING.book.houseEdge; let best = D.ODDS[D.ODDS.length - 1]; for (const o of D.ODDS) if (o[1] <= fair) { best = o; break; } return { pay: best[1], label: best[2] }; }
 function genBook(run, floor) {
   const rng = run.rng; const events = rng.shuffle(D.SPORTS).slice(0, 5).map((sp) => {
     let field;
@@ -359,14 +360,14 @@ export function setTilt(run, prep, key, on) { if (on && !tiltOpen(run, key)) ret
 // the tilts' net share: + for Challenges, − for Cheats
 export const tiltNet = (prep) => sum(Object.entries(prep.tilts), ([k, n]) => (n ? (D.TILTS[k].kind === 'challenge' ? 1 : -1) * D.TILTS[k].mult : 0));
 // what a won table pays for its tilts (a House bounty for Challenges, a House cut for Cheats) and for staked shop chips
-export const tiltPay = (ctx) => Math.round(D.TILT_WORTH_SHARE * (ctx.tiltNet || 0) * (ctx.opp?.worth || 0));
+export const tiltPay = (ctx) => Math.round(D.TUNING.wager.tiltWorthShare * (ctx.tiltNet || 0) * (ctx.opp?.worth || 0));
 export const chipStake = (resist) => sum(Object.entries(resist || {}), ([id, n]) => (D.SHOP_CHIPS[id] && D.soldInShop(id) ? n * D.shopPrice(id) : 0));
 export const chipStakePay = (ctx) => (D.SHOP_CHIP_STAKE ? Math.round(chipStake(ctx.resist) * (ctx.mult - 1)) : 0);
 export function multiplier(run, prep) {
-  const base = prep.kind === 'boss' ? D.WAGER_BOSS : D.WAGER_BASE; let m = base;
+  const W = D.TUNING.wager, base = prep.kind === 'boss' ? W.boss : W.base; let m = base;
   for (const [k, n] of Object.entries(prep.tilts)) if (n) m += (D.TILTS[k].kind === 'challenge' ? 1 : -1) * D.TILTS[k].mult;
   m = clamp(m, 1, Math.max(3, base));
-  if (prep.dd) m = Math.min(D.DD_MAX, m * 2);
+  if (prep.dd) m = Math.min(W.doubleDownMax, m * 2);
   return Math.round(m * 100) / 100;
 }
 // default chip mix: fill the Bar with the best chips the purse affords, keeping some 1¢ chips to bid with
@@ -437,7 +438,7 @@ export function startTable(run, prep) {
 }
 export function startLounge(run, drinkId) {
   const L = run.fs.lounge, st = rollerStats(run), d = L.drinks.find((x) => x.id === drinkId);
-  const dims = { cols: 3, stackMax: Math.max(2, st.dims.stackMax - 1), meterRows: Math.max(1, st.dims.meterRows - 1), barRows: Math.max(2, st.dims.barRows - 1) };
+  const dims = { cols: D.TUNING.tables.barCols, stackMax: Math.max(2, st.dims.stackMax - 1), meterRows: Math.max(1, st.dims.meterRows - 1), barRows: Math.max(2, st.dims.barRows - 1) };
   const n = Math.min(16, barCapacity(dims)), md = maxDenom(run.floor), counts = noCounts();
   counts[1] = Math.min(4, n); counts[md] += n - counts[1]; // house chips: a few 1¢ to bid with, the rest in the floor's biggest chip
   const bout = createBout({ seed: run.rng.int(2 ** 31), a: playerSpec(run, counts, {}, dims), b: L.challenger, rules: { maxDenom: md, maxTurns: 20 } });
@@ -478,7 +479,7 @@ export function settle(run, ctx, bout) {
   if (ctx.kind === 'lounge') {
     const d = ctx.drink;
     if (sm.win) { pourDrink(run, d); lines.push([`${ctx.opp.name} buys you a ${d.name}`, 0]); }
-    else { const cost = Math.min(run.purse, price(run, 'lounge', d.cost)); run.purse -= cost; ledger(run, 'Lost a bar bout', -cost); lines.push([`You buy ${ctx.opp.name} a ${d.name}`, -cost]); }
+    else if (D.TUNING.penalty.barLossPaysDrink) { const cost = Math.min(run.purse, price(run, 'lounge', d.cost)); run.purse -= cost; ledger(run, 'Lost a bar bout', -cost); lines.push([`You buy ${ctx.opp.name} a ${d.name}`, -cost]); }
     res.total = run.purse; return res;
   }
   for (const [el, n] of Object.entries(ctx.resist || {})) run.chips[el] = Math.max(0, owned(run, el) - n + (sm.win ? sm.resist[el] || 0 : 0));
@@ -497,7 +498,7 @@ export function settle(run, ctx, bout) {
   for (const x of sm.bounties || []) res.news.push(`${D.CREATURES[x.creature].name} Bounty chip cashed in: ${x.value}¢.`);
   // table or High Roller
   const entry = ctx.kind === 'boss' ? run.fs.boss : run.fs.tables[ctx.idx];
-  const wager = sm.intervened ? Math.floor(ctx.wager / 2) : ctx.wager;
+  const wager = sm.intervened ? Math.floor(ctx.wager * (1 - D.TUNING.penalty.interventionShare)) : ctx.wager;
   if (sm.win) {
     const base = sm.survivors + sm.gold + sm.ownFees + sm.pendingBids + sm.opportunity + sm.nest + sm.seq + bounty + wager;
     const tilt = tiltPay(ctx), chipsWon = chipStakePay(ctx);
@@ -509,7 +510,7 @@ export function settle(run, ctx, bout) {
     if (sm.seq) lines.push(['Fibonacci and Prime chips grew', sm.seq]);
     if (bounty) lines.push(['Bounty chips cashed in', bounty]);
     lines.push(['Wager returned', wager]);
-    if (sm.intervened) lines.push(['Intervention took half your wager', -(ctx.wager - wager)]);
+    if (sm.intervened) lines.push([`Intervention took ${Math.round(D.TUNING.penalty.interventionShare * 100)}% of your wager`, -(ctx.wager - wager)]);
     lines.push([`Fees ${ctx.opp.name} paid to the table`, sm.oppFees], [`Wager winnings ×${ctx.mult}`, Math.round(wager * (ctx.mult - 1))]);
     if (chipsWon) lines.push([`Shop chips staked (${chipStake(ctx.resist)}¢) ×${ctx.mult}`, chipsWon]);
     if (tilt) lines.push([tilt > 0 ? 'House bounty for your Challenges' : 'House cut for your Cheats', tilt]);
@@ -529,7 +530,7 @@ export function settle(run, ctx, bout) {
     run.purse = bounty;
     lines.push(['Chips in your position', -ctx.committed], ['Wager', -ctx.wager]);
     if (bounty) lines.push(['Bounty chips cashed in', bounty]);
-    const lost = rng.shuffle(run.dice).slice(0, Math.min(2, Math.max(0, run.dice.length - 1)));
+    const lost = rng.shuffle(run.dice).slice(0, Math.min(D.TUNING.penalty.diceTaken, Math.max(0, run.dice.length - 1)));
     run.dice = run.dice.filter((d) => !lost.includes(d)); if (lost.length) lines.push([`Dice taken: ${lost.map((d) => d.type).join(', ')}`, 0]);
     if (run.fs) run.fs.lastWin = null;
     ledger(run, `Lost to ${ctx.opp.name}`, -start);

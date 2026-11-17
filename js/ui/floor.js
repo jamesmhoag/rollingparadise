@@ -76,7 +76,7 @@ export function hubScene(root) {
         tip: () => `${tb.seen ? oppTip(tb.opp) : t('floor.table.unknown')}${lock ? `<p class="bad keep">${lock}</p>` : `<p class="keep">${t(i ? 'floor.table.choiceTip' : 'floor.table.firstTip')}</p>`}`,
         on: () => { if (st === 'beaten') return toast(t('floor.table.closed')); if (lock) return toast(lock, 'warn'); if (run.purse < MIN_BUYIN) return buyin(); app.nav.prep('table', i); } }); });
     const b = fs.boss;
-    out.push({ k: 'boss', felt: b.felt || 'royal', cls: `boss ${fs.bossOpen ? '' : 'locked'} ${b.beaten ? 'done' : ''}`, ico: '👑', name: b.opp.name, tag: t('floor.boss.tag'), sub: fs.bossOpen ? t('floor.boss.open', { worth: cents(b.opp.worth), mult: D.WAGER_BOSS }) : t(R.tablesLeft(run) === 2 ? 'floor.boss.need2' : 'floor.boss.need1'),
+    out.push({ k: 'boss', felt: b.felt || 'royal', cls: `boss ${fs.bossOpen ? '' : 'locked'} ${b.beaten ? 'done' : ''}`, ico: '👑', name: b.opp.name, tag: t('floor.boss.tag'), sub: fs.bossOpen ? t('floor.boss.open', { worth: cents(b.opp.worth), mult: D.TUNING.wager.boss }) : t(R.tablesLeft(run) === 2 ? 'floor.boss.need2' : 'floor.boss.need1'),
       tip: () => (fs.bossOpen ? oppTip(b.opp) : t('floor.boss.hidden', { name: b.opp.name })),
       on: () => { if (!fs.bossOpen) return toast(t('floor.boss.notYet'), 'warn'); if (run.purse < MIN_BUYIN) return buyin(); app.nav.prep('boss', 0); } });
     out.push({ k: 'smith', ico: '⚒️', name: t('floor.smith.name'), sub: t('floor.smith.sub'), tip: t('floor.smith.tip'), on: () => smithPanel() });
@@ -95,11 +95,12 @@ export function hubScene(root) {
       tip: t('floor.stairs.tip', { name: up }), on: () => toast(t('floor.stairs.blocked', { boss: fs.boss.opp.name }), 'warn') });
     out.push({ k: 'entry', name: t(run.floor > 1 ? 'floor.entry.down' : 'floor.entry.door'), sub: t('floor.entry.sub'), tip: t('floor.entry.tip'),
       on: () => { R.saveRun(run); toast(t('floor.entry.saved')); app.nav.title(); } });
-    return out;
+    return out.filter((x) => !D.TUNING.rooms[x.k] || D.TUNING.rooms[x.k].includes(run.floor)); // rooms the tuner keeps off this floor
   }
   function render() {
     H.update();
-    for (const t of tiles()) { const el = rooms[t.k]; if (!el) continue;
+    const live = tiles(); for (const [k, el] of Object.entries(rooms)) el.style.display = D.TUNING.rooms[k] && !live.some((x) => x.k === k) ? 'none' : '';
+    for (const t of live) { const el = rooms[t.k]; if (!el) continue;
       for (const c of ['done', 'locked']) el.classList.toggle(c, (t.cls || '').split(' ').includes(c));
       const [, nm, sub, tag] = el.children; swapText(nm, t.name); swapText(sub, t.sub); if (t.tag) tag.textContent = t.tag; tag.style.opacity = t.tag ? 1 : 0;
       if (t.felt) for (const [p, v] of Object.entries(feltStyle(t.felt))) el.style.setProperty(p, v);
