@@ -35,6 +35,13 @@ Hover anything — every chip, die, trick, number and button explains itself.
 7. **After floor 4**: the Penthouse, then the Paradise Ascent, a ladder of remnant builds with no shops or wagers.
 8. **Exit through the Gift Shop** whenever you want to cut your losses. Jackets you buy there stay unlocked.
 
+## Build mode
+
+**Build** on the main menu edits the game's content (classes, tricks, chips, dice, shops, floors, text) field by field.
+Changes are live in your browser straight away, so you can play with them. **Export** downloads `overrides.js`: put it at
+`js/content/overrides.js` (or run `npm run merge-content -- overrides.js` to merge it with changes made elsewhere) and
+commit it to make the changes part of the game.
+
 ## Code
 
 | Path | What it holds |
