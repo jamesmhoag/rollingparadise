@@ -5,7 +5,14 @@
 //   v: face value · w: weight (how often it comes up) · x: multiplier
 //   rig: spent after it comes up · ench: multiplier that dwindles · enc: encased, grows each time it comes up
 // A die saved before faces existed has only `up`; its faces are worked out from it.
-import { DICE, DIE_UPGRADES, DIE_VARS } from './data.js';
+import { DICE, DIE_UPGRADES, DIE_VARS, MATERIALS, DEFAULT_MAT, BONE } from './data.js';
+
+// a die's material (dice saved before materials existed are Plastic) and what that allows
+export const matOf = (die) => die.mat || DEFAULT_MAT;
+export const canMelt = (die) => MATERIALS[matOf(die)]?.melt !== false;
+export const canModify = (die) => MATERIALS[matOf(die)]?.upgrade !== false;
+// a die's name: 'Glass d6', 'Accelerated Bone d8'
+export const dieName = (die) => `${die.bone ? BONE[die.bone].name + ' ' : ''}${MATERIALS[matOf(die)].name} ${die.type}`;
 
 const base = (type) => Array.from({ length: DICE[type].faces }, (_, i) => ({ v: i + 1 }));
 const mean = (fs) => fs.reduce((t, f) => t + f.v, 0) / fs.length;
@@ -57,6 +64,7 @@ function edit(fs0, u, t, rng) {
 // Can this upgrade go on this die? Returns a reason, or null.
 export function canUpgrade(die, u, max = 2) {
   const U = DIE_UPGRADES[u]; if (!U) return 'No such upgrade.';
+  if (!canModify(die)) return `A ${MATERIALS[matOf(die)].name} die cannot be modified.`;
   if ((die.up || []).length >= max) return `A die takes at most ${max} upgrades.`;
   if (U.roll && die.up.includes(u)) return `${U.name} works when the die is rolled, so it cannot be taken twice.`;
   return null;
@@ -92,6 +100,13 @@ export function rollDie(rng, die) {
     if (f.enc != null) f.enc += DIE_VARS.encaseStep;
   }
   return v;
+}
+// Carve a Bone die: a fresh die of `type` with the Bone trait `id` already on it.
+export function boneDie(base, type, id, rng) {
+  const B = BONE[id], die = { ...base, type, mat: 'bone', bone: id, up: [] };
+  const fs = facesOf(die), idx = fs.map((_, i) => i);
+  const t = B.face === 'high' ? highest(fs, idx) : B.face === 'low' ? lowest(fs, idx) : suggestFace(die, B.up);
+  return upgrade(die, B.up, t, rng);
 }
 // a copy of a die for one bout: faces that change with use start fresh from the bought upgrades
 export const boutCopy = (die) => ({ ...die, up: [...(die.up || [])], faces: die.faces ? die.faces.map((f) => ({ ...f })) : undefined });

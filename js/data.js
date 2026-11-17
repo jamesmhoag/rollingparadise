@@ -38,11 +38,14 @@ export const STATS = {
 };
 
 // ---------- Dice ----------
+// Materials, the Dice Shop and Bone dice live in content/dice.js, so they can be edited on their own.
+export { MATERIALS, DEFAULT_MAT, BASIC_MATS, COMPLEXITY, DICE_SHOP, BONE } from './content/dice.js';
 export const DICE = {
   d4: { faces: 4, forge: { dice: 1, chips: 50, floor: 1 }, sell: 20 },
   d6: { faces: 6, forge: { dice: 2, chips: 60, floor: 1 }, sell: 40 },
   d8: { faces: 8, forge: { dice: 4, chips: 120, floor: 1 }, sell: 80 },
   d10: { faces: 10, forge: { dice: 5, chips: 800, floor: 2 }, sell: 200 },
+  d12: { faces: 12, forge: { dice: 6, chips: 1200, floor: 2 }, sell: 300 },
   d20: { faces: 20, forge: { dice: 20, chips: 2500, floor: 2 }, sell: 500 },
 };
 // The workbook's 22 dice upgrades. A die has faces (1 to n to start); most upgrades change them when bought,
