@@ -1,7 +1,6 @@
 // The chip maker: the vocabulary every chip is described in, and the chips made with it.
 // Every chip, old or made, can be read in these terms (chipmodel.js maps the existing ones). A made chip plays
-// entirely from its entry in MADE_CHIPS. Still planned (saved, not yet played): footprints bigger than one space,
-// 'anything' on top ignoring the height cap, and immunity to blocking.
+// entirely from its entry in MADE_CHIPS, every term included.
 
 // where a chip comes from
 export const SOURCES = { prep: 'Match prep (cheats and challenges)', shop: 'Chip shop', trick: 'A trick', chip: 'Another chip', royale: 'Paradise Royale casino', encounter: 'Found at the table' };
@@ -14,7 +13,7 @@ export const LASTS = {
   turns: { name: 'Some turns', text: 'is gone after its turns run out' },
   hits: { name: 'Until broken', text: 'takes a whole fee per point of strength, then breaks' },
 };
-// how tall it stands and how much table it covers (planned: footprints bigger than one space)
+// how tall it stands and how much table it covers (a big chip covers n×n spaces from where it lands, all of them empty)
 export const HEIGHT = { tiny: { name: 'Tiny', h: 0, text: 'takes no stack height' }, short: { name: 'Short', h: 0.5, text: 'half a chip high' }, basic: { name: 'Basic', h: 1, text: 'one chip high' }, tall: { name: 'Tall', h: 2, text: 'two chips high' } };
 export const FOOTPRINT = { basic: '1 space', big: 'Big, 2×2', large: 'Large, 3×3', huge: 'Huge, 5×5' };
 // where it must sit, and what may go on it (only chips of its own footprint stack together)
@@ -22,7 +21,7 @@ export const MUST = { any: 'Anywhere in a stack', top: 'On top', bottom: 'At the
 export const ON_TOP = { anything: 'Anything (no height cap)', fits: 'Anything that fits under the height cap', none: 'Nothing' };
 // what it shrugs off. Elements match the Resist system: a stack holding the chip resists them too.
 export const IMMUNE = { burn: 'Fire', frost: 'Ice', shock: 'Electricity', corrupt: 'Corruption', acid: 'Acid', poison: 'Poison', debt: 'Debt (fees pass it by)',
-  moves: 'Being moved', holes: 'Falling in Holes', buffs: 'Buffs', debuffs: 'Debuffs', blocks: 'Blocking' };
+  moves: 'Being moved', holes: 'Falling in Holes', buffs: 'Buffs', debuffs: 'Debuffs', blocks: 'Blocking (Sticky chips and closed stacks do not stop it)' };
 // how it moves (in the House phase), and what its effect reaches
 export const MOVES = {
   still: 'Does not move', nearest: 'Creature: to the nearest stack', tallest: 'Creature: to the tallest stack', richest: 'Creature: to the highest value', poorest: 'Creature: to the lowest value',

@@ -17,7 +17,6 @@ export function newChip(from) {
   B.setValue(D.subPath('MADE_CHIPS', id), from ? asMade(from) : JSON.parse(JSON.stringify(NEW_CHIP))); return id;
 }
 const opts = (o) => Object.entries(o).map(([k, v]) => [k, typeof v === 'string' ? v : `${v.name} — ${v.text}`]);
-const planned = () => h('span', { class: 'b-planned', text: t('chipmaker.planned'), tip: t('chipmaker.planned.tip') });
 
 export function chipMaker(id, classic, redraw, onCopy) {
   if (classic) return classicView(classic, onCopy);
@@ -52,11 +51,11 @@ export function chipMaker(id, classic, redraw, onCopy) {
     m.lasts === 'turns' ? field(t('maker.turns'), number(['turns'], m.turns, 1), ['turns']) : null,
     h('span', { class: 'cap', text: t('chipmaker.part.size') }),
     field(t('chipmaker.height'), select(['height'], opts(HEIGHT), m.height), ['height']),
-    field(t('chipmaker.foot'), select(['foot'], opts(FOOTPRINT), m.foot), ['foot'], m.foot !== 'basic' ? planned() : null),
+    field(t('chipmaker.foot'), select(['foot'], opts(FOOTPRINT), m.foot), ['foot']),
     field(t('chipmaker.must'), select(['must'], opts(MUST), m.must), ['must']),
-    field(t('chipmaker.onTop'), select(['onTop'], opts(ON_TOP), m.onTop), ['onTop'], m.onTop === 'anything' ? planned() : null),
+    field(t('chipmaker.onTop'), select(['onTop'], opts(ON_TOP), m.onTop), ['onTop']),
     h('span', { class: 'cap', text: t('chipmaker.part.immune') }),
-    field(t('chipmaker.immune'), checks(['immune'], IMMUNE, m.immune || []), ['immune'], (m.immune || []).includes('blocks') ? planned() : null),
+    field(t('chipmaker.immune'), checks(['immune'], IMMUNE, m.immune || []), ['immune']),
     h('span', { class: 'cap', text: t('chipmaker.part.behaviour') }),
     field(t('chipmaker.move'), select(['move'], opts(MOVES), m.move), ['move']),
     h('span', { class: 'cap', text: t('chipmaker.part.effect') }),
