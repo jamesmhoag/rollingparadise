@@ -1,0 +1,1 @@
+Textures: png, jpg or webp, tileable. They are blended (soft light) over the surface's own colours, so a grey texture works for every felt. Set the path in `js/content/assets.js` › `TEXTURES`, e.g. `"felt:royal": "assets/textures/velvet.png"`.

@@ -6,6 +6,7 @@ import { cents, cap } from '../util.js';
 import { multOf, traitOf } from '../bout.js';
 import { facesOf, faceValue, matOf, dieName } from '../dice.js';
 import { traitsOf, traitsHtml } from '../traits.js';
+import { iconStyle, textureOf } from './icons.js';
 
 const GLYPH = { opp: '★', block: '▣', counter: '✸', burn: '🔥', acid: '☣', shock: '⚡', corrupt: '☠', poison: '☘', boom: '💣', frost: '❄', lava: '🌋', flower: '✿', petal: '❀', clay: '▤', brick: '▦', dynamite: '🧨', tree: '🌳', wood: '▥', hard: '⛊', sticky: '◍', hive: '⬢', little: '•', egg: '🥚', hat: '🎩', doom: '☠', volcano: '🌋' };
 // made chips take their face colour from their MADE_CHIPS entry, through one shared style sheet
@@ -81,7 +82,9 @@ export function madeRules(M, ch = {}) {
   }
   return parts.join(' · ') + '.';
 }
-export const chipEl = (ch, cls = '') => h('span', { class: `chip static ${chipSig(ch)} ${cls}` }, h('i', { text: chipGlyph(ch) }));
+// an effect chip whose icon has a file shows the file over its glyph (js/content/assets.js)
+const chipIcon = (ch) => (ch.kind === 'fx' || ch.shop ? iconStyle('chip:' + (ch.shop || ch.kind)) : {});
+export const chipEl = (ch, cls = '') => { const st = chipIcon(ch); return h('span', { class: `chip static ${chipSig(ch)} ${cls}` }, h('i', { text: chipGlyph(ch), class: st['--ico'] ? 'has-ico' : null, style: st })); };
 export const chipTip = (ch, o = {}) => `<b>${chipName(ch)}</b><p>${chipText(ch)}</p>${traitsHtml(traitsOf(ch, o))}`;
 export { traitsOf, traitsHtml };
 
@@ -195,4 +198,4 @@ export function drinkEl(d, sips = d.sips, max = d.max || d.sips, cls = '') {
   return h('span', { class: `gdrink ${cls}`, style: { '--dk': d.color || '#ff86ea', '--fill': `${Math.round(100 * Math.max(0, sips) / Math.max(1, max))}%` } }, h('i', { class: 'liquid' }), h('b', { text: sips }));
 }
 export function feltEl(id, cls = '') { const F = D.feltOf(id); return h('span', { class: `gfelt ${cls}`, style: { '--fa': F.a, '--fb': F.b, '--fr': F.rim } }); }
-export const feltStyle = (id) => { const F = D.feltOf(id); return { '--fa': F.a, '--fb': F.b, '--fr': F.rim }; };
+export const feltStyle = (id) => { const F = D.feltOf(id), tex = textureOf('felt:' + id); return { '--fa': F.a, '--fb': F.b, '--fr': F.rim, ...(tex ? { '--ftex': `url("${tex}")` } : {}) }; };

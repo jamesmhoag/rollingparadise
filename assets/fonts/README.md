@@ -1,0 +1,1 @@
+Fonts: Didact Gothic (the display face, `--display`) and Yellowtail (the script face, `--script`), both under the SIL Open Font License (the OFL-*.txt files). To change a typeface, replace its `.woff2` here and update `css/fonts.css` and `FONTS` in `js/content/assets.js`.

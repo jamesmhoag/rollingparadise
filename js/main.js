@@ -46,7 +46,7 @@ function titleScene(root) {
   // drifting neon motes; positions are fixed per load so the scene is calm, not noisy
   const motes = Array.from({ length: 26 }, (_, i) => h('span', { class: 'mote', style: { left: `${(i * 37 + 11) % 100}%`, '--mc': i % 3 ? 'var(--gold)' : 'var(--pink)', '--d': `${7 + (i * 13) % 9}s`, '--w': `${-((i * 7) % 12)}s`, '--dx': `${((i * 29) % 120) - 60}px` } }));
   const sign = h('div', { class: 'sign', tip: t('title.sign.tip') }, h('div', { class: 'glow' }),
-    h('img', { class: 'l-pink', src: 'assets/logo-pink.png', alt: '', draggable: 'false' }), h('img', { class: 'l-cyan', src: 'assets/logo-cyan.png', alt: 'Rolling Paradise', draggable: 'false' }), h('img', { class: 'l-dice', src: 'assets/logo-dice.png', alt: '', draggable: 'false' }));
+    h('img', { class: 'l-pink', src: D.IMAGES.logoPink, alt: '', draggable: 'false' }), h('img', { class: 'l-cyan', src: D.IMAGES.logoCyan, alt: 'Rolling Paradise', draggable: 'false' }), h('img', { class: 'l-dice', src: D.IMAGES.logoDice, alt: '', draggable: 'false' }));
   root.append(h('div', { class: 'title' }, h('div', { class: 'sky' }), h('div', { class: 'gridfloor' }), ...motes, h('div', { class: 'inner' },
     h('div', { class: 'hotel neon-c', text: t('title.hotel') }), sign,
     h('p', { class: 'tagline neon-p', text: t('title.tagline') }),

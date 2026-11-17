@@ -8,6 +8,7 @@ import * as D from '../data.js';
 import * as R from '../run.js';
 import { cents } from '../util.js';
 import { t } from '../text.js';
+import { iconKids } from './icons.js';
 
 const MIN_BUYIN = 5;
 let rerender = () => {};
@@ -32,14 +33,14 @@ function furniture(kind) {
   switch (kind) {
     case 'table': return [h('i', { class: 'felt' }), ...s('seat', 4), h('i', { class: 'opp' })];
     case 'boss': return [h('i', { class: 'dais' }), h('i', { class: 'felt' }), ...s('seat', 4), h('i', { class: 'opp' })];
-    case 'smith': return [h('i', { class: 'forge' }), h('i', { class: 'anvil', text: '⚒' })];
-    case 'trader': return [...s('shelf', 3), h('i', { class: 'glyph', text: '🃏' })];
-    case 'dice': return [...s('shelf', 2), h('i', { class: 'glyph', text: '🎲' })];
-    case 'exchange': return [h('i', { class: 'cage' }), h('i', { class: 'glyph', text: '🪙' })];
-    case 'lounge': return [h('i', { class: 'barc' }), ...s('stool', 4), h('i', { class: 'glyph', text: '🍹' })];
-    case 'book': return [...s('screen', 4), h('i', { class: 'glyph', text: '🏇' })];
-    case 'search': return [h('i', { class: 'lamp' }), h('i', { class: 'glyph', text: '🔎' })];
-    case 'kit': return [...s('locker', 4), h('i', { class: 'glyph', text: '🎒' })];
+    case 'smith': return [h('i', { class: 'forge' }), h('i', { class: 'anvil' }, ...iconKids('room:smith', '⚒'))];
+    case 'trader': return [...s('shelf', 3), h('i', { class: 'glyph' }, ...iconKids('room:trader', '🃏'))];
+    case 'dice': return [...s('shelf', 2), h('i', { class: 'glyph' }, ...iconKids('room:dice', '🎲'))];
+    case 'exchange': return [h('i', { class: 'cage' }), h('i', { class: 'glyph' }, ...iconKids('room:exchange', '🪙'))];
+    case 'lounge': return [h('i', { class: 'barc' }), ...s('stool', 4), h('i', { class: 'glyph' }, ...iconKids('room:lounge', '🍹'))];
+    case 'book': return [...s('screen', 4), h('i', { class: 'glyph' }, ...iconKids('room:book', '🏇'))];
+    case 'search': return [h('i', { class: 'lamp' }), h('i', { class: 'glyph' }, ...iconKids('room:search', '🔎'))];
+    case 'kit': return [...s('locker', 4), h('i', { class: 'glyph' }, ...iconKids('room:kit', '🎒'))];
     case 'exit': return [h('i', { class: 'door' }), h('i', { class: 'exitsign', text: 'EXIT' })];
     default: return [h('i', { class: 'steps' })];
   }
