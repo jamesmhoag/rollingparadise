@@ -7,17 +7,19 @@ for (let seed = 1; seed <= 30; seed++) {
   const count = () => me.grid.flat().reduce((n, c) => n + c.chips.filter((ch) => ch.kind !== 'fx').length, 0), before = count();
   const e = B.draw(bout, me, me.book[0].uid); closeBoth(bout);
   const spot = B.flippable(me)[0];
-  const [d] = B.throwDice(bout, me, [], [spot]);
-  assert(me.tray.includes(d) && !B.canPlace(bout, me, d.id, e), 'a flipped chip waits in the roll and fits any trick');
-  B.place(bout, me, d.id, e); assert(e.dice.includes(d) && B.unplace(bout, me, d.id) && me.tray.includes(d) && B.place(bout, me, d.id, e), 'a rolled die can be moved while the Roll phase is open');
+  assert(B.setPick(bout, me, [], [spot]) && count() === before, 'a picked chip stays put until the Roll closes'); closeBoth(bout);
+  const d = me.tray.find((x) => x.chip);
   assert(d && d.chip && (d.value === 0 || d.value === d.chip.value), 'flip lands on 0 or the chip worth');
   assert(count() === before - 1 && me.used.roll === 1, 'flip takes the chip and uses a roll');
-  B.resetPlan(bout, me); assert(me.thrown && me.tray.length === 1 && count() === before - 1, 'undo after the throw keeps the throw');
+  const bidAt = B.biddable(me)[0];
+  B.bid(bout, me, e, bidAt.r, bidAt.c); closeBoth(bout); // the Bluff
+  const atBluff = count();
+  assert(me.tray.includes(d) && !B.canPlace(bout, me, d.id, e), 'a flipped chip waits in the roll and fits any trick');
+  B.place(bout, me, d.id, e); assert(e.dice.includes(d) && B.unplace(bout, me, d.id) && me.tray.includes(d) && B.place(bout, me, d.id, e), 'a rolled die can be moved in the Bluff');
+  B.resetPlan(bout, me); assert(me.thrown && me.tray.length === 1 && count() === atBluff, 'undo after the throw keeps the throw');
   assert(B.canThrow(bout, me, [me.pouch[0]?.id].filter(Boolean)), 'rolling is one throw a turn');
   const e2 = me.run.find((x) => x.uid === e.uid); // undo swaps in a copy of the Run
   B.place(bout, me, me.tray[0].id, e2); closeBoth(bout);
-  const bidAt = B.biddable(me)[0];
-  B.bid(bout, me, e2, bidAt.r, bidAt.c); closeBoth(bout);
   for (const _ of B.resolve(bout)); // eslint-disable-line no-unused-vars
   const riding = me.run.flatMap((x) => x.dice).filter((x) => x.chip).length;
   const inMeter = me.grid.slice(0, me.dims.meterRows).flat().flatMap((c) => c.chips).some((ch) => ch.id === d.chip.id);

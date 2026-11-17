@@ -29,9 +29,9 @@ export const STATS = {
   trickery: { name: 'Trickery', short: 'Draw', text: 'Tricks you may draw from your Book each turn.', per: (n) => `draw ${n} more trick${n === 1 ? '' : 's'} from your Book each turn, so more tricks are on your Run to roll onto and bid on` },
   ingenuity: { name: 'Ingenuity', short: 'Bid', text: 'Chips you may bid on shown tricks each turn.', per: (n) => `bid ${n} more chip${n === 1 ? '' : 's'} each turn, so more tricks play (or linger) each turn` },
   proficiency: { name: 'Proficiency', short: 'Roll', text: 'Dice you may roll each turn. A die shows its value first; you then choose which shown trick it goes on.', per: (n) => `roll ${n} more ${n === 1 ? 'die' : 'dice'} (or flip ${n === 1 ? 'a chip' : 'chips'}) each turn, so bigger totals and more bonuses` },
-  charisma: { name: 'Charisma', short: 'Steal', text: 'For each bid you leave unused, steal this many ¢ from the Stage onto your Meter.', per: (n) => `steal ${n} more ¢ from the Stage for every bid you leave unused` },
-  cunning: { name: 'Cunning', short: 'Opportunity', text: 'For each roll you leave unused, gain this many Opportunity chips on your Meter.', per: (n) => `gain ${n} more Opportunity chip${n === 1 ? '' : 's'} for every roll you leave unused` },
-  conviction: { name: 'Conviction', short: 'Power', text: 'For each draw you leave unused, gain this much Power. Power is added to your next roll effect.', per: (n) => `gain ${n} more Power for every draw you leave unused` },
+  charisma: { name: 'Charisma', short: 'Steal', text: 'For each draw you leave unused, a Steal chip on your Meter steals this many ¢ from the Stage in the House phase.', per: (n) => `steal ${n} more ¢ from the Stage for every draw you leave unused` },
+  cunning: { name: 'Cunning', short: 'Opportunity', text: 'For each bid you leave unused, gain this many Opportunity chips on your Meter.', per: (n) => `gain ${n} more Opportunity chip${n === 1 ? '' : 's'} for every bid you leave unused` },
+  conviction: { name: 'Conviction', short: 'Power', text: 'For each roll you leave unused, gain this many Power chips on your Meter: each adds +1 to your roll effects this turn.', per: (n) => `gain ${n} more Power chip${n === 1 ? '' : 's'} for every roll you leave unused` },
   balance: { name: 'Balance', short: 'Stack height', text: 'Extra chips each space can hold (base 3).', per: (n) => `every space in your position holds ${n} more chip${n === 1 ? '' : 's'} (taller stacks in the Meter and the Bar)` },
   versatility: { name: 'Versatility', short: 'Meter rows', text: 'Extra Meter rows (base 2). The Meter sits in front and only holds chips gained during the bout.', per: (n) => `${n} more Meter row${n === 1 ? '' : 's'}: more room for Blocks, Opportunity and recovered chips, and more cover in front of your Bar` },
   depth: { name: 'Depth', short: 'Bar rows', text: 'Extra Bar rows (base 3). The Bar holds the chips you commit before the bout.', per: (n) => `${n} more Bar row${n === 1 ? '' : 's'}: room to put more chips on the table before the bout` },
@@ -423,7 +423,7 @@ export const SHOP_CHIPS = {
   chocolate: { name: 'Chocolate Chip', tier: 1, glyph: '🍫', kind: 'food', place: 'top', list: 'Chocolate Chip', food: { mods: { trickery: 1 }, turns: 2 },
     text: () => 'Food. Eat it from the top of a stack: +1 Draw for 2 turns.' },
   // Made when a phase is passed with actions left unused (see REWARD in bout.js); they carry their amount (`amt`).
-  steal: { name: 'Steal chip', tier: 1, sold: false, from: 'stat:charisma', glyph: '🫳', text: () => 'Made from bids left unused (Charisma). In the House phase it steals what it carries from the Stage (your fees first, then your opponent\'s) onto your Meter, then it is gone.' },
+  steal: { name: 'Steal chip', tier: 1, sold: false, from: 'stat:charisma', glyph: '🫳', text: () => 'Made from draws left unused (Charisma). In the House phase it steals what it carries from the Stage (your fees first, then your opponent\'s) onto your Meter, then it is gone.' },
   honey: { name: 'Honey Chip', tier: 2, sold: false, from: 'bees', glyph: '🍯', kind: 'food', place: 'top', list: 'Honey Chip', food: { mods: { proficiency: 1, ingenuity: 1 }, turns: 1 },
     text: () => 'Food (sticky, golden). Eat it: +1 Roll and +1 Bid this turn.' },
   chipchip: { name: 'Chip Chip', tier: 1, glyph: '🥔', kind: 'food', place: 'top', list: 'Chip Chip', food: { mods: { charisma: 1 }, turns: 1, dip: true },
@@ -457,7 +457,7 @@ export function madeBy(id) {
   const f = SHOP_CHIPS[id]?.from; if (!f) return null;
   if (f.startsWith('trick:')) { const T = TRICKS[f.slice(6)]; return T ? `the ${T.name} trick (${TYPES[T.type].name}${T.cls ? ', ' + CLASSES[T.cls].name : ''})` : null; }
   if (f.startsWith('tilt:')) return `the ${TILTS[f.slice(5)]?.name || f.slice(5)} tilt`;
-  if (f.startsWith('stat:')) return { charisma: 'bids left unused when the Bid phase is passed (Charisma)' }[f.slice(5)] || f;
+  if (f.startsWith('stat:')) return { charisma: 'draws left unused when the Draw phase is passed (Charisma)' }[f.slice(5)] || f;
   return { bees: 'Bumble Bees pollinating your Flowers', roost: 'a Dragon on its Roost' }[f] || f;
 }
 // the trick that makes a chip, if any
@@ -652,10 +652,10 @@ export const CARDS = {
   debit: { name: 'Debit Card', text: 'Found by searching the floor. Lets you use the ATM in the Gift Shop, which keeps chips between runs.' },
   punch: { name: 'Punch Card', text: 'One punch per drink bought. Five punches and the next drink is free.' },
   note: { name: 'Note: on bidding', text: '"Small chips bid fast. Big chips linger. Keep a stack of 1¢ chips at the back."' },
-  note_dice: { name: 'Note: on dice', text: '"Roll first, look, then place. A low roll is not wasted: some bonuses want a small total, and a pair of anything is a match."' },
+  note_dice: { name: 'Note: on dice', text: '"Roll, bid on what you rolled, then place in the Bluff. A low roll is not wasted: some bonuses want a small total, and a pair of anything is a match."' },
   note_debt: { name: 'Note: on Debt', text: '"Debt only takes a chip it can cover. A 5¢ chip on top shrugs off a 4¢ fee, but the Debt stays and the next fee finishes it."' },
   note_house: { name: 'Note: on the House', text: '"Both arms move at once. What you play this phase cannot change what they play this phase. Insure a turn early, not the same turn."' },
-  note_hold: { name: 'Note: on holding back', text: '"A turn with nothing worth playing still pays. Every draw, roll and bid you leave unused earns Power, Opportunity or chips off the Stage."' },
+  note_hold: { name: 'Note: on holding back', text: '"A turn with nothing worth playing still pays. Every draw, roll and bid you leave unused earns chips off the Stage, Power or Opportunity."' },
   note_flip: { name: 'Note: on flips', text: '"Out of dice? Flip a chip. It lands on nothing or its worth, fits any trick, and comes back to your Meter afterwards."' },
   trading: { name: "Trading Card: Children of Ae'a", text: 'From a super popular card game. Does not seem to do anything here.' },
 };

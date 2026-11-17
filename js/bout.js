@@ -11,6 +11,8 @@ import { rollDie, boutCopy, facesOf, upgrade as upgradeFaces } from './dice.js';
 export { rollDie };
 import { DIE_UPGRADES, TRICKS, TYPES, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, CREATURES, ORBITALS, FELTS, TILTS, TILT_PRESSURE, DENOM_VALUES, tiltChance, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS } from './data.js';
 
+// The turn: Draw tricks; Roll (pick the dice; they are thrown as the Bid opens); Bid on tricks, seeing both rolls;
+// the Bluff ('aim'): put the rolled dice on tricks and confirm aims. Your opponent's dice and aims show as the House plays.
 export const PHASES = ['draw', 'roll', 'bid', 'aim']; // 'aim' is shown as the Bluff
 export const LAST_CALL = 8;
 export const heat = (turn) => (turn > LAST_CALL ? 1 + 0.25 * (turn - LAST_CALL) : 1);
@@ -359,7 +361,7 @@ function hurt(b, def, cr, notes) {
 }
 function startTurn(b) {
   for (const s of b.sides) {
-    s.used = { draw: 0, roll: 0, bid: 0 }; s.turnBonus = {}; s.rolled = {}; s.thrown = false; s.heat = heat(b.turn);
+    s.used = { draw: 0, roll: 0, bid: 0 }; s.turnBonus = {}; s.rolled = {}; s.thrown = false; s.pick = { dice: [], flips: [] }; s.heat = heat(b.turn);
     for (const f of s.food || []) { for (const [k, v] of Object.entries(f.mods)) s.turnBonus[k] = (s.turnBonus[k] || 0) + v; f.turns--; } // food still working
     s.food = (s.food || []).filter((f) => f.turns > 0);
     s.mods = { boost: 0, enfeeble: s.status.enfeebleNext, press: 0, bend: null, mul: 1, pierce: false }; s.wardUsed = 0; for (const x of powerChips(s)) delete x.ch.on;
@@ -371,7 +373,7 @@ function startTurn(b) {
   b.creatures = b.creatures.filter((cr) => !cr.gone);
   b.phase = 'draw'; openPhase(b);
 }
-const snapshot = (s) => { s.snap = clone({ grid: s.grid, run: s.run, book: s.book, pouch: s.pouch, tray: s.tray, used: s.used, thrown: s.thrown, turnBonus: s.turnBonus, food: s.food }); };
+const snapshot = (s) => { s.snap = clone({ grid: s.grid, run: s.run, book: s.book, pouch: s.pouch, tray: s.tray, used: s.used, thrown: s.thrown, pick: s.pick, turnBonus: s.turnBonus, food: s.food }); };
 // When a phase opens, each Roller's table is recorded as the other may see it (`pub`) until this phase closes,
 // and as the point Undo returns to (`snap`).
 function openPhase(b) { for (const s of b.sides) { snapshot(s); s.pub = clone({ grid: s.grid, run: s.run }); } }
@@ -379,16 +381,16 @@ function openPhase(b) { for (const s of b.sides) { snapshot(s); s.pub = clone({ 
 // ---------- phases ----------
 const loose = (e) => e.state !== 'play'; // shown or bid this turn: can still take dice (shown) or bids
 const realTypeOf = (e) => e.dice.find((d) => !d.chip)?.type;
-const roomOn = (e) => e.state === 'shown' && e.dice.length < TRICKS[e.trick.id].count;
+const roomOn = (e) => e.state !== 'play' && e.dice.length < TRICKS[e.trick.id].count; // shown or bid this turn
 const fitsOn = (d, e) => roomOn(e) && (d.chip || !realTypeOf(e) || realTypeOf(e) === d.type);
 const spare = (s, ch) => worth(s) - ch.value > 0; // spending this chip does not leave you broke
 export function flippable(s) { const out = []; for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const ch = bidChip(s, r, c); if (ch?.kind === 'std' && spare(s, ch)) out.push({ r, c, ch }); } return out; }
 export function biddable(s) { const out = []; for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const ch = bidChip(s, r, c); if (ch && spare(s, ch)) out.push({ r, c, ch }); } return out; }
 // Is the phase's one required action possible at all? If not, the phase can be closed without it.
 export function canAct(b, s, phase = b.phase) {
-  if (phase === 'aim') return s.run.some((e) => e.state === 'bid' && needsTarget(e) && validTargets(b, s, e).length > 1);
+  if (phase === 'aim') return trayPlaceable(s) || s.tray.length > 0 && s.run.some(roomOn) || s.run.some((e) => e.state === 'bid' && (needsTarget(e) || TRICKS[e.trick.id].approach !== 'none') && validTargets(b, s, e).length > 1);
   if (phase === 'draw') return s.book.length > 0 && tipOf(s, 'trickery') > 0;
-  if (phase === 'roll') return trayPlaceable(s) || canThrowAny(s);
+  if (phase === 'roll') return canThrowAny(s);
   if (phase === 'bid') return s.run.some(loose) && biddable(s).length > 0;
   return false;
 }
@@ -402,12 +404,9 @@ export const diceRoom = (e) => Math.max(0, TRICKS[e.trick.id].count - e.dice.len
 // What still stops this Roller closing the current phase, or null.
 export function needOf(b, s) {
   if (b.phase === 'draw') return s.used.draw > 0 || !canAct(b, s) ? null : 'Draw at least one trick before you roll.';
-  if (b.phase === 'roll') {
-    if (!s.thrown && canThrowAny(s) && !placedThisTurn(b, s)) return 'Pick the dice to roll and roll them first.';
-    if (trayPlaceable(s)) return 'Put every die in the roll on a trick: rolled dice must be used and cannot be rerolled.';
-    return null;
-  }
-  if (b.phase === 'bid') return s.used.bid > 0 || !canAct(b, s) ? null : 'Bid at least one chip before you play.';
+  if (b.phase === 'roll') return s.thrown || !canThrowAny(s) || s.pick.dice.length + s.pick.flips.length ? null : 'Pick at least one die (or a top chip to flip) to roll.';
+  if (b.phase === 'bid') return s.used.bid > 0 || !canAct(b, s) ? null : 'Bid at least one chip before the Bluff.';
+  if (b.phase === 'aim') return trayPlaceable(s) ? 'Put every die in the roll on a trick: rolled dice must be used and cannot be rerolled.' : null;
   return null;
 }
 // Close the current phase for both Rollers. Returns false if either still owes its required action (unless forced).
@@ -416,6 +415,7 @@ export function advance(b, force = false) {
   if (!PHASES.includes(b.phase)) return false;
   if (!force && b.sides.some((s) => needOf(b, s))) return false;
   const i = PHASES.indexOf(b.phase);
+  if (b.phase === 'roll') for (const s of b.sides) throwPicked(b, s); // the picked dice are thrown as the Bid opens
   phaseRewards(b, b.phase);
   b.phase = PHASES[i + 1] || 'resolve';
   if (b.phase !== 'resolve') openPhase(b);
@@ -423,9 +423,9 @@ export function advance(b, force = false) {
 }
 // ---------- what a passed phase gives back ----------
 // Draws, rolls and bids left unused pay as soon as their phase is passed, as chips on the Meter at random spaces with
-// room: unused draws make Power chips (Conviction), unused rolls Opportunity chips (Cunning), unused bids Steal chips
-// (Charisma) that steal from the Stage in the House phase. What has no room is lost, like overkill.
-export const REWARD = { draw: { stat: 'trickery', c: 'conviction', what: 'Power' }, roll: { stat: 'proficiency', c: 'cunning', what: 'Opportunity' }, bid: { stat: 'ingenuity', c: 'charisma', what: 'Steal' } };
+// room: unused draws make a Steal chip (Charisma) that steals from the Stage in the House phase, unused rolls Power
+// chips (Conviction) for the turn, unused bids Opportunity chips (Cunning). What has no room is lost, like overkill.
+export const REWARD = { draw: { stat: 'trickery', c: 'charisma', what: 'Steal' }, roll: { stat: 'proficiency', c: 'conviction', what: 'Power' }, bid: { stat: 'ingenuity', c: 'cunning', what: 'Opportunity' } };
 export function rewardOf(s, phase) {
   const R = REWARD[phase]; if (!R) return null;
   const unused = Math.max(0, tipOf(s, R.stat) - s.used[phase]), n = cOf(s, R.c) * unused;
@@ -435,10 +435,10 @@ function phaseRewards(b, phase) {
   b.rewards = b.rewards || [];
   for (const s of b.sides) {
     const w = rewardOf(s, phase); if (!w || !w.n) continue;
-    const chips = phase === 'draw' ? Array.from({ length: w.n }, () => powerChip(b)) : phase === 'roll' ? Array.from({ length: w.n }, () => mkChip(b, 'opp', 1)) : [mkChip(b, 'fx', 0, { shop: 'steal', resist: 'steal', life: 99, amt: w.n })];
-    const { left, at } = toMeterAtRandom(b, s, chips);
-    const u = `${w.unused} unused ${phase === 'draw' ? 'draw' : phase === 'roll' ? 'roll' : 'bid'}${w.unused > 1 ? 's' : ''}`;
-    const text = phase === 'draw' ? `${u}: ${w.n - left.length} Power chip${w.n - left.length === 1 ? '' : 's'} on the Meter` : phase === 'roll' ? `${u}: ${w.n - left.length} Opportunity chip${w.n - left.length === 1 ? '' : 's'} on the Meter` : `${u}: a Steal chip (${w.n}¢ from the Stage, in the House phase) on the Meter`;
+    const chips = w.what === 'Power' ? Array.from({ length: w.n }, () => powerChip(b)) : w.what === 'Opportunity' ? Array.from({ length: w.n }, () => mkChip(b, 'opp', 1)) : [mkChip(b, 'fx', 0, { shop: 'steal', resist: 'steal', life: 99, amt: w.n })];
+    const { left, at } = toMeterAtRandom(b, s, chips), got = w.n - left.length;
+    const u = `${w.unused} unused ${phase}${w.unused > 1 ? 's' : ''}`;
+    const text = w.what === 'Steal' ? `${u}: a Steal chip (${w.n}¢ from the Stage, in the House phase) on the Meter` : `${u}: ${got} ${w.what} chip${got === 1 ? '' : 's'} on the Meter`;
     b.rewards.push({ side: s.idx, phase, turn: b.turn, text: `${text}${left.length ? `; ${left.length} had no room and ${left.length === 1 ? 'is' : 'are'} lost` : ''}.`, cells: at.map((x) => ref(s, x.r, x.c)) });
   }
 }
@@ -542,9 +542,9 @@ export function undraw(b, s, uid) {
   s.book.splice(Math.min(e.bookAt ?? s.book.length, s.book.length), 0, e.trick); s.used.draw--;
   return e;
 }
-// Rolling is one throw a turn: pick the dice (and any top chips to flip), then throw them all into the roll,
-// where each shows its value. Then put them on shown tricks or leave them; at least one must go on a trick.
-// Dice can be moved between tricks until the Roll phase closes.
+// Rolling is one throw a turn. In the Roll phase you pick the dice (and any top chips to flip); they are thrown
+// together as the Bid opens, so both Rollers bid seeing both rolls. In the Bluff you put them on tricks.
+// (throwDice throws at once: the engine's own step, used when the Roll phase closes.)
 export function canRollOut(b, s, dieId) {
   const gate = phaseGate(b, 'roll'); if (gate) return gate;
   if (s.thrown) return 'You have rolled this turn. Rolling is one throw.';
@@ -564,6 +564,14 @@ export function canThrow(b, s, dieIds = [], flips = []) {
   if (flips.some(({ r, c }) => bidChip(s, r, c)?.kind !== 'std')) return 'Only an uncovered standard chip on top of a stack can be flipped.';
   if (flips.length && worth(s) - sum(flips, ({ r, c }) => bidChip(s, r, c).value) <= 0) return 'Flipping those would leave you with nothing.';
   return null;
+}
+export function canPick(b, s, dieIds = [], flips = []) { if (!dieIds.length && !flips.length) return phaseGate(b, 'roll') || (s.thrown ? 'You have rolled this turn. Rolling is one throw.' : null); return canThrow(b, s, dieIds, flips); }
+// what will be thrown when the Roll phase closes
+export function setPick(b, s, dieIds = [], flips = []) { if (canPick(b, s, dieIds, flips)) return false; s.pick = { dice: dieIds.slice(), flips: flips.map(({ r, c }) => ({ r, c })) }; return true; }
+function throwPicked(b, s) {
+  if (s.thrown) return; const { dice, flips } = s.pick || { dice: [], flips: [] }; s.pick = { dice: [], flips: [] };
+  const ok = dice.filter((id) => s.pouch.some((d) => d.id === id)), fl = flips.filter(({ r, c }) => bidChip(s, r, c)?.kind === 'std');
+  if (ok.length + fl.length && !canThrow(b, s, ok, fl)) throwDice(b, s, ok, fl);
 }
 export function throwDice(b, s, dieIds = [], flips = []) {
   if (canThrow(b, s, dieIds, flips)) return null;
@@ -612,11 +620,11 @@ export function flip(b, s, r, c) {
 const realType = realTypeOf;
 export const holderOf = (s, dieId) => s.run.find((e) => e.dice.some((d) => d.id === dieId)) || null;
 // a die on a trick can still be moved while the Roll phase is open, if it was rolled this turn
-// Dice rolled this turn can be moved between tricks until the turn is played (through Roll and Bid).
-const editing = (b) => b.phase === 'roll' || b.phase === 'bid';
+// Dice rolled this turn are put on tricks, and can be moved between them, in the Bluff.
+const editing = (b) => b.phase === 'aim';
 export const canMove = (b, s, dieId) => { const e = holderOf(s, dieId); return editing(b) && !!e && e.state !== 'play' && e.dice.find((d) => d.id === dieId).t === b.turn; };
 export function canPlace(b, s, dieId, e) {
-  const gate = b.phase === 'bid' ? null : phaseGate(b, 'roll'); if (gate) return gate;
+  if (b.phase !== 'aim') return b.phase === 'roll' || b.phase === 'bid' || b.phase === 'draw' ? 'Dice go on tricks in the Bluff, after the bids.' : 'The turn is in play.';
   const def = TRICKS[e.trick.id], d = s.tray.find((x) => x.id === dieId) || (canMove(b, s, dieId) ? holderOf(s, dieId).dice.find((x) => x.id === dieId) : null);
   if (!d) return s.pouch.some((x) => x.id === dieId) ? 'Roll the die first.' : 'That die is committed to its trick.';
   if (e.state === 'play') return 'That trick is already in play.';
@@ -701,7 +709,7 @@ export function bidMany(b, s, e, picks) {
 // Undo: back to where the current phase opened (or, in the Roll phase, to just after the throw).
 export function resetPlan(b, s) {
   const snap = clone(s.snap);
-  s.grid = snap.grid; s.run = snap.run; s.book = snap.book; s.pouch = snap.pouch; s.tray = snap.tray; s.used = snap.used; s.thrown = snap.thrown; s.turnBonus = snap.turnBonus; s.food = snap.food;
+  s.grid = snap.grid; s.run = snap.run; s.book = snap.book; s.pouch = snap.pouch; s.tray = snap.tray; s.used = snap.used; s.thrown = snap.thrown; s.pick = snap.pick || { dice: [], flips: [] }; s.turnBonus = snap.turnBonus; s.food = snap.food;
 }
 export const needsTarget = (e) => TRICKS[e.trick.id].approach !== 'none' && e.dice.length > 0;
 export function targetSide(b, s, def) { return def.side === 'opp' ? b.sides[1 - s.idx] : def.side === 'self' ? s : null; }

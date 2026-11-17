@@ -70,10 +70,11 @@ for (const id of D.SHOP_IDS()) assert(!D.makerOf(id), `${D.SHOP_CHIPS[id].name} 
   B.draw(bout, me, me.book[0].uid); B.advance(bout, true);
   const e = me.run[0], room = D.TRICKS[e.trick.id].count;
   const fits = me.pouch.filter((d) => d.type === D.TRICKS[e.trick.id].die).slice(0, Math.min(B.tipOf(me, 'proficiency'), room + 1));
-  B.throwDice(bout, me, fits.map((d) => d.id));
-  assert(B.needOf(bout, me), 'rolled dice must be put on tricks before Roll can close');
+  B.setPick(bout, me, fits.map((d) => d.id)); B.advance(bout, true); // thrown as the Bid opens
+  const spot = B.biddable(me)[0]; B.bid(bout, me, e, spot.r, spot.c); B.advance(bout, true); // the Bluff
+  assert(B.needOf(bout, me), 'rolled dice must be put on tricks before the Bluff can close');
   for (const d of me.tray.slice()) if (!B.canPlace(bout, me, d.id, e)) B.place(bout, me, d.id, e);
-  assert(!B.needOf(bout, me), 'once nothing in the roll fits a trick, Roll can close');
+  assert(!B.needOf(bout, me), 'once nothing in the roll fits a trick, the Bluff can close');
   const kept = me.tray.map((d) => d.id + ':' + d.value).join();
   B.advance(bout, true); assert(me.tray.map((d) => d.id + ':' + d.value).join() === kept, 'a die with nowhere to go stays in the roll with its value');
 }
