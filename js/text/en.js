@@ -324,8 +324,6 @@ export default {
   "chipmaker.range": "Range (1 to 5 spaces)",
   "chipmaker.triggers": "Triggers",
   "chipmaker.actions": "Actions",
-  "chipmaker.planned": "planned",
-  "chipmaker.planned.tip": "<b>Planned</b><p>Saved with the chip and shown here; the bout does not play it yet.</p>",
   "chipmaker.noText": "No description yet.",
   "chipmaker.useInTricks": "Made chips can be chosen as the chip a made trick creates, in the Trick maker.",
   "chipmaker.category": "Type",

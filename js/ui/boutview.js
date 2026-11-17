@@ -246,7 +246,7 @@ export function boutScene(root, bout, ctx, onDone) {
     return `<b>${zone} stack</b> <span class="dim">${B.solidCount(cell)}/${s.dims.stackMax} high${full ? ' (full)' : ''} · worth ${B.cellWorth(cell)}¢${debt ? ` · owes ${debt}¢` : ''}</span>
       ${full ? `<p class="keep dim">${vc('Full: nothing more can be placed here, and a trick that adds chips cannot aim at it. Chips that would land here anyway are lost, like overkill.', 'Full: nothing more fits.')}</p>` : ''}
       ${hard > 0 ? `<p class="good">Hardened for ${hard} more turn${hard > 1 ? 's' : ''}: each fee takes only one chip.</p>` : ''}
-      ${B.lifted(cell) ? '<p class="good">Lifted by a Heli-Chipter: flying, and it plays from the bottom.</p>' : ''}${cell.anchor ? '<p class="dim">Covers two spaces by two.</p>' : ''}${cell.cut ? `<p class="dim">A dormant Volcano left it ${cell.cut} lower.</p>` : ''}
+      ${B.lifted(cell) ? '<p class="good">Lifted by a Heli-Chipter: flying, and it plays from the bottom.</p>' : ''}${cell.anchor ? `<p class="dim">Covers ${cell.anchor.n || 2} spaces by ${cell.anchor.n || 2}.</p>` : ''}${cell.cut ? `<p class="dim">A dormant Volcano left it ${cell.cut} lower.</p>` : ''}
       ${debt && next ? `<p class="bad">Owes ${debt}¢. Debt only pays whole chips, so the ${next.value}¢ chip it sits on goes to the Stage once the Debt reaches ${next.value}¢: ${next.value - debt}¢ more, from any later fee or hazard.</p>` : ''}
       ${debt ? `<p class="dim">${DEBT_RULE}</p>` : ''}
       <ul class="stack">${groups.map((g) => `<li class="${pi <= g.hi && pi >= g.lo ? 'pt' : ''}"><span class="chip static mini ${g.sig}"><i>${chipGlyph(g.ch)}</i></span> ${g.n} × ${chipName(g.ch)}${g.hi === ti ? ' <span class="n">top</span>' : ''}</li>`).join('')}</ul>
@@ -414,8 +414,9 @@ export function boutScene(root, bout, ctx, onDone) {
     // chips
     const want = new Map();
     bout.sides.forEach((s, si) => { for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const cell = s.grid[r][c];
-      if (cell.anchor && r + 1 < s.rows && c + 1 < s.dims.cols) { const a = cellPos(si, r, c), b2 = cellPos(si, r + 1, c + 1), cx = (a.x + b2.x) / 2 + a.w / 2, cy = (a.y + b2.y) / 2 + CH / 2;
-        cell.chips.forEach((ch, lvl) => want.set(ch.id, { x: cx - CHIP / 2, y: cy - CHIP / 2 + 10 - Math.min(lvl, 12) * 5, z: 20 + c * 40 + lvl, ch: seenAs(ch, si), side: si, s: ch.big || ch.kind === 'volcano' ? 1.9 : 0 })); }
+      const fn = cell.anchor?.n || 2; // a Big chip or Volcano covers 2×2; big made chips 2, 3 or 5 a side
+      if (cell.anchor && r + fn - 1 < s.rows && c + fn - 1 < s.dims.cols) { const a = cellPos(si, r, c), b2 = cellPos(si, r + fn - 1, c + fn - 1), cx = (a.x + b2.x) / 2 + a.w / 2, cy = (a.y + b2.y) / 2 + CH / 2;
+        cell.chips.forEach((ch, lvl) => want.set(ch.id, { x: cx - CHIP / 2, y: cy - CHIP / 2 + 10 - Math.min(lvl, 12) * 5, z: 20 + c * 40 + lvl, ch: seenAs(ch, si), side: si, s: ch.big || ch.kind === 'volcano' ? 1.9 : B.footOf(ch) > 1 ? B.footOf(ch) * 0.95 : 0 })); }
       else cell.chips.forEach((ch, lvl) => want.set(ch.id, { ...chipPos(si, r, c, lvl), ch: seenAs(ch, si), side: si })); } });
     const pileOf = new Map(); me.run.filter((e) => e.bid.length).forEach((e, j) => pileOf.set(e.uid, j));
     for (const e of me.run) { if (!e.bid.length) continue; const x = stageX(0, pileOf.get(e.uid)); e.bid.forEach((ch, i) => want.set(ch.id, { x, y: STAGE_Y - 4 - i * 3, z: 900 + i, ch, side: 0, unbid: e.uid })); }

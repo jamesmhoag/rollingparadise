@@ -280,6 +280,12 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
   high → the difference.
 - **The d10 stays.** It is not cast (not in the sheet's complexity list), but the Secret Shelf and the Grand
   quality die keep it.
+- **Every chip maker term plays.** Height: chips with no thickness (tiny, hazards, Debt) and flying chips always
+  fit; anything else, half-height included, must fit under the cap. A stack with an "anything on top" chip in it
+  has no height cap. A big chip covers 2×2, 3×3 or 5×5 empty spaces from where it lands (moved back inside the
+  position at an edge), holds its ground, and frees them when it goes.
+- **Immune to blocking** (my reading, to confirm): a Sticky chip now glues made chips on its stack so they do
+  nothing, and a "nothing on top" chip closes its stack; a chip immune to blocking is stopped by neither.
 - **Bar is the Stake and Meter is the Bet** everywhere the player reads them; code names are unchanged so saves load.
 - **The Stage** above each position holds bids and made chips. **The Pit** keeps every lost chip as it was; it can
   be seen, and effects that reach into it come later.
@@ -294,8 +300,6 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
 
 ### Still to build
 - **Effects that reach into the Pit.**
-- **Chip maker terms saved but not played:** footprints bigger than one space (2×2, 3×3, 5×5), "anything on top"
-  going past the stack-height limit, and immunity to blocking.
 - **Game text (row 14), parts 2–4:** the floor's shop panels, the bout screen, the Library, and the feed and
   settlement lines the engine writes. Trick and chip names and rules text are still in the content tables.
 - **Hover guidance (row 1)** covers the table basics, attributes, phases and rooms. Individual tricks, chips, shop
