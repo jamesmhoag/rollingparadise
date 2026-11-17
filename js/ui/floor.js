@@ -274,7 +274,7 @@ function kitPanel() {
       h('div', { class: 'row wrap', style: { alignItems: 'flex-end' } }, walletEl(run.wallet), run.pass ? passEl(run.pass) : null, jacketEl(run.jacket), run.drink ? drinkEl(run.drink, run.drink.sips, run.drink.max) : null,
         h('div', { class: 'inv', style: { alignItems: 'flex-end' } }, run.cards.map((c) => { const pass = D.LANYARD_CARDS.includes(c); const el = cardEl(c); el.style.cursor = pass ? '' : 'pointer'; el._tip = () => cardTip(c, R.rollerStats(run).v) + (pass ? '<p class="dim">Clipped to your lanyard: it does not take a wallet slot.</p>' : '<p class="dim">Takes a wallet slot. Click twice to drop it for good.</p>'); el.classList.add('has-tip');
         el.onclick = () => { if (pass) return; if (!el._armed) { el._armed = true; el.classList.add('armed'); return toast(`Click ${D.CARDS[c].name} again to drop it.`, 'warn'); } if (!R.dropCard(run, c)) return toast('You need that one to get in.', 'warn'); closePanel(); rerender(); toast(`${D.CARDS[c].name} dropped.`); }; return el; }))),
-      h('span', { class: 'cap', text: 'Position' }), h('p', { class: 'sub', text: `${st.dims.meterRows} Meter rows and ${st.dims.barRows} Bar rows of 5 spaces, stacks up to ${st.dims.stackMax} chips. Your Bar holds ${st.dims.barRows * 5 * st.dims.stackMax} chips.` }))));
+      h('span', { class: 'cap', text: 'Position' }), h('p', { class: 'sub', text: `${st.dims.meterRows} Bet rows and ${st.dims.barRows} Stake rows of 5 spaces, stacks up to ${st.dims.stackMax} chips. Your Stake holds ${st.dims.barRows * 5 * st.dims.stackMax} chips.` }))));
 }
 
 // what you give up by dropping a card, in plain words

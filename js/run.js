@@ -383,13 +383,13 @@ export function multiplier(run, prep) {
   if (prep.dd) m = Math.min(W.doubleDownMax, m * 2);
   return Math.round(m * 100) / 100;
 }
-// default chip mix: fill the Bar with the best chips the purse affords, keeping some 1¢ chips to bid with
+// default chip mix: fill the Stake with the best chips the purse affords, keeping some 1¢ chips to bid with
 // `reserve`: spaces kept for shop chips
 export function autoCounts(run, dims, purse = run.purse, reserve = 0) {
   const cap = Math.max(0, barCapacity(dims) - reserve), all = denomsFor(chipFloor(run));
   const counts = noCounts(); let slots = cap, money = purse;
   const ones = Math.min(slots, money, Math.max(6, Math.round(cap * 0.15)));
-  // chips up to 10¢ as before; bigger ones only as far as the purse needs them to fit in the Bar (more, smaller stacks)
+  // chips up to 10¢ as before; bigger ones only as far as the purse needs them to fit in the Stake (more, smaller stacks)
   const fits = (d) => ones + Math.ceil(Math.max(0, money - ones) / d) <= cap, small = Math.max(...all.filter((v) => v <= 10));
   const top = fits(small) ? small : all.find((v) => v > small && fits(v)) || Math.max(...all), denoms = all.filter((v) => v <= top).sort((a, b) => b - a); counts[1] = ones; slots -= ones; money -= ones;
   for (const v of denoms) { if (v === 1) continue; const n = Math.min(slots, Math.floor(money / v)); counts[v] += n; slots -= n; money -= n * v; }
@@ -404,7 +404,7 @@ export function validCounts(run, dims) {
   if (c && planWorth(c) <= run.purse && sum(Object.values(c)) + shop <= barCapacity(dims) && planWorth(c) > 0) return c;
   return autoCounts(run, dims, run.purse, shop);
 }
-// A painted position (click and hold in the planner): [{ r, c, chips: [values] }], r counted from the Bar's front.
+// A painted position (click and hold in the planner): [{ r, c, chips: [values] }], r counted from the Stake's front.
 // Its counts are what is painted; it holds only if the purse covers it and every stack fits.
 export const layoutCounts = (layout) => { const c = noCounts(); for (const sp of layout || []) for (const v of sp.chips) if (typeof v === 'number') c[v] = (c[v] || 0) + 1; return c; };
 export function validLayout(run, dims) {

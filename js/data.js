@@ -10,13 +10,13 @@ export const CLASSES = {
     dice: { d4: 4, d6: 4 }, tricks: ['charge', 'mug', 'stir', 'block', 'settle'], color: '#e0a23c',
   },
   rascal: {
-    name: 'Rascal', hero: 'Fox', blurb: 'Bids the most and has the deepest Meter. Deploys from the centre.',
+    name: 'Rascal', hero: 'Fox', blurb: 'Bids the most and has the deepest Bet. Deploys from the centre.',
     tip: { trickery: 2, ingenuity: 3, proficiency: 2 }, c: { charisma: 1, cunning: 2, conviction: 1 },
     bvd: { balance: 0, versatility: 3, depth: 1 }, primary: 'ingenuity', deploy: 'center',
     dice: { d6: 7 }, tricks: ['charge', 'stir', 'bend', 'block', 'settle'], color: '#c0569b',
   },
   technician: {
-    name: 'Technician', hero: 'Hog', blurb: 'Rolls the most dice and has the deepest Bar. Deploys from the front.',
+    name: 'Technician', hero: 'Hog', blurb: 'Rolls the most dice and has the deepest Stake. Deploys from the front.',
     tip: { trickery: 2, ingenuity: 2, proficiency: 3 }, c: { charisma: 1, cunning: 1, conviction: 2 },
     bvd: { balance: 1, versatility: 0, depth: 3 }, primary: 'proficiency', deploy: 'start',
     dice: { d6: 3, d8: 3 }, tricks: ['charge', 'stir', 'block', 'brace', 'settle'], color: '#4aa3c7',
@@ -31,12 +31,12 @@ export const STATS = {
   trickery: { name: 'Trickery', short: 'Draw', text: 'Tricks you may draw from your Book each turn.', per: (n) => `draw ${n} more trick${n === 1 ? '' : 's'} from your Book each turn, so more tricks are on your Run to roll onto and bid on` },
   ingenuity: { name: 'Ingenuity', short: 'Bid', text: 'Chips you may bid on shown tricks each turn.', per: (n) => `bid ${n} more chip${n === 1 ? '' : 's'} each turn, so more tricks play (or linger) each turn` },
   proficiency: { name: 'Proficiency', short: 'Roll', text: 'Dice you may roll each turn. A die shows its value first; you then choose which shown trick it goes on.', per: (n) => `roll ${n} more ${n === 1 ? 'die' : 'dice'} (or flip ${n === 1 ? 'a chip' : 'chips'}) each turn, so bigger totals and more bonuses` },
-  charisma: { name: 'Charisma', short: 'Steal', text: 'For each draw you leave unused, a Steal chip on your Meter steals this many ¢ from the Stage in the House phase.', per: (n) => `steal ${n} more ¢ from the Stage for every draw you leave unused` },
-  cunning: { name: 'Cunning', short: 'Opportunity', text: 'For each bid you leave unused, gain this many Opportunity chips on your Meter.', per: (n) => `gain ${n} more Opportunity chip${n === 1 ? '' : 's'} for every bid you leave unused` },
-  conviction: { name: 'Conviction', short: 'Power', text: 'For each roll you leave unused, gain this many Power chips on your Meter: each adds +1 to your roll effects this turn.', per: (n) => `gain ${n} more Power chip${n === 1 ? '' : 's'} for every roll you leave unused` },
-  balance: { name: 'Balance', short: 'Stack height', text: 'Extra chips each space can hold (base 3).', per: (n) => `every space in your position holds ${n} more chip${n === 1 ? '' : 's'} (taller stacks in the Meter and the Bar)` },
-  versatility: { name: 'Versatility', short: 'Meter rows', text: 'Extra Meter rows (base 2). The Meter sits in front and only holds chips gained during the bout.', per: (n) => `${n} more Meter row${n === 1 ? '' : 's'}: more room for Blocks, Opportunity and recovered chips, and more cover in front of your Bar` },
-  depth: { name: 'Depth', short: 'Bar rows', text: 'Extra Bar rows (base 3). The Bar holds the chips you commit before the bout.', per: (n) => `${n} more Bar row${n === 1 ? '' : 's'}: room to put more chips on the table before the bout` },
+  charisma: { name: 'Charisma', short: 'Steal', text: 'For each draw you leave unused, a Steal chip on your Bet steals this many ¢ from the Stage in the House phase.', per: (n) => `steal ${n} more ¢ from the Stage for every draw you leave unused` },
+  cunning: { name: 'Cunning', short: 'Opportunity', text: 'For each bid you leave unused, gain this many Opportunity chips on your Bet.', per: (n) => `gain ${n} more Opportunity chip${n === 1 ? '' : 's'} for every bid you leave unused` },
+  conviction: { name: 'Conviction', short: 'Power', text: 'For each roll you leave unused, gain this many Power chips on your Bet: each adds +1 to your roll effects this turn.', per: (n) => `gain ${n} more Power chip${n === 1 ? '' : 's'} for every roll you leave unused` },
+  balance: { name: 'Balance', short: 'Stack height', text: 'Extra chips each space can hold (base 3).', per: (n) => `every space in your position holds ${n} more chip${n === 1 ? '' : 's'} (taller stacks in the Bet and the Stake)` },
+  versatility: { name: 'Versatility', short: 'Bet rows', text: 'Extra Bet rows (base 2). The Bet sits in front and only holds chips gained during the bout.', per: (n) => `${n} more Bet row${n === 1 ? '' : 's'}: more room for Blocks, Opportunity and recovered chips, and more cover in front of your Stake` },
+  depth: { name: 'Depth', short: 'Stake rows', text: 'Extra Stake rows (base 3). The Stake holds the chips you commit before the bout.', per: (n) => `${n} more Stake row${n === 1 ? '' : 's'}: room to put more chips on the table before the bout` },
 };
 
 // ---------- Dice ----------
@@ -86,7 +86,7 @@ export const TYPES = {
   investment: { name: 'Investment', order: 0, color: '#8a6fd1', text: 'Resolves first. Modifies every other effect played this turn.',
     trait: 'Gain Power', traitText: (m) => `Gain ${m} Power (added to your next roll effect).` },
   insurance: { name: 'Insurance', order: 1, color: '#4aa3c7', text: 'Resolves second. Prevents, reduces or mitigates expenses.',
-    trait: 'Block chip', traitText: (m) => `Add ${m} Block chip${m > 1 ? 's' : ''} to your Meter.` },
+    trait: 'Block chip', traitText: (m) => `Add ${m} Block chip${m > 1 ? 's' : ''} to your Bet.` },
   expense: { name: 'Expense', order: 2, color: '#d9564a', text: 'Resolves third. Charges fees that move chips from a position to the Stage.',
     trait: 'Debt chip', traitText: (m) => `Place ${m}¢ of Debt on a random front stack of your opponent.` },
   correction: { name: 'Correction', order: 3, color: '#5bb174', text: 'Resolves last. Adjusts the placement and state of chips.',
@@ -145,9 +145,9 @@ export const APPROACH = {
   front: 'the front-most stack of a column',
   rear: 'the rear-most stack of a column',
   flank: 'any stack in an edge column',
-  body: 'the front row of the Bar, skipping the Meter',
+  body: 'the front row of the Stake, skipping the Bet',
   any: 'any stack',
-  meter: 'any open Meter space',
+  meter: 'any open Bet space',
   none: 'no space — affects the whole Roller',
 };
 export const DIST = {
@@ -172,9 +172,9 @@ export const TRICKS = {
   charge: { name: 'Charge', type: 'expense', cls: null, die: 'd6', count: 2, side: 'opp', approach: 'front', dist: 'hit',
     roll: { k: 'fee', text: 'Charge a fee equal to the total.' }, bonus: { cond: 'match', k: 'double', text: 'The fee is doubled.' } },
   mug: { name: 'Mug', type: 'expense', cls: 'hustler', die: 'd4', count: 2, side: 'opp', approach: 'front', dist: 'hit',
-    roll: { k: 'fee', text: 'Charge a fee equal to the total.' }, bonus: { cond: 'match', k: 'glean', text: 'Chips paid go to your Meter instead of the Stage.' } },
+    roll: { k: 'fee', text: 'Charge a fee equal to the total.' }, bonus: { cond: 'match', k: 'glean', text: 'Chips paid go to your Bet instead of the Stage.' } },
   swipe: { name: 'Swipe', type: 'expense', cls: 'rascal', die: 'd6', count: 2, side: 'opp', approach: 'front', dist: 'swipe',
-    roll: { k: 'fee', text: 'Charge a fee equal to the total, shared across the spaces.' }, bonus: { cond: 'evens', k: 'glean', text: 'Chips paid go to your Meter instead of the Stage.' } },
+    roll: { k: 'fee', text: 'Charge a fee equal to the total, shared across the spaces.' }, bonus: { cond: 'evens', k: 'glean', text: 'Chips paid go to your Bet instead of the Stage.' } },
   jab: { name: 'Jab', type: 'expense', cls: 'technician', die: 'd8', count: 2, side: 'opp', approach: 'front', dist: 'poke',
     roll: { k: 'fee', text: 'Charge a fee equal to the total, shared down the column.' }, bonus: { cond: 'over:9', k: 'pierce', text: 'Ignores Block chips, Resist and Hardened stacks.' } },
   scorch: { name: 'Scorch', type: 'expense', cls: null, die: 'd4', count: 3, side: 'opp', approach: 'any', dist: 'hit', element: 'burn',
@@ -188,7 +188,7 @@ export const TRICKS = {
   melt: { name: 'Melt', type: 'expense', cls: 'hustler', die: 'd4', count: 2, side: 'opp', approach: 'any', dist: 'hit', element: 'acid',
     roll: { k: 'fee', text: 'Charge a fee equal to the total and leave an Acid chip.' }, bonus: { cond: 'under:4', k: 'double', text: 'The fee is doubled.' } },
   collapse: { name: 'Collapse', type: 'expense', cls: null, die: 'd8', count: 3, side: 'opp', approach: 'body', dist: 'drop',
-    roll: { k: 'fee', text: 'Charge a fee equal to the total, shared across the Bar spaces hit.' }, bonus: { cond: 'over:14', k: 'pierce', text: 'Ignores Block chips, Resist and Hardened stacks.' } },
+    roll: { k: 'fee', text: 'Charge a fee equal to the total, shared across the Stake spaces hit.' }, bonus: { cond: 'over:14', k: 'pierce', text: 'Ignores Block chips, Resist and Hardened stacks.' } },
   infect: { name: 'Infect', type: 'expense', cls: null, die: 'd6', count: 2, side: 'opp', approach: 'any', dist: 'hit', element: 'corrupt',
     roll: { k: 'fee', text: 'Charge a fee equal to the total and leave a Corrupting chip.' }, bonus: { cond: 'odds', k: 'spread', text: 'Hits the neighbouring stack too (Swipe).' } },
   envenom: { name: 'Envenom', type: 'expense', cls: null, die: 'd4', count: 2, side: 'opp', approach: 'rear', dist: 'hit', element: 'poison',
@@ -196,18 +196,18 @@ export const TRICKS = {
   rig: { name: 'Rig', type: 'expense', cls: null, die: 'd8', count: 1, side: 'opp', approach: 'any', dist: 'hit', element: 'boom',
     roll: { k: 'fee', text: 'Charge a fee equal to the total and leave a Boom chip.' }, bonus: { cond: 'over:6', k: 'double', text: 'The fee is doubled.' } },
   fuse: { name: 'Fuse', type: 'expense', cls: 'technician', die: 'd8', count: 2, side: 'opp', approach: 'body', dist: 'hit', plant: 'dynamite',
-    roll: { k: 'fee', text: 'Charge a fee equal to the total on a Bar stack, then light a stack of Dynamite on the nearest empty space: one stick burns down each turn, then it destroys every chip around it.' }, bonus: { cond: 'over:12', k: 'double', text: 'The fee is doubled.' } },
+    roll: { k: 'fee', text: 'Charge a fee equal to the total on a Stake stack, then light a stack of Dynamite on the nearest empty space: one stick burns down each turn, then it destroys every chip around it.' }, bonus: { cond: 'over:12', k: 'double', text: 'The fee is doubled.' } },
   frost: { name: 'Frost', type: 'expense', cls: null, die: 'd6', count: 2, side: 'opp', approach: 'front', dist: 'hit', element: 'frost',
     roll: { k: 'fee', text: 'Charge a fee equal to the total and leave a Frost chip: that stack cannot be bid or flipped.' }, bonus: { cond: 'evens', k: 'spread', text: 'Frosts the neighbouring stack too (Swipe).' } },
   erupt: { name: 'Erupt', type: 'expense', cls: 'technician', die: 'd8', count: 2, side: 'opp', approach: 'body', dist: 'hit', element: 'lava',
-    roll: { k: 'fee', text: 'Charge a fee equal to the total on a Bar stack and leave a Lava chip.' }, bonus: { cond: 'over:12', k: 'double', text: 'The fee is doubled.' } },
+    roll: { k: 'fee', text: 'Charge a fee equal to the total on a Stake stack and leave a Lava chip.' }, bonus: { cond: 'over:12', k: 'double', text: 'The fee is doubled.' } },
   ambush: { name: 'Ambush', type: 'expense', cls: 'hustler', die: 'd6', count: 2, side: 'opp', approach: 'front', dist: 'hit', early: 'investment',
     roll: { k: 'fee', text: 'Swift: plays with the Investments, before any Insurance this turn is up. Charge a fee equal to the total.' }, bonus: { cond: 'match', k: 'pierce', text: 'Ignores Block chips, Resist and Hardened stacks.' } },
   vengeance: { name: 'Vengeance', type: 'expense', cls: null, die: 'd6', count: 2, side: 'opp', approach: 'front', dist: 'hit', vengeance: true,
-    roll: { k: 'fee', text: 'Charge a fee equal to the total plus every ¢ you paid in fees last turn.' }, bonus: { cond: 'over:8', k: 'glean', text: 'Chips paid go to your Meter instead of the Stage.' } },
+    roll: { k: 'fee', text: 'Charge a fee equal to the total plus every ¢ you paid in fees last turn.' }, bonus: { cond: 'over:8', k: 'glean', text: 'Chips paid go to your Bet instead of the Stage.' } },
   // --- Insurances ---
   block: { name: 'Block', type: 'insurance', cls: null, die: 'd6', count: 2, side: 'self', approach: 'meter', dist: 'hit',
-    roll: { k: 'block', text: 'Add Block chips equal to the total to your Meter, starting at the target space.' }, bonus: { cond: 'evens', k: 'counter', text: 'They are Counter chips: each one also puts a Debt chip on the attacker.' } },
+    roll: { k: 'block', text: 'Add Block chips equal to the total to your Bet, starting at the target space.' }, bonus: { cond: 'evens', k: 'counter', text: 'They are Counter chips: each one also puts a Debt chip on the attacker.' } },
   brace: { name: 'Brace', type: 'insurance', cls: 'technician', die: 'd8', count: 2, side: 'self', approach: 'any', dist: 'swipe',
     roll: { k: 'harden', text: 'Harden the target stacks: each fee costs them only one chip. Lasts 1 turn per 4 rolled (at least 1).' }, bonus: { cond: 'over:9', k: 'aura', text: 'Hardens your whole position.' } },
   endure: { name: 'Endure', type: 'insurance', cls: null, die: 'd6', count: 1, side: 'none', approach: 'none', dist: 'hit',
@@ -239,13 +239,13 @@ export const TRICKS = {
     roll: { k: 'saturate', text: 'Your other roll effects this turn gain the total, and your opponent\'s boosts this turn are subdued to nothing.' }, bonus: { cond: 'match', k: 'extend', text: 'Their Power is drained to nothing as well.' } },
   // --- Corrections ---
   settle: { name: 'Settle', type: 'correction', cls: null, die: 'd6', count: 1, side: 'none', approach: 'none', dist: 'hit',
-    roll: { k: 'settle', text: 'Remove Debt and hazard chips from your position up to the total, then organize your Bar into full stacks.' }, bonus: { cond: 'over:5', k: 'blocks', text: 'Also adds 2 Block chips to your Meter.' } },
+    roll: { k: 'settle', text: 'Remove Debt and hazard chips from your position up to the total, then organize your Stake into full stacks.' }, bonus: { cond: 'over:5', k: 'blocks', text: 'Also adds 2 Block chips to your Bet.' } },
   gather: { name: 'Gather', type: 'correction', cls: null, die: 'd6', count: 2, side: 'none', approach: 'none', dist: 'hit',
-    roll: { k: 'gather', text: 'Recover up to the total in ¢ from the fees you have paid to the Stage, back onto your Meter.' }, bonus: { cond: 'match', k: 'both', text: 'Takes from your opponent\'s paid fees as well.' } },
+    roll: { k: 'gather', text: 'Recover up to the total in ¢ from the fees you have paid to the Stage, back onto your Bet.' }, bonus: { cond: 'match', k: 'both', text: 'Takes from your opponent\'s paid fees as well.' } },
   scatter: { name: 'Scatter', type: 'correction', cls: 'rascal', die: 'd6', count: 2, side: 'none', approach: 'none', dist: 'hit',
     roll: { k: 'scatter', text: 'Scatter chips from the front of your opponent\'s position, up to the total, to random spaces. Chips with nowhere to land fall to the Stage.' }, bonus: { cond: 'match', k: 'double', text: 'Scatters twice as many.' } },
   sweep: { name: 'Sweep', type: 'correction', cls: 'technician', die: 'd8', count: 1, side: 'none', approach: 'none', dist: 'hit',
-    roll: { k: 'sweep', text: 'Sweep Block, Counter and Opportunity chips off your opponent\'s Meter, up to the total.' }, bonus: { cond: 'over:6', k: 'unharden', text: 'Also removes Hardened from every stack.' } },
+    roll: { k: 'sweep', text: 'Sweep Block, Counter and Opportunity chips off your opponent\'s Bet, up to the total.' }, bonus: { cond: 'over:6', k: 'unharden', text: 'Also removes Hardened from every stack.' } },
   // Arrangements: corrections that move chips around a position. `arrange` names the move (see ARRANGE).
   // Lanes run from the Stage to the edge; forward is toward the Stage. They act on the lanes (or, for Lift and
   // Sink, the rows) their spread covers. Anchored stacks, Holes and Dynamite stay put; Debt and hazards stay
@@ -277,27 +277,27 @@ export const TRICKS = {
   handoff: { name: 'Hand Off', type: 'correction', cls: 'hustler', die: 'd4', count: 1, side: 'opp', approach: 'any', dist: 'hit',
     roll: { k: 'handoff', text: 'Move one of your Uranium chips onto the target stack. Its radiation is their problem now.' }, bonus: { cond: 'over:3', k: 'spread', text: 'Hands off one more Uranium chip next door.' } },
   fence: { name: 'Fence', type: 'correction', cls: 'hustler', die: 'd4', count: 2, side: 'none', approach: 'none', dist: 'hit',
-    roll: { k: 'fence', text: 'Convert Debt chips on your position, up to the total, into Opportunity chips on your Meter.' }, bonus: { cond: 'match', k: 'blocks', text: 'Also adds 2 Block chips to your Meter.' } },
+    roll: { k: 'fence', text: 'Convert Debt chips on your position, up to the total, into Opportunity chips on your Bet.' }, bonus: { cond: 'match', k: 'blocks', text: 'Also adds 2 Block chips to your Bet.' } },
   // --- Makers ---
-  // A maker places an effect chip where it belongs: Investments that work on your rolls on a Meter space (empty or
+  // A maker places an effect chip where it belongs: Investments that work on your rolls on a Bet space (empty or
   // not), Insurances and Corrections on the stack they protect or clear. You aim it there; it is placed when it plays. The chip is physical: it
   // takes stack height, a fee that reaches it knocks it off, Corrections move it. While it lasts it does its work in
   // its trick's phase each turn. make: { chip, n: [base, per], life: [base, per] }: base + one more per `per` rolled.
   // These chips used to be sold at the Chip Exchange; an effect a trick can make is not sold.
   empower: { name: 'Empower', type: 'investment', cls: null, die: 'd6', count: 2, side: 'self', approach: 'meter', dist: 'hit', make: { chip: 'power', n: [1, 6], life: [2, 4] },
-    roll: { k: 'make', text: 'Place Power chips on the target Meter space (1, +1 per 6 rolled). In each Investment phase every Power chip adds 1 to your roll effects. They last 2 turns, +1 per 4 rolled.' }, bonus: { cond: 'match', k: 'spread', text: 'Places them on the neighbouring spaces too (Swipe).' } },
+    roll: { k: 'make', text: 'Place Power chips on the target Bet space (1, +1 per 6 rolled). In each Investment phase every Power chip adds 1 to your roll effects. They last 2 turns, +1 per 4 rolled.' }, bonus: { cond: 'match', k: 'spread', text: 'Places them on the neighbouring spaces too (Swipe).' } },
   throttle: { name: 'Throttle', type: 'investment', cls: 'rascal', die: 'd6', count: 2, side: 'self', approach: 'meter', dist: 'hit', make: { chip: 'control', n: [1, 6], life: [2, 4] },
-    roll: { k: 'make', text: 'Place Control chips on the target Meter space (1, +1 per 6 rolled). In each Investment phase every Control chip takes 1 off your opponent\'s roll effects. They last 2 turns, +1 per 4 rolled.' }, bonus: { cond: 'evens', k: 'spread', text: 'Places them on the neighbouring spaces too (Swipe).' } },
+    roll: { k: 'make', text: 'Place Control chips on the target Bet space (1, +1 per 6 rolled). In each Investment phase every Control chip takes 1 off your opponent\'s roll effects. They last 2 turns, +1 per 4 rolled.' }, bonus: { cond: 'evens', k: 'spread', text: 'Places them on the neighbouring spaces too (Swipe).' } },
   load: { name: 'Load', type: 'investment', cls: 'hustler', die: 'd4', count: 2, side: 'self', approach: 'meter', dist: 'hit', make: { chip: 'boosted', n: [1, 8], life: [1, 4] },
-    roll: { k: 'make', text: 'Place a Boosted chip on the target Meter space (+1 per 8 rolled): every die you roll shows 1 more per Boosted chip. It lasts 1 turn, +1 per 4 rolled.' }, bonus: { cond: 'match', k: 'spread', text: 'Places them on the neighbouring spaces too (Swipe).' } },
+    roll: { k: 'make', text: 'Place a Boosted chip on the target Bet space (+1 per 8 rolled): every die you roll shows 1 more per Boosted chip. It lasts 1 turn, +1 per 4 rolled.' }, bonus: { cond: 'match', k: 'spread', text: 'Places them on the neighbouring spaces too (Swipe).' } },
   shave: { name: 'Shave', type: 'investment', cls: 'technician', die: 'd8', count: 2, side: 'self', approach: 'meter', dist: 'hit', make: { chip: 'cheapened', n: [1, 10], life: [1, 5] },
-    roll: { k: 'make', text: 'Place a Cheapened chip on the target Meter space (+1 per 10 rolled): every die your opponent rolls shows 1 less per Cheapened chip. It lasts 1 turn, +1 per 5 rolled.' }, bonus: { cond: 'over:12', k: 'spread', text: 'Places them on the neighbouring spaces too (Swipe).' } },
+    roll: { k: 'make', text: 'Place a Cheapened chip on the target Bet space (+1 per 10 rolled): every die your opponent rolls shows 1 less per Cheapened chip. It lasts 1 turn, +1 per 5 rolled.' }, bonus: { cond: 'over:12', k: 'spread', text: 'Places them on the neighbouring spaces too (Swipe).' } },
   tinker: { name: 'Tinker', type: 'investment', cls: null, die: 'd6', count: 1, side: 'self', approach: 'meter', dist: 'hit', make: { chip: 'upgrade', n: [1, 99], life: [1, 3] },
-    roll: { k: 'make', text: 'Place an Upgrade chip on the target Meter space: while it is there, every die you roll takes a random upgrade (good or bad) for that roll. It lasts 1 turn, +1 per 3 rolled.' }, bonus: { cond: 'over:5', k: 'spread', text: 'Places one on a neighbouring space too (Swipe).' } },
+    roll: { k: 'make', text: 'Place an Upgrade chip on the target Bet space: while it is there, every die you roll takes a random upgrade (good or bad) for that roll. It lasts 1 turn, +1 per 3 rolled.' }, bonus: { cond: 'over:5', k: 'spread', text: 'Places one on a neighbouring space too (Swipe).' } },
   charm: { name: 'Charm', type: 'investment', cls: 'hustler', die: 'd4', count: 2, side: 'self', approach: 'meter', dist: 'hit', make: { chip: 'lucky', n: [1, 6], life: [2, 4] },
-    roll: { k: 'make', text: 'Place Lucky chips on the target Meter space (1, +1 per 6 rolled). In each Investment phase each one has a 30% chance to put an Opportunity chip on your Meter. They last 2 turns, +1 per 4 rolled.' }, bonus: { cond: 'match', k: 'spread', text: 'Places them on the neighbouring spaces too (Swipe).' } },
+    roll: { k: 'make', text: 'Place Lucky chips on the target Bet space (1, +1 per 6 rolled). In each Investment phase each one has a 30% chance to put an Opportunity chip on your Bet. They last 2 turns, +1 per 4 rolled.' }, bonus: { cond: 'match', k: 'spread', text: 'Places them on the neighbouring spaces too (Swipe).' } },
   stow: { name: 'Stow', type: 'investment', cls: null, die: 'd6', count: 2, side: 'self', approach: 'meter', dist: 'hit', make: { chip: 'nest', n: [1, 7], life: [99, 99] },
-    roll: { k: 'make', text: 'Place Nest Egg chips on the target Meter space (1, +1 per 7 rolled). They last the bout; each one still on your table when you win pays 15¢.' }, bonus: { cond: 'evens', k: 'spread', text: 'Places them on the neighbouring spaces too (Swipe).' } },
+    roll: { k: 'make', text: 'Place Nest Egg chips on the target Bet space (1, +1 per 7 rolled). They last the bout; each one still on your table when you win pays 15¢.' }, bonus: { cond: 'evens', k: 'spread', text: 'Places them on the neighbouring spaces too (Swipe).' } },
   echo: { name: 'Echo', type: 'investment', cls: 'rascal', die: 'd8', count: 1, side: 'self', approach: 'any', dist: 'hit', make: { chip: 'mimic', n: [1, 99], life: [1, 3] },
     roll: { k: 'make', text: 'Place a Mimic chip on top of the target stack: each phase while it is on top, one of your tricks of that type plays its roll effect again. It lasts 1 turn, +1 per 3 rolled.' }, bonus: { cond: 'over:6', k: 'spread', text: 'Places one on a neighbouring stack too (Swipe).' } },
   cushion: { name: 'Cushion', type: 'insurance', cls: null, die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'hit', make: { chip: 'reducer', n: [1, 5], life: [2, 4] },
@@ -417,7 +417,7 @@ export const SHOP_CHIPS = {
   rebound: { name: 'Rebound chip', tier: 3, sold: false, from: 'trick:recoil', glyph: '◐', vars: { reflect: 2 },
     text: (v) => `Each fee on its stack sends ${v.reflect}¢ of Debt back to the attacker's front stack in the same lane. The fee is still charged.` },
   lucky: { name: 'Lucky chip', tier: 3, sold: false, from: 'trick:charm', glyph: '✦', vars: { chance: 0.3 },
-    text: (v) => `In each Investment phase, a ${Math.round(v.chance * 100)}% chance to put an Opportunity chip on your Meter.` },
+    text: (v) => `In each Investment phase, a ${Math.round(v.chance * 100)}% chance to put an Opportunity chip on your Bet.` },
   transpara: { name: 'Transpara-Chip', tier: 3, sold: false, from: 'trick:veil', glyph: '◌', list: 'Transpara-Chip',
     text: () => 'Its stack cannot be aimed at by your opponent. Spreads, rain and hazards (fire, shock, corruption) still reach it.' },
   // from the workbook's chip list
@@ -436,7 +436,7 @@ export const SHOP_CHIPS = {
   shadow: { name: 'Shadow chip', tier: 2, sold: false, from: 'trick:shade', glyph: '◗', list: 'Shadow Chip',
     text: () => 'Its stack cannot be aimed at while the stack in front of it in the lane is taller.' },
   tree: { name: 'Tree chip', tier: 3, glyph: '🌳', kind: 'tree', place: 'space', list: 'Tree Chip',
-    text: () => 'Planted on an empty Bar space. It grows a chip taller each turn; at full height it drops a Seed on each stack around it (one per chip of height, up to 8). A fee that hits it fells it: it blocks that fee and falls into Wood chips on the spaces around it, one per chip of height. No worth.' },
+    text: () => 'Planted on an empty Stake space. It grows a chip taller each turn; at full height it drops a Seed on each stack around it (one per chip of height, up to 8). A fee that hits it fells it: it blocks that fee and falls into Wood chips on the spaces around it, one per chip of height. No worth.' },
   sun: { name: 'Sun chip', tier: 3, glyph: '☀', place: 'sky', list: 'Sun Chip',
     text: () => 'Orbital: it goes up into your sky, not onto a stack. While it shines your Flowers bloom twice as many Petals, your Trees grow twice as fast, Puddles dry and eggs hatch faster.' },
   heli: { name: 'Heli-Chipter', tier: 3, glyph: '🚁', place: 'top', list: 'Heli-Chipter',
@@ -473,7 +473,7 @@ export const SHOP_CHIPS = {
   chocolate: { name: 'Chocolate Chip', tier: 1, glyph: '🍫', kind: 'food', place: 'top', list: 'Chocolate Chip', food: { mods: { trickery: 1 }, turns: 2 },
     text: () => 'Food. Eat it from the top of a stack: +1 Draw for 2 turns.' },
   // Made when a phase is passed with actions left unused (see REWARD in bout.js); they carry their amount (`amt`).
-  steal: { name: 'Steal chip', tier: 1, sold: false, from: 'stat:charisma', glyph: '🫳', text: () => 'Made from draws left unused (Charisma). In the House phase it steals what it carries from the Stage (your fees first, then your opponent\'s) onto your Meter, then it is gone.' },
+  steal: { name: 'Steal chip', tier: 1, sold: false, from: 'stat:charisma', glyph: '🫳', text: () => 'Made from draws left unused (Charisma). In the House phase it steals what it carries from the Stage (your fees first, then your opponent\'s) onto your Bet, then it is gone.' },
   honey: { name: 'Honey Chip', tier: 2, sold: false, from: 'bees', glyph: '🍯', kind: 'food', place: 'top', list: 'Honey Chip', food: { mods: { proficiency: 1, ingenuity: 1 }, turns: 1 },
     text: () => 'Food (sticky, golden). Eat it: +1 Roll and +1 Bid this turn.' },
   chipchip: { name: 'Chip Chip', tier: 1, glyph: '🥔', kind: 'food', place: 'top', list: 'Chip Chip', food: { mods: { charisma: 1 }, turns: 1, dip: true },
@@ -495,7 +495,7 @@ export const SHOP_CHIPS = {
   cheapened: { name: 'Cheapened chip', tier: 3, sold: false, from: 'trick:shave', glyph: '⇣', vars: { die: 1 }, list: 'Cheapened Chip',
     text: (v) => `Every die your opponent rolls shows ${v.die} less (not below 0) for each Cheapened chip in your position.` },
   upgrade: { name: 'Upgrade chip', tier: 4, sold: false, from: 'trick:tinker', glyph: '⬆', place: 'meter', list: 'Upgrade Chip',
-    text: () => 'Lies on your Meter. While it is there, each Upgrade chip puts a random die upgrade (good or bad) on every die you roll, for that roll only. Bid it on a trick and that trick plays one upgrade higher.' },
+    text: () => 'Lies on your Bet. While it is there, each Upgrade chip puts a random die upgrade (good or bad) on every die you roll, for that roll only. Bid it on a trick and that trick plays one upgrade higher.' },
   crown: { name: 'Crown chip', tier: 4, sold: false, from: 'trick:brace', glyph: '♛', vars: { turns: 3 },
     text: (v) => `Its stack starts the bout Hardened for ${v.turns} turns: each fee takes only one chip.` },
 };
@@ -558,7 +558,7 @@ export const CALAMITIES = {
   wormhole: { name: 'Worm Hole', text: 'Opens on an empty space of your position. Any chips that land on it are pulled through to an empty space on your opponent\'s side.' },
   inferno: { name: 'Inferno', text: 'Really, really hot. A Burning chip lands on one of your stacks every turn.' },
   audit: { name: 'House Audit', text: 'Every second turn, each of your front stacks is charged a 1¢ fee.' },
-  blackhole: { name: 'Black Hole', text: 'A hole in space on one of your Bar spaces: anything put on it is gone. Every turn, and whenever a Correction moves chips, it consumes the bottom chip of a stack next to it.' },
+  blackhole: { name: 'Black Hole', text: 'A hole in space on one of your Stake spaces: anything put on it is gone. Every turn, and whenever a Correction moves chips, it consumes the bottom chip of a stack next to it.' },
   volcano: { name: 'Volcano', text: 'A full stack of Volcano chips, two spaces by two where there is room. Nothing can be placed on it. For four turns it launches a Burning chip at one of your stacks, then goes dormant: the space comes back one stack height lower.' },
   tornado: { name: 'Tornado', text: 'A Tornado chip moves over your position. Its strength is rolled on 2d6; a stack under it shorter than that is thrown about, and some of its chips may be lost.' },
   blizzard: { name: 'Blizzard', text: 'Every fourth turn a Blizzard covers your whole table for a turn: stacks shorter than its strength (2d6) freeze into one Frozen chip.' },
@@ -580,16 +580,16 @@ export const PRIZES = { bonus: 0.25 };
 export const TILTS = {
   hazard: { kind: 'challenge', name: 'Hazard', floor: 1, mult: 0.25, base: 0.25, per: 0.6, text: 'The House digs Holes in empty spaces of your position (one in three is a Magic Hat slipped under a stack). More of them, more often, the more you have lost to the House.' },
   creature: { kind: 'challenge', name: 'Creature', floor: 1, mult: 0.35, base: 0.2, per: 0.6, text: 'The House sends creatures to your position. The more you have lost to the House, the more often, and the bigger the creatures it can call.' },
-  spawner: { kind: 'challenge', name: 'Spawner', floor: 2, mult: 0.4, base: 0.15, per: 0.5, text: 'The House sets nests on your position that send a creature every third turn (every second, once you have lost a third of your chips). One in two is a Dragon Roost: it takes a Bar space and calls a Dragon that lays eggs on it.' },
+  spawner: { kind: 'challenge', name: 'Spawner', floor: 2, mult: 0.4, base: 0.15, per: 0.5, text: 'The House sets nests on your position that send a creature every third turn (every second, once you have lost a third of your chips). One in two is a Dragon Roost: it takes a Stake space and calls a Dragon that lays eggs on it.' },
   calamity: { kind: 'challenge', name: 'Calamity', floor: 3, mult: 0.5, base: 0.12, per: 0.45, text: 'The House starts disasters on your position: a Worm Hole, Inferno, Audit, Black Hole, Volcano, Tornado, Blizzard or B-52. A second one comes once you have lost half your chips.' },
-  shield: { kind: 'cheat', name: 'Shield', floor: 1, mult: 0.25, base: 0.3, per: 0.6, text: 'The House drops Block chips on your Meter: more, and more often, the more your opponent has lost to the House.' },
+  shield: { kind: 'cheat', name: 'Shield', floor: 1, mult: 0.25, base: 0.3, per: 0.6, text: 'The House drops Block chips on your Bet: more, and more often, the more your opponent has lost to the House.' },
   familiar: { kind: 'cheat', name: 'Familiar', floor: 1, mult: 0.1, base: 0.35, per: 0.6, text: 'The House sends you a little friend that removes one Debt or hazard chip each turn and may chase creatures away. Up to three, as your opponent loses to the House. One play in three sets a Hive on an empty space of your position instead: it sends out Bumble Bees that sting creatures and pollinate your Flowers into Honey.' },
   position: { kind: 'cheat', name: 'Position', floor: 1, mult: 0.15, base: 0, per: 0, text: 'Adds +1 to Balance, Versatility and Depth for this bout. The House plays it when you sit down, so it does not grow during the bout.' },
   intervention: { kind: 'cheat', name: 'Intervention', floor: 3, mult: 0.3, base: 0, per: 0, text: 'Once, when you would go broke, the House restores your paid fees: half of them, up to all of them the more your opponent has lost to the House. It costs half your wager.' },
 };
 // What the House reads when it plays a tilt: a Roller's pressure is a weighted mix of the share of their starting
-// chips they have paid to the House (`lost`), the overkill and Meter overflow wasted on their side as a share of what
-// they started with (`overkill`), how full their Meter is (`fill`, 0 to 1) and the worth sitting in it as a share of
+// chips they have paid to the House (`lost`), the overkill and Bet overflow wasted on their side as a share of what
+// they started with (`overkill`), how full their Bet is (`fill`, 0 to 1) and the worth sitting in it as a share of
 // what they started with (`value`). Challenges read your pressure, Cheats your opponent's.
 export const TILT_PRESSURE = { lost: 1, overkill: 0.5, fill: 0.2, value: 0.3 };
 export const tiltChance = (key, pressure) => Math.min(0.95, TILTS[key].base + TILTS[key].per * pressure);
@@ -695,8 +695,8 @@ export const CARDS = {
   paradise: { name: 'Paradise Card', text: 'Earned by beating the last High Roller. It opens the Paradise Ascent.' },
   membership: { name: 'Membership Card', text: 'Earned by buying 5 tricks on one floor. Opens the Trick Trader\'s Secret Shelf and takes 10% off everything the Trader sells.' },
   suite: { name: 'Suite Key Card', text: 'Earned by winning a Double Down. Opens a Suite after you beat the High Roller.' },
-  resist_card: { name: 'Resist Card', text: 'Debt resistance. Each bout starts with a Resist chip (r = 2) at the base of one of your front Bar stacks: fees under 2¢ on that stack are deterred.', resist: 2 },
-  resist_card_plus: { name: 'Resist Card: Gold', text: 'Debt resistance. Each bout starts with a Resist chip (r = 3) at the base of one of your front Bar stacks: fees under 3¢ on that stack are deterred.', resist: 3 },
+  resist_card: { name: 'Resist Card', text: 'Debt resistance. Each bout starts with a Resist chip (r = 2) at the base of one of your front Stake stacks: fees under 2¢ on that stack are deterred.', resist: 2 },
+  resist_card_plus: { name: 'Resist Card: Gold', text: 'Debt resistance. Each bout starts with a Resist chip (r = 3) at the base of one of your front Stake stacks: fees under 3¢ on that stack are deterred.', resist: 3 },
   debit: { name: 'Debit Card', text: 'Found by searching the floor. Lets you use the ATM in the Gift Shop, which keeps chips between runs.' },
   punch: { name: 'Punch Card', text: 'One punch per drink bought. Five punches and the next drink is free.' },
   note: { name: 'Note: on bidding', text: '"Small chips bid fast. Big chips linger. Keep a stack of 1¢ chips at the back."' },
@@ -704,7 +704,7 @@ export const CARDS = {
   note_debt: { name: 'Note: on Debt', text: '"Debt only takes a chip it can cover. A 5¢ chip on top shrugs off a 4¢ fee, but the Debt stays and the next fee finishes it."' },
   note_house: { name: 'Note: on the House', text: '"Both arms move at once. What you play this phase cannot change what they play this phase. Insure a turn early, not the same turn."' },
   note_hold: { name: 'Note: on holding back', text: '"A turn with nothing worth playing still pays. Every draw, roll and bid you leave unused earns chips off the Stage, Power or Opportunity."' },
-  note_flip: { name: 'Note: on flips', text: '"Out of dice? Flip a chip. It lands on nothing or its worth, fits any trick, and comes back to your Meter afterwards."' },
+  note_flip: { name: 'Note: on flips', text: '"Out of dice? Flip a chip. It lands on nothing or its worth, fits any trick, and comes back to your Bet afterwards."' },
   trading: { name: "Trading Card: Children of Ae'a", text: 'From a super popular card game. Does not seem to do anything here.' },
 };
 // Wallets hold the cards that grant benefits. `keep` is the total two of your dice must reach in the alley to retain them.

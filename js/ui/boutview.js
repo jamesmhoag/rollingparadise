@@ -57,13 +57,13 @@ export function boutScene(root, bout, ctx, onDone) {
     ['bid', 'Bid', 'ingenuity', 'cunning', 'Click your stacks to pick up a hand of chips, then click a trick to bid them all. Or click a trick (its bid) first: then each stack you click bids its top chip straight onto it. A trick can take several. Bid at least one chip, then press Bluff. Click a bid chip to take it back.'],
     ['aim', 'Bluff', null, null, 'The bids are out. Put your rolled dice on tricks (click a die, then a trick); every die that fits a trick must go on one. Every bid trick that needs a target is aimed at its best one (most impact, least waste); change one by clicking the trick, or its target, then a new space. Your opponent\'s dice and aims show as the House plays them. Then press Play.']];
   const pill = {}, pillEl = {};
-  // what passing a step gives: draws, rolls and bids left unused are made into chips on your Meter when it is passed
+  // what passing a step gives: draws, rolls and bids left unused are made into chips on your Bet when it is passed
   const REWARD_CHIP = { draw: (n) => `a Steal chip (${n}¢): it steals from the Stage in the House phase`, roll: (n) => `${n} Power chip${n === 1 ? '' : 's'} (+${n} to your roll effects this turn)`, bid: (n) => `${n} Opportunity chip${n === 1 ? '' : 's'}` };
   function rewardLine(ph) {
     const w = B.rewardOf(me, ph); if (!w) return '';
     const i = PH_ORDER.indexOf(ph), at = PH_ORDER.indexOf(bout.phase), passed = at < 0 || at > i;
-    if (passed) return w.unused ? `<p class="good keep">Passed with ${w.unused} of ${w.total} unused: made ${REWARD_CHIP[ph](w.n)}, at random on your Meter.</p>` : '<p class="dim keep">Passed with all of them used: nothing kept.</p>';
-    return w.n ? `<p class="good keep">${at === i ? 'Pass now' : 'Pass this step'} with ${w.unused} unused and the House makes ${REWARD_CHIP[ph](w.n)}, at random on your Meter (lost if the Meter is full).</p>` : `<p class="dim keep">Leave some unused and passing this step makes ${REWARD_CHIP[ph](B.cOf(me, B.REWARD[ph].c))} for each, on your Meter.</p>`;
+    if (passed) return w.unused ? `<p class="good keep">Passed with ${w.unused} of ${w.total} unused: made ${REWARD_CHIP[ph](w.n)}, at random on your Bet.</p>` : '<p class="dim keep">Passed with all of them used: nothing kept.</p>';
+    return w.n ? `<p class="good keep">${at === i ? 'Pass now' : 'Pass this step'} with ${w.unused} unused and the House makes ${REWARD_CHIP[ph](w.n)}, at random on your Bet (lost if the Bet is full).</p>` : `<p class="dim keep">Leave some unused and passing this step makes ${REWARD_CHIP[ph](B.cOf(me, B.REWARD[ph].c))} for each, on your Bet.</p>`;
   }
   const PH_ORDER = ['draw', 'roll', 'bid', 'aim'];
   const pillTip = (k, c, what, ph) => () => !k ? `<b>Bluff</b><p>${what}</p>` : `${statTip(k, B.tipOf(me, k))}${rewardLine(ph)}<p class="dim">Left unused: ${statTip(c, B.cOf(me, c)).replace(/<b>.*?<\/b>/, '')}</p><p>${what}</p><p class="dim">You see this part of ${opp.name}'s turn only after you lock in yours.</p>`;
@@ -168,7 +168,7 @@ export function boutScene(root, bout, ctx, onDone) {
   const frameEls = [header, stageBox, feedEl, runEmpty,
     h('div', { class: 'zone-title', style: { left: '16px', top: '418px' }, tip: '<b>Book</b><p>Tricks you own. Click one to draw it onto your Run. Tricks return here once played.</p>', text: 'BOOK' }),
     h('div', { class: 'zone-title', style: { left: '888px', top: '418px' }, tip: '<b>The roll</b><p>Everything you roll this turn lands here together, showing its value. Click a die, then the shown trick it should go on; click a die on a trick to take it back. Rolling has two steps: pick and throw (once a turn, and the throw stands), then place. Every rolled die that fits a trick must go on one: dice cannot be rerolled. A die with nowhere to go stays here with its value until a trick has room for it.</p><p class="dim">The roll holds as many as you throw: up to your Proficiency each turn, plus any left over.</p>', text: 'THE ROLL' }), trayBox, trayCap,
-    h('div', { class: 'zone-title', style: { left: '888px', top: '524px' }, tip: '<b>Pouch</b><p>Your dice. In the Roll phase, click dice to pick them (up to your Proficiency), then press Bid: they are thrown as the Bid opens. You can also pick the top chip of a stack to flip: it lands as 0 or its worth, counts as a die of any type, and comes back to your Meter afterwards.</p>', text: 'POUCH' }),
+    h('div', { class: 'zone-title', style: { left: '888px', top: '524px' }, tip: '<b>Pouch</b><p>Your dice. In the Roll phase, click dice to pick them (up to your Proficiency), then press Bid: they are thrown as the Bid opens. You can also pick the top chip of a stack to flip: it lands as 0 or its worth, counts as a die of any type, and comes back to your Bet afterwards.</p>', text: 'POUCH' }),
     h('div', { class: 'zone-title', style: { left: '1082px', top: '418px' }, tip: `<b>${opp.name}'s Run</b><p>The tricks they are showing, with the dice and bids on them. You see what they draw, roll and bid each phase only once you have locked in the same phase: neither of you sees the other's move until both have made it.</p>`, text: 'THEIR RUN' }),
     h('div', { class: 'controls' }, sipBtn, undoBtn, speedBtn, commitBtn),
     btn('Library', () => openLibrary(), '<b>Library</b><p>Every chip, trick, die, card, drink, wallet, jacket and felt, and the upgrades for each.</p>', 'small lib-btn')];
@@ -193,8 +193,8 @@ export function boutScene(root, bout, ctx, onDone) {
         els.cells[si][r][c] = el; root.insertBefore(el, layer);
       } }
     const m = s.dims.meterRows, x0 = cellPos(si, si === 0 ? m - 1 : 0, 0).x, x1 = cellPos(si, si === 0 ? s.rows - 1 : m, 0).x;
-    root.insertBefore(h('div', { class: 'zone-label', style: { left: x0 + 'px', width: m * cw[si] + 'px', top: TOP + 5 * CH + 4 + 'px' }, text: 'METER', tip: () => positionTip(s, 'meter') }), layer);
-    root.insertBefore(h('div', { class: 'zone-label', style: { left: x1 + 'px', width: s.dims.barRows * cw[si] + 'px', top: TOP + 5 * CH + 4 + 'px' }, text: 'BAR', tip: () => positionTip(s, 'bar') }), layer);
+    root.insertBefore(h('div', { class: 'zone-label', style: { left: x0 + 'px', width: m * cw[si] + 'px', top: TOP + 5 * CH + 4 + 'px' }, text: 'BET', tip: () => positionTip(s, 'meter') }), layer);
+    root.insertBefore(h('div', { class: 'zone-label', style: { left: x1 + 'px', width: s.dims.barRows * cw[si] + 'px', top: TOP + 5 * CH + 4 + 'px' }, text: 'STAKE', tip: () => positionTip(s, 'bar') }), layer);
   });
 
   // ---------- tooltips ----------
@@ -205,19 +205,19 @@ export function boutScene(root, bout, ctx, onDone) {
   function positionTip(s, zone) {
     const d = s.dims, who = s.idx ? s.name + "'s" : 'Your', bal = d.stackMax - BASE.stackMax, ver = d.meterRows - BASE.meterRows, dep = d.barRows - BASE.barRows;
     const meter = zone === 'meter', rows = meter ? d.meterRows : d.barRows, base = meter ? BASE.meterRows : BASE.barRows, extra = meter ? ver : dep, stat = meter ? 'Versatility' : 'Depth', k = meter ? 'versatility' : 'depth';
-    const role = meter ? 'The front rows, nearest the Stage. Only chips gained during the bout land here: Blocks, Opportunity chips, recovered chips, flipped chips coming home. Fees hit the front first, so the Meter shields your Bar.'
+    const role = meter ? 'The front rows, nearest the Stage. Only chips gained during the bout land here: Blocks, Opportunity chips, recovered chips, flipped chips coming home. Fees hit the front first, so the Bet shields your Stake.'
       : 'The back rows. The chips you committed before the bout, and they must survive to the end. Shop chips sit at the base of these stacks.';
     const cap = rows * d.cols * d.stackMax;
-    return `<b>${who} ${meter ? 'Meter' : 'Bar'}</b> <span class="dim">${rows} deep × ${d.cols} wide × ${d.stackMax} high · holds ${cap}</span>
+    return `<b>${who} ${meter ? 'Bet' : 'Stake'}</b> <span class="dim">${rows} deep × ${d.cols} wide × ${d.stackMax} high · holds ${cap}</span>
       <p class="v">${role}</p>
       <ul><li><b>Depth ${rows} rows</b> = ${base} base ${extra >= 0 ? '+' : '−'} ${Math.abs(extra)} ${stat}<span class="v"> (from ${srcList(s, k)})</span></li>
       <li><b>Width ${d.cols} lanes</b><span class="v">: the same for every Roller. Each lane runs from the Stage to the edge; overkill only travels down its own lane.</span></li>
-      <li><b>Height ${d.stackMax} chips</b> = ${BASE.stackMax} base ${bal >= 0 ? '+' : '−'} ${Math.abs(bal)} Balance<span class="v"> (from ${srcList(s, 'balance')}). Shared by the Meter and the Bar.</span></li></ul>
+      <li><b>Height ${d.stackMax} chips</b> = ${BASE.stackMax} base ${bal >= 0 ? '+' : '−'} ${Math.abs(bal)} Balance<span class="v"> (from ${srcList(s, 'balance')}). Shared by the Bet and the Stake.</span></li></ul>
       ${s.why?.note ? `<p class="dim">${s.why.note}</p>` : ''}
-      <p class="dim">${meter ? `The Bar behind it is ${d.barRows} deep (${BASE.barRows} base + Depth).` : `The Meter in front is ${d.meterRows} deep (${BASE.meterRows} base + Versatility).`} Raise Balance, Versatility and Depth with your class, jacket, cards and the Position tilt.</p>`;
+      <p class="dim">${meter ? `The Stake behind it is ${d.barRows} deep (${BASE.barRows} base + Depth).` : `The Bet in front is ${d.meterRows} deep (${BASE.meterRows} base + Versatility).`} Raise Balance, Versatility and Depth with your class, jacket, cards and the Position tilt.</p>`;
   }
   function cellTip(si, r, c) {
-    const s = bout.sides[si], cell = s.grid[r][c], zone = r < s.dims.meterRows ? 'Meter' : 'Bar';
+    const s = bout.sides[si], cell = s.grid[r][c], zone = r < s.dims.meterRows ? 'Bet' : 'Stake';
     if (cell.black) return `<b>${D.CALAMITIES.blackhole.name}</b><p>${D.CALAMITIES.blackhole.text}</p>`;
     if (cell.roost) { const eggs = cell.chips.filter((ch) => ch.kind === 'egg'); return `<b>Dragon Roost</b>${eggs.length ? ` <span class="dim">${eggs.length} egg${eggs.length > 1 ? 's' : ''}</span>` : ''}<p>${eggs.length ? `No Dragon comes while an egg sits here. Each egg takes 2 hatch steps a turn here (${eggs.map((e) => `${e.prog || 0}/5`).join(', ')}) and hatches a Dragon at ${s.idx ? 'its owner' : 'you'}; break it first (5 whole fees) or play a trick totalling 10 or more to hatch it at your opponent.` : 'Every third turn it calls a Dragon, which burns a chip and lays an egg here.'}</p>`; }
     if (cell.link) return cellTip(si, cell.link.r, cell.link.c);
@@ -225,7 +225,7 @@ export function boutScene(root, bout, ctx, onDone) {
     if (cell.worm && !cell.chips.length) return `<b>${D.CALAMITIES.wormhole.name}</b><p>${D.CALAMITIES.wormhole.text}</p>`;
     if (cell.volcano > 0) return `<b>${D.CALAMITIES.volcano.name}</b> <span class="dim">${cell.volcano} turn${cell.volcano > 1 ? 's' : ''} left</span><p>${D.CALAMITIES.volcano.text}</p>`;
     if (cell.hole) return `<b>Hole</b><p>Nothing can be placed here. It does not move.</p>`;
-    const dimLine = `<p class="dim">${zone} row ${zone === 'Meter' ? r + 1 : r - s.dims.meterRows + 1} of ${zone === 'Meter' ? s.dims.meterRows : s.dims.barRows}, lane ${c + 1} of ${s.dims.cols}. Hover the ${zone.toUpperCase()} label for how the position's size is set.</p>`;
+    const dimLine = `<p class="dim">${zone} row ${zone === 'Bet' ? r + 1 : r - s.dims.meterRows + 1} of ${zone === 'Bet' ? s.dims.meterRows : s.dims.barRows}, lane ${c + 1} of ${s.dims.cols}. Hover the ${zone.toUpperCase()} label for how the position's size is set.</p>`;
     if (!cell.chips.length) return `<b>Empty ${zone} space</b><p>Holds up to ${s.dims.stackMax} chips (${D.BASE_DIMS.stackMax} + ${s.dims.stackMax - D.BASE_DIMS.stackMax} Balance).</p>${fxTip(si, r, c)}${dimLine}`;
     // the stack report first, then the top chip, then the chip under the pointer (move up and down the space to point
     // at each chip: the bottom of the space is the bottom of the stack)
@@ -274,7 +274,7 @@ export function boutScene(root, bout, ctx, onDone) {
     tip(el, () => {
       const on = B.holderOf(me, d.id), live = on ? on.dice.find((x) => x.id === d.id) : me.tray.find((x) => x.id === d.id);
       const where = on ? `On ${D.TRICKS[on.trick.id].name}. ${B.canMove(bout, me, d.id) ? 'Click to take it back and place it elsewhere.' : 'It stays until the trick has played.'}` : live ? 'Click it, then click the shown trick it should go on.' : 'Click to roll it. You see the value before you decide where it goes.';
-      if (d.chip) return `<b>Flipped ${d.chip.value}¢ chip</b><p>Landed on <b>${live ? live.value : '?'}</b>. It counts as a die of any type. The chip returns to your Meter afterwards.</p><p>${where}</p>`;
+      if (d.chip) return `<b>Flipped ${d.chip.value}¢ chip</b><p>Landed on <b>${live ? live.value : '?'}</b>. It counts as a die of any type. The chip returns to your Bet afterwards.</p><p>${where}</p>`;
       return dieTip(d, `${live ? `Rolled <b>${live.value}</b>. ` : ''}${where}`); });
     layer.append(el); return el;
   }
@@ -483,7 +483,7 @@ export function boutScene(root, bout, ctx, onDone) {
   function commitTip() {
     const need = B.needOf(bout, me), w = B.rewardOf(me, bout.phase), n = selCount();
     if (bout.phase === 'drink') return `<b>Next turn</b><p>${vc('Close the Drink phase. What you sipped or ate works from the next turn. Your opponent drinks now too.', 'End the round')}</p>`;
-    const keeps = w ? (w.n ? `<p class="good keep">Passing now leaves ${w.unused} of ${w.total} unused: the House makes ${REWARD_CHIP[bout.phase](w.n)}, at random on your Meter (lost if it is full).</p>` : '<p class="dim keep">All used: passing keeps nothing.</p>') : '';
+    const keeps = w ? (w.n ? `<p class="good keep">Passing now leaves ${w.unused} of ${w.total} unused: the House makes ${REWARD_CHIP[bout.phase](w.n)}, at random on your Bet (lost if it is full).</p>` : '<p class="dim keep">All used: passing keeps nothing.</p>') : '';
     const what = bout.phase === 'draw' ? ['Done drawing: move on to rolling.', 'Done drawing']
       : bout.phase === 'roll' ? [`Roll ${n ? `the ${n} picked ${n === 1 ? 'die' : 'dice'}${ui.flips.length ? ` (${ui.flips.length} a flipped chip)` : ''}` : 'nothing'} and move on to bidding: the throw happens as the Bid opens, and both sides bid seeing both rolls. You place the dice in the Bluff.`, `Roll ${n} ${n === 1 ? 'die' : 'dice'}, then bid`] : bout.phase === 'bid' ? ['Done bidding: the bids are shown to both sides, then the Bluff: place your dice and confirm aims.', 'Show the bids'] : ['Commit the turn. The House collects every bid and plays it, aimed where you set.', 'Commit the turn'];
     return `<b>${commitLabel()}</b><p>${vc(...what)}</p>${keeps}${need ? `<p class="bad keep">${need}</p>` : `<p class="dim">Then you see what ${opp.name} did in this phase.</p>`}`;
@@ -499,7 +499,7 @@ export function boutScene(root, bout, ctx, onDone) {
   function badges(s) {
     const out = [], st = s.status, add = (k, text, t, cls) => out.push({ k, text, tip: t, cls });
     if (s.heat > 1 && s.idx === 0) add('heat', `Last call ×${s.heat.toFixed(2)}`, `<b>Last call</b><p>From turn ${B.LAST_CALL + 1} the House raises the stakes: every Expense is multiplied, and the multiplier grows each turn.</p>`, 'bad');
-    if (B.powerOf(s)) add('pow', `Power ${B.powerOf(s)}`, '<b>Power</b><p>Power chips on the Meter still to add to your roll effects this turn.</p>', 'good');
+    if (B.powerOf(s)) add('pow', `Power ${B.powerOf(s)}`, '<b>Power</b><p>Power chips on the Bet still to add to your roll effects this turn.</p>', 'good');
     if (st.resist) add('res', `Resist ${st.resist}`, '<b>Resist</b><p>Every fee charged is reduced by this much.</p>', 'good');
     if (st.evade != null) add('eva', `Evade >${st.evade}`, '<b>Evade</b><p>Fees larger than this miss entirely.</p>', 'good');
     if (st.reflect) add('ref', `Reflect ${st.reflect}`, '<b>Reflect</b><p>This much of the next fee is sent back.</p>', 'good');
@@ -730,7 +730,7 @@ export function boutScene(root, bout, ctx, onDone) {
     setTimeout(() => { if (ui.skipping !== key) return; ui.skipping = null; if (root.isConnected && !ui.locked && `${bout.turn}:${bout.phase}` === key) commit(); }, 650 / ui.speed);
   }
   const names = (list) => (list.length < 2 ? list.join('') : `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`);
-  const where = (t) => (t ? `${t.side === 0 ? 'your' : 'their'} ${t.r < bout.sides[t.side].dims.meterRows ? 'Meter' : 'Bar'} lane ${t.c + 1}` : 'nothing');
+  const where = (t) => (t ? `${t.side === 0 ? 'your' : 'their'} ${t.r < bout.sides[t.side].dims.meterRows ? 'Bet' : 'Stake'} lane ${t.c + 1}` : 'nothing');
   // what you locked in this phase, for the match history
   function mine(phase) {
     const tn = (e) => D.TRICKS[e.trick.id].name;

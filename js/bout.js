@@ -1,5 +1,5 @@
 // Bout engine. Pure logic, no DOM. A bout is two Rollers, each with a Position
-// (a grid of chip stacks: Meter rows in front, Bar rows behind), a Book of tricks,
+// (a grid of chip stacks: Bet rows in front, Stake rows behind), a Book of tricks,
 // a Pouch of dice and a Run of shown tricks.
 // A turn has three planning phases that both Rollers go through together: Draw, Roll, Bid.
 // Each phase needs at least one action (where one is possible) and closing it ends that kind
@@ -150,7 +150,7 @@ function meterOrder(s) {
   for (const r of rs) for (const c of cs) out.push({ r, c });
   return out;
 }
-// place chips on the Meter, nearest to origin first (or in the class deployment order). Returns chips that did not fit.
+// place chips on the Bet, nearest to origin first (or in the class deployment order). Returns chips that did not fit.
 function addToMeter(b, s, chips, origin, from) {
   let cells = meterOrder(s);
   if (origin) cells = cells.slice().sort((x, y) => Math.abs(x.r - origin.r) + Math.abs(x.c - origin.c) - (Math.abs(y.r - origin.r) + Math.abs(y.c - origin.c)));
@@ -161,10 +161,10 @@ function addToMeter(b, s, chips, origin, from) {
     pushChip(s.grid[spot.r][spot.c], ch);
     if (from) b.fx[ch.id] = from;
   }
-  if (left.length) s.overflow = (s.overflow || 0) + left.length; // an overloaded Meter: like overkill, the effect plays but the extra is lost
+  if (left.length) s.overflow = (s.overflow || 0) + left.length; // an overloaded Bet: like overkill, the effect plays but the extra is lost
   return left;
 }
-const overText = (left) => (left.length ? ` (${left.length} had no room on a full Meter and ${left.length === 1 ? 'is' : 'are'} lost)` : '');
+const overText = (left) => (left.length ? ` (${left.length} had no room on a full Bet and ${left.length === 1 ? 'is' : 'are'} lost)` : '');
 // Put an effect chip a maker trick made onto a stack: on top for chips that work from the top (Mimic), otherwise at
 // the base (above a Magic Hat). A full stack takes nothing: the chip is lost, like overkill.
 // a made chip, fresh from its MADE_CHIPS entry
@@ -196,7 +196,7 @@ export function barOrder(s, spacing, rng) {
   if (spacing === 'random') cells = rng.shuffle(cells);
   return cells.filter(({ r, c }) => !s.grid[r][c].hole && !s.grid[r][c].link && !s.grid[r][c].roost);
 }
-// A precise layout (Opponent maker): [{ r, c, chips: [a value, or an effect chip id] }], r counted from the Bar's front.
+// A precise layout (Opponent maker): [{ r, c, chips: [a value, or an effect chip id] }], r counted from the Stake's front.
 // Anything that does not fit, or lands on a Hole, is left out.
 function deployLayout(b, s, plan) {
   let placed = 0;
@@ -266,7 +266,7 @@ export function deploy(b, s, plan) {
     spot = spot || empty; if (spot) { s.grid[spot.r][spot.c].chips.push(ch); mergeSeq(b, s.grid[spot.r][spot.c]); }
   }
   if (meter.length) addToMeter(b, s, meter);
-  // Resist chips from Resist Cards: at the base of a front Bar stack with room
+  // Resist chips from Resist Cards: at the base of a front Stake stack with room
   for (const r of plan.resistChips || []) {
     const spot = cells.slice().sort((x, y) => x.r - y.r).find((x) => solidCount(s.grid[x.r][x.c]) && open(x) && !s.grid[x.r][x.c].chips.some((ch) => ch.kind === 'resist'));
     if (spot) s.grid[spot.r][spot.c].chips.unshift(mkChip(b, 'resist', 0, { r: Math.min(r, s.dims.stackMax) }));
@@ -304,7 +304,7 @@ function mkSide(b, spec, idx) {
 }
 
 // Calamities and Spawners can arrive when the bout starts or later, when the House plays the tilt. Those that sit
-// on the table need empty spaces: Worm Holes a Meter space, Black Holes, Roosts and Volcanoes Bar spaces.
+// on the table need empty spaces: Worm Holes a Bet space, Black Holes, Roosts and Volcanoes Stake spaces.
 const emptyBar = (s) => allCells(s).filter((x) => x.r >= s.dims.meterRows && !x.cell.chips.length && !x.cell.hole && !x.cell.roost && !x.cell.link && !x.cell.anchor && !x.cell.puddle);
 function placeSpawner(b, s) {
   const free = emptyBar(s);
@@ -328,7 +328,7 @@ function placeCalamity(b, s, cal) {
 export const lostShare = (b, s) => clamp(b.stage.paid[s.idx] / Math.max(1, s.startWorth || 1), 0, 1);
 export const gainShare = (b, s) => lostShare(b, b.sides[1 - s.idx]);
 // What the House reads off a Roller's table when it plays a tilt (weights in TILT_PRESSURE): what they have lost to
-// the House, the overkill and Meter overflow wasted on their side, how full their Meter is and the worth in it.
+// the House, the overkill and Bet overflow wasted on their side, how full their Bet is and the worth in it.
 const meterCells = (s) => allCells(s).filter((x) => x.r < s.dims.meterRows);
 export const meterFill = (s) => { const cells = meterCells(s), cap = cells.length * s.dims.stackMax; return cap ? clamp(sum(cells, (x) => solidCount(x.cell)) / cap, 0, 1) : 0; };
 export const meterWorth = (s) => sum(meterCells(s), (x) => Math.max(0, cellWorth(x.cell)));
@@ -356,7 +356,7 @@ function* houseTilts(b, s) {
   if (on('spawner') && s.spawners + allCells(s).filter((x) => x.cell.roost).length < 1 + Math.floor(L * 2)) yield say('spawner', placeSpawner(b, s), 'hazard');
   if (on('calamity') && s.calamities.length < 1 + (L >= 0.5 ? 1 : 0)) { const cal = b.rng.pick(Object.keys(CALAMITIES).filter((k) => !s.calamities.includes(k)));
     if (cal && placeCalamity(b, s, cal)) yield say('calamity', CALAMITIES[cal].name, 'hazard'); }
-  if (on('shield')) { const n = 1 + Math.floor(G * 4); addToMeter(b, s, Array.from({ length: n }, () => mkChip(b, 'block')), null, 'spawn'); yield say('shield', `${n} Block chip${n > 1 ? 's' : ''} on your Meter`, 'bonus'); }
+  if (on('shield')) { const n = 1 + Math.floor(G * 4); addToMeter(b, s, Array.from({ length: n }, () => mkChip(b, 'block')), null, 'spawn'); yield say('shield', `${n} Block chip${n > 1 ? 's' : ''} on your Bet`, 'bonus'); }
   if (on('familiar')) { // one play in three sets a Hive (Bumble Bees, and Honey from your Flowers) instead of a Familiar
     const hives = allCells(s).some((x) => x.cell.chips.some((ch) => ch.kind === 'hive')), free = emptyBar(s).concat(meterCells(s).filter((x) => !x.cell.chips.length && !x.cell.hole && !x.cell.worm && !x.cell.puddle));
     if (!hives && free.length && b.rng.chance(1 / 3)) { const x = b.rng.pick(free), n = 1 + Math.floor(G * 2);
@@ -473,7 +473,7 @@ export function advance(b, force = false) {
   return true;
 }
 // ---------- what a passed phase gives back ----------
-// Draws, rolls and bids left unused pay as soon as their phase is passed, as chips on the Meter at random spaces with
+// Draws, rolls and bids left unused pay as soon as their phase is passed, as chips on the Bet at random spaces with
 // room: unused draws make a Steal chip (Charisma) that steals from the Stage in the House phase, unused rolls Power
 // chips (Conviction) for the turn, unused bids Opportunity chips (Cunning). What has no room is lost, like overkill.
 export const REWARD = { draw: { stat: 'trickery', c: 'charisma', what: 'Steal' }, roll: { stat: 'proficiency', c: 'conviction', what: 'Power' }, bid: { stat: 'ingenuity', c: 'cunning', what: 'Opportunity' } };
@@ -490,11 +490,11 @@ function phaseRewards(b, phase) {
     const chips = w.what === 'Power' ? Array.from({ length: w.n }, () => powerChip(b)) : w.what === 'Opportunity' ? Array.from({ length: w.n }, () => mkChip(b, 'opp', 1)) : [mkChip(b, 'fx', 0, { shop: 'steal', resist: 'steal', life: 99, amt: w.n })];
     const { left, at } = toMeterAtRandom(b, s, chips), got = w.n - left.length;
     const u = `${w.unused} unused ${phase}${w.unused > 1 ? 's' : ''}`;
-    const text = w.what === 'Steal' ? `${u}: a Steal chip (${w.n}¢ from the Stage, in the House phase) on the Meter` : `${u}: ${got} ${w.what} chip${got === 1 ? '' : 's'} on the Meter`;
+    const text = w.what === 'Steal' ? `${u}: a Steal chip (${w.n}¢ from the Stage, in the House phase) on the Bet` : `${u}: ${got} ${w.what} chip${got === 1 ? '' : 's'} on the Bet`;
     b.rewards.push({ side: s.idx, phase, turn: b.turn, text: `${text}${left.length ? `; ${left.length} had no room and ${left.length === 1 ? 'is' : 'are'} lost` : ''}.`, cells: at.map((x) => ref(s, x.r, x.c)) });
   }
 }
-// chips onto the Meter, each at a random space with room
+// chips onto the Bet, each at a random space with room
 function toMeterAtRandom(b, s, chips) {
   const left = [], at = [];
   for (const ch of chips) {
@@ -505,7 +505,7 @@ function toMeterAtRandom(b, s, chips) {
   if (left.length) s.overflow = (s.overflow || 0) + left.length;
   return { left, at };
 }
-// Added Power is Power chips on the Meter: the same chip Empower makes, one per point of Power. Each adds its +1 to
+// Added Power is Power chips on the Bet: the same chip Empower makes, one per point of Power. Each adds its +1 to
 // your roll effects for the turn (in the Investment phase, or at once if it arrives during play), and these last that
 // turn. `on`: it has already added its +1 this turn.
 const powerChip = (b) => mkChip(b, 'fx', 0, { shop: 'power', resist: 'power', life: 1 });
@@ -520,7 +520,7 @@ export function addPower(b, s, n) {
 }
 // Saturate's bonus knocks off the Power your opponent added (Empower's chips stay)
 function dropPower(b, s) { for (const x of powerChips(s)) if (!x.ch.maker) { x.cell.chips.splice(x.cell.chips.indexOf(x.ch), 1); b.fx[x.ch.id] = 'void'; } }
-function homeDie(b, s, d) { if (d.chip) addToMeter(b, s, [d.chip], null, 'spawn'); else { const { value, t, ...die } = d; void value; void t; s.pouch.push(die); } } // a flipped chip comes back to the Meter
+function homeDie(b, s, d) { if (d.chip) addToMeter(b, s, [d.chip], null, 'spawn'); else { const { value, t, ...die } = d; void value; void t; s.pouch.push(die); } } // a flipped chip comes back to the Bet
 
 // ---------- food ----------
 // Eat a food chip from the top of one of your stacks. Its bonus starts now and runs for its turns.
@@ -640,13 +640,13 @@ export function rollOut(b, s, dieId) {
   s.tray.push(d); s.used.roll++;
   return d;
 }
-// A die as your table rolls it: Upgrade chips on your Meter upgrade every roll; Boosted chips in your position
+// A die as your table rolls it: Upgrade chips on your Bet upgrade every roll; Boosted chips in your position
 // raise every die, Cheapened chips in your opponent's lower it.
 const countShop = (s, id, rows) => sum(allCells(s).filter((x) => !rows || x.r < s.dims.meterRows), (x) => x.cell.chips.filter((ch) => ch.shop === id).length);
 function rollWith(b, s, die) {
   const o = b.sides[1 - s.idx], U = countShop(s, 'upgrade', true);
   let v;
-  if (U) { // each Upgrade chip on your Meter puts a random upgrade on this roll only: a risk as much as a help
+  if (U) { // each Upgrade chip on your Bet puts a random upgrade on this roll only: a risk as much as a help
     const ids = Object.keys(DIE_UPGRADES), temp = boutCopy(die); temp.faces = facesOf(die).map((f) => ({ ...f }));
     for (let k = 0; k < U; k++) { const u = b.rng.pick(ids); temp.faces = upgradeFaces({ ...temp, up: [] }, u, b.rng.int(temp.faces.length), b.rng).faces; if (DIE_UPGRADES[u].roll && !temp.up.includes(u)) temp.up.push(u); }
     v = rollDie(b.rng, temp);
@@ -718,7 +718,7 @@ export function bid(b, s, e, r, c) {
   if (!e.target) e.target = validTargets(b, s, e)[0] || null;
   return ch;
 }
-// Click a chip bid this turn to take it back to the stack it came from (the Meter if that stack is full).
+// Click a chip bid this turn to take it back to the stack it came from (the Bet if that stack is full).
 export function canUnbid(b, s, e, chipId) {
   if (b.phase !== 'bid') return 'Bids can be taken back only while the Bid phase is open.';
   if (!e || e.state !== 'bid' || !e.bid.some((ch) => ch.id === chipId)) return 'That chip was not bid this turn.';
@@ -1074,7 +1074,7 @@ function* settleSide(b, s) {
     if (carry) bits.push(`${carry}¢ overkill carries to the stack behind`);
     else if (lost > 0 && !hardStop) bits.push(`${lost}¢ overkill has no stack behind it`);
     const list = paidChips.length > 1 ? ` (${paidChips.map((ch) => ch.value).join(' + ')})` : '';
-    const head = paid ? `${s.name} pays ${paid}¢${list}${due.glean != null ? ` straight to ${b.sides[due.glean].name}'s Meter` : ' to the Stage'}`
+    const head = paid ? `${s.name} pays ${paid}¢${list}${due.glean != null ? ` straight to ${b.sides[due.glean].name}'s Bet` : ' to the Stage'}`
       : `${s.name} owes ${owed}¢${next && pool ? `, short of the ${next.value}¢ chip on top` : ''}`;
     yield step(b, `${head}${bits.length ? ': ' + bits.join(', ') : ''}.`, [ref(s, r, c)], paid ? 'fee' : 'debt');
   }
@@ -1226,9 +1226,9 @@ function* play(b, s, e, opt = {}) {
       yield step(b, `${s.name} plays ${def.name}: ${g.placed ? `${g.placed}¢ of Debt on a front stack` : `the ${m}¢ trait fee is ${g.notes.join(', ') || 'lost'}`}.`, [ref(o, r, c)], 'play'); }
   } else if (def.type === 'insurance') {
     const left = addToMeter(b, s, Array.from({ length: m }, () => mkChip(b, 'block')), null, 'spawn');
-    yield step(b, `${s.name} plays ${def.name}: ${m} Block chip${m > 1 ? 's' : ''} to the Meter${overText(left)}.`, [], 'play');
+    yield step(b, `${s.name} plays ${def.name}: ${m} Block chip${m > 1 ? 's' : ''} to the Bet${overText(left)}.`, [], 'play');
   } else if (inv) {
-    const n = addPower(b, s, m); yield step(b, `${s.name} plays ${def.name}: ${n} Power chip${n === 1 ? '' : 's'} on the Meter${n < m ? ` (${m - n} had no room and ${m - n === 1 ? 'is' : 'are'} lost)` : ''}.`, [], 'play');
+    const n = addPower(b, s, m); yield step(b, `${s.name} plays ${def.name}: ${n} Power chip${n === 1 ? '' : 's'} on the Bet${n < m ? ` (${m - n} had no room and ${m - n === 1 ? 'is' : 'are'} lost)` : ''}.`, [], 'play');
   } else {
     const n = cleanse(b, s, m); yield step(b, `${s.name} plays ${def.name}${n ? `: ${n} Debt or hazard chip${n > 1 ? 's' : ''} cleansed` : ''}.`, [], 'play');
   }
@@ -1299,7 +1299,7 @@ function* play(b, s, e, opt = {}) {
     case 'chips': yield* playChips(b, s, e, def, { t: t || o, origin, total, vals, bonus, pierce, tag, again: opt.again }); return;
     case 'block': { const kind = bonus === 'counter' ? 'counter' : 'block'; const n = Math.min(total, 60);
       const left = addToMeter(b, s, Array.from({ length: n }, () => mkChip(b, kind)), origin, 'spawn');
-      yield step(b, `${tag}: ${n} ${kind === 'counter' ? 'Counter' : 'Block'} chips to the Meter${overText(left)}.`, origin ? [origin] : [], 'play'); return; }
+      yield step(b, `${tag}: ${n} ${kind === 'counter' ? 'Counter' : 'Block'} chips to the Bet${overText(left)}.`, origin ? [origin] : [], 'play'); return; }
     case 'make': { // effect chips on the target stacks; a full stack takes none (the overflow is lost, like overkill)
       const M = def.make, X = SHOP_CHIPS[M.chip], n = M.n[0] + Math.floor(total / M.n[1]), life = M.life[0] + Math.floor(total / M.life[1]); let put = 0, over = 0;
       for (const { r, c } of cells) { const cell = s.grid[r][c]; let k = 0; while (k < n && placeFx(b, s, cell, M.chip, life, e.trick.id)) k++; put += k; over += n - k; }
@@ -1360,7 +1360,7 @@ function* play(b, s, e, opt = {}) {
       yield step(b, `${tag}: ${n} chip${n === 1 ? '' : 's'} turned to Gold.`, cells.map((x) => ref(s, x.r, x.c)), 'play'); return; }
     case 'settle': { const n = cleanse(b, s, total); organize(b, s);
       if (bonus === 'blocks') addToMeter(b, s, [mkChip(b, 'block'), mkChip(b, 'block')], null, 'spawn');
-      yield step(b, `${tag}: ${n} cleansed, Bar organized.`, [], 'play'); return; }
+      yield step(b, `${tag}: ${n} cleansed, Stake organized.`, [], 'play'); return; }
     case 'gather': { const n = recoup(b, s, total, bonus === 'both');
       yield step(b, `${tag}: ${n}¢ recovered from the Stage.`, [], 'play'); return; }
     case 'fence': { let n = 0; for (const { cell } of allCells(s)) { const d = debtOf(cell); if (!d || n >= total) continue; const take = Math.min(d, total - n); setDebt(b, cell, d - take); n += take; }
@@ -1371,7 +1371,7 @@ function* play(b, s, e, opt = {}) {
         for (let i = st.length - 1; i >= 0 && n < total; i--) if (isShield(st[i]) || st[i].kind === 'opp') { b.fx[st[i].id] = 'void'; st.splice(i, 1); n++; }
         if (!solidCount(o.grid[r][c])) for (const ch of st.splice(0)) b.fx[ch.id] = 'void'; }
       if (bonus === 'unharden') for (const { cell } of allCells(o)) unHard(b, cell);
-      yield step(b, `${tag}: ${n} chip${n === 1 ? '' : 's'} swept off ${o.name}'s Meter.`, [], 'play'); return; }
+      yield step(b, `${tag}: ${n} chip${n === 1 ? '' : 's'} swept off ${o.name}'s Bet.`, [], 'play'); return; }
     case 'scatter': { const picked = [];
       for (let r = 0; r < o.rows && picked.length < total; r++) for (let c = 0; c < o.dims.cols && picked.length < total; c++) { const cell = o.grid[r][c]; if (anchored(cell)) continue;
         while (picked.length < total && topSolid(cell) >= 0) picked.push(cell.chips.splice(topSolid(cell), 1)[0]);
@@ -1943,7 +1943,7 @@ export function* resolve(b) {
 // ---------- effect chips ----------
 // Every effect, investment and tilt at work on a Roller, as a chip lying on their table. `size` is how many spaces
 // square it covers: effects on one thing are 1, effects on every roll effect are 2, effects on the whole position
-// are 3. Only chips of the same size stack together. `zone`: the Meter for help, the Bar for harm.
+// are 3. Only chips of the same size stack together. `zone`: the Bet for help, the Stake for harm.
 const STAT_SHORT = { trickery: 'Draw', ingenuity: 'Bid', proficiency: 'Roll', charisma: 'Steal', cunning: 'Opp', conviction: 'Power' };
 export function effectChips(b, s) {
   const out = [], add = (key, name, glyph, value, size, good, text) => out.push({ key, name, glyph, value, size, zone: good ? 'meter' : 'bar', good, text });
@@ -1972,7 +1972,7 @@ export function effectChips(b, s) {
   if (s.spawners) add('nest', 'Nest', '🪹', s.spawners, 1, false, 'Sends a creature every third turn.');
   for (const cal of new Set(s.calamities)) if (['inferno', 'audit', 'tornado'].includes(cal)) add('cal-' + cal, CALAMITIES[cal].name, { inferno: '🔥', audit: '§', tornado: '🌪' }[cal], s.calamities.filter((x) => x === cal).length, cal === 'audit' ? 2 : 3, false, CALAMITIES[cal].text);
   for (const k of Object.keys(s.tilts || {})) { const T = TILTS[k], ch = T.base || T.per ? `${Math.round(tiltRate(b, s, k) * 100)}%` : 'on', P = tiltPressure(b, s, k), pc = (x) => `${Math.round(x * 100)}%`;
-    add('tilt-' + k, `${T.name} tilt`, T.kind === 'challenge' ? '⚠' : '✚', ch, 1, T.kind === 'cheat', `${T.text} ${T.base || T.per ? `The House's chance to play it this turn: ${ch}, from ${T.kind === 'challenge' ? 'your' : 'your opponent\'s'} pressure ${pc(P.total)}: lost to the House ${pc(P.lost)}, overkill and overflow wasted ${pc(P.overkill)}, Meter ${pc(P.fill)} full holding ${pc(P.value)} of their start.` : ''}`); }
+    add('tilt-' + k, `${T.name} tilt`, T.kind === 'challenge' ? '⚠' : '✚', ch, 1, T.kind === 'cheat', `${T.text} ${T.base || T.per ? `The House's chance to play it this turn: ${ch}, from ${T.kind === 'challenge' ? 'your' : 'your opponent\'s'} pressure ${pc(P.total)}: lost to the House ${pc(P.lost)}, overkill and overflow wasted ${pc(P.overkill)}, Bet ${pc(P.fill)} full holding ${pc(P.value)} of their start.` : ''}`); }
   if (s.heat > 1) add('heat', 'Last call', '⏳', `×${s.heat.toFixed(2)}`, 3, false, 'Every Expense is multiplied; more each turn.');
   return out;
 }

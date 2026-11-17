@@ -13,7 +13,7 @@ export const diceSummary = (dice) => { const m = {}; for (const d of dice) m[d.t
 export const trickTag = (t, cls) => h('span', { class: `tag-t trick ${trickLook(t)}`, style: { '--tc': D.TYPES[D.TRICKS[t.id].type].color }, tip: () => trickTip(t, cls) }, D.TRICKS[t.id].name, h('span', { class: 'q', html: trickWord(t) }));
 export function oppTip(o) {
   return `<b>${o.name}</b> <span class="dim">${o.title ? o.title + ' · ' : ''}${D.CLASSES[o.cls].name}</span>
-    <p>Worth <b>${cents(o.worth)}</b> on the table. Position ${o.dims.meterRows} Meter + ${o.dims.barRows} Bar rows, stacks ${o.dims.stackMax} high.</p>
+    <p>Worth <b>${cents(o.worth)}</b> on the table. Position ${o.dims.meterRows} Bet + ${o.dims.barRows} Stake rows, stacks ${o.dims.stackMax} high.</p>
     <p>Draw ${o.tip.trickery} · Bid ${o.tip.ingenuity} · Roll ${o.tip.proficiency} per turn.</p>
     <p><span class="k">Dice</span> ${diceSummary(o.dice)}</p><p><span class="k">Tricks</span> ${o.tricks.map((t) => D.TRICKS[t.id].name).join(', ')}</p>`;
 }

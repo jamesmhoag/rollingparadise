@@ -65,7 +65,7 @@ function preview(id) {
     const run = R.newRun('hustler', 'standard', 1); run.floor = floor;
     const o = R.genOpponent(run, floor, X.boss ? D.FLOORS[floor].boss : D.FLOORS[floor].worth[(X.tables?.[0]) || 0], { roster: id, name: X.name, ...(X.cls ? { cls: X.cls } : {}), ...(X.boss ? { boss: true } : {}) });
     return h('div', { class: 'b-card' }, h('b', { text: o.name }), h('p', { class: 'dim', text: t('roster.preview.floor', { floor: D.FLOORS[floor].name }) }),
-      h('p', { text: `${X.cls ? D.CLASSES[o.cls].name : t('roster.randomClass')} · ${o.worth}¢ · ${o.dims.cols}×${o.dims.barRows} Bar, stacks of ${o.dims.stackMax}` }),
+      h('p', { text: `${X.cls ? D.CLASSES[o.cls].name : t('roster.randomClass')} · ${o.worth}¢ · ${o.dims.cols}×${o.dims.barRows} Stake, stacks of ${o.dims.stackMax}` }),
       h('p', { text: `${diceSummary(o.dice)} · ${o.tricks.map((x) => D.TRICKS[x.id]?.name).join(', ')}` }),
       o.drink ? h('p', { text: `${t('roster.drink')}: ${o.drink.name}` }) : null,
       h('p', { class: 'dim', text: Object.entries(o.behave).filter(([k, v]) => v !== D.DEFAULT_BEHAVE[k]).map(([k, v]) => D.BEHAVE[k][v]).join(' · ') || t('roster.balanced') }));
@@ -112,7 +112,7 @@ export function rosterMaker(id, redraw) {
   }
   return h('div', { class: 'b-maker' }, h('div', { class: 'b-fields' }, parts), h('div', {}, h('span', { class: 'cap', text: t('roster.preview') }), preview(id), h('p', { class: 'sub', text: t('roster.preview.note') })));
 }
-// a precise Bar layout: one box per space, chips as values or effect chip ids, comma-separated. Pick a brush to paint
+// a precise Stake layout: one box per space, chips as values or effect chip ids, comma-separated. Pick a brush to paint
 // instead: click and hold on a space to stack chips at a steady rate, sweep to paint each space you cross.
 let layoutBrush = 'type';
 function layoutGrid(X, onSet, redraw) {
