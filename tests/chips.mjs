@@ -498,8 +498,7 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
   // the Diesmith: floor gates and targets
   const run = R.newRun('rascal', 'standard', 8); R.enterFloor(run, 1); run.purse = 1e6;
   const d = run.dice[0];
-  assert(!R.upgradeDie(run, d.id, 'rig', 0), 'Rig is not offered on floor 1');
-  assert(R.upgradeDie(run, d.id, 'boost', 2) && X.faceList(d)[2] === 3 + D.DIE_VARS.bump, 'the Diesmith upgrades the face you pick');
+  assert(!R.upgradeDie(run, d.id, 'boost', 2) && R.dieUpgradeBlock(run, d, 'boost'), 'the Diesmith no longer upgrades dice (Bone dice carry the upgrades)');
 }
 
 // ---------- the floor path and prizes ----------

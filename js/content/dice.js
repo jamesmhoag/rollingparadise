@@ -62,3 +62,47 @@ export const BONE = {
   mirrored: { name: 'Mirrored', up: 'mirror' },
   reflected: { name: 'Reflected', up: 'reflect' },
 };
+
+// ---------- melting, casting and forging (the Diesmith) ----------
+// Melting a die gives `meltPerFace` volume for each of its faces (a d4 gives 2, a d20 gives 10). Casting a die
+// needs `castPerFace` volume for each face of the new die. `maxDyes`: dyes and dye mixes per forge.
+// Dice melted together must be one material, or a material mix (two materials) or Diamond (all three).
+export const MELT = { meltPerFace: 0.5, castPerFace: 1, maxDyes: 2, lucky: 7 };
+
+// What goes into a cast. Each one rolls `dice` dice of the new die's size; the face of the new die that shows
+// each rolled value is then changed by `fx`. `price`: the Diesmith's fee for it, on top of the forging fee.
+//   flip: the opposite face (on a d4, 1↔4 and 2↔3) · nullify: 0 · lucky: MELT.lucky
+//   down: −1 · up: +1 · even: +1 if below the die's average, −1 if above
+//   reconfigure: the higher face becomes high+low, the lower high−low · add: the lower becomes the sum ·
+//   subtract: the higher becomes the difference · pair: the first fx on the higher face, the second on the lower
+//   diamond: six dice; the pattern they make reshapes every face (DIAMOND below)
+export const CASTS = {
+  // one material: the cast every forge makes
+  glass: { name: 'Glass cast', kind: 'cast', mats: ['glass'], dice: 1, fx: 'flip', text: 'Flips the rolled face to the opposite face.' },
+  plastic: { name: 'Plastic cast', kind: 'cast', mats: ['plastic'], dice: 1, fx: 'nullify', text: 'The rolled face becomes 0.' },
+  metal: { name: 'Metal cast', kind: 'cast', mats: ['metal'], dice: 1, fx: 'lucky', text: 'The rolled face becomes lucky 7.' },
+  // two materials melted together (proposed effects: each mix plays both of its materials' casts)
+  sparkling: { name: 'Sparkling mix', kind: 'cast', mats: ['glass', 'metal'], dice: 2, fx: 'pair', pair: ['lucky', 'flip'], text: 'The higher rolled face becomes lucky 7; the lower flips to its opposite.' },
+  glimmering: { name: 'Glimmering mix', kind: 'cast', mats: ['glass', 'plastic'], dice: 2, fx: 'pair', pair: ['flip', 'nullify'], text: 'The higher rolled face flips to its opposite; the lower becomes 0.' },
+  swirling: { name: 'Swirling mix', kind: 'cast', mats: ['metal', 'plastic'], dice: 2, fx: 'pair', pair: ['lucky', 'nullify'], text: 'The higher rolled face becomes lucky 7; the lower becomes 0.' },
+  // all three materials
+  diamond: { name: 'Diamond', kind: 'cast', mats: ['glass', 'metal', 'plastic'], dice: 6, fx: 'diamond', text: 'Rolls six dice; the pattern they make reshapes every face.' },
+};
+export const DYES = {
+  red: { name: 'Red dye', dice: 1, fx: 'down', price: 20, color: '#e0524a', text: 'The rolled face goes down 1.' },
+  blue: { name: 'Blue dye', dice: 1, fx: 'even', price: 20, color: '#4a8fe0', text: 'The rolled face moves 1 toward the average: up if lower, down if higher.' },
+  yellow: { name: 'Yellow dye', dice: 1, fx: 'up', price: 20, color: '#f2c94c', text: 'The rolled face goes up 1.' },
+  orange: { name: 'Orange (Reconfigure)', dice: 2, fx: 'reconfigure', from: ['red', 'yellow'], price: 50, color: '#f0913a', text: 'Of the two rolled faces, the higher becomes high + low and the lower becomes high − low.' },
+  purple: { name: 'Purple (Add)', dice: 2, fx: 'add', from: ['red', 'blue'], price: 50, color: '#9a5ad8', text: 'Of the two rolled faces, the lower becomes their sum.' },
+  green: { name: 'Green (Subtract)', dice: 2, fx: 'subtract', from: ['blue', 'yellow'], price: 50, color: '#4fb87a', text: 'Of the two rolled faces, the higher becomes their difference.' },
+};
+// Diamond: the first pattern the six dice make, in this order, reshapes the new die.
+export const DIAMOND = [
+  { id: 'yahtzee', name: 'Yahtzee', when: 'six of a kind', text: 'A sixth of the faces are the value × 6; the rest are the value.' },
+  { id: 'five', name: '5 of a kind', when: 'five of a kind', text: 'Every face is the repeated value except one, which is the odd value.' },
+  { id: 'twinTriplets', name: 'Twin triplets', when: 'two different three of a kinds', text: 'Half the faces are the two values subtracted; the other half are them added.' },
+  { id: 'tripleTwins', name: 'Triple twins', when: 'three different pairs', text: 'A third of the faces show each pair\'s value.' },
+  { id: 'continuation', name: 'Continuation', when: 'a run of 4 or more', text: 'The faces carry the run on upward from its highest value.' },
+  { id: 'stretch', name: 'Stretch', when: 'sum over the average', text: 'The faces above the die\'s average are duplicated over the ones below.' },
+  { id: 'smashed', name: 'Smashed', when: 'sum under the average', text: 'The faces below the die\'s average are duplicated over the ones above.' },
+];

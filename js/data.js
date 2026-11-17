@@ -39,7 +39,7 @@ export const STATS = {
 
 // ---------- Dice ----------
 // Materials, the Dice Shop and Bone dice live in content/dice.js, so they can be edited on their own.
-export { MATERIALS, DEFAULT_MAT, BASIC_MATS, COMPLEXITY, DICE_SHOP, BONE } from './content/dice.js';
+export { MATERIALS, DEFAULT_MAT, BASIC_MATS, COMPLEXITY, DICE_SHOP, BONE, MELT, CASTS, DYES, DIAMOND } from './content/dice.js';
 export const DICE = {
   d4: { faces: 4, forge: { dice: 1, chips: 50, floor: 1 }, sell: 20 },
   d6: { faces: 6, forge: { dice: 2, chips: 60, floor: 1 }, sell: 40 },

@@ -37,10 +37,53 @@ const cheap = shop.find((x) => x.die.mat === 'plastic'), pricey = shop.find((x) 
 if (pricey) assert(pricey.cost > cheap.cost, 'Bone dice cost more than plain ones');
 run.purse = 100000; const n = run.dice.length, b = shop.find((x) => x.die.mat === 'bone');
 assert(R.buyShopDie(run, b.key) && run.dice.length === n + 1 && run.dice.at(-1).bone === b.die.bone, 'buying a Bone die puts it in the pouch');
-assert(!R.forgeFodder(run, 'd20') || !R.forgeFodder(run, 'd20').some((d) => d.mat === 'bone'), 'Bone dice are never melted in a forge');
+assert(R.forgeWhy(run, 'd4', [run.dice.at(-1).id]), 'Bone dice are never melted in a forge');
 assert(R.dieUpgradeBlock(run, run.dice.at(-1), 'boost'), 'the Diesmith will not upgrade a Bone die');
 R.enterFloor(run, 3);
 assert(R.diceShop(run).length && R.diceShop(run) !== shop, 'each floor restocks the Dice Shop');
 
 if (fails.length) { console.log('FAIL ' + fails.join('\nFAIL ')); process.exit(1); }
 console.log('ok, round 18: dice materials, d12, Dice Shop, Bone dice');
+
+// ---------- melting and casting ----------
+{
+  const F = await import('../js/forge.js');
+  const fails2 = [];
+  const ok = (c, m) => { if (!c) fails2.push(m); };
+  const fixed = (vals) => { let i = 0; return { int: () => vals[i++ % vals.length] - 1 }; }; // rolls these values
+  ok(F.meltVolume([{ type: 'd4' }]) === 2 && F.meltVolume([{ type: 'd20' }]) === 10, 'a die melts to half its faces');
+  ok(F.castNeed('d6') === 6, 'a cast needs one volume per face');
+  ok(F.castFor(['glass']) === 'glass' && F.castFor(['glass', 'metal', 'glass']) === 'sparkling' && F.castFor(['plastic', 'metal', 'glass']) === 'diamond', 'materials pick the cast');
+  ok(F.forgeBlock({ type: 'd6', melt: [{ type: 'd4', mat: 'glass' }], dyes: [] }), 'too little volume blocks a cast');
+  ok(F.forgeBlock({ type: 'd6', melt: [{ type: 'd6', mat: 'bone', bone: 'rigged', up: [] }, { type: 'd6' }], dyes: [] }), 'Bone dice cannot be melted');
+  const eq2 = (a, b, m) => ok(a.join() === b.join(), `${m}: ${a.join()} vs ${b.join()}`);
+  eq2(F.castFaces(fixed([2]), 'd4', 'glass').faces, [1, 3, 3, 4], 'Glass flips the rolled face (2 → 3 on a d4)');
+  eq2(F.castFaces(fixed([3]), 'd6', 'plastic').faces, [1, 2, 0, 4, 5, 6], 'Plastic nullifies the rolled face');
+  eq2(F.castFaces(fixed([1]), 'd6', 'metal').faces, [7, 2, 3, 4, 5, 6], 'Metal makes the rolled face lucky 7');
+  eq2(F.castFaces(fixed([1, 2]), 'd6', 'metal', ['red']).faces, [7, 1, 3, 4, 5, 6], 'Red takes 1 off the rolled face');
+  eq2(F.castFaces(fixed([1, 5, 2]), 'd6', 'metal', ['blue', 'blue']).faces, [7, 3, 3, 4, 4, 6], 'Blue moves faces toward the average');
+  eq2(F.castFaces(fixed([1, 5, 2]), 'd6', 'metal', ['orange']).faces, [7, 3, 3, 4, 7, 6], 'Orange: high becomes high+low, low becomes high−low');
+  eq2(F.castFaces(fixed([1, 5, 2]), 'd6', 'metal', ['purple']).faces, [7, 7, 3, 4, 5, 6], 'Purple: the lower becomes the sum');
+  eq2(F.castFaces(fixed([1, 5, 2]), 'd6', 'metal', ['green']).faces, [7, 2, 3, 4, 3, 6], 'Green: the higher becomes the difference');
+  ok(F.castFaces(fixed([1, 4]), 'd6', 'metal', ['yellow']).log[1].missed === false, 'a dye on a face that still shows its value lands');
+  ok(F.castFaces(fixed([1, 7 - 6]), 'd6', 'metal', ['yellow']).log[1].missed === true, 'a dye whose value no face shows misses');
+  // Diamond patterns
+  const pat = (r, n = 6) => F.diamondPattern(r, n)?.id;
+  ok(pat([3, 3, 3, 3, 3, 3]) === 'yahtzee' && pat([3, 3, 3, 3, 3, 1]) === 'five' && pat([2, 2, 2, 5, 5, 5]) === 'twinTriplets' && pat([1, 1, 4, 4, 6, 6]) === 'tripleTwins' && pat([1, 2, 3, 4, 6, 6]) === 'continuation' && pat([6, 6, 5, 5, 1, 3]) === 'stretch' && pat([1, 1, 2, 2, 3, 6]) === 'smashed', 'Diamond spots each pattern');
+  eq2(F.diamondFaces({ id: 'yahtzee', v: 3 }, [1, 2, 3, 4, 5, 6]), [3, 3, 3, 3, 3, 18], 'Yahtzee: a sixth of the faces are ×6');
+  eq2(F.diamondFaces({ id: 'twinTriplets', a: 5, b: 2 }, [1, 2, 3, 4, 5, 6]), [3, 3, 3, 7, 7, 7], 'Twin triplets: half subtracted, half added');
+  eq2(F.diamondFaces({ id: 'continuation', top: 4 }, [1, 2, 3, 4, 5, 6]), [5, 6, 7, 8, 9, 10], 'Continuation carries the run on');
+  eq2(F.diamondFaces({ id: 'smashed' }, [1, 2, 3, 4, 5, 6]), [1, 2, 3, 1, 2, 3], 'Smashed duplicates the low faces');
+  eq2(F.diamondFaces({ id: 'stretch' }, [1, 2, 3, 4, 5, 6]), [4, 5, 6, 4, 5, 6], 'Stretch duplicates the high faces');
+  // a whole forge at the Diesmith
+  const run2 = R.newRun('rascal', 'standard', 4); R.enterFloor(run2, 1); run2.purse = 1e5;
+  const melt = run2.dice.slice(0, 2).map((d) => d.id), before = run2.dice.length, purse = run2.purse;
+  ok(!R.forgeWhy(run2, 'd6', melt, ['red']), 'two d6 melt into a d6');
+  const res = R.forge(run2, 'd6', melt, ['red']);
+  ok(res && run2.dice.length === before - 1 && run2.dice.includes(res.die) && res.die.cast === 'plastic' && res.log.length === 2, 'the melted dice go, the new one joins the pouch');
+  ok(run2.purse === purse - R.forgeCost(run2, 'd6', ['red']), 'the forging fee and the dye are paid');
+  ok(R.forgeWhy(run2, 'd20', run2.dice.map((d) => d.id)), 'a d20 is not cast on floor 1');
+  ok(R.dieUpgradeBlock(run2, run2.dice[0], 'boost') === R.RETIRED, 'old upgrades are retired');
+  if (fails2.length) { console.log('FAIL ' + fails2.join('\nFAIL ')); process.exit(1); }
+  console.log('ok, round 18: melting, casting, dyes, mixes and Diamond');
+}
