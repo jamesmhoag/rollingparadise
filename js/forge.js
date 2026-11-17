@@ -1,8 +1,9 @@
 // Melting, casting and forging at the Diesmith. Pure logic, no DOM. The tables are in content/dice.js.
 //
-// A forge melts dice into volume, then casts a new die of the chosen size. The melted materials pick the cast
-// (one material: its cast; two: a material mix; all three: Diamond). Dyes are added on top. Each cast and dye
-// rolls dice of the new die's size; the face of the new die showing each rolled value is changed.
+// A forge melts dice into volume, then casts a new die of the chosen size. The melted materials pick the cast (one
+// material: its cast; two basic materials in equal parts: a complex material; the three complex materials with the
+// three secondary dyes: Diamond). Dyes are added on top. Each cast and dye rolls dice of the new size from your
+// pouch; the face of the new die showing each rolled value is changed.
 import { DICE, MELT, CASTS, DYES, DIAMOND, BASIC_MATS, COMPLEXITY, MATERIALS } from './data.js';
 import { matOf, canMelt, facesOf, faceValue } from './dice.js';
 
@@ -14,44 +15,75 @@ export function castFor(mats) {
   const key = [...new Set(mats)].sort().join('+');
   return Object.keys(CASTS).find((k) => CASTS[k].mats.slice().sort().join('+') === key) || null;
 }
-// the material the new die comes out as: the one with the most volume in the melt (ties go to the first listed)
-export function castMaterial(dice) {
-  const vol = {}; for (const d of dice) vol[matOf(d)] = (vol[matOf(d)] || 0) + facesOfType(d.type);
-  return BASIC_MATS.reduce((best, m) => ((vol[m] || 0) > (vol[best] || 0) ? m : best), BASIC_MATS.find((m) => vol[m]) || BASIC_MATS[0]);
-}
+// the material a cast's die comes out as
+export const castOut = (castKey) => CASTS[castKey]?.out || CASTS[castKey]?.mats[0] || BASIC_MATS[0];
+// whether a kind of mixing is open on this floor (MELT.unlock); no floor given means open
+export const mixOpen = (tier, floor) => !tier || floor == null || floor >= (MELT.unlock?.[tier] ?? 1);
+// volume melted per material
+export const volumes = (dice) => { const v = {}; for (const d of dice) v[matOf(d)] = (v[matOf(d)] || 0) + facesOfType(d.type) * MELT.meltPerFace; return v; };
 
-// Why this forge cannot happen, or null. o: { type, melt: [dice], dyes: [dye ids] }
-export function forgeBlock(o) {
-  if (!COMPLEXITY.includes(o.type)) return `The Diesmith does not cast ${o.type}s.`;
-  if (!o.melt.length) return 'Pick dice to melt.';
-  const bad = o.melt.find((d) => !canMelt(d)); if (bad) return `${MATERIALS[matOf(bad)].name} dice cannot be melted.`;
-  if (!castFor(o.melt.map(matOf))) return 'Those materials do not mix.';
-  if (meltVolume(o.melt) < castNeed(o.type)) return `A ${o.type} needs ${castNeed(o.type)} volume; that melts to ${meltVolume(o.melt)}.`;
-  if ((o.dyes || []).some((k) => !DYES[k] || DYES[k].from)) return 'Add primary dyes; two different ones mix.';
-  if (mixDyes(o.dyes || []).length > MELT.maxDyes) return `At most ${MELT.maxDyes} dyes or dye mixes in one cast.`;
-  if (MELT.castFromPouch && o.pouch) { const n = rollsNeeded(castFor(o.melt.map(matOf)), o.dyes), have = rollers(o.pouch, o.type, o.melt).length;
-    if (have < n) return `The cast rolls ${n} ${o.type}${n > 1 ? 's' : ''} from your pouch; you have ${have} to spare.`; }
-  return null;
-}
-
-// The dyes as they play: two different primaries pair into their mix (earliest first); the rest play alone.
-export function mixDyes(primaries = []) {
-  const left = [...primaries], out = [];
-  while (left.length) {
-    const a = left.shift(), j = left.findIndex((b) => b !== a && mixOf(a, b));
-    if (j >= 0) { out.push(mixOf(a, left[j])); left.splice(j, 1); } else out.push(a);
-  }
-  return out;
+// The dyes as they play. Two different primaries mix into their secondary when mixing is open; the pairing that
+// makes the most different secondaries wins (so Red, Red, Yellow, Yellow, Blue, Blue gives Orange, Purple, Green).
+export function mixDyes(primaries = [], canMix = true) {
+  if (!canMix) return [...primaries];
+  let best = null;
+  const go = (left, out) => {
+    if (!left.length) { const score = out.filter((k) => DYES[k].from).length * 100 + new Set(out).size; if (!best || score > best.score) best = { score, out }; return; }
+    const [a, ...rest] = left;
+    rest.forEach((b, j) => { const m = mixOf(a, b); if (m) go(rest.filter((_, k) => k !== j), [...out, m]); });
+    go(rest, [...out, a]);
+  };
+  go(primaries.slice(0, 8), []);
+  return [...(best?.out || []), ...primaries.slice(8)];
 }
 export const mixOf = (a, b) => Object.keys(DYES).find((k) => DYES[k].from && DYES[k].from.includes(a) && DYES[k].from.includes(b) && a !== b) || null;
 export const dyePrice = (primaries = []) => primaries.reduce((t, k) => t + (DYES[k]?.price || 0), 0);
-// how many dice of the new size the cast and its dyes roll
-export const rollsNeeded = (castKey, primaries = []) => (CASTS[castKey]?.dice || 0) + mixDyes(primaries).reduce((t, k) => t + DYES[k].dice, 0);
-// the pouch dice a cast would roll: the new size, not Bone, not being melted; plainest (fewest changed faces) first
-export function rollers(pouch, type, melt = []) {
-  const plain = (d) => facesOf(d).filter((f, i) => faceValue(f) !== i + 1).length + (d.up ? 10 : 0);
-  return pouch.filter((d) => d.type === type && canMelt(d) && !melt.includes(d)).sort((a, b) => plain(a) - plain(b));
+
+// Everything about a forge before it happens. o: { type, melt: [dice], dyes: [primary ids], floor?, pouch? }
+// Returns { why (null if it can go), castKey, played (the dyes as they play), reqs (the rolls: [{ mat|null, for }]),
+// rolled (pouch dice for each roll, or null where none is spare) }.
+export function forgePlan(o) {
+  const out = { why: null, castKey: null, played: [], reqs: [], rolled: [] }, no = (why) => { out.why = out.why || why; return out; };
+  if (!COMPLEXITY.includes(o.type)) return no(`The Diesmith does not cast ${o.type}s.`);
+  if (!o.melt.length) return no('Pick dice to melt.');
+  const bad = o.melt.find((d) => !canMelt(d)); if (bad) return no(`${MATERIALS[matOf(bad)].name} dice cannot be melted.`);
+  const ck = out.castKey = castFor(o.melt.map(matOf)), C = CASTS[ck];
+  if (!C) return no(o.melt.some((d) => MATERIALS[matOf(d)]?.complex) ? 'Complex dice only melt into a Diamond: one each of Sparkling, Glimmering and Swirling.' : 'Those materials do not mix.');
+  if (!mixOpen(C.unlock, o.floor)) return no(`${C.unlock === 'complex' ? 'Diamond casting' : 'Mixing materials'} opens on floor ${MELT.unlock[C.unlock]}.`);
+  const vol = volumes(o.melt), total = meltVolume(o.melt);
+  if (MELT.evenMix && C.mats.length > 1 && new Set(C.mats.map((m) => vol[m])).size > 1) return no(`A mix needs the same volume of each material: ${C.mats.map((m) => `${MATERIALS[m].name} ${vol[m] || 0}`).join(', ')}.`);
+  if (total < castNeed(o.type)) return no(`A ${o.type} needs ${castNeed(o.type)} volume; that melts to ${total}.`);
+  const dyes = o.dyes || [];
+  if (dyes.some((k) => !DYES[k] || DYES[k].from)) return no('Add primary dyes; two different ones mix.');
+  const played = out.played = mixDyes(dyes, mixOpen('mix', o.floor));
+  if (C.needs) {
+    if (C.needs.slice().sort().join() !== played.slice().sort().join()) return no(`A Diamond takes exactly ${C.needs.map((k) => DYES[k].name).join(', ')}: two of each primary.`);
+  } else {
+    if (played.some((k) => DYES[k].from) && !mixOpen('mix', o.floor)) return no(`Dye mixing opens on floor ${MELT.unlock.mix}.`);
+    if (played.length > MELT.maxDyes) return no(`At most ${MELT.maxDyes} dyes or dye mixes in one cast.`);
+  }
+  // the rolls: one die of each cast material, then the dyes' dice (any material)
+  out.reqs = [...C.mats.map((m) => ({ mat: m, for: ck })), ...played.flatMap((k) => Array.from({ length: C.needs ? 1 : DYES[k].dice }, () => ({ mat: null, for: k })))];
+  if (MELT.castFromPouch && o.pouch) {
+    out.rolled = assignRolls(o.pouch, o.type, o.melt, out.reqs);
+    const short = out.reqs.filter((_, i) => !out.rolled[i]);
+    if (short.length) return no(`The cast rolls ${o.type}s from your pouch and you are short: ${short.map((q) => (q.mat ? MATERIALS[q.mat].name : 'any')).join(', ')}.`);
+  }
+  return out;
 }
+// the pouch dice for each roll: the new size, never Bone or the dice being melted, plainest first; a roll that
+// needs a material takes a die of it, the rest take any
+export function assignRolls(pouch, type, melt, reqs) {
+  const plain = (d) => facesOf(d).filter((f, i) => faceValue(f) !== i + 1).length + (d.up ? 10 : 0);
+  const free = pouch.filter((d) => d.type === type && canMelt(d) && !melt.includes(d)).sort((a, b) => plain(a) - plain(b)), got = reqs.map(() => null);
+  reqs.forEach((q, i) => { if (!q.mat) return; const j = free.findIndex((d) => matOf(d) === q.mat); if (j >= 0) got[i] = free.splice(j, 1)[0]; });
+  reqs.forEach((q, i) => { if (q.mat) return; const j = free.findIndex((d) => !CASTS_MAT_NEEDED(reqs, got, d)); if (j >= 0) got[i] = free.splice(j, 1)[0]; });
+  return got;
+}
+// keep a die back for a material roll that is still unfilled
+const CASTS_MAT_NEEDED = (reqs, got, d) => reqs.some((q, i) => q.mat && !got[i] && matOf(d) === q.mat);
+// Why this forge cannot happen, or null.
+export const forgeBlock = (o) => forgePlan(o).why;
 
 // ---------- the face changes ----------
 const mean = (fs) => fs.reduce((t, v) => t + v, 0) / fs.length;
@@ -73,6 +105,10 @@ function apply(fx, fs, rolls, pair) {
   const before = fs.slice();
   if (rolls.length === 1) { const i = at(fs, rolls[0]); if (i < 0) return { missed: true }; one(fx, fs, i); return { faces: [i], before, after: fs.slice() }; }
   const hi = Math.max(...rolls), lo = Math.min(...rolls), iH = at(fs, hi), iL = at(fs, lo, iH);
+  if (fx === 'swirl') { // every face showing either value: the high ones become the difference, the low ones the sum
+    const H = fs.map((v, i) => (v === hi ? i : -1)).filter((i) => i >= 0), L = fs.map((v, i) => (v === lo && hi !== lo ? i : -1)).filter((i) => i >= 0);
+    if (!H.length && !L.length) return { missed: true };
+    for (const i of H) fs[i] = hi - lo; for (const i of L) fs[i] = hi + lo; return { faces: [...H, ...L], before, after: fs.slice() }; }
   if (iH < 0 && iL < 0) return { missed: true };
   if (fx === 'pair') { if (iH >= 0) one(pair[0], fs, iH); if (iL >= 0) one(pair[1], fs, iL); return { faces: [iH, iL].filter((i) => i >= 0), before, after: fs.slice() }; }
   if (iH < 0 || iL < 0) return { missed: true }; // two-face mixes need both faces
@@ -112,23 +148,27 @@ export function diamondFaces(p, fs) {
   }
 }
 
-// Cast a new die of `type` from a cast and dyes. Returns { faces: [values], log: [{ name, rolls, text, missed? }] }.
-// dyes: primaries (they are mixed here). rolled: dice to roll, in order (their own faces); without them, plain rolls.
-export function castFaces(rng, type, castKey, dyes = [], rolled = null) {
-  const n = facesOfType(type), queue = rolled ? [...rolled] : null;
-  const roll = (k) => Array.from({ length: k }, () => { const d = queue?.shift(); if (!d) return 1 + rng.int(n); const fs = facesOf(d); return faceValue(fs[rng.int(fs.length)]); });
-  dyes = mixDyes(dyes);
+// Cast a new die of `type`. played: the dyes as they play (see mixDyes). rolled: the dice to roll, in the order of the
+// plan's rolls (each lands on one of its own faces); without them, plain rolls of the new size.
+export function castFaces(rng, type, castKey, played = [], rolled = null) {
+  const n = facesOfType(type), queue = rolled ? [...rolled] : null, C = CASTS[castKey];
+  const one1 = (d) => { if (!d) return 1 + rng.int(n); const fs = facesOf(d); return faceValue(fs[rng.int(fs.length)]); };
+  const take = (k) => Array.from({ length: k }, () => queue?.shift() || null);
+  const roll = (dice) => { let rolls = dice.map(one1), again = 0;
+    while (MELT.rerollDoubles && rolls.length === 2 && rolls[0] === rolls[1] && again < MELT.maxRerolls) { rolls = dice.map(one1); again++; }
+    return { rolls, again }; };
   let fs = Array.from({ length: n }, (_, i) => i + 1); const log = [];
-  for (const [k, X] of [[castKey, CASTS[castKey]], ...dyes.map((d) => [d, DYES[d]])]) {
-    const rolls = roll(X.dice);
-    if (X.fx === 'diamond') {
-      const p = diamondPattern(rolls, n), P = p && DIAMOND.find((x) => x.id === p.id);
-      if (p) fs = diamondFaces(p, fs);
-      log.push({ k, name: X.name, rolls, text: P ? `${P.name} (${P.when}): ${P.text}` : 'No pattern: the faces stay as they are.', missed: !p, after: fs.slice() });
-      continue;
-    }
-    const r = apply(X.fx, fs, rolls, X.pair);
-    log.push({ k, name: X.name, rolls, text: r.missed ? `No face shows ${rolls.join(' or ')} any more: nothing changes.` : X.text, missed: !!r.missed, after: fs.slice() });
+  if (C.fx === 'diamond') { // one die per material and one per secondary dye, all into one pattern
+    const { rolls } = roll(take(C.mats.length + (C.needs || []).length));
+    const p = diamondPattern(rolls, n), P = p && DIAMOND.find((x) => x.id === p.id);
+    if (p) fs = diamondFaces(p, fs);
+    log.push({ k: castKey, name: C.name, rolls, text: P ? `${P.name} (${P.when}): ${P.text}` : 'No pattern: the faces stay as they are.', missed: !p, after: fs.slice() });
+    return { faces: fs, log };
+  }
+  for (const [k, X, dice] of [[castKey, C, C.mats.length], ...played.map((d) => [d, DYES[d], DYES[d].dice])]) {
+    const { rolls, again } = roll(take(dice));
+    const r = apply(X.fx, fs, rolls, X.pair), re = again ? ` (rolled again ${again === 1 ? 'once' : again + ' times'} on doubles)` : '';
+    log.push({ k, name: X.name, rolls, text: (r.missed ? `No face shows ${rolls.join(' or ')} any more: nothing changes.` : X.text) + re, missed: !!r.missed, after: fs.slice() });
   }
   return { faces: fs, log };
 }

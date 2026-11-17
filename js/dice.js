@@ -12,7 +12,7 @@ export const matOf = (die) => die.mat || DEFAULT_MAT;
 export const canMelt = (die) => MATERIALS[matOf(die)]?.melt !== false;
 export const canModify = (die) => MATERIALS[matOf(die)]?.upgrade !== false;
 // a die's name: 'Glass d6', 'Accelerated Bone d8'
-const mixWord = (die) => (die.cast && CASTS[die.cast]?.mats.length > 1 ? CASTS[die.cast].name.split(' ')[0] + ' ' : '');
+const mixWord = (die) => (die.cast && CASTS[die.cast]?.mats.length > 1 && CASTS[die.cast].out !== matOf(die) ? CASTS[die.cast].name.split(' ')[0] + ' ' : ''); // dice cast before mixes made their own material
 export const dieName = (die) => `${die.bone ? BONE[die.bone].name + ' ' : mixWord(die)}${MATERIALS[matOf(die)].name} ${die.type}`;
 
 const base = (type) => Array.from({ length: DICE[type].faces }, (_, i) => ({ v: i + 1 }));

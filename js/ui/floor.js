@@ -2,7 +2,7 @@
 import { h, syncList, openPanel, closePanel, toast, btn, tween, pulse, swapText } from './core.js';
 import { app, hud, oppTip, trickTag, diceSummary } from './app.js';
 import { faceList, dieName, canMelt, matOf } from '../dice.js';
-import { meltVolume, castNeed, castFor, mixDyes, rollsNeeded } from '../forge.js';
+import { meltVolume, castNeed, castFor, mixDyes, mixOpen } from '../forge.js';
 import { dieEl, dieTip, trickTip, trickWords, drinkTip, cardTip, chipEl, chipTip, cardEl, walletEl, jacketEl, drinkEl, feltStyle, passEl } from './parts.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
@@ -130,7 +130,7 @@ function smithPanel() {
   const sizes = h('div', { class: 'row wrap' }), pouch = h('div', { class: 'dicebox list' }), volume = h('p', { class: 'sub' }), castLine = h('p', {});
   const dyeBox = h('div', { class: 'row wrap' }), chosen = h('div', { class: 'row wrap' }), rollLine = h('p', { class: 'sub' }), go = h('div', { class: 'items list' }), result = h('div', { class: 'forge-log' });
   const done = after(render);
-  const pouchEl = new Map();
+  const pouchEl = new Map(); let curCast = null; // the cast as last shown, for the dye buttons
   const meltDice = () => melt.map((id) => run.dice.find((d) => d.id === id)).filter(Boolean);
   function render() {
     melt = melt.filter((id) => run.dice.some((d) => d.id === id));
@@ -142,18 +142,22 @@ function smithPanel() {
     (el, d) => { el.classList.toggle('sel', melt.includes(d.id)); el.classList.toggle('off', !canMelt(d)); });
     const md = meltDice(), vol = meltVolume(md), need = castNeed(type), ck = md.length ? castFor(md.map(matOf)) : null;
     swapText(volume, md.length ? `Melting ${diceSummary(md)}: ${vol} volume of the ${need} a ${type} needs.` : `Pick dice to melt. A ${type} needs ${need} volume; each die melts to half its faces.`);
-    castLine.innerHTML = ck ? `<span class="k">${D.CASTS[ck].name}</span> ${D.CASTS[ck].text} <span class="dim">Rolls ${D.CASTS[ck].dice} ${type}${D.CASTS[ck].dice > 1 ? 's' : ''}.</span>` : '<span class="dim">The materials you melt decide the cast: one material casts as itself, two make a mix, all three make Diamond.</span>';
+    const plan = R.forgePlanFor(run, type, melt, dyes), C = ck && D.CASTS[ck], U = D.MELT.unlock; curCast = C;
+    castLine.innerHTML = C ? `<span class="k">${C.name}</span> ${C.text} <span class="dim">${t(C.needs ? 'smith.cast.rolls.diamond' : 'smith.cast.rolls', { type, mats: C.mats.map((m) => D.MATERIALS[m].name).join(' + ') })}</span>`
+      : `<span class="dim">${t('smith.cast.how')}</span>`;
+    castLine.append(h('span', { class: 'dim', html: ` ${t('smith.unlocks', { mix: U.mix, complex: U.complex })}${mixOpen('mix', run.floor) ? '' : ` ${t('smith.unlocks.notYet')}`}` }));
     const primaries = Object.keys(D.DYES).filter((k) => !D.DYES[k].from), mixes = Object.keys(D.DYES).filter((k) => D.DYES[k].from);
     const mixTip = (k) => mixes.filter((m) => D.DYES[m].from.includes(k)).map((m) => t('smith.dye.mixes', { other: D.DYES[D.DYES[m].from.find((x) => x !== k)].name, mix: D.DYES[m].name, text: D.DYES[m].text })).join('');
-    syncList(dyeBox, primaries, (k) => k, (k) => btn(D.DYES[k].name, () => { if (mixDyes([...dyes, k]).length > D.MELT.maxDyes) return toast(t('smith.dye.full', { n: D.MELT.maxDyes }), 'warn'); dyes = [...dyes, k]; render(); },
+    syncList(dyeBox, primaries, (k) => k, (k) => btn(D.DYES[k].name, () => { const C = curCast, cap = C?.needs ? C.needs.length * 2 : D.MELT.maxDyes; if ((C?.needs ? dyes.length + 1 : mixDyes([...dyes, k], mixOpen('mix', run.floor)).length) > cap) return toast(t(C?.needs ? 'smith.dye.diamond' : 'smith.dye.full', { n: D.MELT.maxDyes }), 'warn'); dyes = [...dyes, k]; render(); },
       () => `<b>${D.DYES[k].name}</b><p>${D.DYES[k].text}</p>${mixTip(k)}<p class="dim">${t('smith.dye.rolls', { n: D.DYES[k].dice, price: cents(D.DYES[k].price) })}</p>`, 'small dye'), (el, k) => el.style.setProperty('--dye', D.DYES[k].color));
     // what the chosen primaries play as: mixes where two different ones meet
-    const played = mixDyes(dyes);
+    const played = mixDyes(dyes, mixOpen('mix', run.floor));
     syncList(chosen, played.map((k, i) => ({ k, i })), (x) => x.i + ':' + x.k, (x) => btn(`${D.DYES[x.k].name} ✕`, () => { const take = D.DYES[x.k].from || [x.k]; for (const k of take) { const j = dyes.lastIndexOf(k); if (j >= 0) dyes.splice(j, 1); } dyes = [...dyes]; render(); },
       () => `<b>${D.DYES[x.k].name}</b><p>${D.DYES[x.k].text}</p>${D.DYES[x.k].from ? `<p class="dim">${t('smith.dye.mixed', { a: D.DYES[D.DYES[x.k].from[0]].name, b: D.DYES[D.DYES[x.k].from[1]].name })}</p>` : ''}<p class="dim">${t('smith.dye.remove')}</p>`, 'small dye on'), (el, x) => el.style.setProperty('--dye', D.DYES[x.k].color));
     // the dice the cast rolls, from the pouch
-    const rollNeed = ck ? rollsNeeded(ck, dyes) : 0, rolled = R.castRollers(run, type, melt, dyes);
-    rollLine.innerHTML = !D.MELT.castFromPouch || !ck ? '' : t(rolled.length < rollNeed ? 'smith.rolls.short' : 'smith.rolls', { n: rollNeed, type, have: rolled.length, dice: rolled.length ? diceSummary(rolled) : '' });
+    const rolled = plan.rolled.filter(Boolean), short = plan.reqs.filter((_, i) => !plan.rolled[i]);
+    rollLine.innerHTML = !D.MELT.castFromPouch || !plan.reqs.length ? '' : short.length ? t('smith.rolls.short', { type, need: plan.reqs.map((q) => (q.mat ? D.MATERIALS[q.mat].name : t('smith.rolls.any'))).join(', '), missing: short.map((q) => (q.mat ? D.MATERIALS[q.mat].name : t('smith.rolls.any'))).join(', ') })
+      : t('smith.rolls', { n: plan.reqs.length, type, dice: diceSummary(rolled) });
     for (const el of pouch.children) el.classList.toggle('rolls', rolled.some((d) => el === pouchEl.get(d.id)));
     const why = R.forgeWhy(run, type, melt, dyes), cost = R.forgeCost(run, type, dyes);
     const acts = [{ k: 'forge', name: `Cast a ${type}`, sub: why ? `<span class="bad">${why}</span>` : `Melts ${diceSummary(md)}${played.length ? `, with ${played.map((k) => D.DYES[k].name).join(', ')}` : ''}.`, price: cents(cost), label: 'Forge', off: !!why,
