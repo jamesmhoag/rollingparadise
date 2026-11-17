@@ -115,8 +115,8 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
     chips (need creatures that can be forced into debt), Big/Little chips, Spy/Doom. Which first?
 
 ## Round 8 additions (arrangements, Swift, Vengeance, Saturate)
-53. Arrangements move chips across the Meter and the Bar ("able to cross sections"). Should the Meter stay for
-    chips gained during the bout, with Bar chips stopping at its edge?
+53. Arrangements move chips across the Bet and the Stake ("able to cross sections"). Should the Bet stay for
+    chips gained during the bout, with Stake chips stopping at its edge?
 54. The attribute sheet's Timing, Overflow and Performing rows (after the trick completes, in reaction, tumble,
     fumble, penetrate, separating, pacing, dividing) would work best as Trader upgrades that bolt onto a trick.
     Should trick upgrades become choices like that instead of the flat +0.25?
@@ -204,14 +204,14 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
   be sturdier?
 - **Every effect as a chip.** Status effects with no stack (Boost, Resist, Evade, Reflect, Press, Bend, Parlay, and now
   Subdued and the next-turn ones) still lie as flat effect chips sized by what they cover, laid out by the table, not
-  aimed by the trick. Should those also be placed by their trick at a space (for example the Meter space nearest the
+  aimed by the trick. Should those also be placed by their trick at a space (for example the Bet space nearest the
   trick), and could a fee or a Correction then touch them?
 - **Hive from the Familiar tilt.** One play in three sets a Hive (1 to 3 chips) on an empty space, as a Cheat. Should
   Hives come from the Spawner tilt instead, as a challenge that also helps?
-- **Overload.** Chips with no room are lost, like overkill, and count with wasted overkill as Meter overflow toward
+- **Overload.** Chips with no room are lost, like overkill, and count with wasted overkill as Bet overflow toward
   the House's pressure. Should overflow instead spill to the next stack in the lane, or go to the Stage?
-- **Pressure weights** (`TILT_PRESSURE`: lost 1, overkill 0.5, Meter fill 0.2, Meter value 0.3). A full, rich Meter
-  makes the House lean on you harder. Is that the intent, or should a full Meter make Cheats easier for your
+- **Pressure weights** (`TILT_PRESSURE`: lost 1, overkill 0.5, Bet fill 0.2, Bet value 0.3). A full, rich Bet
+  makes the House lean on you harder. Is that the intent, or should a full Bet make Cheats easier for your
   opponent instead?
 - **Leftover dice.** A die that fits no shown trick stays in the roll, keeping its value, and must be placed once a
   trick has room. Should leftovers count against next turn's Proficiency? Should something ever let you reroll them
@@ -227,10 +227,10 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
   else?
 - **Power chips** (corrected after review): added Power is ordinary Power chips, one per point, lasting the turn.
   Empower's chips work the same way for longer. Nothing spends them.
-- **Steal chips** sit on the Meter and steal in the House phase (after the turn's fees reach the Stage). Should they
+- **Steal chips** sit on the Bet and steal in the House phase (after the turn's fees reach the Stage). Should they
   steal at once when Bid is passed, or sit somewhere else (by the Stage)?
-- Reward chips go to **random** Meter spaces with room, for both sides. Should yours go where you choose?
-- Rewards now take Meter room and can be knocked off by fees: the balance sim cleared slightly fewer floor-1 tables
+- Reward chips go to **random** Bet spaces with room, for both sides. Should yours go where you choose?
+- Rewards now take Bet room and can be knocked off by fees: the balance sim cleared slightly fewer floor-1 tables
   (5 of 60 against 8). Worth a tuning look.
 - **Taking back a bid from a pile**: the + ring covers the top chip, so a chip goes back by clicking the edge of the
   pile below the ring (the top chip comes off) or with Undo. Should it be another gesture?

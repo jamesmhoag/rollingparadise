@@ -46,7 +46,7 @@ export const MAKES = {
   // any effect chip (SHOP_CHIPS id) can be made too, as kind 'count' with a life in turns
 };
 // Part 4 · where it aims (the trick's approach) and whose position (its side, the zone)
-export const AIMS = { front: 'Front', rear: 'Back', flank: 'Sides', body: 'Bar front', any: 'Any stack', meter: 'Open Meter space' };
+export const AIMS = { front: 'Front', rear: 'Back', flank: 'Sides', body: 'Stake front', any: 'Any stack', meter: 'Open Bet space' };
 export const ZONES = { opp: 'Opponent', self: 'Self', any: 'Either side' };
 // the Bonus: a dice requirement (cond, as CONDS in data.js) and what it does
 export const BONUS = {

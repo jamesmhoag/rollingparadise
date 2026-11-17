@@ -189,7 +189,7 @@ export const CHIP_LIST = [
 "source": "Spawned",
 "text": "Basic Deterent Chip deters damage instance under under r¢,  each resist chip is a stack tall and can not exceed max stack height in its value",
 "status": "built",
-"note": "Resist chip: made by Resist Cards (found in the dodgy corner; r 2 or 3). Sits at the base of a front Bar stack; fees under r¢ on it are deterred, like a Red chip keeps fire off.",
+"note": "Resist chip: made by Resist Cards (found in the dodgy corner; r 2 or 3). Sits at the base of a front Stake stack; fees under r¢ on it are deterred, like a Red chip keeps fire off.",
 "show": {
 "kind": "resist",
 "value": 0,
@@ -1007,7 +1007,7 @@ export const CHIP_LIST = [
 "source": "Space Conversion",
 "text": "Sucks in adjacent chips each turn which are lost",
 "status": "built",
-"note": "Black Hole: a Calamity, a hole in space on a Bar space. Anything put on it is gone; each turn, and whenever a Correction moves chips, it consumes the bottom chip of a stack next to it.",
+"note": "Black Hole: a Calamity, a hole in space on a Stake space. Anything put on it is gone; each turn, and whenever a Correction moves chips, it consumes the bottom chip of a stack next to it.",
 "show": null,
 "list": {
 "type": "Hazard",
@@ -1186,7 +1186,7 @@ export const CHIP_LIST = [
 "source": "Space Conversion",
 "text": "Any chips placed on top of the Worm Hole is transported it another empty space",
 "status": "built",
-"note": "Worm Hole: a Calamity (Challenge tilt). Opens on an empty Meter space; chips that land on it are pulled through to your opponent's side.",
+"note": "Worm Hole: a Calamity (Challenge tilt). Opens on an empty Bet space; chips that land on it are pulled through to your opponent's side.",
 "show": null,
 "list": {
 "type": "Hazard",
@@ -1660,7 +1660,7 @@ export const CHIP_LIST = [
 "source": "",
 "text": "",
 "status": "built",
-"note": "Upgrade chip: made at the table by Tinker (Investment), on a Meter space. Each one puts a random die upgrade on every roll, for that roll only (a risk).",
+"note": "Upgrade chip: made at the table by Tinker (Investment), on a Bet space. Each one puts a random die upgrade on every roll, for that roll only (a risk).",
 "show": {
 "kind": "std",
 "value": 1,
@@ -1805,7 +1805,7 @@ export const CHIP_LIST = [
 "source": "",
 "text": "If present with a dragon will cause the dragon to nest after burning a chip, leaving a new dragon egg, dargon returns to burn a chip stack after nesting, but flies off if the roost has an egg on top",
 "status": "built",
-"note": "Dragon Roost: one in two Spawner tilts. It takes a Bar space and calls a Dragon every third turn while no egg sits on it; the Dragon lays an egg chip on it.",
+"note": "Dragon Roost: one in two Spawner tilts. It takes a Stake space and calls a Dragon every third turn while no egg sits on it; the Dragon lays an egg chip on it.",
 "show": null,
 "list": {
 "type": "Spawner",

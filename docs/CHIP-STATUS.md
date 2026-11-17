@@ -21,7 +21,7 @@ Library under **Chip list**, with each chip's traits (see **Traits**). Statuses 
 | 5 | Royal Paradise 10¢ chip | The 10¢ Royal Paradise chip, from floor 3. |
 | 6 | Block Chip | Block chip: Insurance traits, Block, Settle/Fence bonuses, the Shield tilt. |
 | 7 | Counter Chip | Counter chip: Block's bonus. |
-| 8 | Resist Chip | Resist chip: made by Resist Cards (found in the dodgy corner; r 2 or 3). Sits at the base of a front Bar stack; fees under r¢ on it are deterred, like a Red chip keeps fire off. |
+| 8 | Resist Chip | Resist chip: made by Resist Cards (found in the dodgy corner; r 2 or 3). Sits at the base of a front Stake stack; fees under r¢ on it are deterred, like a Red chip keeps fire off. |
 | 9 | Zap Chip | Zap chip: made at the table by Electrify (Insurance, Technician). A fee of 3¢ or less on its stack shocks the attacker; a bigger fee shorts it out. |
 | 10 | Feather p¢ Chip | Feather: the Float trick (Insurance, Rascal). |
 | 11 | Hardened p¢ Chip | Hardened chip: lies over its stack (no worth, no height) for its turns, so each fee takes one chip. Made by Brace (Insurance) and the Crown chip. A piercing fee destroys it, a Cloud's rain washes it off; your own cleansing keeps it. |
@@ -49,14 +49,14 @@ Library under **Chip list**, with each chip's traits (see **Traits**). Statuses 
 | 34 | Poison -1¢  Chip | Poison: Envenom. |
 | 35 | Boom -5¢ Chip | Boom: Rig. |
 | 36 | Dynamite Chip | Dynamite: the Fuse trick (Expense, Technician). |
-| 37 | Black Hole Chip | Black Hole: a Calamity, a hole in space on a Bar space. Anything put on it is gone; each turn, and whenever a Correction moves chips, it consumes the bottom chip of a stack next to it. |
+| 37 | Black Hole Chip | Black Hole: a Calamity, a hole in space on a Stake space. Anything put on it is gone; each turn, and whenever a Correction moves chips, it consumes the bottom chip of a stack next to it. |
 | 38 | UFO Chip | UFO creature: flying, 1 hit instance, stays a turn. Abducts a chip; a hit drives it off for a 5¢ Bounty. |
 | 39 | Mothership Chip | Mothership creature: flying, 10 hit instances (50¢ Bounty). |
 | 40 | Fairy Chip | Fairy creature: flying, 1 hit instance (5¢ Bounty). |
 | 41 | Unicorn Chip | Unicorn creature: 1 hit instance (5¢ Bounty). |
 | 42 | Heli-Chipter | Heli-Chipter: a shop chip (Rare) on top of a stack. The stack is flying and plays from the bottom: bids take the bottom chip and fees pay from the bottom up. |
 | 43 | Cloud Chip | Cloud: orbital weather that comes with Oceanic, Frosty and Earthen tables. It drifts, rains (Puddles, wet stacks, fire and frost washed off, plants grow faster) and throws lightning one turn in four. |
-| 44 | Worm Hole Chip | Worm Hole: a Calamity (Challenge tilt). Opens on an empty Meter space; chips that land on it are pulled through to your opponent's side. |
+| 44 | Worm Hole Chip | Worm Hole: a Calamity (Challenge tilt). Opens on an empty Bet space; chips that land on it are pulled through to your opponent's side. |
 | 45 | Volcano Chip | Volcano chips: the Volcano Calamity is a full stack, two spaces by two where there is room, that nothing can be placed on. Dormant after 4 turns, the spaces come back one stack height lower. |
 | 46 | Dragon Chip | Dragon creature: flying, 50 hit instances (250¢ Bounty). Breathes fire. |
 | 47 | Ward Chip | Ward chip: made at the table by Ward Off (Insurance). When the House settles, it cancels the largest fee charged to your position. |
@@ -74,7 +74,7 @@ Library under **Chip list**, with each chip's traits (see **Traits**). Statuses 
 | 59 | Clay Chip | Clay chip: a shop chip (Uncommon). |
 | 60 | Brick Chip | Brick chip: fire bakes Clay. |
 | 61 | Acid Chip | Acid: Melt. |
-| 62 | Upgrade Chip | Upgrade chip: made at the table by Tinker (Investment), on a Meter space. Each one puts a random die upgrade on every roll, for that roll only (a risk). |
+| 62 | Upgrade Chip | Upgrade chip: made at the table by Tinker (Investment), on a Bet space. Each one puts a random die upgrade on every roll, for that roll only (a risk). |
 | 63 | Tornado Chip | Tornado chip: the Tornado Calamity moves over your position with a strength of 2d6; a stack under it shorter than that is thrown about. |
 | 64 | Blizzard Chip | Blizzard: orbital weather as big as the table, from Polar tables (now and then) and the Blizzard Calamity (every fourth turn). It lasts a turn, then freezes every stack shorter than its strength (2d6), wet chips and Puddles. |
 | 65 | Ghost Chip | Ghost creature: fear. No trick can aim at its row (only spreads reach it), it cannot be damaged, and no overkill passes into or through its row. Bad for both Rollers. |
@@ -82,7 +82,7 @@ Library under **Chip list**, with each chip's traits (see **Traits**). Statuses 
 | 67 | Ghost Ship Chip | Ghost Ship creature: a vehicle with 100 hit instances. Sails across empty spaces to a Gold-topped stack and steals the Gold; sunk, it drops a Treasure chip with all it stole. |
 | 68 | Chip Chip | Chip Chip: food (+1 Steal for a turn, doubled when dipped). |
 | 69 | Dip Chip | Dip chip: a shop chip on its own space; the next 3 Chip Chips you eat are dipped for double. |
-| 70 | Dragon Roost Chip | Dragon Roost: one in two Spawner tilts. It takes a Bar space and calls a Dragon every third turn while no egg sits on it; the Dragon lays an egg chip on it. |
+| 70 | Dragon Roost Chip | Dragon Roost: one in two Spawner tilts. It takes a Stake space and calls a Dragon every third turn while no egg sits on it; the Dragon lays an egg chip on it. |
 | 71 | Dragon Egg Chip | Dragon Egg: 5 hit instances. Hatches after 5 hatch steps: one a turn, two on a Roost (3 turns), one more next to heat. Broken first, it never hatches. A trick totalling 10 or more hatches the eggs on your Roost at your opponent. |
 | 72 | Treasure Chip | Treasure chip: dropped by a sunk Ghost Ship. 50 to 100 Gold plus what it stole; one in ten carries a Cursed chip. |
 | 73 | Cursed Chip | Cursed chip: looks like a Gold chip. While it is in your pile, each turn one of Draw, Roll or Bid is 1 lower (never below 1). |

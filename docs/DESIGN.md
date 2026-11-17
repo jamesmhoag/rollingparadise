@@ -9,15 +9,15 @@ is not built yet. Tab names are in **bold**.
 ### Rollers (**Rollers**, **Position**)
 - Three classes with the workbook's numbers: Trickery / Ingenuity / Proficiency (draws, bids, rolls per turn),
   Charisma / Cunning / Conviction (reward per unused draw, bid, roll), Balance / Versatility / Depth (stack
-  height, Meter rows, Bar rows on a base of 3 / 2 / 3, five columns).
+  height, Bet rows, Stake rows on a base of 3 / 2 / 3, five columns).
 - Starting dice per class. Class deployment: Technician from the front, Hustler from the back, Rascal centred.
 
 ### The bout (**Bout**, **Plays**, **Effects**, **Tricks**, **Targeting**, **Game**)
 - Goal: deplete the opponent's Worth before they deplete yours.
 - A turn has four planning phases, then the House plays it (see **The turn** below). Draws, rolls and bids left
-  unused pay **as soon as their phase is passed**, as chips on the Meter at random spaces with room (lost if it is
+  unused pay **as soon as their phase is passed**, as chips on the Bet at random spaces with room (lost if it is
   full): unused draws make a **Steal chip** (Charisma) that steals from the Stage in the House phase, unused rolls
-  **Power chips** (Conviction), unused bids **Opportunity chips** (Cunning) (rotated in round 17). All added Power is Power chips on the Meter,
+  **Power chips** (Conviction), unused bids **Opportunity chips** (Cunning) (rotated in round 17). All added Power is Power chips on the Bet,
   one per point (Stir, an Investment trait, a Boost or Press bonus too): the same Power chip Empower makes. Each adds
   +1 to your roll effects for the turn (in the Investment phase, or at once if it arrives during play) and lasts that
   turn; nothing spends it. Both sides' chips appear when the phase closes, so you see your opponent's build up. Each step pill says
@@ -35,7 +35,7 @@ is not built yet. Tab names are in **bold**.
   Burst, Wave, Aura, Rain) with the workbook's minimum / increment / maximum space counts.
 - 26 tricks across the four types, named from the trick lists.
 - Flips: the top standard chip of a stack can be picked in the Roll phase alongside dice. It lands as 0 or its
-  worth, counts as a die of any type, uses a roll, and returns to the Meter when the trick has played (or when the
+  worth, counts as a die of any type, uses a roll, and returns to the Bet when the trick has played (or when the
   Roll phase closes, if it was left in the roll).
 - The House runs the resolution with two arms, one per Roller: it collects the bids, calls each phase, points both
   arms at the two tricks being played and the spaces they land on at the same time, posts both calls to the feed,
@@ -88,11 +88,11 @@ the pile. Click the pile to take its top chip back. Dice are not placed yet: the
 
 ### Overload
 A stack holds `3 + Balance` chips. When it is full:
-- A trick that adds chips to the stack it aims at (Block on the Meter, the maker tricks, Foretell, Conjure, Hand Off)
+- A trick that adds chips to the stack it aims at (Block on the Bet, the maker tricks, Foretell, Conjure, Hand Off)
   cannot aim at it: while aiming, full stacks are marked **FULL**.
-- Chips that would land there anyway (a Block trick's chips spilling past a full Meter, the Shield tilt, Opportunity
+- Chips that would land there anyway (a Block trick's chips spilling past a full Bet, the Shield tilt, Opportunity
   chips, a maker's spread onto a full neighbour) are **lost, like overkill**: the trick plays, the feed says how many
-  had no room, and nothing extra is added. This **Meter overflow** counts with wasted overkill toward the pressure the
+  had no room, and nothing extra is added. This **Bet overflow** counts with wasted overkill toward the pressure the
   House reads for its tilts.
 
 ### Debt
@@ -127,7 +127,7 @@ is additive: chips the game had that are not on it stay in the game.
 The Library's **Chip list** tab shows all 97 rows with a status (built, partly built, needs detail) and, for
 the ones that cannot be built yet, what is missing; `docs/CHIP-STATUS.md` is the same list as a document.
 - **Resist chips** come from Resist Cards (found in the dodgy corner, r 2 or 3): one sits at the base of a front
-  Bar stack each bout and deters fees under r¢ on it — debt resistance, the way a Red chip resists fire.
+  Stake stack each bout and deters fees under r¢ on it — debt resistance, the way a Red chip resists fire.
 - **Food** (Chocolate, Chip Chip with Dip, Fish 'n Chip, Hamburger and Bun) is sold at the Chip Exchange and goes on
   top of a stack; Honey (from Bumble Bees) and Eggs (from a Roost) are food made in the match. In the **Drink phase** that closes each round you may sip your drink once and eat one
   food chip (double-click it on top of one of your stacks); both work from the next turn. Food
@@ -136,10 +136,10 @@ the ones that cannot be built yet, what is missing; `docs/CHIP-STATUS.md` is the
   blocks bidding from that stack, and a fee knocks it off.
 - **Effect chips made by tricks.** An effect that works over several turns is a chip on the table, put there by the
   trick at the space it aims at and doing its work in that trick's phase each turn until it wears off. You aim a maker
-  at the area its chip belongs in: Investment makers at any Meter space with room (empty or not), Insurance and
+  at the area its chip belongs in: Investment makers at any Bet space with room (empty or not), Insurance and
   Correction makers at a stack they protect or clear; the chips are placed when it plays. These used
   to be sold at the Chip Exchange; an effect a trick can make is not sold. Each has its maker (Investment: Empower →
-  Power, Throttle → Control, Load → Boosted, Shave → Cheapened, Tinker → Upgrade (on a Meter space), Charm → Lucky,
+  Power, Throttle → Control, Load → Boosted, Shave → Cheapened, Tinker → Upgrade (on a Bet space), Charm → Lucky,
   Stow → Nest Egg, Echo → Mimic (on top); Insurance: Cushion → Reducer, Ward Off → Ward, Recoil → Rebound, Electrify →
   Zap, Moor → Anchor, Veil → Transpara, Shade → Shadow; Correction: Attune → Harmony). How many and for how long come
   from the roll total (`make` on the trick in `js/data.js`). Power, Control and Lucky act in the Investment phase,
@@ -155,10 +155,10 @@ the ones that cannot be built yet, what is missing; `docs/CHIP-STATUS.md` is the
   down the lane as usual. The chip can be bid but breaks if any fee reaches it; still on your table when the bout
   ends, win or lose, it pays its worth.
 - **Zap** (electric: a fee of 3¢ or less shocks the attacker, a bigger one shorts it out), **Boosted** (+1 to every
-  die you roll per chip) and **Cheapened** (−1 to every die your opponent rolls per chip), **Upgrade** (on the Meter:
+  die you roll per chip) and **Cheapened** (−1 to every die your opponent rolls per chip), **Upgrade** (on the Bet:
   each one puts a random die upgrade, good or bad, on every roll for that roll only). Since round 15 these are made by
   tricks (Electrify, Load, Shave, Tinker), not sold.
-- **Worm Hole** joins the Calamities (an empty Meter space that pulls chips through to the opponent's side). One in
+- **Worm Hole** joins the Calamities (an empty Bet space that pulls chips through to the opponent's side). One in
   two **Spawner** tilts is a **Dragon Roost**: it calls a Dragon every third turn, which nests and lays an egg; while
   the egg sits there no Dragon comes, and a trick totalling 10 or more hatches it onto your opponent.
 - Also from the list, sold at the Chip Exchange: **Tree** (Rare; planted on an empty space, grows a chip a turn,
@@ -271,7 +271,7 @@ Subdued (an opponent's Saturate), Enfeebled next turn (Rattle's bonus), and Resi
 Hop's bonuses), so an effect that carries over shows before it lands. Effects that last several turns on a stack are
 real chips in the stacks instead (see **Effect chips made by tricks**). A chip's size is the
 area it covers, in spaces squared: 1×1 for one thing, 2×2 for every roll effect, 3×3 for the whole position. Chips
-only stack with chips of the same size. Help lies in the Meter, harm in the Bar. Hover a space to read the effect
+only stack with chips of the same size. Help lies in the Bet, harm in the Stake. Hover a space to read the effect
 chips lying on it. (Holes, Black Holes, Volcanoes, Worm Holes and Roosts are already space chips; creatures fly.)
 
 ### Hover detail
@@ -282,7 +282,7 @@ traits are listed as **properties** (key and value, two columns), and only in ve
 
 Right-click anywhere to switch every hover and the table prompts between verbose (rules spelled out) and concise
 (just the facts); the choice is remembered. A card, jacket or drink lists each attribute it changes, your value
-before and after, and what one point of it does. Dropping a card says what you lose. Hovering the METER or BAR label
+before and after, and what one point of it does. Dropping a card says what you lose. Hovering the BET or STAKE label
 of either Roller explains its size: depth (2 or 3 base rows + Versatility or Depth), width (5 lanes for everyone)
 and stack height (3 + Balance), with where each bonus comes from.
 
@@ -314,8 +314,8 @@ what you own, carry or wear is marked.
   wagered.
 - **Tilts are played by the House.** A tilt that is on opens the bout once, then in each House phase from turn 2 the
   House may play it again. Its chance is `base + per × pressure`. A Roller's **pressure** is a weighted mix
-  (`TILT_PRESSURE`) of the share of their starting chips paid to the House, the overkill and Meter overflow wasted on
-  their side (as a share of their start), how full their Meter is, and the worth sitting in it (as a share of their
+  (`TILT_PRESSURE`) of the share of their starting chips paid to the House, the overkill and Bet overflow wasted on
+  their side (as a share of their start), how full their Bet is, and the worth sitting in it (as a share of their
   start). Challenges read your pressure, Cheats your opponent's; each tilt chip's hover shows the breakdown. Pressure
   also sets the
   impact: more Holes, bigger creatures, more nests (and faster ones), a second Calamity; more Block chips, more
@@ -389,12 +389,12 @@ what you own, carry or wear is marked.
 | Debt chip values | One Debt marker per stack showing the exact amount owed (it used to be split into 5, 2 and 1¢ chips, which read like money). |
 | Which dice make the alley roll ("2dn") | Your two largest dice. Big dice are worth keeping for it. |
 | Wallet prices | Stats come from the **Gear** tab and prices from the **Gift Shop** tab, matched in order where the names differ. |
-| What a flip costs | One roll. The chip is not spent: it comes back to the Meter. |
+| What a flip costs | One roll. The chip is not spent: it comes back to the Bet. |
 | Which chips the shop sells | Those no trick, bonus or table effect makes. Chips a trick makes (Gold, Block, Counter, the hazards) are not sold. |
 | What a shop chip costs | Its tier's price; the tier is how strong it is meant to feel until it has been tuned. |
 | Opponent strength | Generated per floor from the class tables; quality and dice improve each floor. |
 | Which chips leave the shop | Those whose effect is an Investment, Insurance, Expense or Correction effect over time (they modify a roll or effect, mitigate fees, or correct the table). The electronics, plants, food, weather, Big and Little chips, resists and Uranium stay: they are things, not effects. |
-| An overloaded stack or Meter | Like overkill: the trick plays, what has no room is lost, and a trick that adds chips cannot aim at a full stack. |
+| An overloaded stack or Bet | Like overkill: the trick plays, what has no room is lost, and a trick that adds chips cannot aim at a full stack. |
 | A phase you cannot act in | Skipped on its own, with a line in the feed; unused actions still pay. |
 | Dice left in the roll | They must be used: every die that fits a shown trick has to go on one before Roll closes. One that fits nowhere stays in the roll with its value until a trick has room. No effect rerolls yet. |
 
@@ -443,7 +443,7 @@ bigger chip that fits.
 
 A first pass, checked by simulation (`npm run balance`). Bouts run about 4 turns in the intro and 7 to 14
 afterwards. With the AI playing both sides and no shopping, a Technician clears floor 1 far more often than a
-Rascal, whose Bar is the smallest. The numbers that drive this are in `FLOORS` in `js/data.js` and
+Rascal, whose Stake is the smallest. The numbers that drive this are in `FLOORS` in `js/data.js` and
 `genOpponent` in `js/run.js`.
 
 ### Tuning pass 1 (from the balance audit)
@@ -471,13 +471,13 @@ every class and most purchases a net loss, because the purse is both health and 
 
 ### Enemy variation (the real fix for the floor 2 wall)
 Every opponent on a floor is the same recipe: a random class, the floor's dice pool, its class tricks plus a few,
-and a Bar filled to a worth target. Worth is the only dial, so difficulty can only be tuned by worth, and a floor
+and a Stake filled to a worth target. Worth is the only dial, so difficulty can only be tuned by worth, and a floor
 feels like one wall. Ways to give opponents their own parameters and abilities, roughly in build order:
 
 1. **Temperaments.** A profile per opponent that sets its AI knobs (the audit's `draw`, `roll`, `bid` plans): a
    *Saver* banks actions, a *Spender* bids every bid, a *Grinder* rolls everything. Same worth, different fights, and
    a reason for the table 2 / table 3 choice.
-2. **Shaped positions.** Let worth buy shape instead of only chips: a low-worth opponent on a deep Bar, a rich one
+2. **Shaped positions.** Let worth buy shape instead of only chips: a low-worth opponent on a deep Stake, a rich one
    on a shallow one. `genOpponent` already builds `dims`; add a per-opponent BVD roll on top of the class.
 3. **Opponent gear.** Opponents wear a jacket, drink, and carry a few shop chips (Clay, Little, an element chip),
    read from the same tables the player shops from. This makes the shop chips' counters matter from both sides.

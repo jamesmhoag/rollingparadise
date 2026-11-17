@@ -6,7 +6,7 @@
 //   name, cls (a class id, or null for random), boss (a High Roller), floors [1-4], tables [0, 1, 2] (not bosses)
 //   purse (¢ on the table, replacing the floor's worth), wallet, jacket (a JACKETS id: its attribute changes apply),
 //   drink (a DRINKS id), chips ({ effect chip id: count }), layout ([{ r, c, chips: [value or effect chip id] }]: a
-//   precise Bar layout, row 0 = the Bar's front), deploy ({ spacing, stacking }), behave (see BEHAVE),
+//   precise Stake layout, row 0 = the Stake's front), deploy ({ spacing, stacking }), behave (see BEHAVE),
 //   phases (High Rollers: [{ below, behave, cheat: { dice, tricks } }], switched to when Worth falls below `below`
 //   of what they sat down with; a cheat adds that many dice to the pouch and draws that many tricks at once)
 
