@@ -4,7 +4,7 @@
   --felt: #0b0719; --felt-2: #04020a; --night: #06040f; --ink: #020108;
   --gold: #7df3ff; --gold-2: #2aa7c4; --cream: #eefbff; --dim: #93a3c8; --line: rgba(150, 215, 255, .16);
   --coral: #ff86ea; --pink: #ff86ea; --amber: #ffd76a; --good: #7dffb5; --bad: #ff7096; --violet: #b08cff; --sky: #63c4ff;
-  --ease: cubic-bezier(.22, .8, .24, 1); --display: 'Century Gothic', 'Avant Garde', Futura, 'Avenir Next', 'Trebuchet MS', system-ui, sans-serif; --script: 'Brush Script MT', 'Segoe Script', 'Snell Roundhand', 'Apple Chancery', cursive;
+  --ease: cubic-bezier(.22, .8, .24, 1); --display: 'Didact Gothic', 'Century Gothic', 'Avant Garde', Futura, 'Avenir Next', 'Trebuchet MS', system-ui, sans-serif; --script: 'Yellowtail', 'Brush Script MT', 'Segoe Script', 'Snell Roundhand', 'Apple Chancery', cursive;
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; background: radial-gradient(ellipse at 50% 30%, #150a2e, #020106 75%); overflow: hidden; }
@@ -362,9 +362,9 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 
 /* ---------- table felts ---------- */
 .table-felt { position: absolute; left: 22px; right: 22px; top: 92px; height: 296px; border-radius: 46px; pointer-events: auto; z-index: 0; opacity: .55;
-  background: radial-gradient(ellipse at 50% 45%, var(--fa), var(--fb) 78%); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--fr) 55%, transparent), inset 0 0 40px rgba(0, 0, 0, .55), 0 0 22px color-mix(in srgb, var(--fa) 35%, transparent); }
+  background: var(--ftex, none), radial-gradient(ellipse at 50% 45%, var(--fa), var(--fb) 78%); background-blend-mode: soft-light, normal; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--fr) 55%, transparent), inset 0 0 40px rgba(0, 0, 0, .55), 0 0 22px color-mix(in srgb, var(--fa) 35%, transparent); }
 .table-felt::after { content: ''; position: absolute; inset: 0; border-radius: inherit; opacity: .25; background: repeating-linear-gradient(45deg, rgba(255, 255, 255, .05) 0 2px, transparent 2px 5px); }
-.gfelt { display: inline-block; width: 64px; height: 40px; border-radius: 50%; flex: none; background: radial-gradient(ellipse, var(--fa), var(--fb) 80%); border: 2px solid var(--fr); box-shadow: 0 0 10px color-mix(in srgb, var(--fa) 50%, transparent), inset 0 -4px 8px rgba(0, 0, 0, .4); }
+.gfelt { display: inline-block; width: 64px; height: 40px; border-radius: 50%; flex: none; background: var(--ftex, none), radial-gradient(ellipse, var(--fa), var(--fb) 80%); background-blend-mode: soft-light, normal; border: 2px solid var(--fr); box-shadow: 0 0 10px color-mix(in srgb, var(--fa) 50%, transparent), inset 0 -4px 8px rgba(0, 0, 0, .4); }
 
 /* ---------- upgrades, drawn on the upgraded thing ---------- */
 .die .ups { position: absolute; z-index: 2; right: -5px; bottom: -4px; display: flex; gap: 1px; pointer-events: none; }
@@ -664,3 +664,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .ocard.roll { grid-column: 1 / -1; min-height: 0; border-top-color: var(--gold); flex-direction: row; align-items: center; gap: 6px; }
 .die.static.mini { width: 18px; height: 18px; } .die.static.mini i { font-size: 9px; } .die.static.mini i::before { width: 10px; height: 10px; } .die.static.mini .marks { display: none; }
 .okit { grid-column: 1 / -1; font-size: 9.5px; color: var(--dim); text-align: center; letter-spacing: .08em; }
+
+/* ---------- resource files (js/content/assets.js) ---------- */
+img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; pointer-events: none; }
+.has-ico { color: transparent !important; background: var(--ico) center / 82% no-repeat; }

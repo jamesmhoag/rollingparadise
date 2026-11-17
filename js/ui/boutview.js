@@ -2,6 +2,7 @@
 // moved, faded or flipped to follow the bout state, so nothing ever pops between states.
 import { h, tip, wait, tween, swapText, setOn, pulse, syncList, toast, btn, refreshTip, redrawTip, box, vc, detail, paint } from './core.js';
 import { chipSig, chipGlyph, chipName, chipText, chipTip, dieTip, trickTip, trickWord, trickWords, statTip, drinkTip, dieMarks, dieClass, trickLook, feltStyle, seenAs, traitsOf, traitsHtml, dieEl } from './parts.js';
+import { iconKids, iconFill } from './icons.js';
 import { flyerTraits } from '../traits.js';
 import { openLibrary } from './library.js';
 import * as D from '../data.js';
@@ -351,7 +352,7 @@ export function boutScene(root, bout, ctx, onDone) {
       if (!el) { el = h('div', { class: `fxchip ${t.good ? 'good' : 'bad'}` }, h('i'), h('b'), h('small')); fxLayer.append(el); fxEls.set(k, el); el.style.opacity = '0'; requestAnimationFrame(() => { el.style.opacity = ''; }); }
       const rr = t.si === 0 ? t.r + t.n - 1 : t.r, p = cellPos(t.si, rr, t.c), w = t.n * cw[t.si], hh = t.n * CH, pad = 4 + (3 - t.n);
       Object.assign(el.style, { left: `${p.x + pad}px`, top: `${p.y + pad - t.lvl * 5}px`, width: `${w - pad * 2}px`, height: `${hh - pad * 2}px`, zIndex: 1 + t.lvl });
-      el.className = `fxchip s${t.n} ${t.good ? 'good' : 'bad'}`; el.children[0].textContent = t.glyph; el.children[1].textContent = t.value === '' ? '' : String(t.value); el.children[2].textContent = t.name;
+      el.className = `fxchip s${t.n} ${t.good ? 'good' : 'bad'}`; iconFill(el.children[0], 'chip:' + t.key, t.glyph); el.children[1].textContent = t.value === '' ? '' : String(t.value); el.children[2].textContent = t.name;
     }
     for (const [k, el] of fxEls) if (!keep.has(k)) { el.style.opacity = '0'; fxEls.delete(k); setTimeout(() => el.remove(), 400); }
   }
@@ -465,15 +466,15 @@ export function boutScene(root, bout, ctx, onDone) {
       if (debt) { const next = B.debtTarget(cell); tags.push({ k: `${si}:${r}:${c}`, si, r, c, text: next ? `${debt} of ${next.value}¢` : `owes ${debt}` }); } } });
     syncTags(tags);
     // creatures fly over the stacks, bees with them; orbital chips (weather, vehicles) ride above them
-    const flyers = [...bout.creatures.map((cr) => ({ key: 'c' + cr.id, side: cr.side, r: cr.r, c: cr.c, gone: cr.gone, late: cr.arrive > bout.turn, glyph: D.CREATURES[cr.kind].glyph, cls: `creature cr-${cr.kind}`,
+    const flyers = [...bout.creatures.map((cr) => ({ key: 'c' + cr.id, side: cr.side, r: cr.r, c: cr.c, gone: cr.gone, late: cr.arrive > bout.turn, icon: 'creature:' + cr.kind, glyph: D.CREATURES[cr.kind].glyph, cls: `creature cr-${cr.kind}`,
       tip: () => `<b>${D.CREATURES[cr.kind].name}</b>${D.CREATURES[cr.kind].hits ? ` <span class="dim">${D.CREATURES[cr.kind].hits - (cr.dmg || 0)} of ${D.CREATURES[cr.kind].hits} hits left</span>` : ''}<p>${D.CREATURES[cr.kind].text}</p>${cr.hold?.length ? `<p class="bad">Holds ${sum(cr.hold, (x) => x.value)}¢ of stolen Gold.</p>` : ''}${traitsHtml(flyerTraits(cr.kind))}` })),
-      ...bout.sides.flatMap((s) => s.bees.map((bee) => ({ key: 'b' + bee.id, side: s.idx, r: bee.r, c: bee.c, glyph: '🐝', cls: 'creature bee', tip: `<b>Bumble Bee</b> <span class="dim">${bee.life} turn${bee.life === 1 ? '' : 's'} left</span><p>A familiar from a Hive. It stings creatures over its table and pollinates Flowers into Honey.</p>` }))),
-      ...bout.sides.flatMap((s) => s.sky.filter((o) => D.ORBITALS[o.kind].size !== 'table').map((o) => ({ key: 's' + o.id, side: s.idx, r: o.r, c: o.c, glyph: D.ORBITALS[o.kind].glyph, cls: `creature orbital or-${o.kind}`, out: o.c < 0,
+      ...bout.sides.flatMap((s) => s.bees.map((bee) => ({ key: 'b' + bee.id, side: s.idx, r: bee.r, c: bee.c, icon: 'creature:bee', glyph: '🐝', cls: 'creature bee', tip: `<b>Bumble Bee</b> <span class="dim">${bee.life} turn${bee.life === 1 ? '' : 's'} left</span><p>A familiar from a Hive. It stings creatures over its table and pollinates Flowers into Honey.</p>` }))),
+      ...bout.sides.flatMap((s) => s.sky.filter((o) => D.ORBITALS[o.kind].size !== 'table').map((o) => ({ key: 's' + o.id, side: s.idx, r: o.r, c: o.c, icon: 'orbital:' + o.kind, glyph: D.ORBITALS[o.kind].glyph, cls: `creature orbital or-${o.kind}`, out: o.c < 0,
         tip: () => `<b>${D.ORBITALS[o.kind].name}</b>${o.str ? ` <span class="dim">strength ${o.str}</span>` : ''}<p>${D.ORBITALS[o.kind].text}</p>${traitsHtml(flyerTraits(o.kind, true))}` })))];
     const live = new Set();
     for (const f of flyers) {
       let el = els.creatures.get(f.key); const on = f.r >= 0 && !f.out, p = on ? cellPos(f.side, f.r, Math.max(0, f.c)) : { x: f.side === 0 ? 300 : 960, y: 44, w: 40 };
-      if (!el) { if (f.gone || f.late) continue; el = h('div', { class: f.cls, text: f.glyph, tip: f.tip }); layer.append(el); els.creatures.set(f.key, el); spawn(el, p.x, -40, ''); }
+      if (!el) { if (f.gone || f.late) continue; el = h('div', { class: f.cls, tip: f.tip }, ...iconKids(f.icon, f.glyph)); layer.append(el); els.creatures.set(f.key, el); spawn(el, p.x, -40, ''); }
       live.add(f.key);
       if (f.gone) { el.style.opacity = '0'; place(el, p.x + (f.side === 0 ? -200 : 200), -60); els.creatures.delete(f.key); setTimeout(() => el.remove(), 800); continue; }
       el.style.opacity = '1'; place(el, p.x + p.w / 2 - 16, p.y - (f.cls.includes('orbital') ? 26 : f.cls.includes('bee') ? 2 : 14));
