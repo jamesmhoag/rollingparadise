@@ -9,6 +9,7 @@ import { trickMaker, newTrick } from './trickmaker.js';
 import { chipMaker, newChip } from './chipmaker.js';
 import { classicChips } from '../chipmodel.js';
 import { tuner, TUNER_SECTIONS } from './tuner.js';
+import { testTable } from './testtable.js';
 import { classMaker, newClass, rosterMaker, newOpponent, rosterLabel, rosterSub } from './rostermaker.js';
 import { isMade } from '../trickmaker.js';
 
@@ -28,8 +29,8 @@ const entriesOf = (tb) => { const T = D.TABLES[tb]; const vals = Object.entries(
   return vals.length && vals.filter(([, v]) => isObj(v) && !Array.isArray(v)).length >= vals.length * 0.6 ? vals.map(([k]) => k) : null; };
 const label = (tb, k) => { const v = D.TABLES[tb][k]; return isObj(v) && typeof v.name === 'string' ? v.name : k; };
 
-export function buildScene(root) {
-  const ui = { tool: 'tricks', table: 'CLASSES', key: null, filter: '' }; // tool: 'tricks' (the trick maker) or 'tables'
+export function buildScene(root, opts = {}) {
+  const ui = { tool: opts.tool || 'tricks', table: 'CLASSES', key: null, filter: '' }; // tool: 'tricks' (the trick maker) or 'tables'
   const status = h('span', { class: 'sub' }), tables = h('div', { class: 'b-tables' }), entries = h('div', { class: 'b-entries' }), editor = h('div', { class: 'b-editor' });
   const filter = h('input', { class: 'b-filter', placeholder: t('build.filter'), oninput: (e) => { ui.filter = e.target.value.toLowerCase(); drawEntries(); } });
   const fileIn = h('input', { type: 'file', accept: '.js,.json', style: { display: 'none' }, onchange: (e) => importFile(e.target.files[0]) });
@@ -42,11 +43,12 @@ export function buildScene(root) {
   function drawStatus() { const n = B.count(); status.textContent = n ? t('build.status', { n }) : t('build.status.none'); }
   function drawTables() {
     const tool = (k, label) => h('button', { class: `b-item tool ${ui.tool === k ? 'on' : ''}`, text: label, onclick: () => { ui.tool = k; ui.key = null; ui.filter = ''; filter.value = ''; draw(); } });
-    tables.replaceChildren(h('span', { class: 'cap', text: t('build.group.makers') }), tool('tricks', t('maker.title')), tool('chips', t('chipmaker.title')), tool('classes', t('roster.class.title')), tool('roster', t('roster.title')), tool('tuner', t('tuner.title')),
+    tables.replaceChildren(h('span', { class: 'cap', text: t('build.group.makers') }), tool('tricks', t('maker.title')), tool('chips', t('chipmaker.title')), tool('classes', t('roster.class.title')), tool('roster', t('roster.title')), tool('tuner', t('tuner.title')), tool('test', t('test.title')),
       ...GROUPS.flatMap(([g, list]) => [h('span', { class: 'cap', text: t(g) }),
       ...list.filter((tb) => D.TABLES[tb]).map((tb) => h('button', { class: `b-item ${ui.tool === 'tables' && ui.table === tb ? 'on' : ''} ${B.changed(tb) ? 'ch' : ''}`, text: t(`build.table.${tb}`), onclick: () => { ui.tool = 'tables'; ui.table = tb; ui.key = null; ui.filter = ''; filter.value = ''; draw(); } }))]));
   }
   function drawEntries() {
+    if (ui.tool === 'test') { filter.style.display = 'none'; entries.replaceChildren(h('p', { class: 'sub', text: t('test.side') })); return; }
     if (ui.tool === 'tuner') {
       filter.style.display = 'none'; if (!TUNER_SECTIONS.includes(ui.key)) ui.key = TUNER_SECTIONS[0];
       entries.replaceChildren(...TUNER_SECTIONS.map((k) => h('button', { class: `b-item ${ui.key === k ? 'on' : ''} ${B.changed(D.subPath('TUNING', k)) ? 'ch' : ''}`, onclick: () => { ui.key = k; draw(); } }, h('b', { text: t(`tuner.${k}`) }))));
@@ -91,6 +93,7 @@ export function buildScene(root) {
       h('b', { text: label(ui.table, k) }), label(ui.table, k) !== k ? h('small', { text: k }) : null)));
   }
   function drawEditor() {
+    if (ui.tool === 'test') { editor.replaceChildren(h('h2', { text: t('test.title') }), testTable(draw, (o) => app.nav.test(o))); return; }
     if (ui.tool === 'tuner') { editor.replaceChildren(h('h2', { text: t(`tuner.${ui.key}`) }), h('p', { class: 'sub mono', text: ui.key === 'gear' ? '' : D.subPath('TUNING', ui.key) }), tuner(ui.key, draw, (tb) => { ui.tool = 'tables'; ui.table = tb; ui.key = null; draw(); })); return; }
     if (ui.tool === 'classes') { editor.replaceChildren(h('h2', { text: `${D.CLASSES[ui.key].hero} the ${D.CLASSES[ui.key].name}` }), h('p', { class: 'sub mono', text: D.subPath('CLASSES', ui.key) }), classMaker(ui.key, draw)); return; }
     if (ui.tool === 'roster') { editor.replaceChildren(h('h2', { text: rosterLabel(ui.key) }), h('p', { class: 'sub mono', text: D.subPath('ROSTER', ui.key) }), rosterMaker(ui.key, draw)); return; }

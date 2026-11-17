@@ -8,6 +8,7 @@ import * as D from '../data.js';
 import * as B from '../bout.js';
 import { planPhase, drinkPhase, bestTarget, seen as seenBy } from '../ai.js';
 import { sum } from '../util.js';
+import { t as tt } from '../text.js';
 
 const TOP = 100, CH = 50, PX = 590, OX = 690, CHIP = 32;
 const STAGE = [{ x: 624, y: 284 }, { x: 624, y: 178 }], HOUSE = { x: 624, y: 30 };
@@ -175,6 +176,7 @@ export function boutScene(root, bout, ctx, onDone) {
   const banner = h('div', { class: 'banner' });
   const fcLayer = h('div', { class: 'fc-layer' }); // fee forecasts and Debt tags over the stacks
   root.append(...frameEls, oppRun, layer, fcLayer, arms[0].el, arms[1].el, phaseCall, banner);
+  if (ctx?.test) root.append(testTools());
   // table-sized weather: a see-through sheet over each position (snow for a Blizzard, light for the Sun or Moon)
   const weatherEls = bout.sides.map((s, si) => { const a = cellPos(si, si === 0 ? s.rows - 1 : 0, 0), w = s.rows * cw[si];
     const el = h('div', { class: 'weather', style: { left: a.x + 'px', top: TOP + 'px', width: w + 'px', height: s.dims.cols * CH + 'px' } },
@@ -628,6 +630,10 @@ export function boutScene(root, bout, ctx, onDone) {
   }
   function clickCell(si, r, c) {
     if (ui.locked) return;
+    if (ui.sandbox?.op) { // the test table's chip tools
+      if (B.sandboxChip(bout, si, r, c, ui.sandbox.what(), ui.sandbox.op)) sync(); else nope(tt('test.tools.cannot'), els.cells[si][r][c]);
+      return;
+    }
     const cellEl = els.cells[si][r][c], e = me.run.find((x) => x.uid === ui.entry);
     if (ui.mode === 'target' && e) {
       if (B.setTarget(bout, me, e, { side: si, r, c })) return act(() => { ui.handAim.add(e.uid); setMode(null); });
@@ -803,6 +809,22 @@ export function boutScene(root, bout, ctx, onDone) {
     const seen = bout.phase === 'draw' ? opp.run.filter((e) => !ui.spyBefore.has(e.uid)).map(tn) : bout.phase === 'roll' ? [`${opp.pick.dice.length + opp.pick.flips.length} to throw`]
       : bout.phase === 'bid' ? opp.run.filter((e) => e.state === 'bid').map((e) => `${e.bidValue}¢ on ${tn(e)}`) : [...placed(opp), ...opp.run.filter((e) => e.state === 'bid' && e.target).map((e) => `${tn(e)} at ${at(e.target)}`)];
     feedPush(`Your Spy: ${opp.name} ${bout.phase === 'aim' ? 'aims' : bout.phase + 's'} ${seen.length ? names(seen) : 'nothing'}.`, 1);
+  }
+  // ---------- the test table's tools (Build mode) ----------
+  function testTools() {
+    const pick = h('select', {}, ...chipChoices().map(([label, list]) => h('optgroup', { label }, ...list.map(([v, l]) => h('option', { value: v, text: l })))));
+    const val = h('input', { type: 'number', min: 1, value: 1, title: tt('test.tools.value') });
+    const ops = ['add', 'change', 'remove'].map((op) => btn(tt(`test.tools.${op}`), () => { ui.sandbox.op = ui.sandbox.op === op ? null : op; mark(); }, tt(`test.tools.${op}.tip`), 'small'));
+    const mark = () => ops.forEach((b, i) => b.classList.toggle('on', ui.sandbox.op === ['add', 'change', 'remove'][i]));
+    ui.sandbox = { op: null, what: () => { const [k, id] = pick.value.split(':'); return k === 'made' ? { made: id } : k === 'shop' ? { shop: id } : { kind: id, value: Number(val.value) || 1 }; } };
+    return h('div', { class: 'test-tools' }, h('b', { text: tt(ctx.sandbox ? 'test.tools.sandbox' : 'test.tools.rules') }), pick, val, ...ops,
+      btn(tt('test.tools.leave'), () => onDone(), tt('test.tools.leave.tip'), 'small danger'));
+  }
+  function chipChoices() {
+    return [[tt('test.tools.table'), [['k:std', 'Royal Paradise chip (value)'], ['k:debt', 'Debt (value)'], ['k:block', D.CHIPS.block.name], ['k:counter', D.CHIPS.counter.name], ['k:opp', D.CHIPS.opp.name]]],
+      [tt('test.tools.hazards'), ['burn', 'acid', 'shock', 'corrupt', 'poison', 'boom', 'frost', 'lava'].map((k) => [`k:${k}`, D.CHIPS[k].name])],
+      [tt('test.tools.made'), Object.entries(D.MADE_CHIPS).map(([k, M]) => [`made:${k}`, M.name])],
+      [tt('test.tools.effect'), Object.entries(D.SHOP_CHIPS).map(([k, X]) => [`shop:${k}`, X.name])]].filter(([, l]) => l.length);
   }
   async function finish() {
     document.removeEventListener('keydown', onKey);
