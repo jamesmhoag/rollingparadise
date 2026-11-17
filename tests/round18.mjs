@@ -53,7 +53,7 @@ console.log('ok, round 18: dice materials, d12, Dice Shop, Bone dice');
   const fixed = (vals) => { let i = 0; return { int: () => vals[i++ % vals.length] - 1 }; }; // rolls these values
   ok(F.meltVolume([{ type: 'd4' }]) === 2 && F.meltVolume([{ type: 'd20' }]) === 10, 'a die melts to half its faces');
   ok(F.castNeed('d6') === 6, 'a cast needs one volume per face');
-  ok(F.castFor(['glass']) === 'glass' && F.castFor(['glass', 'metal', 'glass']) === 'sparkling' && F.castFor(['plastic', 'metal', 'glass']) === 'diamond', 'materials pick the cast');
+  ok(F.castFor(['glass']) === 'glass' && F.castFor(['glass', 'metal', 'glass']) === 'sparkling' && F.castFor(['plastic', 'metal', 'glass']) === null && F.castFor(['sparkling', 'glimmering', 'swirling']) === 'diamond', 'materials pick the cast');
   ok(F.forgeBlock({ type: 'd6', melt: [{ type: 'd4', mat: 'glass' }], dyes: [] }), 'too little volume blocks a cast');
   ok(F.forgeBlock({ type: 'd6', melt: [{ type: 'd6', mat: 'bone', bone: 'rigged', up: [] }, { type: 'd6' }], dyes: [] }), 'Bone dice cannot be melted');
   const eq2 = (a, b, m) => ok(a.join() === b.join(), `${m}: ${a.join()} vs ${b.join()}`);
@@ -98,12 +98,36 @@ console.log('ok, round 18: dice materials, d12, Dice Shop, Bone dice');
   eq2(F.mixDyes(['red', 'yellow']), ['orange'], 'Red + Yellow mix into Orange');
   eq2(F.mixDyes(['red', 'blue', 'yellow']), ['purple', 'yellow'], 'Red + Blue mix into Purple; the Yellow plays alone');
   eq2(F.mixDyes(['red', 'red']), ['red', 'red'], 'the same primary twice does not mix');
-  eq2(F.castFaces(fixed([1, 5, 2]), 'd6', 'metal', ['red', 'yellow']).faces, [7, 3, 3, 4, 7, 6], 'a Red + Yellow cast plays Orange');
+  eq2(F.castFaces(fixed([1, 5, 2]), 'd6', 'metal', F.mixDyes(['red', 'yellow'])).faces, [7, 3, 3, 4, 7, 6], 'a Red + Yellow cast plays Orange');
   ok(F.forgeBlock({ type: 'd4', melt: [{ type: 'd8', mat: 'metal' }], dyes: ['orange'] }), 'mixes are not bought: they come from two primaries');
   ok(!F.forgeBlock({ type: 'd4', melt: [{ type: 'd8', mat: 'metal' }], dyes: ['red', 'yellow', 'red', 'blue'] }), 'two mixes fill the two dye slots');
   ok(F.forgeBlock({ type: 'd4', melt: [{ type: 'd8', mat: 'metal' }], dyes: ['red', 'red', 'red'] }), 'three dyes that do not mix is too many');
   ok(R.forgeCost(run2, 'd6', ['red', 'yellow']) === R.forgeCost(run2, 'd6', ['red']) + R.forgeCost(run2, 'd6', ['yellow']) - R.forgeCost(run2, 'd6'), 'a mix costs its two primaries');
   ok(R.dieUpgradeBlock(run2, run2.dice[0], 'boost') === R.RETIRED, 'old upgrades are retired');
+  // ---------- mixing: floors, even volumes, matching rolls, doubles, the complex casts and Diamond ----------
+  const die = (mat, type = 'd6') => ({ type, mat, id: Math.random() });
+  eq2(F.mixDyes(['red', 'red', 'yellow', 'yellow', 'blue', 'blue']).sort(), ['green', 'orange', 'purple'], 'two of each primary mix into Orange, Purple and Green');
+  eq2(F.mixDyes(['red', 'yellow'], false), ['red', 'yellow'], 'before dye mixing opens, primaries play alone');
+  ok(/opens on floor/.test(F.forgeBlock({ type: 'd6', melt: [die('glass'), die('metal')], floor: 1 }) || ''), 'mixing materials opens on its floor');
+  ok(!F.forgeBlock({ type: 'd6', melt: [die('glass'), die('metal')], floor: D.MELT.unlock.mix }), 'Glass and Metal mix once open');
+  ok(/same volume/.test(F.forgeBlock({ type: 'd6', melt: [die('glass', 'd8'), die('metal', 'd4')], floor: 4 }) || ''), 'a mix needs equal volumes of each material');
+  const pl = F.forgePlan({ type: 'd6', melt: [die('glass'), die('metal')], floor: 4, pouch: [die('glass'), die('glass')] });
+  ok(/short: Metal/.test(pl.why || ''), 'a mix rolls one die of each of its materials: no spare Metal d6, no cast');
+  const pouch = [die('plastic'), die('metal'), die('glass')], pl2 = F.forgePlan({ type: 'd6', melt: [die('glass'), die('metal')], floor: 4, pouch });
+  ok(!pl2.why && pl2.rolled.map((d) => d.mat).join() === 'glass,metal', 'the mix rolls the spare Glass and Metal d6');
+  ok(F.castOut('sparkling') === 'sparkling' && F.castOut('glass') === 'glass', 'a mix comes out as its complex material');
+  ok(/only melt into a Diamond/.test(F.forgeBlock({ type: 'd6', melt: [die('sparkling'), die('sparkling')], floor: 4 }) || ''), 'complex dice only melt into a Diamond');
+  eq2(F.castFaces(fixed([2, 5]), 'd6', 'sparkling').faces, [1, 3, 3, 4, 7, 6], 'Sparkling: the higher becomes the sum, the lower the difference');
+  eq2(F.castFaces(fixed([2, 5]), 'd6', 'glimmering').faces, [1, 7, 3, 4, 0, 6], 'Glimmering: the higher becomes 0, the lower 7');
+  eq2(F.castFaces(fixed([1, 4]), 'd6', 'swirling').faces, [5, 2, 3, 3, 5, 6], 'Swirling: the face showing the higher roll becomes the difference, the lower the sum');
+  { let k = 0; const seq = [3, 3, 3, 3, 2, 6]; const res3 = F.castFaces({ int: () => seq[k++] - 1 }, 'd6', 'glimmering');
+    ok(res3.log[0].rolls.join() === '2,6' && /rolled again 2 times/.test(res3.log[0].text), 'doubles in a two-dice cast roll again'); }
+  const dia = [die('sparkling'), die('glimmering'), die('swirling')], prim = ['red', 'yellow', 'red', 'blue', 'blue', 'yellow'];
+  ok(/opens on floor/.test(F.forgeBlock({ type: 'd6', melt: dia, dyes: prim, floor: D.MELT.unlock.complex - 1 }) || ''), 'Diamond casting opens on its floor');
+  ok(/exactly/.test(F.forgeBlock({ type: 'd6', melt: dia, dyes: ['red', 'yellow'], floor: 4 }) || ''), 'a Diamond needs Orange, Purple and Green');
+  const pd = F.forgePlan({ type: 'd4', melt: dia, dyes: prim, floor: 4 });
+  ok(!pd.why && pd.reqs.length === 6 && pd.reqs.filter((q) => q.mat).map((q) => q.mat).join() === 'sparkling,glimmering,swirling', 'a Diamond rolls one die per complex material and one per secondary dye');
+  ok(F.castFaces(fixed([3, 3, 3, 3, 3, 3]), 'd6', 'diamond', pd.played).log[0].text.startsWith('Yahtzee'), 'six of a kind makes a Yahtzee Diamond');
   if (fails2.length) { console.log('FAIL ' + fails2.join('\nFAIL ')); process.exit(1); }
   console.log('ok, round 18: melting, casting, dyes, mixes and Diamond');
 }
