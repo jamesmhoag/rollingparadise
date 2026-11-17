@@ -280,6 +280,8 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
   high → the difference.
 - **The d10 stays.** It is not cast (not in the sheet's complexity list), but the Secret Shelf and the Grand
   quality die keep it.
+- **The Puddle is a chip** with no thickness that always sits at the bottom of its space. Water lays one; a made
+  trick can lay them (Puddle chips). Frozen over, it grounds the Frozen chips above it.
 - **Bar is the Stake and Meter is the Bet** everywhere the player reads them; code names are unchanged so saves load.
 - **The Stage** above each position holds bids and made chips. **The Pit** keeps every lost chip as it was; it can
   be seen, and effects that reach into it come later.
@@ -290,7 +292,6 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
 - **Diamond** is cast when all three materials are melted together, and rolls six dice. (The sheet only says "roll
   all six dice"; it could instead be all three dyes.)
 - **A mixed melt** comes out as the material with the most volume in it ("Sparkling Metal d8").
-- **Frozen chips** are grounded only when their space holds a Puddle.
 
 ### Still to build
 - **Effects that reach into the Pit.**
