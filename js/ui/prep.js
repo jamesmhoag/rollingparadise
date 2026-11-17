@@ -7,38 +7,39 @@ import * as R from '../run.js';
 import { barCapacity } from '../bout.js';
 import * as B from '../bout.js';
 import { cents, sum } from '../util.js';
+import { t } from '../text.js';
 
 // ---------- position planner ----------
 // A live preview of the Stake. Chips scale on and off as the mix changes.
 export function planner(getExtra, onChange) {
   const run = app.run, CH = 46, SZ = 24; let CW = 48;
   const board = h('div', { class: 'mboard', style: { transition: 'width .45s cubic-bezier(.22,.8,.24,1)', height: `${5 * CH + 16}px` } });
-  const chips = new Map(), cells = new Map(), labels = [h('div', { class: 'mlabel', text: 'STAKE' }), h('div', { class: 'mlabel', text: 'BET' })];
+  const chips = new Map(), cells = new Map(), labels = [h('div', { class: 'mlabel', text: t('prep.label.stake') }), h('div', { class: 'mlabel', text: t('prep.label.bet') })];
   board.append(...labels); for (const l of labels) { l.style.top = `${5 * CH + 3}px`; l.style.transition = 'left .45s, width .45s'; }
   const info = h('div', { class: 'row wrap' }), denomBox = h('div', { class: 'col list' }), resistBox = h('div', { class: 'col list' });
-  const seg = (key, opts) => { const el = h('div', { class: 'seg' }, opts.map(([v, label, tipText]) => btn(label, () => { run.plan[key] = v; update(); }, tipText))); el._sync = () => [...el.children].forEach((b, i) => b.classList.toggle('on', run.plan[key] === opts[i][0])); return el; };
-  const spacing = seg('spacing', [['row', 'By row', '<b>By row</b><p>Fill one row across before starting the next.</p>'], ['column', 'By column', '<b>By column</b><p>Fill one column front to back before starting the next.</p>'], ['random', 'Random', '<b>Random</b><p>Spaces are filled in a random order.</p>']]);
-  const stacking = seg('stacking', [['maxed', 'Maxed', '<b>Maxed</b><p>Each space is stacked to its full height before the next is started. Fewer, taller stacks.</p>'], ['balanced', 'Balanced', '<b>Balanced</b><p>One chip per space in turn. Wide and shallow.</p>'], ['random', 'Random', '<b>Random</b><p>Every chip lands on a random open space.</p>']]);
+  const seg = (key, opts) => { const el = h('div', { class: 'seg' }, opts.map(([v, id]) => btn(t(`prep.${key}.${id}`), () => { run.plan[key] = v; update(); }, t(`prep.${key}.${id}.tip`)))); el._sync = () => [...el.children].forEach((b, i) => b.classList.toggle('on', run.plan[key] === opts[i][0])); return el; };
+  const spacing = seg('spacing', [['row', 'row'], ['column', 'column'], ['random', 'random']]);
+  const stacking = seg('stacking', [['maxed', 'maxed'], ['balanced', 'balanced'], ['random', 'random']]);
   const worthEl = h('b', { class: 'num gold-t' }), countEl = h('b', { class: 'num' });
   const brushBox = h('div', { class: 'seg brushes' });
   const K = D.CLASSES[run.cls];
   const el = h('div', { class: 'col' },
-    h('div', { class: 'row between' }, h('h3', { text: 'Your position' }), h('span', { class: 'cap', tip: `<b>${K.name} deployment</b><p>Your chips are dealt out starting from the ${K.deploy === 'start' ? 'front left' : K.deploy === 'end' ? 'back right' : 'middle'} of your Stake. Colourful chips go down first, at the base of each stack.</p>`, text: `Deploys from the ${K.deploy === 'start' ? 'front' : K.deploy === 'end' ? 'back' : 'centre'}` })),
+    h('div', { class: 'row between' }, h('h3', { text: t('prep.position') }), h('span', { class: 'cap', tip: t('prep.deploy.tip', { name: K.name, from: t(`prep.deploy.at.${K.deploy === 'start' || K.deploy === 'end' ? K.deploy : 'mid'}`) }), text: t(`prep.deploy.${K.deploy === 'start' || K.deploy === 'end' ? K.deploy : 'mid'}`) })),
     h('div', { class: 'row', style: { alignItems: 'flex-start', gap: '16px' } }, board, h('div', { class: 'col grow' }, denomBox, resistBox)),
-    h('div', { class: 'row wrap' }, h('span', { class: 'cap', text: 'Spacing' }), spacing, h('span', { class: 'cap', text: 'Stacking' }), stacking),
-    h('div', { class: 'row wrap' }, h('span', { class: 'cap', text: 'Paint', tip: '<b>Paint chips</b><p>Pick a chip, then click and hold on a space in your Stake to stack chips there at a steady rate, and sweep across spaces to paint them as you go. The eraser takes chips off the same way. Steppers, Auto and Clear go back to automatic deployment.</p>' }), brushBox),
-    h('div', { class: 'row wrap' }, info, btn('Auto', () => { run.plan.layout = null; run.plan.counts = R.autoCounts(run, dims()); update(); }, '<b>Auto</b><p>Fill the Stake with the most valuable chips your purse affords, keeping some 1¢ chips to bid with.</p>', 'small'),
-      btn('Clear', () => { run.plan.layout = null; run.plan.counts = R.noCounts(); update(); }, null, 'small')));
-  info.append(h('span', { class: 'stat', tip: '<b>Position worth</b><p>The chips you put in your Stake. This is what you can lose to fees and what you have to bid with.</p>' }, h('em', { text: 'On the table' }), worthEl),
-    h('span', { class: 'stat', tip: '<b>Stake capacity</b><p>Stake rows × 5 spaces × stack height.</p>' }, h('em', { text: 'Chips' }), countEl));
+    h('div', { class: 'row wrap' }, h('span', { class: 'cap', text: t('prep.spacing') }), spacing, h('span', { class: 'cap', text: t('prep.stacking') }), stacking),
+    h('div', { class: 'row wrap' }, h('span', { class: 'cap', text: t('prep.paint'), tip: t('prep.paint.tip') }), brushBox),
+    h('div', { class: 'row wrap' }, info, btn(t('prep.auto'), () => { run.plan.layout = null; run.plan.counts = R.autoCounts(run, dims()); update(); }, t('prep.auto.tip'), 'small'),
+      btn(t('prep.clear'), () => { run.plan.layout = null; run.plan.counts = R.noCounts(); update(); }, null, 'small')));
+  info.append(h('span', { class: 'stat', tip: t('prep.worth.tip') }, h('em', { text: t('prep.worth') }), worthEl),
+    h('span', { class: 'stat', tip: t('prep.capacity.tip') }, h('em', { text: t('prep.capacity') }), countEl));
   const dims = () => R.rollerStats(run, getExtra()).dims;
   // ---------- painting chips ----------
   let brush = null, last = null, warned = false;
   function drawBrushes() {
     const denoms = D.DENOMS.filter((x) => x.floor <= R.chipFloor(run));
-    brushBox.replaceChildren(...denoms.map((x) => { const b = btn('', () => { brush = brush === x.value ? null : x.value; drawBrushes(); }, `<b>${cents(x.value)} brush</b><p>Click and hold on a Stake space to paint ${cents(x.value)} chips.</p>`, `small ${brush === x.value ? 'on' : ''}`);
+    brushBox.replaceChildren(...denoms.map((x) => { const b = btn('', () => { brush = brush === x.value ? null : x.value; drawBrushes(); }, t('prep.brush.tip', { amt: cents(x.value) }), `small ${brush === x.value ? 'on' : ''}`);
       b.append(chipEl({ kind: 'std', value: x.value }, 'sm')); return b; }),
-    btn('⌫', () => { brush = brush === 'erase' ? null : 'erase'; drawBrushes(); }, '<b>Eraser</b><p>Click and hold to take chips off, top first.</p>', `small ${brush === 'erase' ? 'on' : ''}`));
+    btn('⌫', () => { brush = brush === 'erase' ? null : 'erase'; drawBrushes(); }, t('prep.eraser.tip'), `small ${brush === 'erase' ? 'on' : ''}`));
     board.classList.toggle('painting', brush != null);
   }
   // the Stake as shown, as a painted layout to start from
@@ -48,15 +49,15 @@ export function planner(getExtra, onChange) {
   function paintAt(at, first) {
     if (first) warned = false;
     const d = dims(), m = d.meterRows, warn = (msg) => { if (!warned) toast(msg, 'warn'); warned = true; };
-    if (at.r < m) return warn('Paint in your Stake: the Bet fills during the bout.');
+    if (at.r < m) return warn(t('prep.paint.bet'));
     if (!run.plan.layout?.length) run.plan.layout = layoutNow();
     const L = run.plan.layout, br = at.r - m; let sp = L.find((x) => x.r === br && x.c === at.c);
     if (brush === 'erase') { if (!sp?.chips.length) return; sp.chips.pop(); }
     else {
       if (!sp) { sp = { r: br, c: at.c, chips: [] }; L.push(sp); }
-      if (sp.chips.length >= d.stackMax) return warn('That stack is full.');
-      if (R.planWorth(R.layoutCounts(L)) + brush > run.purse) return warn('Your purse does not stretch that far.');
-      if (R.planCount(R.layoutCounts(L), run.plan.resist) >= barCapacity(d)) return warn('Your Stake is full.');
+      if (sp.chips.length >= d.stackMax) return warn(t('prep.stackFull'));
+      if (R.planWorth(R.layoutCounts(L)) + brush > run.purse) return warn(t('prep.purseShort'));
+      if (R.planCount(R.layoutCounts(L), run.plan.resist) >= barCapacity(d)) return warn(t('prep.stakeFull'));
       sp.chips.push(brush);
     }
     run.plan.layout = L.filter((x) => x.chips.length); if (!run.plan.layout.length) { run.plan.layout = null; run.plan.counts = R.noCounts(); }
@@ -66,9 +67,9 @@ export function planner(getExtra, onChange) {
   drawBrushes();
   const total = () => R.planCount(run.plan.counts, run.plan.resist);
   function change(fn) { fn(); update(); }
-  function bump(v, n, ev) { if (run.plan.layout) { run.plan.layout = null; toast('Back to automatic deployment.'); } const step = ev.shiftKey ? 10 : 1, c = run.plan.counts, cap = barCapacity(dims()); let k = step * n;
+  function bump(v, n, ev) { if (run.plan.layout) { run.plan.layout = null; toast(t('prep.backToAuto')); } const step = ev.shiftKey ? 10 : 1, c = run.plan.counts, cap = barCapacity(dims()); let k = step * n;
     if (n > 0) k = Math.min(k, cap - total(), Math.floor((run.purse - R.planWorth(c)) / v)); else k = -Math.min(-k, c[v] || 0);
-    if (!k) { toast(n > 0 ? (cap - total() <= 0 ? 'Your Stake is full.' : 'Your purse does not stretch that far.') : 'None of those to remove.', 'warn'); return; }
+    if (!k) { toast(t(n > 0 ? (cap - total() <= 0 ? 'prep.stakeFull' : 'prep.purseShort') : 'prep.noneToRemove'), 'warn'); return; }
     change(() => { c[v] = (c[v] || 0) + k; }); }
   function update() {
     const d = dims(), extra = getExtra(); let c = run.plan.counts;
@@ -77,7 +78,7 @@ export function planner(getExtra, onChange) {
       c = run.plan.counts = R.autoCounts(run, d);
       for (const v of D.DENOM_VALUES) { const over = total() - barCapacity(d); if (over <= 0) break; c[v] -= Math.min(c[v] || 0, over); }
       if (total() > barCapacity(d)) run.plan.resist = {}; }
-    if (run.plan.layout && !R.validLayout(run, d)) { run.plan.layout = null; c = run.plan.counts = R.autoCounts(run, d); toast('Your painted chips no longer fit: back to automatic deployment.', 'warn'); }
+    if (run.plan.layout && !R.validLayout(run, d)) { run.plan.layout = null; c = run.plan.counts = R.autoCounts(run, d); toast(t('prep.paintNoFit'), 'warn'); }
     if (run.plan.layout) c = run.plan.counts = R.layoutCounts(run.plan.layout);
     const side = R.previewPosition(run, c, { position: extra.position, resist: run.plan.resist }); last = side;
     // cells
@@ -98,14 +99,14 @@ export function planner(getExtra, onChange) {
     for (const [k, e] of chips) if (!seen.has(k)) { const t = e.style.transform.replace(/ scale\([^)]*\)/, ''); e.style.opacity = 0; e.style.transform = `${t} scale(.2)`; chips.delete(k); setTimeout(() => e.remove(), 450); }
     // controls
     const denoms = D.DENOMS.filter((x) => x.floor <= R.chipFloor(run));
-    syncList(denomBox, denoms, (x) => x.value, (x) => { const n = h('b', { class: 'num' }); const row = h('div', { class: 'row' }, chipEl({ kind: 'std', value: x.value }), h('span', { class: 'grow', text: x.name ? `${x.name} chips (${cents(x.value)})` : `${x.value}¢ chips` }),
-      h('div', { class: 'stepper' }, btn('−', (ev) => bump(x.value, -1, ev), null, 'small'), n, btn('+', (ev) => bump(x.value, 1, ev), null, 'small'))); row._n = n; row._tip = () => `${chipTip({ kind: 'std', value: x.value })}<p class="dim">Hold Shift to change by 10.</p>`; row.classList.add('has-tip'); return row; },
+    syncList(denomBox, denoms, (x) => x.value, (x) => { const n = h('b', { class: 'num' }); const row = h('div', { class: 'row' }, chipEl({ kind: 'std', value: x.value }), h('span', { class: 'grow', text: x.name ? t('prep.denom.named', { name: x.name, amt: cents(x.value) }) : t('prep.denom', { amt: cents(x.value) }) }),
+      h('div', { class: 'stepper' }, btn('−', (ev) => bump(x.value, -1, ev), null, 'small'), n, btn('+', (ev) => bump(x.value, 1, ev), null, 'small'))); row._n = n; row._tip = () => `${chipTip({ kind: 'std', value: x.value })}${t('prep.shift')}`; row.classList.add('has-tip'); return row; },
     (row, x) => tween(row._n, c[x.value] || 0, undefined, 250));
     const owned = Object.keys(D.SHOP_CHIPS).filter((k) => R.owned(run, k) > 0);
     syncList(resistBox, owned, (k) => k, (k) => { const n = h('b', { class: 'num' }); const row = h('div', { class: 'row' }, chipEl({ kind: 'std', value: 1, resist: k }), h('span', { class: 'grow' }),
       h('div', { class: 'stepper' }, btn('−', () => change(() => { run.plan.resist[k] = Math.max(0, (run.plan.resist[k] || 0) - 1); }), null, 'small'), n,
-        btn('+', () => { if ((run.plan.resist[k] || 0) >= R.owned(run, k)) return toast('You have no more of those.', 'warn'); if (total() >= barCapacity(dims())) return toast('Your Stake is full.', 'warn'); change(() => { run.plan.resist[k] = (run.plan.resist[k] || 0) + 1; }); }, null, 'small'))); row._n = n; row._tip = () => chipTip({ kind: 'std', value: 1, resist: k }); row.classList.add('has-tip'); return row; },
-    (row, k) => { row.children[1].textContent = `${D.SHOP_CHIPS[k].name}s (own ${R.owned(run, k)})`; tween(row._n, run.plan.resist[k] || 0, undefined, 250); });
+        btn('+', () => { if ((run.plan.resist[k] || 0) >= R.owned(run, k)) return toast(t('prep.noMore'), 'warn'); if (total() >= barCapacity(dims())) return toast(t('prep.stakeFull'), 'warn'); change(() => { run.plan.resist[k] = (run.plan.resist[k] || 0) + 1; }); }, null, 'small'))); row._n = n; row._tip = () => chipTip({ kind: 'std', value: 1, resist: k }); row.classList.add('has-tip'); return row; },
+    (row, k) => { row.children[1].textContent = t('prep.owned', { name: D.SHOP_CHIPS[k].name, n: R.owned(run, k) }); tween(row._n, run.plan.resist[k] || 0, undefined, 250); });
     spacing._sync(); stacking._sync();
     tween(worthEl, R.planWorth(c), cents, 300); tween(countEl, total(), (n) => `${Math.round(n)}/${barCapacity(d)}`, 300);
     onChange?.();
@@ -115,7 +116,7 @@ export function planner(getExtra, onChange) {
 
 function oppBox(opp, label) {
   return h('div', { class: 'box col', tip: () => oppTip(opp) }, h('span', { class: 'cap', text: label }), h('h2', { text: opp.name }),
-    h('p', { class: 'sub', text: `${opp.title ? opp.title + ' · ' : ''}${D.CLASSES[opp.cls].name} · ${cents(opp.worth)} on the table` }),
+    h('p', { class: 'sub', text: `${opp.title ? opp.title + ' · ' : ''}${t('prep.opp.line', { cls: D.CLASSES[opp.cls].name, amt: cents(opp.worth) })}` }),
     h('div', { class: 'stats' }, ['trickery', 'ingenuity', 'proficiency'].map((k) => h('span', { class: 'stat', tip: () => statTip(k, opp.tip[k]) }, h('em', { text: D.STATS[k].short }), h('b', { text: opp.tip[k] })))),
     h('p', { class: 'sub', text: diceSummary(opp.dice) }), h('div', { class: 'inv' }, opp.tricks.map((t) => trickTag(t, opp.cls))));
 }
@@ -130,50 +131,50 @@ function oppBoard(opp) {
     const chips = side.grid[r][c].chips, top = chips[chips.length - 1];
     const cell = h('div', { class: `ocell ${r < m ? 'meter' : ''}`, style: { left: `${r * CW}px`, top: `${c * CH}px`, width: `${CW - 2}px`, height: `${CH - 2}px` } });
     if (top) { cell.append(h('span', { class: `chip xs ${chipSig(top)}` }, h('i', { text: chipGlyph(top) }))); if (chips.length > 1) cell.append(h('b', { class: 'ocount', text: chips.length }));
-      cell._tip = () => `<b>${chips.length} chip${chips.length > 1 ? 's' : ''}</b><p>${chips.slice().reverse().map((ch) => `${chipGlyph(ch)}`).join(' · ')}</p><p class="dim">${cents(sum(chips, (ch) => (ch.kind === 'std' ? ch.value : 0)))} in this stack.</p>`; cell.classList.add('has-tip'); }
+      cell._tip = () => t('prep.stack.tip', { n: chips.length, chips: chips.slice().reverse().map((ch) => `${chipGlyph(ch)}`).join(' · '), amt: cents(sum(chips, (ch) => (ch.kind === 'std' ? ch.value : 0))) }); cell.classList.add('has-tip'); }
     board.append(cell);
   }
-  return h('div', { class: 'box col' }, h('div', { class: 'row between' }, h('span', { class: 'cap', text: 'Their position' }), h('span', { class: 'sub', text: `${cents(B.worth(side))} · Bet ${m} · Stake ${side.dims.barRows} · stacks of ${side.dims.stackMax}` })),
-    board, h('p', { class: 'sub', text: 'Laid out as they will sit down: their Bet faces the Stage, on the left.' }));
+  return h('div', { class: 'box col' }, h('div', { class: 'row between' }, h('span', { class: 'cap', text: t('prep.theirs') }), h('span', { class: 'sub', text: t('prep.theirs.line', { amt: cents(B.worth(side)), bet: m, stake: side.dims.barRows, height: side.dims.stackMax }) })),
+    board, h('p', { class: 'sub', text: t('prep.theirs.sub') }));
 }
 
 // ---------- commitment ----------
 export function prepScene(root, kind, idx) {
   const run = app.run, fs = run.fs, entry = kind === 'boss' ? fs.boss : fs.tables[idx], opp = entry.opp, prep = R.newPrep(run, kind, idx);
   entry.seen = true;
-  const H = hud(D.FLOORS[run.floor].name, kind === 'boss' ? 'Head table · High Roller' : `Table ${idx + 1} · ${D.feltOf(entry.felt).name} felt`);
+  const H = hud(D.FLOORS[run.floor].name, kind === 'boss' ? t('prep.sub.boss') : t('prep.sub.table', { n: idx + 1, felt: D.feltOf(entry.felt).name }));
   const multEl = h('div', { class: 'mult num' }), wagerEl = h('b', { class: 'num gold-t' }), winEl = h('b', { class: 'num good' }), posEl = h('b', { class: 'num' });
   const tiltBox = h('div', { class: 'col' });
   const P = planner(() => ({ position: prep.tilts.position }), sync);
-  const ddBtn = btn('Double Down', () => { prep.dd = !prep.dd; if (prep.dd) for (const [k, T] of Object.entries(D.TILTS)) prep.tilts[k] = T.kind === 'challenge' && fs.lastWin.tilts[k] && R.tiltOpen(run, k) ? 1 : 0; P.update(); },
-    '<b>Double Down</b><p>Only after a win. Doubles the wager multiplier (up to ×6) with the same Challenge tilts as your last bout and no Cheat tilts. Win it and the High Roller sees you next, and a Suite Key Card is yours.</p>');
+  const ddBtn = btn(t('prep.dd'), () => { prep.dd = !prep.dd; if (prep.dd) for (const [k, T] of Object.entries(D.TILTS)) prep.tilts[k] = T.kind === 'challenge' && fs.lastWin.tilts[k] && R.tiltOpen(run, k) ? 1 : 0; P.update(); },
+    t('prep.dd.tip'));
   // each tilt is on or off; while on, the House may play it during the bout
   const rows = Object.entries(D.TILTS).map(([k, T]) => {
-    const tg = btn('Off', () => { if (prep.dd) return toast('Double Down keeps your last Challenges and no Cheats.', 'warn'); if (!R.setTilt(run, prep, k, !prep.tilts[k])) return toast(`Opens on floor ${T.floor}.`, 'warn'); P.update(); }, null, 'small');
-    const el = h('div', { class: `tilt ${T.kind}`, tip: () => `<b>${T.name}</b> <span class="dim">${T.kind === 'challenge' ? `Challenge tilt — +${T.mult} to the multiplier, and a House bounty of ${Math.round(T.mult * 100)}% of your opponent's worth on a win` : `Cheat tilt — −${T.mult} to the multiplier, and a House cut of ${Math.round(T.mult * 100)}% of your opponent's worth on a win`}</span><p>${T.text}</p>${T.base || T.per ? `<p class="dim">The House's chance to play it each turn: ${Math.round(T.base * 100)}% plus up to ${Math.round(T.per * 100)}% more, as ${T.kind === 'challenge' ? 'you lose' : 'your opponent loses'} chips to the House.</p>` : ''}${R.tiltOpen(run, k) ? '' : `<p class="bad">Opens on floor ${T.floor}.</p>`}` },
+    const tg = btn(t('prep.off'), () => { if (prep.dd) return toast(t('prep.dd.locked'), 'warn'); if (!R.setTilt(run, prep, k, !prep.tilts[k])) return toast(t('prep.tilt.opens', { floor: T.floor }), 'warn'); P.update(); }, null, 'small');
+    const el = h('div', { class: `tilt ${T.kind}`, tip: () => `<b>${T.name}</b> <span class="dim">${t(`prep.tilt.${T.kind === 'challenge' ? 'challenge' : 'cheat'}`, { mult: T.mult, pct: Math.round(T.mult * 100) })}</span><p>${T.text}</p>${T.base || T.per ? t(`prep.tilt.chance.${T.kind === 'challenge' ? 'challenge' : 'cheat'}`, { base: Math.round(T.base * 100), per: Math.round(T.per * 100) }) : ''}${R.tiltOpen(run, k) ? '' : `<p class="bad">${t('prep.tilt.opens', { floor: T.floor })}</p>`}` },
       h('span', {}, `${T.kind === 'challenge' ? '⚠' : '✚'} ${T.name}`), h('span', { class: 'dim', text: `${T.kind === 'challenge' ? '+' : '−'}${T.mult}` }), tg);
     return { k, el, tg }; });
   tiltBox.append(...rows.map((r) => r.el));
-  const go = btn('Sit down', () => { if (P.worth() < 1) return toast('Put at least one chip in your position.', 'warn'); app.nav.bout(R.startTable(run, prep)); }, '<b>Sit down</b><p>Starts the bout. Once you sit you cannot go back to the shops, and every chip not in your position is wagered.</p>', 'big go');
+  const go = btn(t('prep.sit'), () => { if (P.worth() < 1) return toast(t('prep.needChip'), 'warn'); app.nav.bout(R.startTable(run, prep)); }, t('prep.sit.tip'), 'big go');
 
   function sync() {
     H.update();
     const m = R.multiplier(run, prep), worth = P.worth(), wager = Math.max(0, run.purse - worth);
     tween(multEl, m, (n) => `×${n.toFixed(2)}`, 400); tween(posEl, worth, cents, 300); tween(wagerEl, wager, cents, 300); const extra = R.tiltPay({ tiltNet: R.tiltNet(prep), opp }) + Math.round(R.chipStake(run.plan.resist) * (m - 1));
     tween(winEl, Math.max(0, Math.round(wager * m) + extra), cents, 400);
-    for (const r of rows) { const on = !!prep.tilts[r.k]; swapText(r.tg, on ? 'On' : 'Off'); r.tg.classList.toggle('on', on); r.tg.classList.toggle('off', prep.dd || !R.tiltOpen(run, r.k)); r.el.classList.toggle('lit', on); }
+    for (const r of rows) { const on = !!prep.tilts[r.k]; swapText(r.tg, t(on ? 'prep.on' : 'prep.off')); r.tg.classList.toggle('on', on); r.tg.classList.toggle('off', prep.dd || !R.tiltOpen(run, r.k)); r.el.classList.toggle('lit', on); }
     ddBtn.classList.toggle('on', prep.dd); ddBtn.classList.toggle('gone', !(kind === 'table' && fs.lastWin));
   }
   tiltBox.className = 'tilts';
   root.append(H.el, h('div', { class: 'page', style: { display: 'grid', gridTemplateColumns: '1fr 290px', gap: '16px' } },
     h('div', { class: 'col' }, h('div', { class: 'box' }, P.el),
-      h('div', { class: 'box col' }, h('div', { class: 'row between' }, h('span', { class: 'cap', tip: '<b>Tilts</b><p>Switch tilts on or off. Challenge tilts make the bout harder and raise your wager multiplier; Cheat tilts make it easier and lower it. Each also pays (Challenge) or takes (Cheat) its share of your opponent\'s worth when you win, so they matter even when your whole purse is on the table.</p><p>While a tilt is on, the House may play it during the bout. The more you lose to the House, the harder your Challenges hit; the more your opponent loses to the House, the stronger your Cheats.</p>', text: 'Tilt the bout' })), tiltBox)),
-    h('div', { class: 'col' }, oppBox(opp, 'Across the table'), oppBoard(opp),
-      h('div', { class: 'box col', tip: `<b>Wager</b><p>Every chip you do not put in your position is wagered. Win and it comes back multiplied; lose and it is gone. Table bouts start at ×${D.TUNING.wager.base}, High Rollers at ×${D.TUNING.wager.boss}.</p>` },
-        h('div', { class: 'row between' }, h('span', { class: 'cap', text: 'Wager multiplier' }), multEl),
-        h('div', { class: 'line' }, h('span', { text: 'In your position' }), posEl), h('div', { class: 'line' }, h('span', { text: 'Wagered' }), wagerEl), h('div', { class: 'line' }, h('span', { text: 'Wager pays on a win' }), winEl)),
-      ddBtn, go, btn('Back to the floor', () => app.nav.hub(), null, ''),
-      h('p', { class: 'sub', text: 'Lose and you forfeit the position, the wager and two random dice.' }))));
+      h('div', { class: 'box col' }, h('div', { class: 'row between' }, h('span', { class: 'cap', tip: t('prep.tilts.tip'), text: t('prep.tilts') })), tiltBox)),
+    h('div', { class: 'col' }, oppBox(opp, t('prep.across')), oppBoard(opp),
+      h('div', { class: 'box col', tip: t('prep.wager.tip', { base: D.TUNING.wager.base, boss: D.TUNING.wager.boss }) },
+        h('div', { class: 'row between' }, h('span', { class: 'cap', text: t('prep.wager.mult') }), multEl),
+        h('div', { class: 'line' }, h('span', { text: t('prep.wager.pos') }), posEl), h('div', { class: 'line' }, h('span', { text: t('prep.wager.amt') }), wagerEl), h('div', { class: 'line' }, h('span', { text: t('prep.wager.pays') }), winEl)),
+      ddBtn, go, btn(t('prep.back'), () => app.nav.hub(), null, ''),
+      h('p', { class: 'sub', text: t('prep.lose') }))));
   P.update();
 }
 
@@ -181,21 +182,21 @@ export function prepScene(root, kind, idx) {
 export function resultScene(root, ctx, res) {
   const run = app.run, win = res.win, opp = ctx.opp;
   const lines = h('div', { class: 'list' }), totalEl = h('span', { class: 'total num' }), newsEl = h('ul', { class: 'news list' });
-  const titles = { intro: win ? 'Welcome to the Royal Paradise' : 'Not yet', bouncer: win ? 'Back in' : 'Not tonight', lounge: win ? 'Drinks are on them' : 'This round is on you', ascent: win ? 'One step higher' : 'The fall' };
-  const cont = btn('Continue', () => next(), null, 'big go off');
+  const special = ['intro', 'bouncer', 'lounge', 'ascent'].includes(ctx.kind);
+  const cont = btn(t('title.continue'), () => next(), null, 'big go off');
   const prizeBox = h('div', { class: 'cols3 fade-t' }); let choice = null, picks = [], claimed = !res.prizes;
   const left = h('div', { class: 'col', style: { width: res.prizes ? '430px' : '560px' } },
-    h('h1', { text: titles[ctx.kind] || (win ? `${opp.name} is broke` : 'You are broke') }), h('p', { class: 'sub', text: win ? `Settled after ${res.sm.turns} turn${res.sm.turns > 1 ? 's' : ''}${res.sm.timeout ? ' — last call' : ''}.` : D.FLOORS[run.floor]?.line && !['intro', 'bouncer'].includes(ctx.kind) ? 'Losing is not a reward. You lost; you deserve nothing.' : 'Sit back down and try again.' }),
-    h('div', { class: 'box' }, lines, h('div', { class: 'row between', style: { marginTop: '10px' } }, h('span', { class: 'cap', text: 'Purse' }), totalEl)), newsEl, h('div', { class: 'row' }, cont));
-  root.append(h('div', { class: 'page', style: { top: 0, display: 'flex', gap: '24px', justifyContent: 'center', alignItems: 'center' } }, left, res.prizes ? h('div', { class: 'col', style: { width: '700px' } }, h('h2', { text: 'Choose your prize' }), h('p', { class: 'sub', text: `Your winnings (${cents(res.winnings)}) are yours either way. Pick one prize on top, then what you want from it.` }), prizeBox, h('div', { class: 'row' }, h('span', { class: 'grow' }), claimBtn())) : null));
+    h('h1', { text: special ? t(`result.head.${ctx.kind}.${win ? 'win' : 'lose'}`) : win ? t('result.head.win', { name: opp.name }) : t('result.head.lose') }), h('p', { class: 'sub', text: win ? t(res.sm.timeout ? 'result.settled.last' : 'result.settled', { n: res.sm.turns }) : D.FLOORS[run.floor]?.line && !['intro', 'bouncer'].includes(ctx.kind) ? t('result.deserve') : t('result.again') }),
+    h('div', { class: 'box' }, lines, h('div', { class: 'row between', style: { marginTop: '10px' } }, h('span', { class: 'cap', text: t('result.purse') }), totalEl)), newsEl, h('div', { class: 'row' }, cont));
+  root.append(h('div', { class: 'page', style: { top: 0, display: 'flex', gap: '24px', justifyContent: 'center', alignItems: 'center' } }, left, res.prizes ? h('div', { class: 'col', style: { width: '700px' } }, h('h2', { text: t('result.prize') }), h('p', { class: 'sub', text: t('result.prize.sub', { amt: cents(res.winnings) }) }), prizeBox, h('div', { class: 'row' }, h('span', { class: 'grow' }), claimBtn())) : null));
 
-  function claimBtn() { const b = btn('Claim', () => { if (claimed) return; claimed = true; R.claimPrize(run, ctx, res, choice, picks); tween(totalEl, run.purse, cents, 900); prizeBox.classList.add('off'); b.classList.add('off'); cont.classList.remove('off'); toast('Prize claimed.'); }, null, 'go off'); claimBtn.el = b; return b; }
+  function claimBtn() { const b = btn(t('result.claim'), () => { if (claimed) return; claimed = true; R.claimPrize(run, ctx, res, choice, picks); tween(totalEl, run.purse, cents, 900); prizeBox.classList.add('off'); b.classList.add('off'); cont.classList.remove('off'); toast(t('result.claimed')); }, null, 'go off'); claimBtn.el = b; return b; }
   const need = () => (choice === 'dice' ? 2 : 1);
   function renderPrizes() {
     const P = res.prizes, offers = [
-      { k: 'die', title: 'Bonus and a die', sub: `${cents(R.prizeBonus(ctx))} bonus on top of your winnings, and one of their dice.`, kind: 'dice' },
-      { k: 'dice', title: 'Two dice', sub: 'Two of their dice.', kind: 'dice' },
-      { k: 'glean', title: 'Glean a trick', sub: 'Learn one of their tricks.', kind: 'tricks' }];
+      { k: 'die', title: t('result.prize.die'), sub: t('result.prize.die.sub', { amt: cents(R.prizeBonus(ctx)) }), kind: 'dice' },
+      { k: 'dice', title: t('result.prize.dice'), sub: t('result.prize.dice.sub'), kind: 'dice' },
+      { k: 'glean', title: t('result.prize.glean'), sub: t('result.prize.glean.sub'), kind: 'tricks' }];
     syncList(prizeBox, offers, (o) => o.k, (o) => { const opts = h('div', { class: 'row wrap', style: { minHeight: '38px' } });
       const el = h('div', { class: 'pick-card', onclick: () => { if (claimed || choice === o.k) return; choice = o.k; picks = []; renderPrizes(); } }, h('h3', { text: o.title }), h('p', { class: 'sub', text: o.sub }), opts);
       (o.kind === 'dice' ? P.dice : P.tricks).forEach((x, i) => { const e = o.kind === 'dice' ? dieEl(x) : trickTag(x, run.cls); if (o.kind === 'dice') { e._tip = () => dieTip(x); e.classList.add('has-tip'); } e.classList.add('clickable'); e.style.transition = 'transform .3s, box-shadow .3s, opacity .3s';
@@ -220,8 +221,8 @@ export function resultScene(root, ctx, res) {
     if (ctx.kind === 'intro') { if (!win) return app.nav.intro(); const f = R.startFloor(run); if (f <= 1) { R.enterFloor(run, 1); return app.nav.hub(); }
       // a pass kept from the last run takes you past the floor checks: up to its floor, or start at the bottom anyway
       const go = (to) => { closePanel(true); R.enterFloor(run, to); app.nav.hub(); };
-      return openPanel(h('div', { class: 'col' }, h('h2', { text: `Your ${D.PASSES[f].name}` }), h('p', { class: 'sub', text: `It came with your wallet from your last run, and it gets you past the floor checks up to ${D.FLOORS[f].name}.` }),
-        h('div', { class: 'row' }, btn(`Take the elevator to ${D.FLOORS[f].name}`, () => go(f), null, 'go'), btn('Start in the Boogey Basement', () => go(1)))), { modal: true }); }
+      return openPanel(h('div', { class: 'col' }, h('h2', { text: t('result.pass', { name: D.PASSES[f].name }) }), h('p', { class: 'sub', text: t('result.pass.sub', { floor: D.FLOORS[f].name }) }),
+        h('div', { class: 'row' }, btn(t('result.pass.up', { floor: D.FLOORS[f].name }), () => go(f), null, 'go'), btn(t('result.pass.bottom', { floor: D.FLOORS[1].name }), () => go(1)))), { modal: true }); }
     if (ctx.kind === 'bouncer') { if (!win) return app.nav.bouncer(); R.enterFloor(run, 1); return app.nav.hub(); }
     if (ctx.kind === 'lounge') return app.nav.hub();
     if (ctx.kind === 'ascent') return run.phase === 'ascent' ? app.nav.ascent() : app.nav.summary();
