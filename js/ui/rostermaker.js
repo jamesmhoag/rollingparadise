@@ -1,6 +1,6 @@
 // Build mode: the Class maker and the Opponent maker (rows 4 and 12). Classes are the Rollers' builds; the roster
 // lists every opponent and High Roller with its loadout, behaviour and (for High Rollers) its phases.
-import { h, btn, toast } from './core.js';
+import { h, btn, toast, paint } from './core.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
 import * as B from '../build/draft.js';
@@ -93,7 +93,7 @@ export function rosterMaker(id, redraw) {
       f.select(null, [[null, t('chipmaker.add')], ...Object.entries(D.SHOP_CHIPS).filter(([k]) => !X.chips?.[k]).map(([k, v]) => [k, v.name])], null, (v) => v && f.set(['chips'], { ...(X.chips || {}), [v]: 1 }))), ['chips']),
     f.field(t('roster.spacing'), f.select(['deploy', 'spacing'], [['row', t('roster.sp.row')], ['column', t('roster.sp.column')], ['random', t('roster.sp.random')]], X.deploy?.spacing || 'row'), ['deploy']),
     f.field(t('roster.stacking'), f.select(['deploy', 'stacking'], [['maxed', t('roster.st.maxed')], ['balanced', t('roster.st.balanced')], ['random', t('roster.st.random')]], X.deploy?.stacking || 'maxed'), null),
-    f.field(t('roster.layout'), layoutGrid(X, (v) => f.set(['layout'], v)), ['layout']),
+    f.field(t('roster.layout'), layoutGrid(X, (v) => f.set(['layout'], v), redraw), ['layout']),
     h('span', { class: 'cap', text: t('roster.part.behave') }),
     ...Object.keys(D.BEHAVE).map((k) => f.field(t(`roster.beh.${k}`), f.select(['behave', k], opt(D.BEHAVE[k]), beh[k]), ['behave', k])),
   ];
@@ -112,17 +112,30 @@ export function rosterMaker(id, redraw) {
   }
   return h('div', { class: 'b-maker' }, h('div', { class: 'b-fields' }, parts), h('div', {}, h('span', { class: 'cap', text: t('roster.preview') }), preview(id), h('p', { class: 'sub', text: t('roster.preview.note') })));
 }
-// a precise Bar layout: one box per space, chips as values or effect chip ids, comma-separated
-function layoutGrid(X, onSet) {
-  const K = X.cls ? D.CLASSES[X.cls] : null, rows = Math.max(1, D.BASE_DIMS.barRows + (K?.bvd.depth || 0)), cols = D.BASE_DIMS.cols, L = X.layout || [];
-  const at = (r, c) => L.find((x) => x.r === r && x.c === c)?.chips || [];
-  const put = (r, c, txt) => { const chips = txt.split(',').map((x) => x.trim()).filter(Boolean).map((x) => (/^\d+$/.test(x) ? Number(x) : x)).filter((x) => typeof x === 'number' || D.SHOP_CHIPS[x]);
-    const rest = L.filter((x) => !(x.r === r && x.c === c)); onSet(chips.length ? [...rest, { r, c, chips }].sort((a, b) => a.r - b.r || a.c - b.c) : rest.length ? rest : null); };
-  return h('div', {}, h('div', { class: 'b-layout', style: { gridTemplateColumns: `repeat(${cols}, 1fr)` } },
+// a precise Bar layout: one box per space, chips as values or effect chip ids, comma-separated. Pick a brush to paint
+// instead: click and hold on a space to stack chips at a steady rate, sweep to paint each space you cross.
+let layoutBrush = 'type';
+function layoutGrid(X, onSet, redraw) {
+  const K = X.cls ? D.CLASSES[X.cls] : null, rows = Math.max(1, D.BASE_DIMS.barRows + (K?.bvd.depth || 0)), cols = D.BASE_DIMS.cols;
+  const cap = Math.max(1, D.BASE_DIMS.stackMax + (K?.bvd.balance || 0));
+  const cur = () => X.layout || [], at = (r, c) => cur().find((x) => x.r === r && x.c === c)?.chips || [];
+  const put = (r, c, chips, quiet) => { const rest = cur().filter((x) => !(x.r === r && x.c === c)), next = chips.length ? [...rest, { r, c, chips }].sort((a, b) => a.r - b.r || a.c - b.c) : rest;
+    if (quiet) B.setValue(D.subPath(D.subPath('ROSTER', idOf(X)), 'layout'), next.length ? next : null); else onSet(next.length ? next : null); };
+  const parse = (txt) => txt.split(',').map((x) => x.trim()).filter(Boolean).map((x) => (/^\d+$/.test(x) ? Number(x) : x)).filter((x) => typeof x === 'number' || D.SHOP_CHIPS[x]);
+  const painting = layoutBrush !== 'type';
+  const grid = h('div', { class: `b-layout ${painting ? 'painting' : ''}`, style: { gridTemplateColumns: `repeat(${cols}, 1fr)` } },
     ...Array.from({ length: rows * cols }, (_, i) => { const r = Math.floor(i / cols), c = i % cols;
-      return h('input', { type: 'text', value: at(r, c).join(', '), placeholder: '·', title: t('roster.layout.cell', { r: r + 1, c: c + 1 }), onchange: (e) => put(r, c, e.target.value) }); })),
-  h('p', { class: 'sub', text: t(L.length ? 'roster.layout.on' : 'roster.layout.off') }));
+      return h('input', { type: 'text', value: at(r, c).join(', '), placeholder: '·', 'data-rc': `${r}:${c}`, ...(painting ? { readonly: 'readonly' } : {}), title: t('roster.layout.cell', { r: r + 1, c: c + 1 }), onchange: (e) => put(r, c, parse(e.target.value)) }); }));
+  if (painting) paint(grid, (ev) => { const el = ev.target.closest?.('[data-rc]'); if (!el) return null; const [r, c] = el.dataset.rc.split(':').map(Number); return { key: el.dataset.rc, r, c, el }; },
+    (p) => { const list = at(p.r, p.c).slice(); if (layoutBrush === 'erase') list.pop(); else if (list.length < cap) list.push(/^\d+$/.test(layoutBrush) ? Number(layoutBrush) : layoutBrush); else return;
+      put(p.r, p.c, list, true); p.el.value = list.join(', '); }, 170, () => redraw());
+  const brushes = h('select', { onchange: (e) => { layoutBrush = e.target.value; redraw(); } },
+    ...[['type', t('roster.brush.type')], ...D.DENOM_VALUES.map((v) => [String(v), `${v}¢`]), ...Object.entries(D.SHOP_CHIPS).map(([k, v]) => [k, v.name]), ['erase', t('roster.brush.erase')]]
+      .map(([v, l]) => h('option', { value: v, ...(v === layoutBrush ? { selected: 'selected' } : {}), text: l })));
+  return h('div', {}, h('div', { class: 'row' }, h('span', { class: 'sub', text: t('roster.brush') }), brushes), grid,
+    h('p', { class: 'sub', text: t(cur().length ? 'roster.layout.on' : 'roster.layout.off') }));
 }
+const idOf = (X) => Object.keys(D.ROSTER).find((k) => D.ROSTER[k] === X);
 export const rosterLabel = (id) => { const X = D.ROSTER[id]; return `${X.boss ? '👑 ' : ''}${X.name}`; };
 export const rosterSub = (id) => { const X = D.ROSTER[id]; return `${X.cls ? D.CLASSES[X.cls].name : t('roster.randomClass')} · ${(X.floors || [1, 2, 3, 4]).map((n) => 'F' + n).join(' ')}`; };
 void isObj;

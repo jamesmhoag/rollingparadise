@@ -211,7 +211,10 @@ function deployLayout(b, s, plan) {
 }
 // plan: { chips:[{value,count,resist?}], spacing:'row'|'column'|'random', stacking:'maxed'|'balanced'|'random' }
 export function deploy(b, s, plan) {
-  if (plan.layout?.length) return deployLayout(b, s, plan);
+  if (plan.layout?.length) { // a painted layout, then any shop chips around it
+    const n = deployLayout(b, s, plan), rest = plan.chips.filter((g) => g.resist);
+    return n + (rest.length ? deploy(b, s, { ...plan, layout: null, chips: rest }) : 0);
+  }
   const cells = barOrder(s, plan.spacing, b.rng);
   if (!cells.length) return 0;
   const base = [], rest = [], tops = [], spaces = [], meter = [], bigs = [];
