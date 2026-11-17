@@ -3,7 +3,8 @@
 import { RNG, sum, clamp } from './util.js';
 import * as D from './data.js';
 import { createBout, summary, barCapacity } from './bout.js';
-import { rollDie, boutCopy, upgrade as upgradeFaces, canUpgrade, canMelt, dieName, boneDie } from './dice.js';
+import { rollDie, boutCopy, matOf, dieName, boneDie } from './dice.js';
+import { forgeBlock, castFor, castMaterial, castFaces } from './forge.js';
 
 const META_KEY = 'rollingparadise.meta.v1', RUN_KEY = 'rollingparadise.run.v1';
 const store = () => { try { return globalThis.localStorage || null; } catch { return null; } };
@@ -222,35 +223,34 @@ export function buySecret(run, key) {
   run.fs.secret = run.fs.secret.filter((x) => x !== it); return true;
 }
 
-// Diesmith
-export const forgeCost = (run, type) => price(run, 'diesmith', D.DICE[type].forge.chips);
-// dice given up in a forge: the cheapest ones you own
-export function forgeFodder(run, type) {
-  const n = D.DICE[type].forge.dice; const sorted = run.dice.filter(canMelt).sort((a, b) => D.DICE[a.type].faces - D.DICE[b.type].faces || a.up.length - b.up.length);
-  return sorted.length > n ? sorted.slice(0, n) : null; // must keep at least one die
+// Diesmith: melt dice and cast a new one (forge.js). The old upgrades are retired; they live on as Bone dice.
+export const forgeCost = (run, type, dyes = []) => price(run, 'diesmith', D.DICE[type].forge.chips + dyes.reduce((t, k) => t + (D.DYES[k]?.price || 0), 0));
+export const forgeFloor = (type) => D.DICE[type].forge.floor;
+// why this forge cannot happen right now, or null. melt: die ids
+export function forgeWhy(run, type, melt, dyes = []) {
+  if (run.floor < forgeFloor(type)) return `The Diesmith casts ${type}s from floor ${forgeFloor(type)}.`;
+  const dice = melt.map((id) => run.dice.find((d) => d.id === id)); if (dice.some((d) => !d)) return 'Pick dice from your pouch.';
+  const why = forgeBlock({ type, melt: dice, dyes }); if (why) return why;
+  if (run.purse < forgeCost(run, type, dyes)) return 'You cannot afford that.';
+  return null;
 }
-export function forge(run, type) {
-  const f = D.DICE[type].forge; if (run.floor < f.floor) return false; const fodder = forgeFodder(run, type); if (!fodder) return false;
-  if (!spend(run, forgeCost(run, type), `Forged a ${type}`)) return false;
-  run.dice = run.dice.filter((d) => !fodder.includes(d)); run.dice.push(mkDie(run, type)); return true;
+// Melt the dice, pay, cast. Returns { die, log } or null.
+export function forge(run, type, melt, dyes = []) {
+  if (forgeWhy(run, type, melt, dyes)) return null;
+  const dice = melt.map((id) => run.dice.find((d) => d.id === id)), castKey = castFor(dice.map(matOf)), mat = castMaterial(dice);
+  spend(run, forgeCost(run, type, dyes), `Cast a ${D.MATERIALS[mat].name} ${type}`);
+  const { faces, log } = castFaces(run.rng, type, castKey, dyes);
+  run.dice = run.dice.filter((d) => !dice.includes(d));
+  const die = { ...mkDie(run, type, mat), faces: faces.map((v) => ({ v })), cast: castKey, dyes: [...dyes] };
+  run.dice.push(die); return { die, log };
 }
 export function sellDie(run, id) {
   const i = run.dice.findIndex((d) => d.id === id); if (i < 0 || run.dice.length <= 1) return false;
   const v = dieSellValue(run.dice[i]); ledger(run, `Sold a ${dieName(run.dice[i])}`, v); run.dice.splice(i, 1); run.purse += v; return true;
 }
-export const dieUpgradeCost = (run, d) => price(run, 'diesmith', 60 * Math.max(1, run.floor) * (1 + d.up.length));
-// why an upgrade cannot go on a die right now, or null
-export function dieUpgradeBlock(run, d, up) {
-  const U = D.DIE_UPGRADES[up]; if (!U) return 'No such upgrade.';
-  if (run.floor < (U.floor || 1)) return `The Diesmith offers ${U.name} from floor ${U.floor}.`;
-  return canUpgrade(d, up, D.DIE_UPGRADE_MAX);
-}
-// `face`: the target face for upgrades that take one
-export function upgradeDie(run, id, up, face = 0) {
-  const d = run.dice.find((x) => x.id === id); if (!d || dieUpgradeBlock(run, d, up)) return false;
-  if (!spend(run, dieUpgradeCost(run, d), `${D.DIE_UPGRADES[up].name} on a ${d.type}`)) return false;
-  upgradeFaces(d, up, face, run.rng); return true;
-}
+export const RETIRED = 'The Diesmith no longer upgrades dice. Melt them and cast a new one, or buy a Bone die.';
+export const dieUpgradeBlock = () => RETIRED;
+export const upgradeDie = () => false;
 // Dice Shop: plain Glass, Plastic and Metal dice, and Bone dice that carry a trait (content/dice.js)
 export const dieSellValue = (d) => Math.round(D.DICE[d.type].sell * (d.mat === 'bone' ? D.DICE_SHOP.boneMult / 2 : D.DICE_SHOP.mat[d.mat || D.DEFAULT_MAT] || 1));
 const diePrice = (floor, type, mat) => Math.round(D.DICE_SHOP.base[type] * (mat === 'bone' ? D.DICE_SHOP.boneMult : D.DICE_SHOP.mat[mat] || 1) * (D.DICE_SHOP.floorMult[floor] ?? 1));
