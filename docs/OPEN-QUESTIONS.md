@@ -291,6 +291,9 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
 - **Dye mixes come from two primaries.** A mix takes one dye slot and costs its two primaries; mixes are not sold.
 - **The d10 stays.** It is not cast (not in the sheet's complexity list), but the Secret Shelf and the Grand
   quality die keep it.
+- **Chips come out of the Pit only through tricks and chips**, and they are the real chips (same id, kind and
+  value), newest first, whole chips only. Gather and Steal take them back instead of change from the Stage total; a
+  made trick can take its chips from your Pit or theirs; a made chip's Pull action takes them onto its stack.
 - **Bar is the Stake and Meter is the Bet** everywhere the player reads them; code names are unchanged so saves load.
 - **The Stage** above each position holds bids and made chips. **The Pit** keeps every lost chip as it was; it can
   be seen, and effects that reach into it come later.
@@ -300,7 +303,6 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
 - **Sparkling and Orange** now do the same thing to a die (one from materials, one from dyes). Intended?
 
 ### Still to build
-- **Effects that reach into the Pit.**
 - **Chip maker terms saved but not played:** footprints bigger than one space (2×2, 3×3, 5×5), "anything on top"
   going past the stack-height limit, and immunity to blocking.
 - **Game text (row 14), parts 2–4:** the floor's shop panels, the bout screen, the Library, and the feed and

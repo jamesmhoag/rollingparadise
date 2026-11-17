@@ -307,6 +307,8 @@ export default {
   "chipmaker.reach.name": "chip name",
   "chipmaker.anyPhase": "any phase",
   "chipmaker.exposed.what": "any chip, or a name",
+  "chipmaker.pull.amount": "Up to this many ¢ of chips",
+  "chipmaker.pull.bids": "bids too",
   "chipmaker.dir.left": "left",
   "chipmaker.dir.right": "right",
   "chipmaker.dir.up": "toward the front",
