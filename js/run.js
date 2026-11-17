@@ -98,9 +98,15 @@ export const noCounts = () => Object.fromEntries(D.DENOM_VALUES.map((v) => [v, 0
 export const chipFloor = (run) => (run.phase === 'ascent' ? D.ASCENT_FLOOR : run.floor || 1);
 
 // ---------- opponents ----------
+// The roster (content/roster.js): the opponents who can sit at a floor's tables, or at its head table
+export const rosterFor = (floor, table) => Object.entries(D.ROSTER).filter(([, X]) => (table === 'boss' ? X.boss : !X.boss) && (!X.floors || X.floors.includes(floor)) && (table === 'boss' || !X.tables || X.tables.includes(table))).map(([id]) => id);
+// the generation options a roster entry sets
+function rosterOpts(id, o = {}) { const X = D.ROSTER[id]; if (!X) return o; return { ...o, name: X.name, roster: id, ...(X.cls && D.CLASSES[X.cls] ? { cls: X.cls } : {}) }; }
 export function genOpponent(run, floor, worthTarget, o = {}) {
+  const X = o.roster ? D.ROSTER[o.roster] : null; if (X?.purse > 0) worthTarget = X.purse;
   const rng = run.rng, cls = o.cls || rng.pick(Object.keys(D.CLASSES)), K = D.CLASSES[cls], f = clamp(floor, 1, 4);
   const tip = { ...K.tip }, c = { ...K.c }, bvd = { ...K.bvd };
+  for (const [k, v] of Object.entries(D.JACKETS[X?.jacket]?.mods || {})) { if (k in tip) tip[k] += v; else if (k in c) c[k] += v; else if (k in bvd) bvd[k] += v; } // its jacket
   if (floor >= 2) tip.proficiency++; if (floor >= 3) tip.ingenuity++; if (floor >= 4) tip.trickery++;
   const why = { balance: [[`${K.name} class`, K.bvd.balance]].filter((x) => x[1]), versatility: [[`${K.name} class`, K.bvd.versatility]].filter((x) => x[1]), depth: [[`${K.name} class`, K.bvd.depth]].filter((x) => x[1]) };
   if (o.boss) { if (floor === 2 || floor === 3) tip[K.primary]++; bvd.balance++; why.balance.push(['High Roller', 1]); }
@@ -124,17 +130,25 @@ export function genOpponent(run, floor, worthTarget, o = {}) {
   const groups = [{ value: big, count: nBig }, { value: 1, count: petty }].filter((g) => g.count > 0);
   if (K.deploy === 'end') groups.reverse();
   if (o.cols) why.note = 'A bar table: only three spaces wide.';
+  for (const [id, n] of Object.entries(X?.chips || {})) if (n > 0 && D.SHOP_CHIPS[id]) groups.push({ value: 1, count: n, resist: id }); // its own chips
+  const drink = X?.drink ? D.DRINKS.find((d) => d.id === X.drink) : null;
   return { name: o.name || rng.pick(D.OPPONENTS), title: o.title || '', cls, floor, boss: !!o.boss, ai: true, tip, c, dims, why, deploy: K.deploy, dice, tricks,
-    plan: { chips: groups, spacing: 'row', stacking: 'maxed' }, worth: nBig * big + petty };
+    plan: { chips: groups, spacing: X?.deploy?.spacing || 'row', stacking: X?.deploy?.stacking || 'maxed', ...(X?.layout?.length ? { layout: X.layout } : {}) },
+    worth: X?.layout?.length ? X.layout.reduce((t, sp) => t + (sp.chips || []).reduce((u, it) => u + (typeof it === 'number' ? it : 1), 0), 0) : nBig * big + petty,
+    roster: o.roster || null, wallet: X?.wallet || null, drink: drink ? { ...drink } : null,
+    behave: { ...D.DEFAULT_BEHAVE, ...(X?.behave || {}) }, phases: X?.phases ? JSON.parse(JSON.stringify(X.phases)) : null };
 }
 
 // ---------- floors ----------
 export function enterFloor(run, floor) {
   const rng = run.rng, F = D.FLOORS[floor], names = rng.shuffle(D.OPPONENTS);
+  // roster entries take their seats in the shuffled name order, so an unchanged roster deals the floor as before
+  const byName = new Map(names.map((n, i) => [n, i])), pool = rosterFor(floor, null).sort((x, y) => (byName.get(D.ROSTER[x].name) ?? 1e9) - (byName.get(D.ROSTER[y].name) ?? 1e9)), seat = (i) => { const k = pool.findIndex((id) => !D.ROSTER[id].tables || D.ROSTER[id].tables.includes(i)); return k < 0 ? null : pool.splice(k, 1)[0]; };
+  const bosses = rosterFor(floor, 'boss');
   run.floor = floor; run.phase = 'floor'; run.suiteKey = false;
   run.fs = {
-    tables: F.worth.map((w, i) => ({ opp: genOpponent(run, floor, Math.round(w * (0.9 + rng.next() * 0.2)), { name: names[i] }), beaten: false, seen: i === 0, felt: rng.pick(D.FELT_POOL) })),
-    boss: { opp: genOpponent(run, floor, F.boss, { boss: true, name: rng.pick(D.BOSSES[floor]), title: 'High Roller' }), beaten: false, felt: 'royal' },
+    tables: F.worth.map((w, i) => ({ opp: genOpponent(run, floor, Math.round(w * (0.9 + rng.next() * 0.2)), rosterOpts(seat(i), { name: names[i] })), beaten: false, seen: i === 0, felt: rng.pick(D.FELT_POOL) })),
+    boss: { opp: genOpponent(run, floor, F.boss, bosses.length ? rosterOpts(rng.pick(bosses), { boss: true, title: 'High Roller' }) : { boss: true, name: rng.pick(D.BOSSES[floor]), title: 'High Roller' }), beaten: false, felt: 'royal' },
     bossOpen: false, lastWin: null, ddStreak: 0, tiers: { challenge: 0, cheat: 0 },
     shop: null, restocks: 0, bought: 0, secret: null, pack: null,
     lounge: genLounge(run, floor), book: genBook(run, floor), searched: false, dice: null,

@@ -195,8 +195,22 @@ export function barOrder(s, spacing, rng) {
   if (spacing === 'random') cells = rng.shuffle(cells);
   return cells.filter(({ r, c }) => !s.grid[r][c].hole && !s.grid[r][c].link && !s.grid[r][c].roost);
 }
+// A precise layout (Opponent maker): [{ r, c, chips: [a value, or an effect chip id] }], r counted from the Bar's front.
+// Anything that does not fit, or lands on a Hole, is left out.
+function deployLayout(b, s, plan) {
+  let placed = 0;
+  for (const spot of plan.layout) {
+    const r = s.dims.meterRows + (spot.r | 0), c = spot.c | 0, cell = s.grid[r]?.[c]; if (!cell || cell.hole || cell.link) continue;
+    for (const it of spot.chips || []) { if (capacityLeft(s, cell) <= 0) break;
+      if (typeof it === 'number') { cell.chips.push(mkChip(b, 'std', it)); placed++; continue; }
+      const X = SHOP_CHIPS[it]; if (!X) continue; const v = X.vars || {}, kind = X.kind || 'std';
+      cell.chips.push(mkChip(b, kind, kind === 'std' ? 1 : 0, { resist: it, shop: it, ...(v.hits ? { hits: v.hits } : {}), ...(v.turns ? { life: v.turns } : {}) })); placed++; }
+  }
+  return placed;
+}
 // plan: { chips:[{value,count,resist?}], spacing:'row'|'column'|'random', stacking:'maxed'|'balanced'|'random' }
 export function deploy(b, s, plan) {
+  if (plan.layout?.length) return deployLayout(b, s, plan);
   const cells = barOrder(s, plan.spacing, b.rng);
   if (!cells.length) return 0;
   const base = [], rest = [], tops = [], spaces = [], meter = [], bigs = [];
@@ -267,6 +281,7 @@ function mkSide(b, spec, idx) {
     tray: [], used: { draw: 0, roll: 0, bid: 0 }, turnBonus: {}, rolled: {},
     status: { resist: 0, resistNext: 0, evade: null, evadeNext: null, reflect: 0, reflectAll: false, enfeebleNext: 0 },
     mods: { boost: 0, enfeeble: 0, press: 0, bend: null, mul: 1, pierce: false },
+    behave: spec.behave || null, phases: spec.phases || null, phaseAt: -1, phaseBehave: null,
     drink: spec.drink ? { ...spec.drink } : null, sipped: false, food: [], roostDragons: 0, sky: [], bees: [], hatsDue: 0, absorbUsed: {}, forgotUsed: {}, echoes: [],
     familiars: spec.familiars || 0, interventions: spec.interventions || 0, positionTilt: spec.positionTilt || 0, intervened: false, spawners: spec.spawners || 0, calamities: spec.calamities || [],
     bidsPaid: 0, dealt: 0, destroyed: 0, snap: null,
@@ -1646,6 +1661,23 @@ function* ticks(b) {
 }
 
 
+// ---------- High Roller phases (Opponent maker) ----------
+// A High Roller with phases changes how it plays as its Worth falls: each phase starts when Worth drops below
+// `below` of what it sat down with. A phase can cheat: extra dice of its best kind join the pouch, and tricks come
+// straight from the Book onto the Run, shown to the table.
+function* bossPhase(b, s) {
+  if (!s.phases?.length || !s.startWorth) return;
+  const frac = worth(s) / s.startWorth;
+  let k = s.phaseAt; for (let i = s.phaseAt + 1; i < s.phases.length; i++) if (frac < s.phases[i].below) k = i;
+  if (k === s.phaseAt) return;
+  s.phaseAt = k; const P = s.phases[k]; s.phaseBehave = { ...(s.phaseBehave || {}), ...(P.behave || {}) };
+  const got = [];
+  if (P.cheat?.dice > 0 && s.pouch.length) { const best = s.pouch.slice().sort((x, y) => DICE[y.type].faces - DICE[x.type].faces)[0];
+    for (let n = 0; n < P.cheat.dice; n++) s.pouch.push({ ...boutCopy(best), id: 9e6 + b.nextId++ }); got.push(`${P.cheat.dice} extra ${best.type}${P.cheat.dice > 1 ? 's' : ''}`); }
+  if (P.cheat?.tricks > 0) { let n = 0; for (; n < P.cheat.tricks && s.book.length; n++) { const t = s.book.shift(); s.run.push({ uid: t.uid, trick: t, dice: [], bid: [], bidValue: 0, target: null, state: 'shown', lingerLeft: 0, lingerTotal: 0, drawn: b.turn, bookAt: 0, cheat: true }); got.push(TRICKS[t.id].name); } }
+  yield step(b, `${s.name} changes tactics${got.length ? ` and cheats: ${got.join(', ')} revealed` : ''}.`, [], 'tilt');
+}
+
 // ---------- made chips at work (chip maker: movement, reach, triggers, actions) ----------
 // A made chip's triggers fire in a phase (when tricks of that type played, or always for 'phase'), each turn in the
 // House phase, when it is made, when it is removed, or when a chip it watches is exposed on top of a stack. When one
@@ -1838,6 +1870,7 @@ export function* resolve(b) {
   }
   if (done) yield step(b, '', [], 'return');
   for (const s of b.sides) { b.ctx = { phase: 'house', who: s.idx }; yield* madeWork(b, s, 'turn', false); }
+  for (const s of b.sides) { b.ctx = { phase: 'house', who: s.idx }; yield* bossPhase(b, s); }
   yield* ticks(b);
   b.ctx = { phase: 'house' };
   // who is broke?
