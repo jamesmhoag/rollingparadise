@@ -43,9 +43,9 @@ function titleScene(root) {
     h('div', { class: 'hotel neon-c', text: 'ROYAL PARADISE HOTEL & CASINO' }), sign,
     h('p', { class: 'tagline neon-p', text: 'Gamble your way to the top' }),
     h('div', { class: 'menu' },
-      resume ? btn('Continue', () => { app.run = saved; if (R.needsBouncer(saved)) return bouncerPanel(saved); saved.phase === 'ascent' ? nav.ascent() : nav.hub(); }, `<b>Continue</b><p>${D.CLASSES[saved.cls].name}, ${saved.phase === 'ascent' ? 'on the Paradise Ascent' : `floor ${saved.floor}`}, ${cents(saved.purse)} in the purse.</p>`, 'sign-btn') : null,
+      resume ? btn('Continue', () => { app.run = saved; if (R.needsBouncer(saved)) return bouncerPanel(saved); saved.phase === 'ascent' ? nav.ascent() : nav.hub(); }, `<b>Continue</b><p>${D.heroName(saved.cls)}, ${saved.phase === 'ascent' ? 'on the Paradise Ascent' : `floor ${saved.floor}`}, ${cents(saved.purse)} in the purse.</p>`, 'sign-btn') : null,
       btn('New run', () => (resume ? openPanel(h('div', { class: 'col' }, h('h2', { text: 'Start a new run?' }),
-        h('p', { text: `You have a run in progress: ${D.CLASSES[saved.cls].name}, ${saved.phase === 'ascent' ? 'on the Paradise Ascent' : `floor ${saved.floor}`}, ${cents(saved.purse)} in the purse.` }),
+        h('p', { text: `You have a run in progress: ${D.heroName(saved.cls)}, ${saved.phase === 'ascent' ? 'on the Paradise Ascent' : `floor ${saved.floor}`}, ${cents(saved.purse)} in the purse.` }),
         h('p', { class: 'sub', text: 'You can only have one run at a time. Starting a new one ends that run for good.' }),
         h('div', { class: 'row' }, btn('Keep my run', () => closePanel(), null, 'go'), btn('Start over', () => { R.clearRun(); closePanel(true); nav.select(); }, null, 'danger')))) : nav.select()), resume ? '<b>New run</b><p>You can only have one run at a time. Starting over ends your saved run.</p>' : null, resume ? 'sign-btn p' : 'sign-btn'),
       btn('How to play', () => howTo(), null, 'sign-btn p'),
@@ -76,7 +76,7 @@ function selectScene(root) {
   const els = Object.entries(D.CLASSES).map(([id, K]) => {
     const dice = Object.entries(K.dice).flatMap(([type, n]) => Array.from({ length: n }, () => type));
     const el = h('button', { class: 'pick-card', style: { '--cc': K.color }, onclick: () => { cls = id; sync(); } },
-      h('h2', { text: K.name }), h('p', { class: 'sub', text: K.blurb }),
+      h('h2', { text: K.hero }), h('p', { class: 'cap', text: `the ${K.name}` }), h('p', { class: 'sub', text: K.blurb }),
       h('span', { class: 'cap', text: 'Each turn' }), statRow(K.tip, ['trickery', 'ingenuity', 'proficiency']),
       h('span', { class: 'cap', text: 'For each one left unused' }), statRow(K.c, ['charisma', 'cunning', 'conviction']),
       h('span', { class: 'cap', text: 'Position bonus' }), statRow(K.bvd, ['balance', 'versatility', 'depth']),

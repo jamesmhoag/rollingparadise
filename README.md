@@ -21,7 +21,7 @@ Hover anything — every chip, die, trick, number and button explains itself.
 
 ## The loop
 
-1. **Choose a Roller**: Hustler, Rascal or Technician. Each has different per-turn limits, rewards for holding
+1. **Choose a Roller**: Owl the Hustler, Fox the Rascal or Hog the Technician. Each has different per-turn limits, rewards for holding
    back, and position shape.
 2. **Intro bout** on house chips earns your 200¢ welcome stake.
 3. **Each floor**: walk the floor plan to the Diesmith, Trick Trader, Chip Exchange, Lounge and Sports Book, then
