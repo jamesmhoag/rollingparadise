@@ -8,7 +8,7 @@ import { facesOf, faceValue, matOf, dieName } from '../dice.js';
 import { traitsOf, traitsHtml } from '../traits.js';
 import { iconStyle, textureOf } from './icons.js';
 
-const GLYPH = { opp: '★', block: '▣', counter: '✸', burn: '🔥', acid: '☣', shock: '⚡', corrupt: '☠', poison: '☘', boom: '💣', frost: '❄', lava: '🌋', flower: '✿', petal: '❀', clay: '▤', brick: '▦', dynamite: '🧨', tree: '🌳', wood: '▥', hard: '⛊', sticky: '◍', hive: '⬢', little: '•', egg: '🥚', hat: '🎩', doom: '☠', volcano: '🌋' };
+const GLYPH = { puddle: '💧', opp: '★', block: '▣', counter: '✸', burn: '🔥', acid: '☣', shock: '⚡', corrupt: '☠', poison: '☘', boom: '💣', frost: '❄', lava: '🌋', flower: '✿', petal: '❀', clay: '▤', brick: '▦', dynamite: '🧨', tree: '🌳', wood: '▥', hard: '⛊', sticky: '◍', hive: '⬢', little: '•', egg: '🥚', hat: '🎩', doom: '☠', volcano: '🌋' };
 // made chips take their face colour from their MADE_CHIPS entry, through one shared style sheet
 let madeCss = '';
 function madeColours() {
@@ -32,6 +32,7 @@ export function chipName(ch) {
   if (ch.kind === 'stray') return `${ch.value}¢ of Debt on nothing`;
   if (ch.kind === 'hard') return `Hardened chip (${ch.life} turn${ch.life === 1 ? '' : 's'})`;
   if (ch.kind === 'sticky') return `Sticky chip (${ch.value})${ch.stuck ? ` on ${ch.stuck}` : ''}`;
+  if (ch.kind === 'puddle') return ch.ice ? 'Iced-over Puddle chip' : 'Puddle chip';
   if (ch.kind === 'egg') return `Dragon Egg${ch.prog ? ` (${ch.prog} of 5 to hatch)` : ''}`;
   if (ch.treasure) return `Treasure chip (${ch.value} Gold)`;
   if (ch.big) return `Big ${ch.value}¢ chip`;
@@ -77,7 +78,7 @@ export function madeRules(M, ch = {}) {
   if (M.move && M.move !== 'still') parts.push(CM.MOVES[M.move].toLowerCase());
   if (M.triggers?.length && M.actions?.length) {
     const when = M.triggers.map((x) => (x.on === 'phase' || x.on === 'effect') && x.type ? `${CM.TRIGGERS[x.on].toLowerCase()} (${D.TYPES[x.type]?.name})` : x.on === 'exposed' && x.what ? `when a ${x.what} is exposed` : CM.TRIGGERS[x.on].toLowerCase()).join(' or ');
-    const what = M.actions.map((x) => ({ move: `moves them ${x.dir || 'right'}`, value: `${(x.n ?? 1) >= 0 ? '+' : ''}${x.n ?? 1}¢ value`, hits: `${(x.n ?? 1) >= 0 ? '+' : ''}${x.n ?? 1} strength`, power: `${(x.n ?? 1) >= 0 ? '+' : ''}${x.n ?? 1} effect`, become: `turns them into ${D.MADE_CHIPS[x.chip]?.name || D.CHIPS[x.chip]?.name || 'Royal Paradise chips'}` }[x.k])).join(', ');
+    const what = M.actions.map((x) => ({ move: `moves them ${x.dir || 'right'}`, value: `${(x.n ?? 1) >= 0 ? '+' : ''}${x.n ?? 1}¢ value`, hits: `${(x.n ?? 1) >= 0 ? '+' : ''}${x.n ?? 1} strength`, power: `${(x.n ?? 1) >= 0 ? '+' : ''}${x.n ?? 1} effect`, become: `turns them into ${D.MADE_CHIPS[x.chip]?.name || D.CHIPS[x.chip]?.name || 'Royal Paradise chips'}`, pull: `pulls up to ${x.n ?? 5}¢ of chips out of ${x.from === 'theirs' ? 'the other' : x.from === 'both' ? 'either' : 'its own'} Pit${x.bids ? ' (bids too)' : ''}` }[x.k])).join(', ');
     parts.push(`${when}: ${what} on ${(CM.REACH[M.reach?.to || 'touching'] || '').toLowerCase()}${M.reach?.to === 'named' ? ` "${M.reach.name}"` : ''}${(M.reach?.range || 1) > 1 ? ` within ${M.reach.range}` : ''}`);
   }
   return parts.join(' · ') + '.';

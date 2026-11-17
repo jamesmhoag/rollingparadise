@@ -8,6 +8,8 @@
 // Fees go out as Debt first; the House then settles every stack that took Debt.
 import { RNG, sum, clone, clamp, order1D } from './util.js';
 import { instances, deployOrder, placeIndex, makeKind, isFxChip } from './trickmaker.js';
+import { MAKES as MAKES_TABLE } from './content/trickmaker.js';
+const MAKES_OF = (chip) => MAKES_TABLE[chip] || {};
 import { MADE_CHIPS, HEIGHT } from './content/chipmaker.js';
 import { TUNING } from './content/tuning.js';
 import { rollDie, boutCopy, facesOf, upgrade as upgradeFaces } from './dice.js';
@@ -152,6 +154,10 @@ export const cOf = (s, k) => Math.max(0, s.c[k] + (s.turnBonus[k] || 0));
 function mkChip(b, kind, value = 0, extra = {}) { return { id: b.nextId++, kind, value, ...extra }; }
 const HAZARD_LIFE = { burn: 3, shock: 2, corrupt: 3, boom: 2, acid: 99, poison: 99, frost: 2, lava: 2, hard: 3 };
 const mkHazard = (b, kind, life) => mkChip(b, kind, 0, { life: life ?? HAZARD_LIFE[kind] });
+// The Puddle is a chip with no thickness that always sits at the bottom of its space (cell.puddle), under any stack.
+// On an empty space nothing can be played until it dries; frozen over (ice), it grounds the Frozen chips above it.
+export const puddleOf = (cell) => cell?.puddle || null;
+function setPuddle(b, cell, ice) { const p = cell.puddle; cell.puddle = p ? { ...p, t: b.turn, ice: ice ?? p.ice } : mkChip(b, 'puddle', 0, { t: b.turn, ice: !!ice }); return cell.puddle; }
 // A stack carries at most one Debt marker, showing exactly what it owes. Make it total n (0 removes it).
 function setDebt(b, cell, n, how) {
   const cur = cell.chips.filter((ch) => ch.kind === 'debt'), have = sum(cur, (ch) => ch.value);
@@ -821,7 +827,7 @@ function validOn(b, s, def, t, payOnly) {
   return out;
 }
 // tricks whose roll effect puts chips on the stack they aim at
-export const addsChips = (def) => !!def.make || ['doom', 'hat', 'handoff', 'block'].includes(def.roll.k) || (def.roll.k === 'chips' && makeKind(def.roll.chip) !== 'fee');
+export const addsChips = (def) => !!def.make || ['doom', 'hat', 'handoff', 'block'].includes(def.roll.k) || (def.roll.k === 'chips' && !['fee', 'water'].includes(makeKind(def.roll.chip))); // a Puddle has no thickness: it needs no room
 export function setTarget(b, s, e, tgt) {
   if (b.phase !== 'aim' && b.phase !== 'bid') return false;
   if (!validTargets(b, s, e).some((v) => v.side === tgt.side && v.r === tgt.r && v.c === tgt.c)) return false;
@@ -945,7 +951,7 @@ function strike(b, s, x, o = {}) {
 // on, freeze in the cold and make plants grow faster.
 function water(b, s, x) {
   const cell = x.cell; if (cell.link) return;
-  cell.puddle = { t: b.turn, ice: cell.puddle?.ice || false }; // a stack hit by water stands in a Puddle until it dries
+  if (!cell.puddle) b.fx[setPuddle(b, cell).id] = 'spawn'; else setPuddle(b, cell); // a stack hit by water stands on a Puddle chip until it dries
   if (!solidCount(cell)) return;
   for (const ch of cell.chips) if (!isHazard(ch)) ch.wet = 2;
   for (const ch of cell.chips.filter((y) => y.kind === 'burn' || y.kind === 'lava')) { cell.chips.splice(cell.chips.indexOf(ch), 1); b.fx[ch.id] = 'void'; }
@@ -1212,14 +1218,28 @@ export function pitOf(b, si) {
   for (const ch of (b.pit?.[si] || []).filter((x) => x.from === 'fee')) { if (ch.value > left) break; out.push(ch); left -= ch.value; }
   return out.concat((b.pit?.[si] || []).filter((x) => x.from === 'bid'));
 }
+// Chips come back out of the Pit only through tricks and chips. pullPit takes the actual chips (the same value, kind
+// and id they were lost as), newest first, up to `want`¢ and whole chips only: a chip worth more than what is left
+// to take stays. o.bids: also bids the House took (after the fees). Returns the chips, as live chips again.
+export function pullPit(b, si, want, o = {}) {
+  const held = pitOf(b, si), fees = held.filter((x) => x.from === 'fee').reverse(), bids = o.bids ? held.filter((x) => x.from === 'bid').reverse() : [];
+  const out = []; let left = Math.max(0, want | 0);
+  for (const rec of [...fees, ...bids]) {
+    if (left <= 0) break; if (rec.value > left || rec.value <= 0) continue;
+    const i = b.pit[si].indexOf(rec); if (i < 0) continue; b.pit[si].splice(i, 1);
+    if (rec.from === 'fee') b.stage.paid[si] -= rec.value;
+    const { from, turn, ...ch } = rec; void from; void turn; out.push({ ...ch }); b.fx[ch.id] = 'from-pit'; left -= rec.value;
+  }
+  return out;
+}
+// chips that came out of the Pit and found no room go back in, as they were
+function backToPit(b, si, chips) { for (const ch of chips) { b.stage.paid[si] += ch.value; toPit(b, si, ch, 'fee'); } }
+// Gather and Steal: the real chips out of your Pit (and, with both, your opponent's), onto your Bet
 function recoup(b, s, n, both) {
-  let take = Math.min(n, b.stage.paid[s.idx]); b.stage.paid[s.idx] -= take;
-  let take2 = both ? Math.min(n - take, b.stage.paid[1 - s.idx]) : 0; b.stage.paid[1 - s.idx] -= take2;
-  const chips = makeChange(b, take + take2);
-  const left = addToMeter(b, s, chips, null, 'from-stage');
-  const back = sum(left, (ch) => ch.value) + (take + take2 - sum(chips, (ch) => ch.value));
-  b.stage.paid[s.idx] += back; // what did not fit stays on the Stage
-  return take + take2 - back;
+  const mine = pullPit(b, s.idx, n), theirs = both ? pullPit(b, 1 - s.idx, n - sum(mine, (ch) => ch.value)) : [];
+  const left = addToMeter(b, s, [...mine, ...theirs], null, 'from-pit');
+  backToPit(b, s.idx, left.filter((ch) => mine.includes(ch))); backToPit(b, 1 - s.idx, left.filter((ch) => theirs.includes(ch))); // what did not fit stays in the Pit
+  return sum(mine, (ch) => ch.value) + sum(theirs, (ch) => ch.value) - sum(left, (ch) => ch.value);
 }
 
 // opt.again: a Repeater or Mimic plays the roll effect once more (no trait) · opt.forgotten: a Forgetter negates it
@@ -1236,6 +1256,7 @@ function* playChips(b, s, e, def, x) {
     list.forEach((amt, i) => { const sp = spaces[i % (spaces.length || 1)]; if (!sp) { lost++; return; } const cell = t.grid[sp.r][sp.c]; hit.set(`${sp.r}:${sp.c}`, sp);
       const kind = makeKind(chip);
       if (kind === 'fee') { fees += engage(b, s, t, sp.r, sp.c, amt, { pierce: x.pierce }).placed; return; }
+      if (kind === 'water') { if (cell.puddle) { lost++; return; } water(b, t, { cell, r: sp.r, c: sp.c }); made++; return; } // a Puddle chip goes under the stack
       if (isFxChip(chip)) { if (placeFx(b, t, cell, chip, R.life || 3, e.trick.id)) made++; else lost++; return; }
       if (MADE_CHIPS[chip]) { const mc = mkMade(b, chip), n = footOf(mc);
         if (n > 1) { const at = footBlock(t, sp.r, sp.c, n); if (!at) { lost++; return; } claimFoot(t, at.r, at.c, n); t.grid[at.r][at.c].chips.push(mc); b.fx[mc.id] = 'spawn'; made++; (s.madeNew ||= []).push(mc.id); return; }
@@ -1245,11 +1266,17 @@ function* playChips(b, s, e, def, x) {
       if (isHazard(ch)) cell.chips.push(ch); else cell.chips.splice(placeIndex(R.place, R.at, cell.chips.filter((y) => !isHazard(y)).length), 0, ch);
       b.fx[ch.id] = 'spawn'; made++; });
     return { made, fees, lost, cells: [...hit.values()] }; };
-  const main = make(R.chip, inst);
+  // chips back out of a Pit: the real chips, up to the total, dealt along the pattern; no room and they go back
+  const fromPit = (chip) => { const P = MAKES_OF(chip), si = P.pit === 'mine' ? s.idx : 1 - s.idx, got = pullPit(b, si, x.total * (x.bonus === 'multiply' ? def.bonus.x || 2 : 1)); let made = 0, lost = 0; const hit = new Map();
+    got.forEach((ch, i) => { const sp = spaces[i % (spaces.length || 1)], cell = sp && t.grid[sp.r][sp.c];
+      if (!cell || capacityLeft(t, cell) <= 0) { backToPit(b, si, [ch]); lost++; return; }
+      cell.chips.splice(placeIndex(R.place, R.at, cell.chips.filter((y) => !isHazard(y)).length), 0, ch); hit.set(`${sp.r}:${sp.c}`, sp); b.fx[ch.id] = 'from-pit'; made++; });
+    return { made, fees: 0, lost, cells: [...hit.values()], pulled: sum(got, (ch) => ch.value) - 0 }; };
+  const main = makeKind(R.chip) === 'pit' ? fromPit(R.chip) : make(R.chip, inst);
   let extra = null; if (x.bonus === 'extra') extra = make(def.bonus.chip || 'block', Array.from({ length: def.bonus.n || 1 }, () => 1));
   if (x.bonus === 'linger' && !x.again && x.total > 0) s.echoes.push({ from: b.turn, e: { ...e, dice: e.dice.map((d) => ({ ...d })), lingerLeft: 0, lingerTotal: 0 }, left: def.bonus.turns || 2, phase: phaseOf(e.trick.id) });
   const kind = makeKind(R.chip), refs = [...main.cells, ...(extra?.cells || [])].map((p) => ref(t, p.r, p.c));
-  const said = kind === 'fee' ? `${main.fees}¢ of Debt on ${main.cells.length} stack${main.cells.length === 1 ? '' : 's'}` : `${main.made} chip${main.made === 1 ? '' : 's'} made`;
+  const said = kind === 'pit' ? `${main.made} chip${main.made === 1 ? '' : 's'} back out of the Pit` : kind === 'fee' ? `${main.fees}¢ of Debt on ${main.cells.length} stack${main.cells.length === 1 ? '' : 's'}` : `${main.made} chip${main.made === 1 ? '' : 's'} made`;
   yield step(b, `${x.tag}: ${inst.length ? said : 'nothing to make'}${extra ? `, and ${extra.made} extra` : ''}${main.lost ? `; ${main.lost} had no room` : ''}${x.bonus === 'linger' && !x.again ? `; it will play again for ${def.bonus.turns || 2} turns` : ''}.`, refs, main.made || main.fees || extra?.made ? 'play' : 'miss');
 }
 function* play(b, s, e, opt = {}) {
@@ -1539,7 +1566,7 @@ function* sky(b, s) {
     } else if (o.kind === 'moon') { // the tide: a Puddle spreads
       const p = allCells(s).filter((x) => x.cell.puddle && !x.cell.puddle.ice); if (!p.length) continue;
       const x = b.rng.pick(p), to = allCells(s).filter((y) => Math.abs(y.r - x.r) + Math.abs(y.c - x.c) === 1 && !y.cell.chips.length && !y.cell.puddle && !y.cell.link);
-      if (to.length) { const y = b.rng.pick(to); y.cell.puddle = { t: b.turn, ice: false }; x.cell.puddle.t = b.turn; yield step(b, `The tide rises under the Moon: a Puddle spreads in ${s.name}'s position.`, [ref(s, y.r, y.c)], 'weather'); }
+      if (to.length) { const y = b.rng.pick(to); setPuddle(b, y.cell, false); x.cell.puddle.t = b.turn; yield step(b, `The tide rises under the Moon: a Puddle spreads in ${s.name}'s position.`, [ref(s, y.r, y.c)], 'weather'); }
     } else if (o.kind === 'blizzard') { // at the end of its turn: short stacks freeze solid, wet chips freeze, Puddles ice over
       let n = 0; for (const { cell } of allCells(s)) { if (cell.puddle) cell.puddle.ice = true; if (solidCount(cell) && solidCount(cell) < o.str) for (const ch of cell.chips) if (!isHazard(ch)) ch.wet = Math.max(ch.wet || 0, 1); // its snow wets short stacks
         if (solidCount(cell) && wet(cell)) n += freezeTop(b, cell) ? 1 : 0; }
@@ -1718,6 +1745,7 @@ export function sandboxChip(b, side, r, c, what, op = 'add') {
     return mkChip(b, what.kind || 'std', what.kind === 'block' || what.kind === 'counter' ? 0 : Math.max(1, what.value | 0 || 1));
   };
   if (what.kind === 'debt') { if (!occupied(cell)) return false; setDebt(b, cell, debtOf(cell) + Math.max(1, what.value | 0 || 1)); return true; }
+  if (what.kind === 'puddle') { if (cell.link) return false; if (op === 'remove' || (op === 'change' && cell.puddle)) { delete cell.puddle; return true; } water(b, s, { cell, r, c }); return true; } // the Puddle chip goes under the stack
   const ch = make(); if (!ch) return false;
   if (op === 'change') { if (topI < 0) return false; const old = cell.chips[topI]; cell.chips.splice(topI, 1, ch); b.fx[old.id] = 'void'; b.fx[ch.id] = 'mutate'; return true; }
   if (ch.kind === 'made' && footOf(ch) > 1) { const at = footBlock(s, r, c, footOf(ch)); if (!at) return false; claimFoot(s, at.r, at.c, footOf(ch)); s.grid[at.r][at.c].chips.push(ch); b.fx[ch.id] = 'spawn'; return true; }
@@ -1799,7 +1827,21 @@ function act(b, s, A, target, M) {
   void M;
 }
 // one made chip's triggered work: its actions on everything its reach covers
-function fire(b, s, at, M) { let n = 0; const list = reachOf(b, s, at, M); for (const A of M.actions || []) for (const tg of list) n += act(b, s, A, tg, M); return { n, refs: [...new Set(list.map((tg) => tg.x))].map((x) => ref(x.side || s, x.r, x.c)) }; }
+function fire(b, s, at, M) { let n = 0; const list = reachOf(b, s, at, M);
+  for (const A of M.actions || []) { if (A.k === 'pull') { n += pullTo(b, s, at, A); continue; } for (const tg of list) n += act(b, s, A, tg, M); }
+  return { n, refs: [...new Set(list.map((tg) => tg.x))].map((x) => ref(x.side || s, x.r, x.c)) }; }
+// a made chip's Pull action: up to A.n¢ of real chips out of a Pit (A.from: mine, theirs or both), onto the chip's
+// stack under it, then the Bet; what finds no room goes back
+function pullTo(b, s, at, A) {
+  const n = Math.max(1, A.n ?? 1), from = A.from || 'mine', o = 1 - s.idx, side = new Map();
+  const take = (si, amt) => { for (const ch of pullPit(b, si, amt, { bids: !!A.bids })) side.set(ch, si); };
+  if (from !== 'theirs') take(s.idx, n);
+  if (from !== 'mine') take(o, n - sum([...side.keys()], (ch) => ch.value));
+  const rest = []; for (const ch of side.keys()) { if (!at.cell.hole && capacityLeft(s, at.cell) > 0) { at.cell.chips.splice(Math.max(0, at.cell.chips.indexOf(at.ch)), 0, ch); b.fx[ch.id] = 'from-pit'; } else rest.push(ch); }
+  const left = rest.length ? addToMeter(b, s, rest, { r: at.r, c: at.c }, 'from-pit') : [];
+  for (const ch of left) backToPit(b, side.get(ch), [ch]);
+  return side.size - left.length;
+}
 // where a creature chip heads: a space next to it, one step toward its goal
 function creatureStep(b, s, at, M) {
   const others = allCells(s).filter((x) => x.cell !== at.cell && !x.cell.hole && !x.cell.link);
@@ -2038,4 +2080,4 @@ export function summary(b, idx) {
 }
 
 // internals the tests drive directly
-export const _test = { madeWork, placeMade, engage, settleAll, feeShares, setDebt, ticks, play, sidePhase, growth, strike, water, newCreature, setHard, arrange, chipPhase, placeFx, addToMeter };
+export const _test = { madeWork, placeMade, engage, settleAll, feeShares, setDebt, ticks, play, sidePhase, growth, strike, water, freezeTop, newCreature, setHard, arrange, chipPhase, placeFx, addToMeter };

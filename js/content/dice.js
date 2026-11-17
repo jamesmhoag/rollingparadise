@@ -12,6 +12,15 @@ export const MATERIALS = {
     text: 'Clear and cold. Rolled into a cast, it flips the value to the opposite face.' },
   metal: { name: 'Metal', color: '#c9d3e0', cast: 'lucky', melt: true, upgrade: true,
     text: 'Heavy and bright. Rolled into a cast, it comes up lucky seven.' },
+  // complex materials: only the Diesmith makes them, by mixing two basic materials in equal volume
+  sparkling: { name: 'Sparkling', color: '#ffe9a8', complex: true, from: ['glass', 'metal'], melt: true, upgrade: true,
+    text: 'Glass and Metal melted together in equal parts. Only melted again into a Diamond.' },
+  glimmering: { name: 'Glimmering', color: '#d6f4ff', complex: true, from: ['glass', 'plastic'], melt: true, upgrade: true,
+    text: 'Glass and Plastic melted together in equal parts. Only melted again into a Diamond.' },
+  swirling: { name: 'Swirling', color: '#e6d3ff', complex: true, from: ['metal', 'plastic'], melt: true, upgrade: true,
+    text: 'Metal and Plastic melted together in equal parts. Only melted again into a Diamond.' },
+  diamond: { name: 'Diamond', color: '#f4fbff', complex: true, from: ['sparkling', 'glimmering', 'swirling'], melt: false, upgrade: false,
+    text: 'All three complex materials and all three secondary dyes, cast as one. It cannot be melted or modified.' },
   bone: { name: 'Bone', color: '#efe3c2', melt: false, upgrade: false,
     text: 'Old and carved by hand. Each one carries a trait of its own. It cannot be melted or modified.' },
 };
@@ -70,7 +79,12 @@ export const BONE = {
 // `castFromPouch`: the dice each cast and dye rolls come from your pouch (dice of the new die's size, never Bone,
 // never ones being melted) and are lost with the melt. Off, the Diesmith rolls its own.
 // `maxDyes`: dye slots per forge. A dye mix (two different primaries in one cast) takes one slot.
-export const MELT = { meltPerFace: 0.5, castPerFace: 1, maxDyes: 2, lucky: 7, castFromPouch: true };
+// `unlock`: the floor each kind of mixing opens on. mix: two basic materials (Sparkling, Glimmering, Swirling) and two
+// primary dyes (Orange, Purple, Green). complex: the three complex materials with the three secondary dyes (Diamond).
+// `evenMix`: materials in a mix must melt to equal volumes. `rerollDoubles`: a two-dice cast or dye that rolls the
+// same value twice rolls again (up to `maxRerolls` times), since it needs a high and a low.
+export const MELT = { meltPerFace: 0.5, castPerFace: 1, maxDyes: 2, lucky: 7, castFromPouch: true,
+  unlock: { mix: 2, complex: 3 }, evenMix: true, rerollDoubles: true, maxRerolls: 20 };
 
 // What goes into a cast. Each one rolls `dice` dice of the new die's size; the face of the new die that shows
 // each rolled value is then changed by `fx`. `price`: the Diesmith's fee for it, on top of the forging fee.
@@ -79,17 +93,25 @@ export const MELT = { meltPerFace: 0.5, castPerFace: 1, maxDyes: 2, lucky: 7, ca
 //   reconfigure: the higher face becomes high+low, the lower high−low · add: the lower becomes the sum ·
 //   subtract: the higher becomes the difference · pair: the first fx on the higher face, the second on the lower
 //   diamond: six dice; the pattern they make reshapes every face (DIAMOND below)
+// Each cast rolls one die of the new size for each material in `mats`, and that die must be of that material (a Glass
+// cast rolls a Glass die from your pouch). `out`: the material the new die comes out as. `unlock`: the MELT.unlock
+// tier it needs. Diamond also needs the dyes in `needs`; each of them rolls one more die (any material) instead of
+// playing its own effect, so a Diamond rolls six.
 export const CASTS = {
   // one material: the cast every forge makes
-  glass: { name: 'Glass cast', kind: 'cast', mats: ['glass'], dice: 1, fx: 'flip', text: 'Flips the rolled face to the opposite face.' },
-  plastic: { name: 'Plastic cast', kind: 'cast', mats: ['plastic'], dice: 1, fx: 'nullify', text: 'The rolled face becomes 0.' },
-  metal: { name: 'Metal cast', kind: 'cast', mats: ['metal'], dice: 1, fx: 'lucky', text: 'The rolled face becomes lucky 7.' },
-  // two materials melted together (proposed effects: each mix plays both of its materials' casts)
-  sparkling: { name: 'Sparkling mix', kind: 'cast', mats: ['glass', 'metal'], dice: 2, fx: 'pair', pair: ['lucky', 'flip'], text: 'The higher rolled face becomes lucky 7; the lower flips to its opposite.' },
-  glimmering: { name: 'Glimmering mix', kind: 'cast', mats: ['glass', 'plastic'], dice: 2, fx: 'pair', pair: ['flip', 'nullify'], text: 'The higher rolled face flips to its opposite; the lower becomes 0.' },
-  swirling: { name: 'Swirling mix', kind: 'cast', mats: ['metal', 'plastic'], dice: 2, fx: 'pair', pair: ['lucky', 'nullify'], text: 'The higher rolled face becomes lucky 7; the lower becomes 0.' },
-  // all three materials
-  diamond: { name: 'Diamond', kind: 'cast', mats: ['glass', 'metal', 'plastic'], dice: 6, fx: 'diamond', text: 'Rolls six dice; the pattern they make reshapes every face.' },
+  glass: { name: 'Glass cast', kind: 'cast', mats: ['glass'], out: 'glass', fx: 'flip', text: 'Flips the rolled face to the opposite face.' },
+  plastic: { name: 'Plastic cast', kind: 'cast', mats: ['plastic'], out: 'plastic', fx: 'nullify', text: 'The rolled face becomes 0.' },
+  metal: { name: 'Metal cast', kind: 'cast', mats: ['metal'], out: 'metal', fx: 'lucky', text: 'The rolled face becomes lucky 7.' },
+  // two basic materials in equal parts: a complex material
+  sparkling: { name: 'Sparkling mix', kind: 'cast', mats: ['glass', 'metal'], out: 'sparkling', unlock: 'mix', fx: 'reconfigure',
+    text: 'Of the two rolled faces, the higher becomes their sum and the lower their difference.' },
+  glimmering: { name: 'Glimmering mix', kind: 'cast', mats: ['glass', 'plastic'], out: 'glimmering', unlock: 'mix', fx: 'pair', pair: ['nullify', 'lucky'],
+    text: 'Of the two rolled faces, the higher becomes 0 and the lower lucky 7.' },
+  swirling: { name: 'Swirling mix', kind: 'cast', mats: ['metal', 'plastic'], out: 'swirling', unlock: 'mix', fx: 'swirl',
+    text: 'Washes the die: every face showing the higher roll becomes their difference, every face showing the lower their sum.' },
+  // the three complex materials with the three secondary dyes
+  diamond: { name: 'Diamond', kind: 'cast', mats: ['sparkling', 'glimmering', 'swirling'], out: 'diamond', unlock: 'complex', needs: ['orange', 'purple', 'green'], fx: 'diamond',
+    text: 'Rolls six dice (one per complex material, one per secondary dye); the pattern they make reshapes every face.' },
 };
 // The primaries (red, blue, yellow) are bought. Two different primaries in one cast combine into the mix whose
 // `from` they are (Red + Yellow → Orange), which plays instead of them and costs what the two primaries cost.

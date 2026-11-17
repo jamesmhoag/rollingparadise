@@ -35,7 +35,10 @@ export const REACH = { all: 'All chips', yours: 'All yours', theirs: 'All theirs
 // actions: { k, dir? (move: left, right, up, down), n? (value, hits, power), chip? (become) }
 export const TRIGGERS = { turn: 'Each turn', created: 'When it is made', removed: 'When it is removed', exposed: 'When a chip is exposed', effect: 'When an effect of a type plays', phase: 'In a phase' };
 // row 10: what a chip's effect does to the chips it reaches
-export const ACTIONS = { move: 'Move them (left, right, up, down, or to an area)', value: 'Change their coin value', hits: 'Change their strength', power: 'Change their effect value', become: 'Turn them into another chip' };
+export const ACTIONS = { move: 'Move them (left, right, up, down, or to an area)', value: 'Change their coin value', hits: 'Change their strength', power: 'Change their effect value', become: 'Turn them into another chip',
+  pull: 'Pull chips out of a Pit (up to an amount, onto its stack)' };
+// where a Pull action takes from: the chip's own side's Pit, the other side's, or both (its own first)
+export const PULL_FROM = { mine: 'Its own Pit', theirs: 'The other Pit', both: 'Both Pits' };
 
 // a new chip from the maker starts as this
 export const NEW_CHIP = { name: 'New chip', text: '', value: 1, hits: 0, source: 'trick', lasts: 'paid', turns: 3, height: 'basic', foot: 'basic', must: 'any', onTop: 'fits', immune: [],

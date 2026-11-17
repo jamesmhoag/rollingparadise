@@ -5,7 +5,7 @@ import * as D from '../data.js';
 import * as B from '../build/draft.js';
 import { chipEl, madeRules } from './parts.js';
 import { t } from '../text.js';
-import { SOURCES, LASTS, HEIGHT, FOOTPRINT, MUST, ON_TOP, IMMUNE, MOVES, REACH, TRIGGERS, ACTIONS, NEW_CHIP } from '../content/chipmaker.js';
+import { SOURCES, LASTS, HEIGHT, FOOTPRINT, MUST, ON_TOP, IMMUNE, MOVES, REACH, TRIGGERS, ACTIONS, PULL_FROM, NEW_CHIP } from '../content/chipmaker.js';
 import { asMade } from '../chipmodel.js';
 
 const path = (id, ...ks) => ks.reduce((p, k) => D.subPath(p, k), D.subPath('MADE_CHIPS', id));
@@ -67,6 +67,7 @@ export function chipMaker(id, classic, redraw, onCopy) {
       : x.on === 'exposed' ? h('input', { type: 'text', placeholder: t('chipmaker.exposed.what'), value: x.what || '', onchange: (e) => upd({ ...x, what: e.target.value || undefined }) }) : null)), ['triggers']),
     field(t('chipmaker.actions'), listEditor(m.actions || [], 'actions', ACTIONS, 'k', (x, upd) => (x.k === 'move' ? smallSelect(['left', 'right', 'up', 'down'].map((d) => [d, t(`chipmaker.dir.${d}`)]), x.dir || 'right', (v) => upd({ ...x, dir: v }))
       : x.k === 'become' ? smallSelect(kinds(), x.chip || 'std', (v) => upd({ ...x, chip: v }))
+      : x.k === 'pull' ? h('span', { class: 'row' }, smallSelect(Object.entries(PULL_FROM), x.from || 'mine', (v) => upd({ ...x, from: v })), h('input', { type: 'number', min: 1, step: 1, value: x.n ?? 5, style: { width: '70px' }, title: t('chipmaker.pull.amount'), onchange: (e) => upd({ ...x, n: Math.max(1, Math.round(Number(e.target.value) || 1)) }) }), h('label', { class: 'b-check' }, h('input', { type: 'checkbox', ...(x.bids ? { checked: 'checked' } : {}), onchange: (e) => upd({ ...x, bids: e.target.checked || undefined }) }), t('chipmaker.pull.bids')))
         : h('input', { type: 'number', step: 1, value: x.n ?? 1, style: { width: '70px' }, title: t('chipmaker.amount'), onchange: (e) => upd({ ...x, n: Math.round(Number(e.target.value) || 0) }) }))), ['actions']),
   ];
   const sample = { kind: 'made', model: id, value: m.value, hits: m.hits, life: m.lasts === 'turns' ? m.turns : undefined };

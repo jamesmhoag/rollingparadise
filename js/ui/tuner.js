@@ -8,7 +8,7 @@ import { t } from '../text.js';
 
 // the tables each section also depends on, opened in the table editor
 const RELATED = {
-  wager: ['TILTS', 'FLOORS'], penalty: [], shops: ['CHIP_TIERS', 'SHOP_CHIPS', 'DICE_SHOP', 'PACKS', 'DRINKS'],
+  wager: ['TILTS', 'FLOORS'], penalty: [], shops: ['CHIP_TIERS', 'SHOP_CHIPS', 'DICE_SHOP', 'MELT', 'CASTS', 'DYES', 'PACKS', 'DRINKS'],
   rooms: [], tables: ['BASE_DIMS', 'FLOORS'], drinks: ['DRINKS'], book: ['SPORTS', 'ODDS'], gear: ['WALLETS', 'JACKETS', 'PASSES', 'CARDS'],
 };
 export const TUNER_SECTIONS = [...Object.keys(D.TUNING), 'gear'];

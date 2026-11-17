@@ -60,8 +60,9 @@ export const GUIDE = {
   // ---------- the floor ----------
   'room:smith': { name: 'Diesmith', def: 'The forge where dice are melted and cast.',
     how: ['Pick a size, pick dice to melt until there is enough volume, add dyes if you like, then Forge.',
-      'Each cast and dye rolls dice of the new size from your pouch, and those dice are lost with the melt: keep spares of that size.',
-      'Two different primary dyes in one cast mix: Red + Yellow is Orange, Red + Blue Purple, Blue + Yellow Green.',
+      'Each cast and dye rolls dice of the new size from your pouch, and those dice are lost with the melt: keep spares of that size, and of each material you melt.',
+      'From floor 2, two basic materials in equal volume mix into Sparkling, Glimmering or Swirling, and two different primary dyes mix into Orange, Purple or Green.',
+      'From floor 3, one each of Sparkling, Glimmering and Swirling with Orange, Purple and Green casts a Diamond: six dice, one pattern.',
       'Pick a single die to sell it instead.'] },
   'room:dice': { name: 'Dice Shop', def: 'A counter selling new dice.',
     how: ['Buy plain dice to grow your pouch or to melt at the Diesmith.', 'Bone dice carry a fixed trait and can never be changed.'] },
