@@ -237,3 +237,30 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
 - **Default aims** use the same judgement as the House's opponents (most impact, least waste), without its random
   tie-break. Should the default ever leave a trick unaimed, so you must choose?
 - The feed table drops "The House calls …" lines into the row header. Any other lines you want folded in?
+
+## Round 17 additions (turn order, reward rotation, trick condition and rarity, passes)
+
+- **Roll then Bid then Bluff.** The Roll phase only picks; the throw happens as the Bid opens, for both sides, and
+  dice are placed in the Bluff. Should the opponent's roll also show while you are still picking (it does not: both
+  sides pick blind)?
+- **Wear thresholds.** Read as: each condition's sale percentage is its wear threshold (Excellent from 75, Good from
+  50, Poor below 50). Your first Book starts at the top of Good (74) and the shelf at the top of Excellent (99), so a
+  trick drops a grade after about 25 plays; Mint drops to Excellent on its first play. Was "Poor at 0" meant as Poor
+  only at exactly 0 instead?
+- **What counts as a use.** One wear each time a trick goes into play (once per bid, however long it lingers).
+- **Foil tier names**: Foil, Holo, Prism (×1.25, ×1.5, ×2). Other names wanted?
+- **Misprints** change the die (d4/d6/d8, one size) or the Trait (+1 to +3, sometimes −1). Should they also change
+  the dice count, or the roll effect's numbers?
+- **Reprint rules**: Expense: one instance per die, each die plus the Trait value (as you described). Insurance,
+  Investment and Correction: the Trait plays once per die. Want a different older rule for any of those?
+- **Quality dice**: Grand rolls a d10, Royal a d20, when drawn; a dud plays at Common strength, a hot roll sets off
+  the Bonus. Is this the "less reliable, d10/d20 for bonus effects" you meant?
+- **Foil pack prices**: 200¢ × quality × floor, so a pack never sells back for more than it cost (except by luck with
+  Gem Mints). Gem Mint chance 8% a trick.
+- **Passes**: a pass is checked only when you continue a saved run (and on the alley carry-over). Nothing during a
+  run takes a pass away yet, so the Bouncer meets old saves that dropped the Royal Card, and runs that come back
+  without their floor's pass. Should anything else (a Cheat tilt, a pickpocket) take the wallet or the pass mid-run?
+- **A kept pass in a new run** offers the elevator to its floor after the Doorman, or the Basement. Should it skip the
+  Doorman too (and his stake)?
+- **Lanyard cards** (Membership, Suite Key, Punch, Paradise) are no longer called passes. Should they become passes
+  of their own, or stay cards?

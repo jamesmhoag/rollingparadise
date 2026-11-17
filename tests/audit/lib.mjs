@@ -85,11 +85,9 @@ const BUY = {
     }
   },
   restock(run, ctx) { const p = R.restockCost(run); if (p <= ctx.left * 0.5 && track(ctx, 'restock', R.restock(run), p)) BUY.tricks(run, ctx); },
-  upgrades(run, ctx) {
-    for (const t of run.tricks.slice().sort((a, b) => b.q - a.q || a.up - b.up)) {
-      if (run.fs.upgrades <= 0 || t.up >= 2) continue; const p = R.upgradeCost(run, t); if (p > ctx.left) continue;
-      track(ctx, 'trickUpgrade', R.upgradeTrick(run, t.uid), p);
-    }
+  upgrades(run, ctx) { // the Trader no longer upgrades tricks: the best foil pack open that fits the budget
+    for (let q = 4; q >= 1; q--) { if (!R.packOpen(run, q)) continue; const p = R.packCost(run, q); if (p > ctx.left) continue;
+      track(ctx, 'trickUpgrade', !!R.buyPack(run, q), p); break; }
   },
   forge(run, ctx) {
     for (const type of ['d20', 'd10', 'd8', 'd6']) {

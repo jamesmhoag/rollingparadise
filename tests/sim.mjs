@@ -42,10 +42,10 @@ for (let seed = 1; seed <= 60; seed++) {
   for (let f = 1; f <= 4 && alive; f++) {
     R.enterFloor(run, f);
     if (run.pendingCard) R.resolvePending(run, R.walletCards(run)[0]);
-    if (f === 1 && !R.hasCard(run, 'royal')) throw new Error('no Royal Card on floor 1');
+    if (run.pass < f) throw new Error(`no pass for floor ${f}`);
     // shop a little
     for (const it of run.fs.shop) if (run.purse > it.cost * 3) R.buyTrick(run, it.key);
-    for (const t of run.tricks) if (run.purse > R.upgradeCost(run, t) * 4) R.upgradeTrick(run, t.uid);
+    for (let q = 4; q >= 1; q--) if (R.packOpen(run, q) && run.purse > R.packCost(run, q) * 4) { R.buyPack(run, q); break; }
     R.buyDrink(run, run.fs.lounge.drinks[0].id); R.searchFloor(run);
     if (run.purse > 50) R.placeBet(run, run.fs.book.events[0].key, 0, run.fs.book.min);
     const path = [0, 1 + (seed % 2)];

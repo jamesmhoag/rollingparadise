@@ -16,22 +16,16 @@ for (let seed = 1; seed <= 25; seed++) {
   assert(seen(bout, me).sides[1].run.length === opp.pub.run.length && opp.pub.run.length < theirDraws + 1, 'their same-phase draws are not in what you may see');
   assert(B.advance(bout) && bout.phase === 'roll', 'Draw closes for both');
   assert(B.canDraw(bout, me, me.book[0]?.uid), 'rolling ends drawing');
-  // Roll: one throw, then place
-  assert(B.needOf(bout, me), 'a roll is required before bidding');
+  // Roll: pick the dice; they are thrown as the Bid opens
+  assert(B.needOf(bout, me) && !B.advance(bout), 'a roll is required before bidding');
   const n = B.tipOf(me, 'proficiency');
-  assert(B.canThrow(bout, me, me.pouch.slice(0, n + 1).map((d) => d.id)) || me.pouch.length <= n, 'a throw is capped by Proficiency');
-  const thrown = B.throwDice(bout, me, me.pouch.slice(0, Math.min(n, 2)).map((d) => d.id));
-  assert(thrown && me.thrown && me.tray.length === thrown.length, 'every picked die lands in the roll together');
-  assert(B.needOf(bout, me) && !B.advance(bout), 'a rolled die must go on a trick');
-  assert(!B.place(bout, me, me.tray[0].id, e) === false, 'a die goes on a shown trick');
-  if (B.trayPlaceable(me)) { assert(B.needOf(bout, me) && !B.advance(bout), 'every rolled die that fits a trick must be used');
-    for (const d of me.tray.slice()) { const x = me.run.find((t) => !B.canPlace(bout, me, d.id, t)); if (x) B.place(bout, me, d.id, x); } }
-  const left = me.tray.length;
+  assert(B.canPick(bout, me, me.pouch.slice(0, n + 1).map((d) => d.id)) || me.pouch.length <= n, 'a throw is capped by Proficiency');
+  const ids = me.pouch.slice(0, Math.min(n, 2)).map((d) => d.id);
+  assert(B.setPick(bout, me, ids) && !me.thrown && !me.tray.length && !B.needOf(bout, me), 'picked dice wait in the Pouch until the Roll closes');
   planPhase(bout, opp);
   assert(B.advance(bout) && bout.phase === 'bid', 'Roll closes for both');
-  assert(me.tray.length === left, 'a die with nowhere to go stays in the roll, keeping its value');
-  assert(!me.tray.length, 'dice left in the roll go back when rolling closes');
-  assert(B.canMove(bout, me, e.dice[0].id), 'dice rolled this turn can still be moved while bidding');
+  assert(me.thrown && me.tray.length === ids.length && opp.thrown, 'the picked dice of both Rollers are thrown into the roll as the Bid opens');
+  assert(B.canPlace(bout, me, me.tray[0].id, e), 'dice go on tricks in the Bluff, not while bidding');
   // Bid: more than one chip on the same trick
   assert(B.needOf(bout, me), 'a bid is required before playing');
   const spots = B.biddable(me);
@@ -41,8 +35,15 @@ for (let seed = 1; seed <= 25; seed++) {
   B.resetPlan(bout, me); assert(!me.used.bid && me.run.find((x) => x.uid === e.uid).state === 'shown', 'undo in Bid takes back only the bids');
   const e3 = me.run.find((x) => x.uid === e.uid), s3 = B.biddable(me)[0]; B.bid(bout, me, e3, s3.r, s3.c);
   planPhase(bout, opp); assert(B.advance(bout) && bout.phase === 'aim', 'Bid closes and the Bluff opens: bids are out, aims are not');
-  assert(opp.run.every((x) => x.state !== 'bid' || !x.target || true), 'their aim is made in the Bluff');
+  // the Bluff: put the rolled dice on tricks, then aim
+  const e4 = me.run.find((x) => x.uid === e.uid);
+  assert(!B.canPlace(bout, me, me.tray[0].id, e4) && B.place(bout, me, me.tray[0].id, e4), 'in the Bluff a rolled die goes on a trick, bid on or not');
+  if (B.trayPlaceable(me)) { assert(B.needOf(bout, me) && !B.advance(bout), 'every rolled die that fits a trick must be used');
+    for (const d of me.tray.slice()) { const x = me.run.find((t) => !B.canPlace(bout, me, d.id, t)); if (x) B.place(bout, me, d.id, x); } }
+  assert(B.canMove(bout, me, e4.dice[0].id), 'dice rolled this turn can be moved between tricks in the Bluff');
+  const left = me.tray.length;
   planPhase(bout, opp); assert(B.advance(bout) && bout.phase === 'resolve', 'the Bluff closes and the House plays');
+  assert(me.tray.length === left, 'a die with nowhere to go stays in the roll, keeping its value');
   for (const _ of B.resolve(bout)); // eslint-disable-line no-unused-vars
   assert(bout.over || bout.phase === 'drink', 'the round closes with the Drink phase');
   if (!bout.over) { assert(B.canSip(bout, me) || !me.drink, 'sipping waits for the Drink phase'); B.advance(bout); assert(bout.phase === 'draw', 'the next turn opens on Draw'); }
@@ -81,7 +82,7 @@ for (let seed = 1; seed <= 200; seed++) {
   for (const { cell } of opp.grid.flat().map((cell) => ({ cell }))) if (cell.chips.length && bout.rng.chance(0.3)) setDebt(bout, cell, bout.rng.range(1, 4));
   if (seed % 3 === 0) opp.grid[0][bout.rng.int(opp.dims.cols)].chips.push({ id: bout.nextId++, kind: 'block', value: 0 });
   const id = fees[seed % fees.length], def = D.TRICKS[id];
-  const e = { uid: 9999, trick: { id, q: 1 + (seed % 3), up: 0, uid: 9999 }, dice: Array.from({ length: 1 + (seed % def.count) }, (_, i) => ({ id: 'x' + i, type: def.die, value: 1 + ((seed * (i + 3)) % 12), t: 1, up: [] })), bid: [], bidValue: 1, state: 'play', lingerLeft: 0, lingerTotal: 0, target: null };
+  const e = { uid: 9999, trick: { id, q: 1 + (seed % 3), uid: 9999 }, dice: Array.from({ length: 1 + (seed % def.count) }, (_, i) => ({ id: 'x' + i, type: def.die, value: 1 + ((seed * (i + 3)) % 12), t: 1, up: [] })), bid: [], bidValue: 1, state: 'play', lingerLeft: 0, lingerTotal: 0, target: null };
   const origin = B.validTargets(bout, me, e)[0]; if (!origin) continue;
   const fc = B.forecastFee(bout, me, e, origin), plan = B.feePlan(bout, me, e, origin);
   if (!fc || plan.shares.some(() => false)) continue;

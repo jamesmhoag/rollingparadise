@@ -29,9 +29,9 @@ export const STATS = {
   trickery: { name: 'Trickery', short: 'Draw', text: 'Tricks you may draw from your Book each turn.', per: (n) => `draw ${n} more trick${n === 1 ? '' : 's'} from your Book each turn, so more tricks are on your Run to roll onto and bid on` },
   ingenuity: { name: 'Ingenuity', short: 'Bid', text: 'Chips you may bid on shown tricks each turn.', per: (n) => `bid ${n} more chip${n === 1 ? '' : 's'} each turn, so more tricks play (or linger) each turn` },
   proficiency: { name: 'Proficiency', short: 'Roll', text: 'Dice you may roll each turn. A die shows its value first; you then choose which shown trick it goes on.', per: (n) => `roll ${n} more ${n === 1 ? 'die' : 'dice'} (or flip ${n === 1 ? 'a chip' : 'chips'}) each turn, so bigger totals and more bonuses` },
-  charisma: { name: 'Charisma', short: 'Steal', text: 'For each bid you leave unused, steal this many ¢ from the Stage onto your Meter.', per: (n) => `steal ${n} more ¢ from the Stage for every bid you leave unused` },
-  cunning: { name: 'Cunning', short: 'Opportunity', text: 'For each roll you leave unused, gain this many Opportunity chips on your Meter.', per: (n) => `gain ${n} more Opportunity chip${n === 1 ? '' : 's'} for every roll you leave unused` },
-  conviction: { name: 'Conviction', short: 'Power', text: 'For each draw you leave unused, gain this much Power. Power is added to your next roll effect.', per: (n) => `gain ${n} more Power for every draw you leave unused` },
+  charisma: { name: 'Charisma', short: 'Steal', text: 'For each draw you leave unused, a Steal chip on your Meter steals this many ¢ from the Stage in the House phase.', per: (n) => `steal ${n} more ¢ from the Stage for every draw you leave unused` },
+  cunning: { name: 'Cunning', short: 'Opportunity', text: 'For each bid you leave unused, gain this many Opportunity chips on your Meter.', per: (n) => `gain ${n} more Opportunity chip${n === 1 ? '' : 's'} for every bid you leave unused` },
+  conviction: { name: 'Conviction', short: 'Power', text: 'For each roll you leave unused, gain this many Power chips on your Meter: each adds +1 to your roll effects this turn.', per: (n) => `gain ${n} more Power chip${n === 1 ? '' : 's'} for every roll you leave unused` },
   balance: { name: 'Balance', short: 'Stack height', text: 'Extra chips each space can hold (base 3).', per: (n) => `every space in your position holds ${n} more chip${n === 1 ? '' : 's'} (taller stacks in the Meter and the Bar)` },
   versatility: { name: 'Versatility', short: 'Meter rows', text: 'Extra Meter rows (base 2). The Meter sits in front and only holds chips gained during the bout.', per: (n) => `${n} more Meter row${n === 1 ? '' : 's'}: more room for Blocks, Opportunity and recovered chips, and more cover in front of your Bar` },
   depth: { name: 'Depth', short: 'Bar rows', text: 'Extra Bar rows (base 3). The Bar holds the chips you commit before the bout.', per: (n) => `${n} more Bar row${n === 1 ? '' : 's'}: room to put more chips on the table before the bout` },
@@ -89,7 +89,52 @@ export const TYPES = {
 };
 export const QMULT = [0, 1, 2, 3, 4];
 export const QNAME = ['', 'Common', 'Fine', 'Grand', 'Royal'];
-export const TRICK_UPGRADE_MAX = 2; export const DIE_UPGRADE_MAX = 2;
+export const DIE_UPGRADE_MAX = 2;
+// Quality is unlocked by floor. Common and Fine tricks are reliable: they roll only their own small dice (d4, d6,
+// d8). Grand and Royal hit harder but less reliably: each time one is drawn it rolls a quality die (d10 or d20). A
+// low roll is a dud (the trick plays at Common strength that turn); a high roll sets off its Bonus whatever the dice.
+export const QDIE = [null, null, null, { die: 'd10', faces: 10, dud: 1, hot: 10 }, { die: 'd20', faces: 20, dud: 2, hot: 19 }];
+export const qdieText = (q) => { const Q = QDIE[q]; return Q ? `Rolls a ${Q.die} when drawn: ${Q.dud === 1 ? '1' : `1–${Q.dud}`} is a dud (Common strength this turn); ${Q.hot === Q.faces ? Q.hot : `${Q.hot}–${Q.faces}`} sets off the Bonus whatever the dice.` : 'Reliable: no quality die.'; };
+
+// A trick's condition sets only what it sells for. Wear starts at 100 for Mint and drops 1 each time the trick plays;
+// each condition's sale percentage is also its wear threshold. Poor tricks cannot be sold (the Trader trashes them)
+// but play forever, just as well as ever. Gem Mint comes only out of foil packs and is Mint until first played.
+export const CONDITIONS = {
+  gem: { name: 'Gem Mint', at: 100, sell: 2 }, mint: { name: 'Mint', at: 100, sell: 1 }, excellent: { name: 'Excellent', at: 75, sell: 0.75 },
+  good: { name: 'Good', at: 50, sell: 0.5 }, poor: { name: 'Poor', at: 0, sell: 0 },
+};
+export const WEAR = { mint: 100, excellent: 99, good: 74 }; // where each source starts: foil packs, the shelf, your first Book
+export const condOf = (t) => { const w = t.wear ?? WEAR.good; return w >= 100 ? (t.gem ? 'gem' : 'mint') : w >= 75 ? 'excellent' : w >= 50 ? 'good' : 'poor'; };
+
+// Rarity. Basic is the plain print. Foil multiplies the roll total in tiers; a Misprint has a modestly changed die or
+// Trait value (most of them for the better); a Reprint plays an older rule for its type, restoring a buff.
+export const FOIL = [null, { name: 'Foil', mult: 1.25 }, { name: 'Holo', mult: 1.5 }, { name: 'Prism', mult: 2 }];
+export const RARITY = {
+  basic: { name: 'Basic', text: 'The plain print.' },
+  foil: { name: 'Foil', text: 'A foil print multiplies the roll total: Foil ×1.25, Holo ×1.5, Prism ×2.' },
+  misprint: { name: 'Misprint', text: 'Printed with a changed value: its die or its Trait differs from the plain print.' },
+  reprint: { name: 'Reprint', text: 'Printed with an older rule for its type.' },
+};
+// the older rule each type's Reprint plays
+export const REPRINT = {
+  expense: 'Older rule: the roll effect plays once for each die, each instance worth that die plus the Trait value.',
+  insurance: 'Older rule: the Trait plays once for each die on the trick.',
+  investment: 'Older rule: the Trait plays once for each die on the trick.',
+  correction: 'Older rule: the Trait plays once for each die on the trick.',
+};
+export const rarityName = (t) => (t.foil ? FOIL[Math.min(3, t.foil)].name : t.rar && t.rar !== 'basic' ? RARITY[t.rar].name : '');
+// a trick's rules as printed on it: a Misprint's die differs from the plain print
+const printed = new Map();
+export function defOf(t) {
+  const d = t.mis?.die; if (!d) return TRICKS[t.id];
+  const k = t.id + ':' + d; if (!printed.has(k)) printed.set(k, { ...TRICKS[t.id], die: d }); return printed.get(k);
+}
+export const misText = (t) => !t.mis ? '' : [t.mis.die && `prints ${t.mis.die} instead of ${TRICKS[t.id].die}`, t.mis.trait && `Trait ${t.mis.trait > 0 ? '+' : ''}${t.mis.trait}`].filter(Boolean).join(', ');
+// Foil packs: five tricks of the set's quality, all Mint (each may be Gem Mint), one of them a rarer print.
+// Better sets cost more and open as the floors do: 200¢ × quality × floor, above what the five sell for at Mint.
+export const PACKS = [null,
+  { name: 'Common set', q: 1, floor: 1 }, { name: 'Fine set', q: 2, floor: 2 }, { name: 'Grand set', q: 3, floor: 3 }, { name: 'Royal set', q: 4, floor: 4 }];
+export const PACK_SIZE = 5, GEM_CHANCE = 0.08, PACK_PRICE = 200;
 
 export const APPROACH = {
   front: 'the front-most stack of a column',
@@ -423,7 +468,7 @@ export const SHOP_CHIPS = {
   chocolate: { name: 'Chocolate Chip', tier: 1, glyph: '🍫', kind: 'food', place: 'top', list: 'Chocolate Chip', food: { mods: { trickery: 1 }, turns: 2 },
     text: () => 'Food. Eat it from the top of a stack: +1 Draw for 2 turns.' },
   // Made when a phase is passed with actions left unused (see REWARD in bout.js); they carry their amount (`amt`).
-  steal: { name: 'Steal chip', tier: 1, sold: false, from: 'stat:charisma', glyph: '🫳', text: () => 'Made from bids left unused (Charisma). In the House phase it steals what it carries from the Stage (your fees first, then your opponent\'s) onto your Meter, then it is gone.' },
+  steal: { name: 'Steal chip', tier: 1, sold: false, from: 'stat:charisma', glyph: '🫳', text: () => 'Made from draws left unused (Charisma). In the House phase it steals what it carries from the Stage (your fees first, then your opponent\'s) onto your Meter, then it is gone.' },
   honey: { name: 'Honey Chip', tier: 2, sold: false, from: 'bees', glyph: '🍯', kind: 'food', place: 'top', list: 'Honey Chip', food: { mods: { proficiency: 1, ingenuity: 1 }, turns: 1 },
     text: () => 'Food (sticky, golden). Eat it: +1 Roll and +1 Bid this turn.' },
   chipchip: { name: 'Chip Chip', tier: 1, glyph: '🥔', kind: 'food', place: 'top', list: 'Chip Chip', food: { mods: { charisma: 1 }, turns: 1, dip: true },
@@ -431,7 +476,7 @@ export const SHOP_CHIPS = {
   dip: { name: 'Dip Chip', tier: 2, glyph: '🥣', kind: 'dip', place: 'space', vars: { dips: 3 }, list: 'Dip Chip',
     text: (v) => `A bowl on its own empty space. The next ${v.dips} Chip Chips you eat are dipped for twice the bonus.` },
   fishchip: { name: 'Fish ’n Chip', tier: 2, glyph: '🐟', kind: 'food', place: 'top', list: 'Fish "n Chip', food: { per: 'conviction', turns: 1 },
-    text: () => 'Food. Eat it: +1 Power-per-draw (Conviction) for every chip under it (n, up to 3) this turn.' },
+    text: () => 'Food. Eat it: +1 Power per unused roll (Conviction) for every chip under it (n, up to 3) this turn.' },
   hamburger: { name: 'Hamburger Chip', tier: 2, glyph: '🍔', kind: 'food', place: 'top', list: 'Hamburger Chip', food: { mods: { proficiency: 2, ingenuity: -1 }, turns: 1 },
     text: () => 'Food. Eat it plain: +2 Roll but −1 Bid this turn. On a Bun and topped with a Bun, eat the top Bun for the whole burger: +1 Draw, Roll and Bid for 2 turns.' },
   bun: { name: 'Bun Chip', tier: 1, glyph: '🍞', kind: 'food', place: 'top', list: 'Bun Chip', food: { mods: { conviction: 1 }, turns: 1 },
@@ -457,7 +502,7 @@ export function madeBy(id) {
   const f = SHOP_CHIPS[id]?.from; if (!f) return null;
   if (f.startsWith('trick:')) { const T = TRICKS[f.slice(6)]; return T ? `the ${T.name} trick (${TYPES[T.type].name}${T.cls ? ', ' + CLASSES[T.cls].name : ''})` : null; }
   if (f.startsWith('tilt:')) return `the ${TILTS[f.slice(5)]?.name || f.slice(5)} tilt`;
-  if (f.startsWith('stat:')) return { charisma: 'bids left unused when the Bid phase is passed (Charisma)' }[f.slice(5)] || f;
+  if (f.startsWith('stat:')) return { charisma: 'draws left unused when the Draw phase is passed (Charisma)' }[f.slice(5)] || f;
   return { bees: 'Bumble Bees pollinating your Flowers', roost: 'a Dragon on its Roost' }[f] || f;
 }
 // the trick that makes a chip, if any
@@ -643,7 +688,6 @@ export const CARDS = {
   business_charisma: { name: 'Business Card: Agent', text: '+1 Charisma.', mods: { charisma: 1 } },
   business_cunning: { name: 'Business Card: Fixer', text: '+1 Cunning.', mods: { cunning: 1 } },
   business_conviction: { name: 'Business Card: Closer', text: '+1 Conviction.', mods: { conviction: 1 } },
-  royal: { name: 'Royal Card', text: 'Received after winning your first bout. You need it in your wallet to walk into the casino. Once you are on the floor it does nothing more, and you can drop it to free the slot.' },
   paradise: { name: 'Paradise Card', text: 'Earned by beating the last High Roller. It opens the Paradise Ascent.' },
   membership: { name: 'Membership Card', text: 'Earned by buying 5 tricks on one floor. Opens the Trick Trader\'s Secret Shelf and takes 10% off everything the Trader sells.' },
   suite: { name: 'Suite Key Card', text: 'Earned by winning a Double Down. Opens a Suite after you beat the High Roller.' },
@@ -652,10 +696,10 @@ export const CARDS = {
   debit: { name: 'Debit Card', text: 'Found by searching the floor. Lets you use the ATM in the Gift Shop, which keeps chips between runs.' },
   punch: { name: 'Punch Card', text: 'One punch per drink bought. Five punches and the next drink is free.' },
   note: { name: 'Note: on bidding', text: '"Small chips bid fast. Big chips linger. Keep a stack of 1¢ chips at the back."' },
-  note_dice: { name: 'Note: on dice', text: '"Roll first, look, then place. A low roll is not wasted: some bonuses want a small total, and a pair of anything is a match."' },
+  note_dice: { name: 'Note: on dice', text: '"Roll, bid on what you rolled, then place in the Bluff. A low roll is not wasted: some bonuses want a small total, and a pair of anything is a match."' },
   note_debt: { name: 'Note: on Debt', text: '"Debt only takes a chip it can cover. A 5¢ chip on top shrugs off a 4¢ fee, but the Debt stays and the next fee finishes it."' },
   note_house: { name: 'Note: on the House', text: '"Both arms move at once. What you play this phase cannot change what they play this phase. Insure a turn early, not the same turn."' },
-  note_hold: { name: 'Note: on holding back', text: '"A turn with nothing worth playing still pays. Every draw, roll and bid you leave unused earns Power, Opportunity or chips off the Stage."' },
+  note_hold: { name: 'Note: on holding back', text: '"A turn with nothing worth playing still pays. Every draw, roll and bid you leave unused earns chips off the Stage, Power or Opportunity."' },
   note_flip: { name: 'Note: on flips', text: '"Out of dice? Flip a chip. It lands on nothing or its worth, fits any trick, and comes back to your Meter afterwards."' },
   trading: { name: "Trading Card: Children of Ae'a", text: 'From a super popular card game. Does not seem to do anything here.' },
 };
@@ -673,8 +717,19 @@ export const WALLETS = {
   fine_leather: { name: 'Fine Leather', color: '#4a2412', slots: 4, keep: 12, price: 100000, level: 2 },
   royal_luxury: { name: 'Royal Luxury', color: '#ffd76a', slots: 4, keep: 7, price: 10000000, level: 4, crown: true },
 };
-// passes are clipped to your lanyard and do not take a wallet slot. The Royal Card does take one (Collectables C80).
-export const PASS_CARDS = ['membership', 'suite', 'punch', 'paradise'];
+// these cards are clipped to your lanyard and do not take a wallet slot
+export const LANYARD_CARDS = ['membership', 'suite', 'punch', 'paradise'];
+// Passes are not cards: every wallet holds one, in its own slot. The Casino Pass is won from the Doorman and each
+// floor has its own pass, given as you reach it (it takes the slot from the last). Once you are in, a pass is not
+// needed again unless you leave: coming back to a saved run, the pass for your floor (or a higher one) walks you
+// straight in. Without it the Bouncer stops you, and beating him gets you back in at the Boogey Basement with all
+// your run's things. The pass stays with the wallet: keep the wallet in the alley and it is in your next run, where
+// it takes you past the floor checks to its floor; lose the wallet and the pass goes with it.
+export const PASSES = [null,
+  { name: 'Casino Pass', glyph: '♛', color: '#7a2d7a', text: 'Gets you through the casino doors. Won from the Doorman.' },
+  { name: 'Hustlers Haven Pass', glyph: '2', color: '#3c7fc4', text: 'Gets you onto Hustlers Haven, floor 2.' },
+  { name: 'Rollers Suite Pass', glyph: '3', color: '#ff86ea', text: 'Gets you onto the Rollers Suite, floor 3.' },
+  { name: 'Royal Paradise Pass', glyph: '4', color: '#d4a52a', text: 'Gets you onto Royal Paradise, floor 4.' }];
 export const PURSE_LIMIT = 999e12;
 export const STARTER_CARDS = ['discount_diesmith', 'discount_trader', 'discount_lounge', 'business_trickery', 'business_ingenuity', 'business_proficiency',
   'business_charisma', 'business_cunning', 'business_conviction'];

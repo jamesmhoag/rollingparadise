@@ -16,6 +16,11 @@ export const saveRun = (run) => { try { store()?.setItem(RUN_KEY, JSON.stringify
 export const clearRun = () => { try { store()?.removeItem(RUN_KEY); } catch { /* storage unavailable */ } };
 // shop chips renamed after the workbook's chip list: carry owned counts over to the new ids
 function migrate(run) {
+  if (run.pass == null) { // the Royal Card became the Casino Pass; a run already on a floor holds that floor's pass, unless the card was dropped
+    run.pass = run.cards?.includes('royal') ? Math.max(1, run.floor || 0) : 0; if (run.cards) run.cards = run.cards.filter((c) => c !== 'royal'); }
+  for (const t of run.tricks || []) { // Trick Trader upgrades are gone: an upgraded trick becomes the foil it played as
+    if (t.wear == null) t.wear = D.WEAR.good;
+    if (t.up) { t.foil = Math.max(t.foil || 0, t.up); t.rar = 'foil'; } delete t.up; if (!t.rar) t.rar = t.foil ? 'foil' : 'basic'; }
   for (const box of [run.chips, run.plan?.resist]) { if (!box) continue;
     for (const [old, now] of Object.entries(D.SHOP_RENAMES)) if (old in box) { if (now) box[now] = (box[now] || 0) + box[old]; delete box[old]; } }
 }
@@ -23,32 +28,35 @@ export function loadRun() {
   try { const raw = store()?.getItem(RUN_KEY); if (!raw) return null; const run = JSON.parse(raw); const s = run.rng; run.rng = new RNG(0); run.rng.s = s; migrate(run); return run; } catch { return null; }
 }
 
-const mkTrick = (run, id, q = 1, up = 0) => ({ uid: run.nextId++, id, q, up });
+// A trick: its quality (q), wear (its condition), and its print: rarity, foil tier, a Misprint's changes, Gem Mint.
+const mkTrick = (run, id, q = 1, o = {}) => { const t = { uid: run.nextId++, id, q, wear: o.wear ?? D.WEAR.good, rar: o.rar || (o.foil ? 'foil' : 'basic') };
+  if (o.foil) t.foil = o.foil; if (o.mis) t.mis = o.mis; if (o.gem) t.gem = true; return t; };
+const printOf = (t) => ({ foil: t.foil, rar: t.rar, mis: t.mis }); // a copy keeps the print, not the wear
 const mkDie = (run, type) => ({ id: run.nextId++, type, up: [] });
 const ledger = (run, label, amt) => { run.ledger.push({ label, amt, floor: run.floor }); if (run.ledger.length > 200) run.ledger.shift(); };
 export const hasCard = (run, id) => run.cards.includes(id);
 // wallet: benefit cards take a slot, passes do not
-export const walletCards = (run) => run.cards.filter((id) => !D.PASS_CARDS.includes(id));
+export const walletCards = (run) => run.cards.filter((id) => !D.LANYARD_CARDS.includes(id));
 export const walletOf = (run) => D.WALLETS[run.wallet] || D.WALLETS.worn_cloth;
 export const walletFull = (run) => walletCards(run).length >= walletOf(run).slots;
 // returns false and holds the card as pending when the wallet has no room
 export function addCard(run, id) {
   if (hasCard(run, id)) return true;
-  if (!D.PASS_CARDS.includes(id) && walletFull(run)) { run.pendingCard = id; return false; }
+  if (!D.LANYARD_CARDS.includes(id) && walletFull(run)) { run.pendingCard = id; return false; }
   run.cards.push(id); return true;
 }
 export function resolvePending(run, dropId) {
   const id = run.pendingCard; run.pendingCard = null; if (!id || !dropId) return;
   run.cards = run.cards.filter((x) => x !== dropId); run.cards.push(id);
 }
-export function dropCard(run, id) { if (!hasCard(run, id) || D.PASS_CARDS.includes(id) || (id === 'royal' && run.floor < 1)) return false; run.cards = run.cards.filter((x) => x !== id); return true; }
+export function dropCard(run, id) { if (!hasCard(run, id) || D.LANYARD_CARDS.includes(id)) return false; run.cards = run.cards.filter((x) => x !== id); return true; }
 // the Membership Card carries the Trader's discount as well; the two do not stack
 export const price = (run, shop, base) => Math.max(1, Math.round(base * (hasCard(run, `discount_${shop}`) || (shop === 'trader' && hasCard(run, 'membership')) ? 0.9 : 1)));
 function spend(run, amt, label) { if (run.purse < amt) return false; run.purse -= amt; run.stats.spent += amt; ledger(run, label, -amt); return true; }
 
 export function newRun(cls, jacketReq = 'standard', seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0, gear = {}) {
   const jacket = jacketFits(cls, jacketReq) ? jacketReq : 'standard'; // a level 0 jacket only fits the class it was cut for
-  const run = { v: 1, rng: new RNG(seed), seed, cls, jacket, wallet: gear.wallet || 'worn_cloth', pendingCard: null, floor: 0, purse: 0, nextId: 1, dice: [], tricks: [], chips: {},
+  const run = { v: 1, rng: new RNG(seed), seed, cls, jacket, wallet: gear.wallet || 'worn_cloth', pass: gear.pass || 0, pendingCard: null, floor: 0, purse: 0, nextId: 1, dice: [], tricks: [], chips: {},
     drink: null, cards: [], punches: 0, rest: null, suiteKey: false, phase: 'intro', fs: null, bets: [], news: [], ledger: [], ascent: null,
     plan: { spacing: 'row', stacking: 'maxed', counts: null, resist: {} },
     stats: { bouts: 0, wins: 0, losses: 0, spent: 0, won: 0, turns: 0, dd: 0 } };
@@ -101,7 +109,7 @@ export function genOpponent(run, floor, worthTarget, o = {}) {
   const dice = Array.from({ length: o.weak ? 3 : 5 + f * 2 + (o.boss ? 2 : 0) }, () => mkDie(run, o.weak ? 'd4' : rng.pick(pools[f])));
   const q = o.q || Math.min(3, f); let ids = o.weak ? ['charge'] : [...K.tricks];
   if (!o.weak) { const extra = rng.shuffle(D.TRICK_IDS.filter((id) => !ids.includes(id) && (!D.TRICKS[id].cls || D.TRICKS[id].cls === cls))); ids = ids.concat(extra.slice(0, f + (o.boss ? 1 : 0))); }
-  const tricks = ids.map((id) => mkTrick(run, id, q, (o.boss ? rng.int(2) : 0) + (o.up || 0)));
+  const tricks = ids.map((id) => mkTrick(run, id, q, { foil: (o.boss ? rng.int(2) : 0) + (o.foil || 0) }));
   // chips: a little petty cash in 1¢ for bidding, the rest in the biggest chips the floor allows
   const md = o.maxDenom || maxDenom(floor), cap = barCapacity(dims);
   let W = worthTarget;
@@ -127,12 +135,12 @@ export function enterFloor(run, floor) {
     tables: F.worth.map((w, i) => ({ opp: genOpponent(run, floor, Math.round(w * (0.9 + rng.next() * 0.2)), { name: names[i] }), beaten: false, seen: i === 0, felt: rng.pick(D.FELT_POOL) })),
     boss: { opp: genOpponent(run, floor, F.boss, { boss: true, name: rng.pick(D.BOSSES[floor]), title: 'High Roller' }), beaten: false, felt: 'royal' },
     bossOpen: false, lastWin: null, ddStreak: 0, tiers: { challenge: 0, cheat: 0 },
-    shop: null, restocks: 0, bought: 0, upgrades: 2, secret: null,
+    shop: null, restocks: 0, bought: 0, secret: null, pack: null,
     lounge: genLounge(run, floor), book: genBook(run, floor), searched: false,
   };
   run.fs.shop = genShelf(run);
   run.news = [`Floor ${floor}: ${F.name}. ${F.line}`];
-  if (floor === 1 && !hasCard(run, 'royal')) addCard(run, 'royal'); // a full wallet has to drop a card for it
+  run.pass = Math.max(run.pass || 0, floor); // each floor's pass takes the wallet's pass slot
   return run.fs;
 }
 // The floor is a short path: table 1 first, then a choice between tables 2 and 3 (beating one closes the
@@ -155,7 +163,7 @@ function genShelf(run) {
   for (const cls of ['hustler', 'rascal', 'technician', null]) {
     const pool = D.TRICK_IDS.filter((id) => D.TRICKS[id].cls === cls); const fresh = pool.filter((id) => !own.has(id));
     const id = rng.pick(fresh.length ? fresh : pool); const q = clamp(f + (rng.chance(0.2) ? 1 : 0) - (rng.chance(0.25) ? 1 : 0), 1, 4);
-    out.push({ key: run.nextId++, trick: mkTrick(run, id, q), cost: 50 * f * q });
+    out.push({ key: run.nextId++, trick: mkTrick(run, id, q, { wear: D.WEAR.excellent }), cost: 50 * f * q }); // off the shelf: Excellent
   }
   return out;
 }
@@ -167,20 +175,45 @@ export function buyTrick(run, key) {
   if (run.fs.bought >= 5 && !hasCard(run, 'membership')) { run.cards.push('membership'); run.news.push('The Trick Trader slides you a Membership Card. The Secret Shelf is open.'); }
   return true;
 }
-export const upgradeCost = (run, t) => price(run, 'trader', 50 * (1 + t.q * (t.up + 1)));
-export function upgradeTrick(run, uid) {
-  const t = run.tricks.find((x) => x.uid === uid); if (!t || t.up >= 2 || run.fs.upgrades <= 0) return false;
-  if (!spend(run, upgradeCost(run, t), `Upgraded ${D.TRICKS[t.id].name}`)) return false; t.up++; run.fs.upgrades--; return true;
+// Foil packs: no more upgrades at the Trader; better tricks come in better sets. Five tricks of the set's quality,
+// all Mint (each may be Gem Mint); four plain prints (some Foil) and one rarer: a Misprint, a Reprint or a high foil.
+export const packOpen = (run, q) => run.floor >= D.PACKS[q].floor;
+export const packCost = (run, q) => price(run, 'trader', D.PACK_PRICE * q * Math.max(1, run.floor));
+const STEP_DIE = ['d4', 'd6', 'd8'];
+function misprint(rng, id) {
+  const die = D.TRICKS[id].die, k = STEP_DIE.indexOf(die), good = rng.chance(0.75); // most misprints come out better
+  if (rng.chance(0.5) && k >= 0 && STEP_DIE[k + (good ? 1 : -1)]) return { die: STEP_DIE[k + (good ? 1 : -1)] };
+  return { trait: good ? 1 + rng.int(3) : -1 };
 }
-export const trickValue = (run, t) => 25 * Math.max(1, run.floor) * t.q;
+export function rollPack(run, q) {
+  const rng = run.rng, pool = D.TRICK_IDS.filter((id) => !D.TRICKS[id].cls || D.TRICKS[id].cls === run.cls || rng.chance(0.3));
+  return Array.from({ length: D.PACK_SIZE }, (_, k) => {
+    const id = rng.pick(pool), o = { wear: D.WEAR.mint, gem: rng.chance(D.GEM_CHANCE) };
+    if (k < D.PACK_SIZE - 1) { if (rng.chance(0.2)) o.foil = 1; }
+    else { const r = rng.next(); if (r < 0.35) { o.rar = 'misprint'; o.mis = misprint(rng, id); } else if (r < 0.65) o.rar = 'reprint'; else o.foil = rng.chance(0.25 + 0.1 * q) ? 3 : 2; }
+    return mkTrick(run, id, q, o);
+  });
+}
+export function buyPack(run, q) {
+  if (!D.PACKS[q] || !packOpen(run, q) || !spend(run, packCost(run, q), `Opened a ${D.PACKS[q].name} foil pack`)) return null;
+  const got = rollPack(run, q); run.tricks.push(...got); run.fs.pack = { q, uids: got.map((t) => t.uid) }; return got;
+}
+// what a trick sells for: its quality and the floor, times its condition (Poor does not sell)
+export const trickValue = (run, t) => Math.round(25 * Math.max(1, run.floor) * t.q * D.CONDITIONS[D.condOf(t)].sell);
+export const canSell = (t) => D.condOf(t) !== 'poor';
 export function sellTrick(run, uid) {
-  const i = run.tricks.findIndex((x) => x.uid === uid); if (i < 0 || run.tricks.length <= 1) return false;
+  const i = run.tricks.findIndex((x) => x.uid === uid); if (i < 0 || run.tricks.length <= 1 || !canSell(run.tricks[i])) return false;
   const v = trickValue(run, run.tricks[i]); ledger(run, `Sold ${D.TRICKS[run.tricks[i].id].name}`, v); run.tricks.splice(i, 1); run.purse += v; return true;
+}
+// a Poor trick cannot be sold: the Trader trashes it for you
+export function trashTrick(run, uid) {
+  const i = run.tricks.findIndex((x) => x.uid === uid); if (i < 0 || run.tricks.length <= 1 || canSell(run.tricks[i])) return false;
+  run.tricks.splice(i, 1); return true;
 }
 export function secretShelf(run) {
   if (!run.fs.secret) { const rng = run.rng; const id = rng.pick(D.TRICK_IDS);
     run.fs.secret = [{ key: run.nextId++, die: 'd10', cost: 5000 }, { key: run.nextId++, die: 'd10', cost: 5000 }, { key: run.nextId++, die: 'd20', cost: 100000 },
-      { key: run.nextId++, trick: mkTrick(run, id, 4, 1), cost: 10000 }]; }
+      { key: run.nextId++, trick: mkTrick(run, id, 4, { foil: 1, wear: D.WEAR.mint }), cost: 10000 }]; }
   return run.fs.secret;
 }
 export function buySecret(run, key) {
@@ -340,6 +373,18 @@ function playerSpec(run, counts, extra = {}, dimsOverride) {
 }
 const committed = (bout) => sum(bout.sides[0].grid.flat().flatMap((c) => c.chips).filter((ch) => ch.kind === 'std' && !ch.resist), (ch) => ch.value);
 
+// ---------- passes ----------
+// the floor a pass in the wallet takes you to; coming back to a saved run without one, the Bouncer stops you
+export const passFloor = (run) => run.pass || 0;
+export const needsBouncer = (run) => run.phase === 'floor' && run.floor >= 1 && passFloor(run) < run.floor;
+// after the Doorman, a pass kept from the last run skips the floor checks up to its floor
+export const startFloor = (run) => Math.max(1, Math.min(4, passFloor(run)));
+export function startBouncer(run) {
+  const opp = genOpponent(run, 1, 30, { name: 'The Bouncer', title: 'Bouncer', cls: 'hustler', q: 1 });
+  const st = rollerStats(run); const n = Math.min(30, barCapacity(st.dims));
+  const bout = createBout({ seed: run.rng.int(2 ** 31), a: playerSpec(run, { ...noCounts(), 1: n }), b: opp, rules: { maxDenom: 1 } });
+  return { bout, ctx: { kind: 'bouncer', opp, felt: 'house', wager: 0, mult: 1, committed: n } };
+}
 export function startIntro(run) {
   const opp = genOpponent(run, 1, 18, { weak: true, name: 'Low Ball', title: 'Doorman', cls: 'technician' });
   const st = rollerStats(run); const n = Math.min(30, barCapacity(st.dims));
@@ -379,6 +424,8 @@ export function startAscent(run) {
 function keepDiceState(run, bout) {
   const s = bout.sides[0], all = [...s.pouch, ...s.tray, ...s.run.flatMap((e) => e.dice)];
   for (const d of run.dice) { const x = all.find((y) => y.id === d.id); if (x?.faces) d.faces = x.faces.map((f) => ({ ...f })); }
+  const tricks = [...s.book, ...s.run.map((e) => e.trick)]; // the wear from this bout's plays
+  for (const t of run.tricks) { const x = tricks.find((y) => y.uid === t.uid); if (x && x.wear != null) t.wear = x.wear; }
 }
 export function settle(run, ctx, bout) {
   keepDiceState(run, bout);
@@ -386,8 +433,13 @@ export function settle(run, ctx, bout) {
   run.stats.bouts++; run.stats.turns += sm.turns; if (sm.win) run.stats.wins++; else run.stats.losses++;
   if (run.drink) { run.drink.sips = bout.sides[0].drink ? bout.sides[0].drink.sips : run.drink.sips; if (run.drink.sips <= 0) run.drink = null; }
   if (ctx.kind === 'intro') {
-    if (sm.win) { run.purse = 200 + sm.oppFees; lines.push(['Welcome stake from the House', 200], ['Fees your opponent paid', sm.oppFees]); ledger(run, 'Intro bout', run.purse); }
+    if (sm.win) { run.purse = 200 + sm.oppFees; run.pass = Math.max(passFloor(run), 1); lines.push(['Welcome stake from the House', 200], ['Fees your opponent paid', sm.oppFees], [run.pass > 1 ? `Your ${D.PASSES[run.pass].name} gets you past the floor checks` : 'The Doorman hands you the Casino Pass', 0]); ledger(run, 'Intro bout', run.purse); }
     else lines.push(['The doorman shrugs. Try again.', 0]);
+    res.total = run.purse; return res;
+  }
+  if (ctx.kind === 'bouncer') { // no stake either way: only the way back in
+    if (sm.win) { run.pass = Math.max(passFloor(run), 1); lines.push(['The Bouncer steps aside: back in at the Boogey Basement, with all your things', 0]); }
+    else lines.push(['The Bouncer will not budge. Try again.', 0]);
     res.total = run.purse; return res;
   }
   if (ctx.kind === 'lounge') {
@@ -458,7 +510,7 @@ export const prizeBonus = (ctx) => Math.round((ctx.opp?.worth || 0) * D.PRIZES.b
 export function claimPrize(run, ctx, res, choice, picks) {
   const start = run.purse, bets = run.purse; // bets already paid into the purse by settle
   const total = res.base + res.winnings + (choice === 'die' ? prizeBonus(ctx) : 0);
-  if (choice === 'glean') { const t = res.prizes.tricks[picks[0]]; run.tricks.push(mkTrick(run, t.id, t.q, t.up)); }
+  if (choice === 'glean') { const t = res.prizes.tricks[picks[0]]; run.tricks.push(mkTrick(run, t.id, t.q, printOf(t))); }
   else for (const i of picks.slice(0, choice === 'die' ? 1 : 2)) run.dice.push(mkDie(run, res.prizes.dice[i].type));
   // settle() left the pre-bout purse in place apart from bet payouts; replace the staked part with the result
   run.purse = total + (bets - ctx.committed - ctx.wager);
@@ -470,7 +522,7 @@ export const brokeHint = (run) => (run.purse < D.FLOORS[run.floor].cut ? 'A smar
 // ---------- suite, gift shop, ascent ----------
 export function suiteOffer(run) {
   const rng = run.rng, f = run.floor, pool = D.TRICK_IDS.filter((id) => !D.TRICKS[id].cls || D.TRICKS[id].cls === run.cls);
-  return [mkTrick(run, rng.pick(pool), clamp(f, 1, 4), 0), mkTrick(run, rng.pick(pool), clamp(f, 1, 4), 1)];
+  return [mkTrick(run, rng.pick(pool), clamp(f, 1, 4)), mkTrick(run, rng.pick(pool), clamp(f, 1, 4), { foil: 1 })];
 }
 export function goToBed(run, penthouse) { run.rest = penthouse ? { bouts: 2, amt: 2 } : { bouts: 1, amt: 1 }; }
 export function nextAfterBoss(run) { return run.floor >= 4 ? 'penthouse' : run.suiteKey ? 'suite' : 'floor'; }
@@ -479,10 +531,10 @@ export function netWorth(run) { return run.purse + sum(run.dice, (d) => D.DICE[d
 export function buildAscent(run, meta) {
   const worths = [1100, 1300, 1500, 1800, 2200], nominal = [1e6, 1e7, 1e9, 1e11, 1e12];
   const ladder = D.ASCENT_NAMES.map((name, i) => ({ name, networth: nominal[i], legend: true,
-    opp: genOpponent(run, 4, worths[i], { boss: i >= 3, name, title: ['Millionaire', 'Millionaire', 'Billionaire', 'Billionaire', 'Trillionaire'][i], q: 4, up: Math.floor(i / 2), maxDenom: maxDenom(D.ASCENT_FLOOR) }) }));
+    opp: genOpponent(run, 4, worths[i], { boss: i >= 3, name, title: ['Millionaire', 'Millionaire', 'Billionaire', 'Billionaire', 'Trillionaire'][i], q: 4, foil: Math.floor(i / 2), maxDenom: maxDenom(D.ASCENT_FLOOR) }) }));
   for (const bld of meta.ladder || []) {
     const opp = genOpponent(run, 4, clamp(bld.worth, 600, 2000), { cls: bld.cls, name: bld.name, title: 'Remnant Roller', q: 4, maxDenom: maxDenom(D.ASCENT_FLOOR) });
-    opp.tricks = bld.tricks.map((t) => mkTrick(run, t.id, t.q, t.up)); opp.dice = bld.dice.map((d) => ({ ...mkDie(run, d.type), up: d.up || [], faces: d.faces }));
+    opp.tricks = bld.tricks.map((t) => mkTrick(run, t.id, t.q, { ...printOf(t), foil: t.foil || t.up || 0 })); opp.dice = bld.dice.map((d) => ({ ...mkDie(run, d.type), up: d.up || [], faces: d.faces }));
     ladder.push({ name: bld.name, networth: bld.networth, legend: false, opp });
   }
   ladder.sort((a, b) => a.networth - b.networth);
@@ -510,17 +562,17 @@ export function buyWallet(run, meta, id) {
 export function alleyRoll(run) {
   const dice = run.dice.slice().sort((a, b) => D.DICE[b.type].faces - D.DICE[a.type].faces).slice(0, 2).map((d) => ({ type: d.type, up: d.up, faces: d.faces, value: rollDie(run.rng, boutCopy(d)) }));
   const total = dice.reduce((n, d) => n + d.value, 0), need = walletOf(run).keep, cards = walletCards(run);
-  return { dice, total, need, kept: total >= need && cards.length > 0, cards };
+  const pass = passFloor(run); return { dice, total, need, kept: total >= need && (cards.length > 0 || pass > 0), cards, pass };
 }
 // leaving through the alley ends the run
-export function endRun(run, meta, name = 'You', kept = []) {
-  meta.kept = kept;
+export function endRun(run, meta, name = 'You', kept = [], keptPass = 0) {
+  meta.kept = kept; meta.keptPass = keptPass; // a wallet held on to in the alley keeps its pass
   if (hasCard(run, 'debit')) meta.debit = true;
   meta.runs++; meta.best = Math.max(meta.best, run.floor);
   const reached = run.phase === 'paradise' || run.phase === 'fallen' || run.phase === 'ascent';
   if (run.phase === 'paradise') meta.crowns++;
   if (reached) {
-    meta.ladder.push({ name: `${name} #${meta.runs}`, cls: run.cls, networth: netWorth(run), worth: Math.min(2000, Math.max(600, run.purse)), tricks: run.tricks.map(({ id, q, up }) => ({ id, q, up })), dice: run.dice.map(({ type, up, faces }) => ({ type, up, faces })) });
+    meta.ladder.push({ name: `${name} #${meta.runs}`, cls: run.cls, networth: netWorth(run), worth: Math.min(2000, Math.max(600, run.purse)), tricks: run.tricks.map(({ id, q, foil, rar, mis }) => ({ id, q, foil, rar, mis })), dice: run.dice.map(({ type, up, faces }) => ({ type, up, faces })) });
     if (meta.ladder.length > 12) meta.ladder.shift();
   }
   saveMeta(meta); clearRun();

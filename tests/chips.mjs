@@ -107,10 +107,10 @@ for (const el of ['corrupt', 'poison', 'boom']) {
 {
   const { bout, me, opp } = table({ transpara: 5 });
   const fogged = cellsWith(me, 'transpara').map((x) => x.r + ':' + x.c);
-  const e = { trick: { id: 'scorch', q: 1, up: 0 }, dice: [], state: 'shown' };
+  const e = { trick: { id: 'scorch', q: 1 }, dice: [], state: 'shown' };
   const aim = B.validTargets(bout, opp, e).filter((v) => v.side === 0).map((v) => v.r + ':' + v.c);
   assert(fogged.length && !aim.some((k) => fogged.includes(k)), 'an opponent cannot aim at a Transpara stack');
-  const self = { trick: { id: 'gild', q: 1, up: 0 }, dice: [], state: 'shown' };
+  const self = { trick: { id: 'gild', q: 1 }, dice: [], state: 'shown' };
   assert(B.validTargets(bout, me, self).some((v) => fogged.includes(v.r + ':' + v.c)), 'you can still aim at your own Transpara stack');
 }
 
@@ -120,7 +120,7 @@ const freeCell = (s) => s.grid.flatMap((row, r) => row.map((cell, c) => ({ r, c,
   const { bout, me } = table({});
   const x = me.grid.flatMap((row, r) => row.map((cell, c) => ({ r, c, cell }))).find((y) => y.cell.chips.filter((ch) => ch.kind === 'std').length >= 3);
   const worth = B.cellWorth(x.cell), n = x.cell.chips.length;
-  const e = { uid: 1, trick: { id: 'chill', q: 1, up: 0 }, dice: [{ value: 6, type: 'd6' }, { value: 6, type: 'd6' }], bid: [], bidValue: 1, lingerTotal: 0, lingerLeft: 0, state: 'play', target: { side: 0, r: x.r, c: x.c } };
+  const e = { uid: 1, trick: { id: 'chill', q: 1 }, dice: [{ value: 6, type: 'd6' }, { value: 6, type: 'd6' }], bid: [], bidValue: 1, lingerTotal: 0, lingerLeft: 0, state: 'play', target: { side: 0, r: x.r, c: x.c } };
   me.run.push(e); me.fz = { ...me.mods }; drain(B._test.play(bout, me, e));
   const fz = x.cell.chips.find((ch) => ch.frozen);
   assert(fz && x.cell.chips.length < n && B.cellWorth(x.cell) === worth, 'Chill freezes chips into one worth their sum');
@@ -183,7 +183,7 @@ const freeCell = (s) => s.grid.flatMap((row, r) => row.map((cell, c) => ({ r, c,
   const m = me.dims.meterRows, c = 0, back = me.grid[m + 1][c], front = me.grid[m][c];
   back.chips.unshift({ id: 5e6 + 3, kind: 'std', value: 1, resist: 'shadow', shop: 'shadow' });
   while (B.solidCount(back) >= B.solidCount(front) && back.chips.length > 1) back.chips.pop();
-  const e = { trick: { id: 'scorch', q: 1, up: 0 }, dice: [], state: 'shown' };
+  const e = { trick: { id: 'scorch', q: 1 }, dice: [], state: 'shown' };
   assert(!B.validTargets(bout, opp, e).some((v) => v.side === 0 && v.r === m + 1 && v.c === c), 'a Shadow stack behind a taller one cannot be aimed at');
 }
 { // Dynamite burns down, then destroys every chip around it
@@ -281,14 +281,14 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
   assert(B.phaseOf('ambush') === 'investment' && B.phaseOf('charge') === 'expense', 'Ambush plays with the Investments');
   const { bout, me } = table({});
   me.paidLast = 7;
-  const e = { uid: 2, trick: { id: 'vengeance', q: 1, up: 0 }, dice: [{ value: 2, type: 'd6' }, { value: 3, type: 'd6' }], bid: [], bidValue: 1, state: 'shown' };
+  const e = { uid: 2, trick: { id: 'vengeance', q: 1 }, dice: [{ value: 2, type: 'd6' }, { value: 3, type: 'd6' }], bid: [], bidValue: 1, state: 'shown' };
   assert(B.previewTotal(me, e) === 5 + 7, 'Vengeance adds the fees you paid last turn');
   const { opp } = table({}); void opp;
 }
 {
   const { bout, me, opp } = table({});
   opp.mods.boost = 6;
-  const e = { uid: 3, trick: { id: 'saturate', q: 1, up: 0 }, dice: [{ value: 2, type: 'd6' }, { value: 2, type: 'd6' }], bid: [], bidValue: 1, lingerTotal: 0, lingerLeft: 0, state: 'play' };
+  const e = { uid: 3, trick: { id: 'saturate', q: 1 }, dice: [{ value: 2, type: 'd6' }, { value: 2, type: 'd6' }], bid: [], bidValue: 1, lingerTotal: 0, lingerLeft: 0, state: 'play' };
   me.fz = { ...me.mods }; drain(B._test.play(bout, me, e));
   assert(opp.mods.boost === 0 && me.mods.boost > 0 && B.powerOf(opp) === 0, 'Saturate boosts you and subdues their boosts (and Power on a match)');
 }
@@ -364,7 +364,7 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
   assert(!ms.gone && ms.dmg === 9 && D.CREATURES.mothership.bounty === 10 * D.BOUNTY_PER_HIT, 'the Mothership has 10 hits and a bounty of 5¢ a hit');
   bout.creatures.splice(1, 1);
   assert(engage(bout, opp, me, x.r, x.c, 6, {}).placed === 5, 'the blow that drives a creature off spills the rest of the fee onto the stack beneath');
-  const ex = { trick: { id: 'charge', q: 1, up: 0 }, dice: [{ value: 3, type: 'd6' }], state: 'shown' };
+  const ex = { trick: { id: 'charge', q: 1 }, dice: [{ value: 3, type: 'd6' }], state: 'shown' };
   bout.creatures.push({ id: 2e6 + 1, kind: 'ufo', side: 0, r: x.r, c: x.c, life: 3, arrive: 1 });
   assert(B.validTargets(bout, me, ex).some((v) => v.side === 0 && v.r === x.r && v.c === x.c), 'your own Expenses can aim at a creature over your stack');
   bout.creatures.pop();
@@ -388,8 +388,8 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
   const [d] = B.throwDice(bout, me, [me.pouch[0].id]);
   assert(d.value >= 1 + 2, 'Boosted chips raise the roll');
   for (const cell of opp.grid[opp.dims.meterRows]) cell.chips.unshift({ id: 1e6 + cell.chips.length, kind: 'std', value: 1, resist: 'cheapened', shop: 'cheapened' });
-  const e = { trick: { id: 'charge', q: 1, up: 0 }, upBoost: 1 };
-  assert(B.trickMult(B.effTrick(e)) === B.trickMult({ id: 'charge', q: 1, up: 1 }), 'a bid Upgrade chip plays the trick one upgrade higher');
+  const e = { trick: { id: 'charge', q: 1 }, upBoost: 1 };
+  assert(B.trickMult(B.effTrick(e)) === B.trickMult({ id: 'charge', q: 1, foil: 1 }), 'a bid Upgrade chip plays the trick one foil tier higher');
 }
 { // Worm Hole and Dragon Roost
   const run = R.newRun('technician', 'standard', 3); R.enterFloor(run, 4); run.purse = 5000;
@@ -447,7 +447,7 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
 {
   const { bout, me } = table({});
   for (const x of B.powerChips(me)) x.cell.chips.splice(x.cell.chips.indexOf(x.ch), 1); B.addPower(bout, me, 2);
-  const e = { uid: 7, trick: { id: 'charge', q: 1, up: 0 }, dice: [{ value: 5, type: 'd6' }, { value: 2, type: 'd6' }], bid: [], bidValue: 2, state: 'bid' };
+  const e = { uid: 7, trick: { id: 'charge', q: 1 }, dice: [{ value: 5, type: 'd6' }, { value: 2, type: 'd6' }], bid: [], bidValue: 2, state: 'bid' };
   const t = B.totalParts(me, e);
   assert(t.diceSum === 7 && t.linger === 2 && t.power === 2 && t.total === 11, 'a total of 11 is shown as 5 + 2, +2 linger, +2 Power');
 }
@@ -514,7 +514,7 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
 {
   const ctx = { opp: { worth: 200 } };
   assert(R.prizeBonus(ctx) === Math.round(200 * D.PRIZES.bonus), 'the bonus is a share of the opponent\'s worth');
-  const res = { base: 100, winnings: 50, prizes: { dice: [{ type: 'd6' }, { type: 'd8' }], tricks: [{ id: 'charge', q: 1, up: 0 }] } };
+  const res = { base: 100, winnings: 50, prizes: { dice: [{ type: 'd6' }, { type: 'd8' }], tricks: [{ id: 'charge', q: 1 }] } };
   for (const [choice, extra] of [['die', R.prizeBonus(ctx)], ['dice', 0], ['glean', 0]]) {
     const run = R.newRun('rascal', 'standard', 2); run.purse = 0; const c2 = { ...ctx, committed: 0, wager: 0 };
     R.claimPrize(run, c2, res, choice, [0, 1]);

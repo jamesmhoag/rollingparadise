@@ -8,16 +8,16 @@ is not built yet. Tab names are in **bold**.
 
 ### Rollers (**Rollers**, **Position**)
 - Three classes with the workbook's numbers: Trickery / Ingenuity / Proficiency (draws, bids, rolls per turn),
-  Charisma / Cunning / Conviction (reward per unused bid, roll, draw), Balance / Versatility / Depth (stack
+  Charisma / Cunning / Conviction (reward per unused draw, bid, roll), Balance / Versatility / Depth (stack
   height, Meter rows, Bar rows on a base of 3 / 2 / 3, five columns).
 - Starting dice per class. Class deployment: Technician from the front, Hustler from the back, Rascal centred.
 
 ### The bout (**Bout**, **Plays**, **Effects**, **Tricks**, **Targeting**, **Game**)
 - Goal: deplete the opponent's Worth before they deplete yours.
-- A turn has three planning phases, then the House plays it (see **The turn** below). Draws, rolls and bids left
+- A turn has four planning phases, then the House plays it (see **The turn** below). Draws, rolls and bids left
   unused pay **as soon as their phase is passed**, as chips on the Meter at random spaces with room (lost if it is
-  full): unused draws make **Power chips** (Conviction), unused rolls **Opportunity chips** (Cunning), unused bids a
-  **Steal chip** (Charisma) that steals from the Stage in the House phase. All added Power is Power chips on the Meter,
+  full): unused draws make a **Steal chip** (Charisma) that steals from the Stage in the House phase, unused rolls
+  **Power chips** (Conviction), unused bids **Opportunity chips** (Cunning) (rotated in round 17). All added Power is Power chips on the Meter,
   one per point (Stir, an Investment trait, a Boost or Press bonus too): the same Power chip Empower makes. Each adds
   +1 to your roll effects for the turn (in the Investment phase, or at once if it arrives during play) and lasts that
   turn; nothing spends it. Both sides' chips appear when the phase closes, so you see your opponent's build up. Each step pill says
@@ -50,26 +50,30 @@ is not built yet. Tab names are in **bold**.
   with each phase's note; Esc or History again closes it. Hover an entry to light up the spaces it touched.
 
 ### The turn
-Both Rollers go through the same three phases. A phase closes for both at once, and closing it ends that kind of
-action for the turn.
+Both Rollers go through the same four phases: Draw, Roll, Bid and the Bluff. A phase closes for both at once, and
+closing it ends that kind of action for the turn.
 
 | Phase | What you do | Required before it closes | Closing it means |
 | --- | --- | --- | --- |
 | 1 · Draw | Click tricks in the Book to show them on the Run, up to Trickery. | At least one draw. | No more draws this turn. |
-| 2 · Roll | Two steps. **Pick**: dice from the Pouch, and top chips to flip, up to Proficiency; press Roll and all of them land in **the roll** together, showing their values. The throw stands. **Place**: put them on shown tricks; move them between tricks freely. | A throw, and every die in the roll that fits a shown trick on one. | No more rolling or moving dice. A die with nowhere to go **stays in the roll**, keeping its value, until a later turn's trick has room; it is never rerolled. |
+| 2 · Roll | **Pick** dice from the Pouch, and top chips to flip, up to Proficiency. Nothing is thrown yet: the button reads **Bid**, and its hover says how many dice will be rolled. | At least one pick. | The picked dice are **thrown as the Bid opens**, for both Rollers at once, so both bid seeing both rolls. |
 | 3 · Bid | Click your stacks to pick up a **hand** of chips (click a stack again for the chip under its top one), up to your bids left (Ingenuity), then click a trick: the whole hand is bid on it at once, one bid per chip. Or click a trick (or the **+** ring on its
 bid pile) first: then each stack you click bids its top chip straight onto that trick. A trick's bid chips stack in a
 pile, like a stack on the table, with the BID ring riding on the top chip as a **+**; the roll breakdown sits beside
-the pile. Click the pile to take its top chip back. Dice rolled this turn can still be moved between tricks. A trick that already has a bid can take another; its BID slot becomes a **+** after the chips already on it. | At least one bid. | The House collects the bids and plays the turn. |
+the pile. Click the pile to take its top chip back. Dice are not placed yet: the roll waits beside the Pouch. A trick that already has a bid can take another; its BID slot becomes a **+** after the chips already on it. | At least one bid. | The bids show; the Bluff opens. |
+| 4 · Bluff | **Place** the rolled dice on tricks (the existing click-a-die, click-a-trick placement; move them freely), and confirm where bid tricks aim: each is aimed at its best target, and placing dice re-aims the ones you have not aimed by hand. | Every die in the roll that fits a shown trick on one. | The House plays the turn. A die with nowhere to go **stays in the roll**, keeping its value, until a later turn's trick has room. |
 
-- The button that closes a phase is named for what comes next: **Roll** (done drawing), **Roll n** (throw the
-  picked dice), **Bid** (done rolling), **Play** (commit the turn). Dice placed this turn and bids stay editable until
-  Play.
+- The button that closes a phase is named for what comes next: **Roll** (done drawing), **Bid** (throw the picked
+  dice and bid), **Bluff** (done bidding), **Play** (commit the turn). It also carries what passing keeps (`keeps 2¢
+  steal`, `keeps +3 power`, `keeps +1 opp`) or `✓ all used`.
+- **The opponent's roll shows during the Bid** (a "Their roll" row in their Run). Where they put their dice and aim
+  shows only once the Bluff is over, as the House plays.
 - **You see the other Roller's move in a phase only after you lock in yours.** The opponent makes its move for a
   phase when you lock it in, working from your table as it stood when the phase opened, so neither side sees the
   other's choice before making its own. The feed then posts what they did ("Low Ball rolls 3 + 4 onto Charge").
-- Rolling is **one throw a turn**. Undo in the Roll phase takes dice off tricks and back into the roll, but never
-  undoes the throw, so you cannot look at values and pick again. Undo in Draw or Bid takes back that phase only.
+- Rolling is **one throw a turn**. Undo in the Roll phase drops the picks; once thrown, the values stand. Undo in the
+  Bluff takes dice off tricks and back into the roll (and re-aims), never the throw. Undo in Draw or Bid takes back
+  that phase only.
 - **Click to undo**, until the phase is locked in: click a trick drawn this turn to put it back in the Book, a die on
   a trick to take it back into the roll, a chip bid this turn to take it back to the stack it came from, a picked
   die or chip to drop it from the throw, a stack in your hand to let it go.
@@ -233,15 +237,16 @@ Curse change how the die rolls. Up to 2 per die; the roll-time ones cannot be ta
 faces and each upgrade's badge; the rules are in `js/dice.js`.
 
 ### The Bluff (fourth phase)
-After Bid comes the Bluff. The bids are shown to both Rollers (you see what they bid on, and they see yours); then
-every bid trick that needs a target is **aimed at its best one** (most impact, least waste, judged on the table as you
+After Bid comes the Bluff. The bids are shown to both Rollers (you see what they bid on, and they see yours). You put
+the rolled dice on tricks here; every bid trick that needs a target is **aimed at its best one** (most impact, least waste, judged on the table as you
 can see it). Tweak an aim by clicking the trick, or its marked target on the table (again to cycle when two share
 it), then a new space. Aims stay hidden until the House plays them. The button after Bid reads **Bluff**, and in the Bluff it reads **Play**.
 
 ### Reading a trick
 A card shows how its total is made under the number: the dice, `+n linger` from the bid (turns × dice), `+n pow`
-(Power), Vengeance, `×` quality, `×` last call and `×2` for a doubling bonus. Its hover says the same in words. Once
-the bid is paid to the House, the card keeps `paid 1+1¢ · n to go`. Tricks still lingering mark the spaces they
+(Power), Vengeance, `+n trait` (a Reprint Expense), `×` quality and foil, `×` last call and `×2` for a doubling bonus.
+A Grand or Royal card shows its quality die (`d10:7`): red when it is a dud, glowing when it is hot. Its hover says the same in words. Once
+the bid is paid to the House, the card keeps `bid 1+1¢` where its pile stood. Tricks still lingering mark the spaces they
 will land on, for both Rollers: blue outlines for yours, red for your opponent's, with the trick's name and turns
 left.
 
@@ -299,8 +304,8 @@ what you own, carry or wear is marked.
   the way in at the bottom next to the dodgy corner (where you search for cards). Floors 1 and 2 mirror each
   other; floors 3 and 4 have their own layouts.
 - Diesmith: forge (dice plus chips, with the workbook's costs and floor gates), sell, upgrade.
-- Trick Trader: one trick per class plus one generic, restock, upgrade, sell, Membership Card after five
-  purchases, Secret Shelf.
+- Trick Trader: one trick per class plus one generic (Excellent condition), restock, foil packs, sell (or trash a
+  Poor trick), Membership Card after five purchases, Secret Shelf. Tricks are no longer upgraded.
 - Lounge: the drink list with sips; buy, or play the barfly for it once per floor.
 - Sports Book: the seven sports, the odds table, one bet per game, settled while you are at the table.
 - Commitment: Challenge and Cheat tilts switched on or off (each adds or takes its share of the multiplier, and on a
@@ -329,10 +334,43 @@ what you own, carry or wear is marked.
 - Suite after a Double Down floor: dresser, wardrobe, bed. Penthouse after floor 4.
 - Exit through the Gift Shop: jackets and wallets stay unlocked for future runs; the ATM banks chips if you found
   the Debit Card.
-- Wallets (**Gear**): each has a slot count and a retention number. In the alley you roll two dice against that
-  number; succeed and the wallet's cards are on the dresser for your next run.
+- Wallets (**Gear**): each has a slot count, one pass slot and a retention number. In the alley you roll two dice
+  against that number; succeed and the wallet's cards and pass are yours in your next run.
 - The purse limit: pass 999 trillion and the purse rips, ending the run in "crushing defeat".
 - Paradise Ascent: five legend steps plus your own finished builds, stored in the browser and placed by net worth.
+
+### Tricks as collectables (round 17)
+- **Condition** sets only the sale price: Gem Mint 200%, Mint 100%, Excellent 75%, Good 50%, Poor cannot be sold
+  (the Trader trashes it). Wear starts at 100 for Mint and drops 1 each time a trick goes into play; each condition's
+  percentage is also its wear threshold (Excellent from 75, Good from 50, Poor below). Your first Book is Good (wear
+  74), the shelf Excellent (99), foil packs Mint (100). Gem Mint comes only out of packs (8% a trick) and is Mint
+  until it first plays. A Poor trick plays forever at full strength.
+- **Rarity**: Basic; **Foil** in three tiers that multiply the roll total (Foil ×1.25, Holo ×1.5, Prism ×2;
+  Investments +0.25 a tier); **Misprint**, a changed die (one size up, sometimes down, among d4/d6/d8) or Trait value
+  (+1 to +3, sometimes −1), three in four for the better; **Reprint**, an older rule for its type: an Expense plays
+  its roll effect once per die, each die plus the Trait value; Insurances, Investments and Corrections play their
+  Trait once per die on the trick. An Upgrade chip bid on a trick plays it one foil tier higher.
+- **Quality** (Common, Fine, Grand, Royal) is unlocked by floor and sets the multiplier. Common and Fine roll only
+  their own small dice and are reliable. Grand and Royal roll a quality die when drawn (d10, d20): a dud (1; 1–2)
+  plays at Common strength that turn; a hot roll (10; 19–20) sets off the Bonus whatever the dice. Drawing a trick
+  again the same turn keeps its roll.
+- **Foil packs** replace upgrades at the Trick Trader: five tricks of the set's quality, all Mint, one of them a
+  rarer print (Misprint, Reprint, Holo or Prism); the others are Basic, one in five Foil. Common, Fine, Grand and
+  Royal sets open on floors 1 to 4, at 200¢ × quality × floor (above what the five sell for at Mint). The pack's
+  tricks go into your Book and are listed under the shelf.
+- Quality and print are shown as words and rarity styling (moving foil, Prism rainbow, Misprint offset ink,
+  Reprint's older paper), not pips and triangles. Old saves: an upgraded trick becomes the foil it played as (one
+  upgrade → Foil, two → Holo, the same strength).
+
+### Passes (round 17)
+- Passes are not cards. Every wallet holds **one pass** in its own slot. The **Casino Pass** is won from the Doorman
+  (it replaces the Royal Card); reaching a floor puts that floor's pass in the slot in place of the last.
+- Once you are in, a pass is not needed again unless you leave: continuing a saved run from the title needs the pass
+  for your floor or a higher one. Without it **the Bouncer** stops you: a bout at the door with nothing staked;
+  beat him and you are back in at the Boogey Basement with all your run's things (lose, and try again).
+- The pass stays with the wallet. Keep the wallet in the alley and its pass comes into your next run: after the
+  Doorman you may take the elevator to its floor (the floor checks are bypassed) or start in the Basement. Lose the
+  wallet and the pass goes with it.
 
 ## Readings chosen where the workbook leaves it open
 
@@ -346,7 +384,7 @@ what you own, carry or wear is marked.
 | How a bout ends if neither side breaks | "Last call" is an addition: from turn 9 every Expense is multiplied by a factor that grows each turn. At turn 40 the most Worth wins. |
 | Debt (the **Debt** tab's five concepts) | "Knocked out by debt": reaching zero Worth loses the bout. |
 | Dice upgrades | All 22 from the workbook. They are permanent, including faces that change with use (Rig, Enchant, Encase); only Upgrade chip effects are for one roll. Readings: "fill" moves value into the target (Divide: 1 from every face; Gift: half the highest; Devour: all of the lowest), Boost/Bonk ±2, Rig/Enchant/Encase change with use and reset each bout, Gamble ×2 and Curse ×3 on a random face each roll. Numbers in `DIE_VARS`. |
-| Which cards take a wallet slot | Benefit cards and the Royal Card do (Collectables C80: with no room for the Royal Card you drop one of your two starters). Membership, Suite Key, Punch and Paradise are passes and do not. Cards can be dropped from the kit at any time, except the Royal Card before floor 1. |
+| Which cards take a wallet slot | Benefit cards do. Membership, Suite Key, Punch and Paradise clip to the lanyard and do not. Passes are not cards: each wallet holds one in its own slot (round 17; the Royal Card is now the Casino Pass). Cards can be dropped from the kit at any time, except the Royal Card before floor 1. |
 | Membership Card discount | "Also gives the discount": 10% off at the Trick Trader, not stacking with a Trader Discount Card. |
 | Debt chip values | One Debt marker per stack showing the exact amount owed (it used to be split into 5, 2 and 1¢ chips, which read like money). |
 | Which dice make the alley roll ("2dn") | Your two largest dice. Big dice are worth keeping for it. |

@@ -10,27 +10,32 @@ function table(seed = 3, cls = 'hustler') {
   const { bout } = R.startTable(run, R.newPrep(run, 'table', 0)); return { run, bout, me: bout.sides[0], opp: bout.sides[1] };
 }
 
-// ---------- passing Draw with draws unused makes Power chips on the Meter, for the turn ----------
+// ---------- the rewards rotate: unused draws → a Steal chip, unused rolls → Power chips, unused bids → Opportunity ----------
 {
   const { bout, me } = table();
-  const want = B.cOf(me, 'conviction') * B.tipOf(me, 'trickery');
-  assert(B.rewardOf(me, 'draw').n === want && B.powerOf(me) === 0, 'what passing Draw will give is known before it is passed');
+  assert(B.REWARD.draw.what === 'Steal' && B.REWARD.roll.what === 'Power' && B.REWARD.bid.what === 'Opportunity', 'draws give Steal, rolls Power, bids Opportunity');
+  const steal = B.cOf(me, 'charisma') * B.tipOf(me, 'trickery');
+  assert(B.rewardOf(me, 'draw').n === steal, 'what passing Draw will give is known before it is passed');
   B.advance(bout, true);
-  const pc = B.powerChips(me);
-  assert(pc.length === want && pc.every((x) => x.r < me.dims.meterRows && x.ch.shop === 'power' && x.ch.life === 1) && B.powerOf(me) === want, 'unused draws become Power chips (the same chip Empower makes), one per point, on the Meter, for the turn');
-  assert(D.SHOP_CHIPS.power.name === 'Power chip', 'the Power chip keeps its name');
-  assert(bout.rewards.some((w) => w.side === 0 && w.phase === 'draw' && /Power chip/.test(w.text)), 'the reward is reported for the feed');
+  const st = me.grid.flat().flatMap((c) => c.chips.filter((ch) => ch.shop === 'steal'));
+  assert(st.length === 1 && st[0].amt === steal, 'unused draws become a Steal chip on the Meter when Draw is passed');
   assert(bout.rewards.some((w) => w.side === 1 && w.phase === 'draw') === (B.rewardOf(bout.sides[1], 'draw').n > 0), 'the opponent builds theirs too, where you can see them');
+  const want = B.cOf(me, 'conviction') * B.tipOf(me, 'proficiency');
+  B.advance(bout, true); // Roll passed with nothing thrown
+  const pc = B.powerChips(me);
+  assert(pc.length === want && pc.every((x) => x.r < me.dims.meterRows && x.ch.shop === 'power' && x.ch.life === 1) && B.powerOf(me) === want, 'unused rolls become Power chips (the same chip Empower makes), one per point, on the Meter, for the turn');
+  assert(D.SHOP_CHIPS.power.name === 'Power chip', 'the Power chip keeps its name');
+  assert(bout.rewards.some((w) => w.side === 0 && w.phase === 'roll' && /Power chip/.test(w.text)), 'the reward is reported for the feed');
   const e = { uid: 'x', trick: { id: 'charge', q: 1, up: 0 }, dice: [{ id: 'd1', type: 'd6', value: 3, up: [] }], bid: [], bidValue: 1, state: 'play', lingerLeft: 0, lingerTotal: 0 };
   assert(B.previewTotal(me, e) >= 3 + want, 'while you plan, a preview counts the Power still to come');
-  // the Investment phase turns them into a boost for every roll effect this turn; they are not spent by the first one
   me.mods.boost = 0; drain(B._test.chipPhase(bout, me, 'investment'));
   assert(me.mods.boost === want && B.powerOf(me) === 0 && B.powerChips(me).length === want, 'in the Investment phase the Power chips boost roll effects for the turn');
   e.target = B.validTargets(bout, me, { ...e, state: 'bid' })[0];
   drain(B._test.play(bout, me, e)); drain(B._test.play(bout, me, { ...e, uid: 'y' }));
   assert(me.mods.boost === want && B.powerChips(me).length === want, 'playing roll effects does not spend them: they last the turn');
   drain(B._test.chipPhase(bout, me, 'investment')); assert(me.mods.boost === want, 'a Power chip adds once a turn');
-  // Power added during play joins at once
+  const o0 = count(me, (ch) => ch.kind === 'opp'); B.advance(bout, true);
+  assert(count(me, (ch) => ch.kind === 'opp') - o0 === B.rewardOf(me, 'bid').n || me.overflow > 0, 'unused bids become Opportunity chips on the Meter when Bid is passed');
   bout.phase = 'resolve'; const b0 = me.mods.boost, n = B.addPower(bout, me, 2);
   assert(me.mods.boost === b0 + n, 'Power added during play boosts the rest of the turn at once');
 }
@@ -39,17 +44,13 @@ function table(seed = 3, cls = 'hustler') {
   const { bout, me } = table(5);
   for (let i = 0; i < B.tipOf(me, 'trickery') && me.book.length; i++) B.draw(bout, me, me.book[0].uid);
   const w = B.rewardOf(me, 'draw'); B.advance(bout, true);
-  assert(w.unused === 0 ? !B.powerChips(me).length : true, 'with every draw used, passing Draw makes nothing');
+  assert(w.unused === 0 ? !me.grid.flat().some((c) => c.chips.some((ch) => ch.shop === 'steal')) : true, 'with every draw used, passing Draw makes nothing');
 }
-// ---------- Roll gives Opportunity chips, Bid a Steal chip that steals in the House phase ----------
+// ---------- the Steal chip steals in the House phase ----------
 {
   const { bout, me } = table(7);
-  B.advance(bout, true); const o0 = count(me, (ch) => ch.kind === 'opp');
-  B.advance(bout, true);
-  assert(count(me, (ch) => ch.kind === 'opp') - o0 === Math.min(B.rewardOf(me, 'roll').n, 99) || me.overflow > 0, 'unused rolls become Opportunity chips on the Meter when Roll is passed');
-  B.advance(bout, true);
-  const steal = me.grid.flat().flatMap((c) => c.chips.filter((ch) => ch.shop === 'steal'));
-  assert(steal.length === 1 && steal[0].amt === B.rewardOf(me, 'bid').n, 'unused bids become a Steal chip on the Meter when Bid is passed');
+  B.advance(bout, true); B.advance(bout, true); B.advance(bout, true);
+  assert(me.grid.flat().some((c) => c.chips.some((ch) => ch.shop === 'steal')), 'a Steal chip waits on the Meter');
   bout.stage.paid[0] = 6; bout.stage.paid[1] = 6; const w0 = B.worth(me);
   bout.phase = 'resolve'; for (const s of bout.sides) for (const e of s.run) e.state = 'shown';
   const steps = drain(B.resolve(bout)).flatMap((st) => [st, ...(st.parts || [])]);

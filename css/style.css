@@ -364,10 +364,20 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 /* trick quality frames (Common, Fine, Grand, Royal) and upgrade foil */
 .tag-t.trick.q2, .tcard.q2 { outline: 1px solid #cfd8e6 !important; } .tag-t.trick.q3, .tcard.q3 { outline: 2px solid var(--amber) !important; }
 .tag-t.trick.q4 { outline: 2px solid var(--amber); box-shadow: 0 0 10px rgba(255, 215, 106, .55), 0 0 0 4px rgba(176, 140, 255, .35); } .tcard.q4 { outline: 2px solid var(--amber) !important; outline-offset: 1px; }
-.tag-t.trick.u1, .tag-t.trick.u2 { background-image: linear-gradient(115deg, transparent 30%, rgba(125, 255, 181, .14) 45%, transparent 60%); background-size: 260% 100%; animation: foil 3.6s linear infinite; }
-.tag-t.trick.u2 { background-image: linear-gradient(115deg, transparent 20%, rgba(125, 255, 181, .22) 40%, rgba(255, 215, 106, .2) 50%, transparent 65%); }
-.tcard.u1, .tcard.u2 { background-image: linear-gradient(115deg, transparent 30%, rgba(125, 255, 181, .12) 45%, transparent 60%), linear-gradient(180deg, #1d1440, #0c0820); background-size: 260% 100%, 100% 100%; animation: foil 3.6s linear infinite; }
-.tcard.u2 { background-image: linear-gradient(115deg, transparent 20%, rgba(125, 255, 181, .2) 40%, rgba(255, 215, 106, .18) 50%, transparent 65%), linear-gradient(180deg, #1d1440, #0c0820); }
+/* round 17: rarity is drawn on the trick: f1 Foil, f2 Holo, f3 Prism (moving foil), a Misprint's offset ink, a Reprint's older paper */
+.tag-t.trick.f1, .tag-t.trick.f2, .tag-t.trick.f3 { background-image: linear-gradient(115deg, transparent 30%, rgba(125, 255, 181, .14) 45%, transparent 60%); background-size: 260% 100%; animation: foil 3.6s linear infinite; }
+.tag-t.trick.f2 { background-image: linear-gradient(115deg, transparent 20%, rgba(125, 255, 181, .22) 40%, rgba(255, 215, 106, .2) 50%, transparent 65%); }
+.tag-t.trick.f3 { background-image: linear-gradient(115deg, transparent 15%, rgba(255, 110, 199, .22) 32%, rgba(255, 215, 106, .22) 44%, rgba(125, 255, 181, .22) 56%, rgba(110, 200, 255, .22) 68%, transparent 82%); }
+.tcard.f1, .tcard.f2, .tcard.f3 { background-image: linear-gradient(115deg, transparent 30%, rgba(125, 255, 181, .12) 45%, transparent 60%), linear-gradient(180deg, #1d1440, #0c0820); background-size: 260% 100%, 100% 100%; animation: foil 3.6s linear infinite; }
+.tcard.f2 { background-image: linear-gradient(115deg, transparent 20%, rgba(125, 255, 181, .2) 40%, rgba(255, 215, 106, .18) 50%, transparent 65%), linear-gradient(180deg, #1d1440, #0c0820); }
+.tcard.f3 { background-image: linear-gradient(115deg, transparent 15%, rgba(255, 110, 199, .2) 32%, rgba(255, 215, 106, .2) 44%, rgba(125, 255, 181, .2) 56%, rgba(110, 200, 255, .2) 68%, transparent 82%), linear-gradient(180deg, #1d1440, #0c0820); }
+.tcard.misprint .c-name b, .tcard.misprint .c-compact b, .tag-t.trick.misprint { text-shadow: 1.5px 0 0 rgba(255, 110, 199, .65), -1px 0 0 rgba(110, 200, 255, .55); }
+.tcard.reprint, .tag-t.trick.reprint { filter: sepia(.35) saturate(.85); }
+.rw { font-weight: 700; letter-spacing: .5px; color: var(--good); } .rw.f2 { color: var(--gold); } .rw.f3 { background: linear-gradient(90deg, var(--pink), var(--gold), var(--good)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.rw.misprint { color: var(--pink); } .rw.reprint { color: #d9b98a; }
+.c-type .qd { margin-left: 5px; font-size: 10px; color: var(--dim); font-weight: 700; white-space: nowrap; text-transform: none; letter-spacing: 0; } .c-type .qd.dud { color: var(--bad); } .c-type .qd.hot { color: var(--gold); text-shadow: 0 0 6px var(--gold); }
+.c-type .xm.dud { color: var(--bad); }
+.print-line .k { color: var(--pink); }
 @keyframes foil { from { background-position: 130% 0, 0 0; } to { background-position: -130% 0, 0 0; } }
 
 /* ---------- shop chips ---------- */
@@ -383,7 +393,9 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .gcard { position: relative; display: inline-flex; flex-direction: column; align-items: center; justify-content: space-between; flex: none; width: 52px; height: 72px; padding: 4px 3px; border-radius: 6px; color: var(--ink); text-align: center;
   background: linear-gradient(160deg, color-mix(in srgb, var(--gc) 85%, #fff), color-mix(in srgb, var(--gc) 70%, #000)); box-shadow: 0 0 0 1px rgba(255, 255, 255, .35) inset, 0 3px 8px rgba(0, 0, 0, .45); }
 .gcard em { font-style: normal; font-size: 7px; max-width: 100%; overflow: hidden; text-overflow: clip; white-space: nowrap; text-transform: uppercase; letter-spacing: .1em; opacity: .85; } .gcard b { font-size: 18px; line-height: 1; } .gcard small { font-size: 7.5px; line-height: 1.05; max-height: 17px; overflow: hidden; }
-.gcard.pass { border-radius: 10px; } .gcard.pass::before { content: ''; position: absolute; top: 3px; width: 10px; height: 3px; border-radius: 2px; background: rgba(0, 0, 0, .45); }
+.gcard.lanyard { border-radius: 10px; } .gcard.lanyard::before { content: ''; position: absolute; top: 3px; width: 10px; height: 3px; border-radius: 2px; background: rgba(0, 0, 0, .45); }
+/* a pass: a ticket, not a card, with a torn-off stub line */
+.gcard.gpass { width: 72px; height: 52px; border-radius: 4px; } .gcard.gpass::after { content: ''; position: absolute; top: 4px; bottom: 4px; right: 14px; border-right: 1.5px dashed rgba(255, 255, 255, .45); }
 .gcard.armed { box-shadow: 0 0 0 2px var(--bad), 0 3px 8px rgba(0, 0, 0, .45); }
 .gwallet { position: relative; display: inline-block; flex: none; width: 70px; height: 46px; border-radius: 6px 6px 9px 9px; background: linear-gradient(170deg, color-mix(in srgb, var(--wc) 85%, #fff), color-mix(in srgb, var(--wc) 75%, #000)); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25), 0 4px 10px rgba(0, 0, 0, .5); }
 .gwallet .flap { position: absolute; left: 0; right: 0; top: 0; height: 15px; border-radius: 6px 6px 50% 50%; background: color-mix(in srgb, var(--wc) 70%, #000); }
@@ -546,8 +558,9 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .chip.unbid { pointer-events: auto; cursor: pointer; } .chip.unbid:hover { filter: brightness(1.3) drop-shadow(0 0 5px var(--coral)); }
 .tray-cap { position: absolute; left: 950px; top: 418px; width: 120px; text-align: right; font-size: 9.5px; letter-spacing: .04em; color: var(--dim); pointer-events: none; }
 
-/* ---------- round 16: step rewards ---------- */
+/* ---------- round 16: step rewards (shown on the commit button) ---------- */
 /* a passed step: all used (✓) or some kept (what they made) */
-.pill.step.allused::before { content: '✓'; position: absolute; right: -3px; top: -7px; font-size: 10px; color: var(--mint, #8fe3b0); }
-.pill.step.kept { opacity: .7; border-color: rgba(255, 215, 106, .5); }
-.pill.step.kept::before { content: attr(data-kept); position: absolute; right: -10px; top: -9px; white-space: nowrap; font-size: 9px; padding: 0 5px; border-radius: 7px; background: rgba(255, 215, 106, .18); color: var(--gold); }
+/* the commit button says what passing this step keeps: what the actions left unused make, or ✓ when all were used */
+.controls .btn.big { position: relative; }
+.controls .btn.big[data-kept]:not([data-kept=''])::after { content: attr(data-kept); position: absolute; right: -6px; top: -9px; white-space: nowrap; font-size: 9px; letter-spacing: .02em; padding: 1px 6px; border-radius: 7px; background: #2a2140; border: 1px solid rgba(255, 215, 106, .55); color: var(--gold); pointer-events: none; }
+.controls .btn.big.allused::after { content: '✓ all used'; position: absolute; right: -6px; top: -9px; font-size: 9px; padding: 1px 6px; border-radius: 7px; background: #1e2a24; border: 1px solid rgba(143, 227, 176, .5); color: #8fe3b0; pointer-events: none; }
