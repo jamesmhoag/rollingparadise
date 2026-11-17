@@ -1,6 +1,6 @@
 // The table. Every chip, die, trick card and creature is one persistent element that is
 // moved, faded or flipped to follow the bout state, so nothing ever pops between states.
-import { h, tip, wait, tween, swapText, setOn, pulse, syncList, toast, btn, refreshTip, redrawTip, box, vc, detail } from './core.js';
+import { h, tip, wait, tween, swapText, setOn, pulse, syncList, toast, btn, refreshTip, redrawTip, box, vc, detail, paint } from './core.js';
 import { chipSig, chipGlyph, chipName, chipText, dieTip, trickTip, trickWord, trickWords, statTip, drinkTip, dieMarks, dieClass, trickLook, feltStyle, seenAs, traitsOf, traitsHtml } from './parts.js';
 import { flyerTraits } from '../traits.js';
 import { openLibrary } from './library.js';
@@ -188,7 +188,7 @@ export function boutScene(root, bout, ctx, onDone) {
     for (let r = 0; r < s.rows; r++) { els.cells[si][r] = [];
       for (let c = 0; c < s.dims.cols; c++) {
         const p = cellPos(si, r, c);
-        const el = h('div', { class: `cell ${r < s.dims.meterRows ? 'meter' : 'bar'}`, style: { left: p.x + 'px', top: p.y + 'px', width: p.w + 'px', height: CH + 'px' },
+        const el = h('div', { class: `cell ${r < s.dims.meterRows ? 'meter' : 'bar'}`, 'data-at': `${si}:${r}:${c}`, style: { left: p.x + 'px', top: p.y + 'px', width: p.w + 'px', height: CH + 'px' },
           onclick: () => clickCell(si, r, c), ondblclick: () => eatCell(si, r, c), onmouseenter: () => hoverCell(si, r, c), onmouseleave: () => { hoverCell(si, -1, -1); pointAt(null); }, onmousemove: (ev) => pointAt(ev, si, r, c), tip: () => cellTip(si, r, c) });
         els.cells[si][r][c] = el; root.insertBefore(el, layer);
       } }
@@ -630,10 +630,7 @@ export function boutScene(root, bout, ctx, onDone) {
   }
   function clickCell(si, r, c) {
     if (ui.locked) return;
-    if (ui.sandbox?.op) { // the test table's chip tools
-      if (B.sandboxChip(bout, si, r, c, ui.sandbox.what(), ui.sandbox.op)) sync(); else nope(tt('test.tools.cannot'), els.cells[si][r][c]);
-      return;
-    }
+    if (ui.sandbox?.op) return; // the test table's chip tools paint on press (see testTools)
     const cellEl = els.cells[si][r][c], e = me.run.find((x) => x.uid === ui.entry);
     if (ui.mode === 'target' && e) {
       if (B.setTarget(bout, me, e, { side: si, r, c })) return act(() => { ui.handAim.add(e.uid); setMode(null); });
@@ -816,6 +813,10 @@ export function boutScene(root, bout, ctx, onDone) {
     const val = h('input', { type: 'number', min: 1, value: 1, title: tt('test.tools.value') });
     const ops = ['add', 'change', 'remove'].map((op) => btn(tt(`test.tools.${op}`), () => { ui.sandbox.op = ui.sandbox.op === op ? null : op; mark(); }, tt(`test.tools.${op}.tip`), 'small'));
     const mark = () => ops.forEach((b, i) => b.classList.toggle('on', ui.sandbox.op === ['add', 'change', 'remove'][i]));
+    // click and hold on a space to keep applying the tool; sweep to apply it on each space you cross
+    let warned = false;
+    paint(root, (ev) => { if (!ui.sandbox.op) return null; const el = ev.target.closest?.('[data-at]'); if (!el) return null; const [si, r, c] = el.dataset.at.split(':').map(Number); return { key: el.dataset.at, si, r, c }; },
+      (at, first) => { if (first) warned = false; if (B.sandboxChip(bout, at.si, at.r, at.c, ui.sandbox.what(), ui.sandbox.op)) sync(); else if (!warned) { warned = true; nope(tt('test.tools.cannot'), els.cells[at.si][at.r][at.c]); } });
     ui.sandbox = { op: null, what: () => { const [k, id] = pick.value.split(':'); return k === 'made' ? { made: id } : k === 'shop' ? { shop: id } : { kind: id, value: Number(val.value) || 1 }; } };
     return h('div', { class: 'test-tools' }, h('b', { text: tt(ctx.sandbox ? 'test.tools.sandbox' : 'test.tools.rules') }), pick, val, ...ops,
       btn(tt('test.tools.leave'), () => onDone(), tt('test.tools.leave.tip'), 'small danger'));

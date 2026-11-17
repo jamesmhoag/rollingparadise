@@ -398,10 +398,19 @@ export function autoCounts(run, dims, purse = run.purse, reserve = 0) {
 }
 // the saved chip mix, or a fresh one if it no longer fits the purse or the position
 export function validCounts(run, dims) {
+  if (validLayout(run, dims)) return layoutCounts(run.plan.layout);
   const c = run.plan.counts, shop = sum(Object.entries(run.plan.resist || {}), ([k, n]) => Math.min(n, owned(run, k)) * (D.SHOP_CHIPS[k]?.place === 'space' ? dims.stackMax : D.SHOP_CHIPS[k]?.place === 'big' ? 3 * dims.stackMax + 1 : D.SHOP_CHIPS[k]?.place === 'sky' ? 0 : 1)) // a Tree needs a whole space, a Big chip four
     + run.cards.filter((id) => D.CARDS[id]?.resist).length; // and room for Resist chips
   if (c && planWorth(c) <= run.purse && sum(Object.values(c)) + shop <= barCapacity(dims) && planWorth(c) > 0) return c;
   return autoCounts(run, dims, run.purse, shop);
+}
+// A painted position (click and hold in the planner): [{ r, c, chips: [values] }], r counted from the Bar's front.
+// Its counts are what is painted; it holds only if the purse covers it and every stack fits.
+export const layoutCounts = (layout) => { const c = noCounts(); for (const sp of layout || []) for (const v of sp.chips) if (typeof v === 'number') c[v] = (c[v] || 0) + 1; return c; };
+export function validLayout(run, dims) {
+  const L = run.plan.layout; if (!L?.length) return null;
+  if (L.some((sp) => sp.r < 0 || sp.r >= dims.barRows || sp.c < 0 || sp.c >= dims.cols || sp.chips.length > dims.stackMax)) return null;
+  const c = layoutCounts(L); return planWorth(c) > 0 && planWorth(c) <= run.purse ? L : null;
 }
 export const planWorth = (counts) => sum(Object.entries(counts), ([v, n]) => v * n);
 export const planCount = (counts, resist) => sum(Object.values(counts)) + sum(Object.values(resist || {}));
@@ -416,7 +425,7 @@ function planGroups(run, counts, resist) {
 function playerSpec(run, counts, extra = {}, dimsOverride) {
   const st = rollerStats(run, extra), K = D.CLASSES[run.cls];
   return { name: 'You', title: K.name, cls: run.cls, tip: st.tip, c: st.c, dims: dimsOverride || st.dims, why: dimsOverride ? { note: 'A bar table: one size smaller than your usual position in every direction.' } : dimsWhy(run, extra), deploy: K.deploy, tricks: run.tricks, dice: run.dice,
-    plan: { chips: planGroups(run, counts, extra.resist), spacing: run.plan.spacing, stacking: run.plan.stacking, resistChips: run.cards.map((id) => D.CARDS[id]?.resist).filter(Boolean) }, drink: run.drink && run.drink.sips > 0 ? run.drink : null, ...extra.side };
+    plan: { chips: planGroups(run, counts, extra.resist), spacing: run.plan.spacing, stacking: run.plan.stacking, ...(validLayout(run, dimsOverride || st.dims) ? { layout: run.plan.layout } : {}), resistChips: run.cards.map((id) => D.CARDS[id]?.resist).filter(Boolean) }, drink: run.drink && run.drink.sips > 0 ? run.drink : null, ...extra.side };
 }
 const committed = (bout) => sum(bout.sides[0].grid.flat().flatMap((c) => c.chips).filter((ch) => ch.kind === 'std' && !ch.resist), (ch) => ch.value);
 
@@ -627,6 +636,8 @@ export function endRun(run, meta, name = 'You', kept = [], keptPass = 0) {
 }
 
 // a dry run of the deployment, for the position planner
+// how an opponent will be laid out when the bout starts (their deployment is fixed before you sit down)
+export function previewOpponent(opp) { return createBout({ seed: 7, a: opp, b: opp }).sides[1]; }
 export function previewPosition(run, counts, extra = {}) {
   const dummy = { name: '', cls: run.cls, tip: { trickery: 1, ingenuity: 1, proficiency: 1 }, c: { charisma: 0, cunning: 0, conviction: 0 }, dims: { cols: 5, stackMax: 1, meterRows: 1, barRows: 1 }, deploy: 'start', tricks: [], dice: [], plan: { chips: [], spacing: 'row', stacking: 'maxed' } };
   return createBout({ seed: 7, a: playerSpec(run, counts, { position: extra.position, resist: extra.resist }), b: dummy }).sides[0];

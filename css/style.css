@@ -624,3 +624,13 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .test-tools select, .test-tools input { background: #0d0a1c; color: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 3px 5px; font: inherit; max-width: 160px; } .test-tools > b { white-space: nowrap; } .test-tools input { width: 54px; }
 .test-tools .btn.on { outline: 2px solid var(--gold); }
 .b-tricks { max-height: 220px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; padding: 6px; margin: 4px 0; }
+
+/* painting chips in the planner */
+.brushes .btn { padding: 2px 5px; min-width: 0; } .brushes .chip.sm { width: 22px; height: 22px; } .brushes .chip i { font-size: 9px; }
+.mboard.painting { cursor: crosshair; touch-action: none; } .mboard.painting .mcell:hover { outline: 2px solid var(--gold); }
+
+/* the opponent's position on the prep screen */
+.oppboard { position: relative; margin: 4px 0; } .ocell { position: absolute; border-radius: 4px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .07); display: grid; place-items: center; }
+.ocell.meter { background: rgba(125, 243, 255, .06); } .ocell .chip.xs { position: relative; width: 16px; height: 16px; } .ocell .chip.xs i { font-size: 7px; }
+.ocount { position: absolute; right: 1px; bottom: -1px; font-size: 8px; color: var(--gold); }
+.b-layout.painting input { cursor: crosshair; caret-color: transparent; } .b-layout.painting { touch-action: none; }
