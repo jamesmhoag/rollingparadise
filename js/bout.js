@@ -8,6 +8,8 @@
 // Fees go out as Debt first; the House then settles every stack that took Debt.
 import { RNG, sum, clone, clamp, order1D } from './util.js';
 import { instances, deployOrder, placeIndex, makeKind, isFxChip } from './trickmaker.js';
+import { MAKES as MAKES_TABLE } from './content/trickmaker.js';
+const MAKES_OF = (chip) => MAKES_TABLE[chip] || {};
 import { MADE_CHIPS, HEIGHT } from './content/chipmaker.js';
 import { TUNING } from './content/tuning.js';
 import { rollDie, boutCopy, facesOf, upgrade as upgradeFaces } from './dice.js';
@@ -1187,14 +1189,28 @@ export function pitOf(b, si) {
   for (const ch of (b.pit?.[si] || []).filter((x) => x.from === 'fee')) { if (ch.value > left) break; out.push(ch); left -= ch.value; }
   return out.concat((b.pit?.[si] || []).filter((x) => x.from === 'bid'));
 }
+// Chips come back out of the Pit only through tricks and chips. pullPit takes the actual chips (the same value, kind
+// and id they were lost as), newest first, up to `want`¢ and whole chips only: a chip worth more than what is left
+// to take stays. o.bids: also bids the House took (after the fees). Returns the chips, as live chips again.
+export function pullPit(b, si, want, o = {}) {
+  const held = pitOf(b, si), fees = held.filter((x) => x.from === 'fee').reverse(), bids = o.bids ? held.filter((x) => x.from === 'bid').reverse() : [];
+  const out = []; let left = Math.max(0, want | 0);
+  for (const rec of [...fees, ...bids]) {
+    if (left <= 0) break; if (rec.value > left || rec.value <= 0) continue;
+    const i = b.pit[si].indexOf(rec); if (i < 0) continue; b.pit[si].splice(i, 1);
+    if (rec.from === 'fee') b.stage.paid[si] -= rec.value;
+    const { from, turn, ...ch } = rec; void from; void turn; out.push({ ...ch }); b.fx[ch.id] = 'from-pit'; left -= rec.value;
+  }
+  return out;
+}
+// chips that came out of the Pit and found no room go back in, as they were
+function backToPit(b, si, chips) { for (const ch of chips) { b.stage.paid[si] += ch.value; toPit(b, si, ch, 'fee'); } }
+// Gather and Steal: the real chips out of your Pit (and, with both, your opponent's), onto your Bet
 function recoup(b, s, n, both) {
-  let take = Math.min(n, b.stage.paid[s.idx]); b.stage.paid[s.idx] -= take;
-  let take2 = both ? Math.min(n - take, b.stage.paid[1 - s.idx]) : 0; b.stage.paid[1 - s.idx] -= take2;
-  const chips = makeChange(b, take + take2);
-  const left = addToMeter(b, s, chips, null, 'from-stage');
-  const back = sum(left, (ch) => ch.value) + (take + take2 - sum(chips, (ch) => ch.value));
-  b.stage.paid[s.idx] += back; // what did not fit stays on the Stage
-  return take + take2 - back;
+  const mine = pullPit(b, s.idx, n), theirs = both ? pullPit(b, 1 - s.idx, n - sum(mine, (ch) => ch.value)) : [];
+  const left = addToMeter(b, s, [...mine, ...theirs], null, 'from-pit');
+  backToPit(b, s.idx, left.filter((ch) => mine.includes(ch))); backToPit(b, 1 - s.idx, left.filter((ch) => theirs.includes(ch))); // what did not fit stays in the Pit
+  return sum(mine, (ch) => ch.value) + sum(theirs, (ch) => ch.value) - sum(left, (ch) => ch.value);
 }
 
 // opt.again: a Repeater or Mimic plays the roll effect once more (no trait) · opt.forgotten: a Forgetter negates it
@@ -1218,11 +1234,17 @@ function* playChips(b, s, e, def, x) {
       if (isHazard(ch)) cell.chips.push(ch); else cell.chips.splice(placeIndex(R.place, R.at, cell.chips.filter((y) => !isHazard(y)).length), 0, ch);
       b.fx[ch.id] = 'spawn'; made++; });
     return { made, fees, lost, cells: [...hit.values()] }; };
-  const main = make(R.chip, inst);
+  // chips back out of a Pit: the real chips, up to the total, dealt along the pattern; no room and they go back
+  const fromPit = (chip) => { const P = MAKES_OF(chip), si = P.pit === 'mine' ? s.idx : 1 - s.idx, got = pullPit(b, si, x.total * (x.bonus === 'multiply' ? def.bonus.x || 2 : 1)); let made = 0, lost = 0; const hit = new Map();
+    got.forEach((ch, i) => { const sp = spaces[i % (spaces.length || 1)], cell = sp && t.grid[sp.r][sp.c];
+      if (!cell || capacityLeft(t, cell) <= 0) { backToPit(b, si, [ch]); lost++; return; }
+      cell.chips.splice(placeIndex(R.place, R.at, cell.chips.filter((y) => !isHazard(y)).length), 0, ch); hit.set(`${sp.r}:${sp.c}`, sp); b.fx[ch.id] = 'from-pit'; made++; });
+    return { made, fees: 0, lost, cells: [...hit.values()], pulled: sum(got, (ch) => ch.value) - 0 }; };
+  const main = makeKind(R.chip) === 'pit' ? fromPit(R.chip) : make(R.chip, inst);
   let extra = null; if (x.bonus === 'extra') extra = make(def.bonus.chip || 'block', Array.from({ length: def.bonus.n || 1 }, () => 1));
   if (x.bonus === 'linger' && !x.again && x.total > 0) s.echoes.push({ from: b.turn, e: { ...e, dice: e.dice.map((d) => ({ ...d })), lingerLeft: 0, lingerTotal: 0 }, left: def.bonus.turns || 2, phase: phaseOf(e.trick.id) });
   const kind = makeKind(R.chip), refs = [...main.cells, ...(extra?.cells || [])].map((p) => ref(t, p.r, p.c));
-  const said = kind === 'fee' ? `${main.fees}¢ of Debt on ${main.cells.length} stack${main.cells.length === 1 ? '' : 's'}` : `${main.made} chip${main.made === 1 ? '' : 's'} made`;
+  const said = kind === 'pit' ? `${main.made} chip${main.made === 1 ? '' : 's'} back out of the Pit` : kind === 'fee' ? `${main.fees}¢ of Debt on ${main.cells.length} stack${main.cells.length === 1 ? '' : 's'}` : `${main.made} chip${main.made === 1 ? '' : 's'} made`;
   yield step(b, `${x.tag}: ${inst.length ? said : 'nothing to make'}${extra ? `, and ${extra.made} extra` : ''}${main.lost ? `; ${main.lost} had no room` : ''}${x.bonus === 'linger' && !x.again ? `; it will play again for ${def.bonus.turns || 2} turns` : ''}.`, refs, main.made || main.fees || extra?.made ? 'play' : 'miss');
 }
 function* play(b, s, e, opt = {}) {
@@ -1770,7 +1792,21 @@ function act(b, s, A, target, M) {
   void M;
 }
 // one made chip's triggered work: its actions on everything its reach covers
-function fire(b, s, at, M) { let n = 0; const list = reachOf(b, s, at, M); for (const A of M.actions || []) for (const tg of list) n += act(b, s, A, tg, M); return { n, refs: [...new Set(list.map((tg) => tg.x))].map((x) => ref(x.side || s, x.r, x.c)) }; }
+function fire(b, s, at, M) { let n = 0; const list = reachOf(b, s, at, M);
+  for (const A of M.actions || []) { if (A.k === 'pull') { n += pullTo(b, s, at, A); continue; } for (const tg of list) n += act(b, s, A, tg, M); }
+  return { n, refs: [...new Set(list.map((tg) => tg.x))].map((x) => ref(x.side || s, x.r, x.c)) }; }
+// a made chip's Pull action: up to A.n¢ of real chips out of a Pit (A.from: mine, theirs or both), onto the chip's
+// stack under it, then the Bet; what finds no room goes back
+function pullTo(b, s, at, A) {
+  const n = Math.max(1, A.n ?? 1), from = A.from || 'mine', o = 1 - s.idx, side = new Map();
+  const take = (si, amt) => { for (const ch of pullPit(b, si, amt, { bids: !!A.bids })) side.set(ch, si); };
+  if (from !== 'theirs') take(s.idx, n);
+  if (from !== 'mine') take(o, n - sum([...side.keys()], (ch) => ch.value));
+  const rest = []; for (const ch of side.keys()) { if (!at.cell.hole && capacityLeft(s, at.cell) > 0) { at.cell.chips.splice(Math.max(0, at.cell.chips.indexOf(at.ch)), 0, ch); b.fx[ch.id] = 'from-pit'; } else rest.push(ch); }
+  const left = rest.length ? addToMeter(b, s, rest, { r: at.r, c: at.c }, 'from-pit') : [];
+  for (const ch of left) backToPit(b, side.get(ch), [ch]);
+  return side.size - left.length;
+}
 // where a creature chip heads: a space next to it, one step toward its goal
 function creatureStep(b, s, at, M) {
   const others = allCells(s).filter((x) => x.cell !== at.cell && !x.cell.hole && !x.cell.link);

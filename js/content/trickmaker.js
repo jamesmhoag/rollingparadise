@@ -30,10 +30,13 @@ export const DEPLOY = {
   wave: { name: 'Wave', text: 'across the whole target row' },
   aura: { name: 'Aura', text: 'over every space of the position' },
 };
-// what a made trick can put on the table. kind: 'fee' charges Debt (placement does not apply); 'value' makes
+// what a made trick can put on the table. kind: 'fee' charges Debt (placement does not apply); 'pit' takes real
+// chips back out of a Pit (up to the total, whole chips only, newest first); 'value' makes
 // chips worth the instance; 'count' makes one chip per instance whatever it is worth.
 export const MAKES = {
   debt: { name: 'Debt (a fee)', kind: 'fee' },
+  'pit:mine': { name: 'Chips from your Pit', kind: 'pit', pit: 'mine' }, // the real chips you lost, up to the total, newest first
+  'pit:theirs': { name: 'Chips from their Pit', kind: 'pit', pit: 'theirs' },
   std: { name: 'Royal Paradise chips', kind: 'value' },
   block: { name: 'Block chips', kind: 'count' },
   counter: { name: 'Counter chips', kind: 'count' },

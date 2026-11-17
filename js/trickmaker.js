@@ -49,7 +49,8 @@ export const placeIndex = (place, at, n) => (place === 'under' ? 0 : place === '
 // The words on the card, worked out from the configuration
 export function describeRoll(def) {
   const R = def.roll, kind = makeKind(R.chip), dep = DEPLOY[R.deploy] || DEPLOY.hit;
-  const what = kind === 'fee' ? (R.convert === 'lump' ? 'Charge a fee equal to the total' : R.convert === 'precise' ? 'Charge a fee for each die, worth what it rolled' : 'Charge a 1¢ fee for each point of the total')
+  const what = kind === 'pit' ? `Take up to the total in chips back out of ${MAKES[R.chip].pit === 'mine' ? 'your' : 'your opponent\'s'} Pit, the real chips, newest first`
+    : kind === 'fee' ? (R.convert === 'lump' ? 'Charge a fee equal to the total' : R.convert === 'precise' ? 'Charge a fee for each die, worth what it rolled' : 'Charge a 1¢ fee for each point of the total')
     : kind === 'value' ? (R.convert === 'lump' ? 'Make one chip worth the total' : R.convert === 'precise' ? 'Make a chip for each die, worth what it rolled' : 'Make a 1¢ chip for each point of the total')
       : (R.convert === 'lump' ? `Make one ${makeName(R.chip).replace(/s$/, '')}` : R.convert === 'precise' ? `Make one ${makeName(R.chip).replace(/s$/, '')} per die` : `Make one ${makeName(R.chip).replace(/s$/, '')} per point of the total`);
   const where = def.approach === 'none' ? '' : `, ${dep.text} (${(AIMS[def.approach] || def.approach).toLowerCase()} of ${def.side === 'self' ? 'your' : def.side === 'any' ? 'either' : "your opponent's"} position)`;
