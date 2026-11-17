@@ -30,10 +30,12 @@ export const DEPLOY = {
   wave: { name: 'Wave', text: 'across the whole target row' },
   aura: { name: 'Aura', text: 'over every space of the position' },
 };
-// what a made trick can put on the table. kind: 'fee' charges Debt (placement does not apply); 'value' makes
+// what a made trick can put on the table. kind: 'fee' charges Debt (placement does not apply); 'water' lays a Puddle
+// chip at the bottom of each space; 'value' makes
 // chips worth the instance; 'count' makes one chip per instance whatever it is worth.
 export const MAKES = {
   debt: { name: 'Debt (a fee)', kind: 'fee' },
+  puddle: { name: 'Puddle chips', kind: 'water' }, // one under each space it reaches (wets the stack); placement does not apply
   std: { name: 'Royal Paradise chips', kind: 'value' },
   block: { name: 'Block chips', kind: 'count' },
   counter: { name: 'Counter chips', kind: 'count' },

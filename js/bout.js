@@ -127,6 +127,10 @@ export const cOf = (s, k) => Math.max(0, s.c[k] + (s.turnBonus[k] || 0));
 function mkChip(b, kind, value = 0, extra = {}) { return { id: b.nextId++, kind, value, ...extra }; }
 const HAZARD_LIFE = { burn: 3, shock: 2, corrupt: 3, boom: 2, acid: 99, poison: 99, frost: 2, lava: 2, hard: 3 };
 const mkHazard = (b, kind, life) => mkChip(b, kind, 0, { life: life ?? HAZARD_LIFE[kind] });
+// The Puddle is a chip with no thickness that always sits at the bottom of its space (cell.puddle), under any stack.
+// On an empty space nothing can be played until it dries; frozen over (ice), it grounds the Frozen chips above it.
+export const puddleOf = (cell) => cell?.puddle || null;
+function setPuddle(b, cell, ice) { const p = cell.puddle; cell.puddle = p ? { ...p, t: b.turn, ice: ice ?? p.ice } : mkChip(b, 'puddle', 0, { t: b.turn, ice: !!ice }); return cell.puddle; }
 // A stack carries at most one Debt marker, showing exactly what it owes. Make it total n (0 removes it).
 function setDebt(b, cell, n, how) {
   const cur = cell.chips.filter((ch) => ch.kind === 'debt'), have = sum(cur, (ch) => ch.value);
@@ -796,7 +800,7 @@ function validOn(b, s, def, t, payOnly) {
   return out;
 }
 // tricks whose roll effect puts chips on the stack they aim at
-export const addsChips = (def) => !!def.make || ['doom', 'hat', 'handoff', 'block'].includes(def.roll.k) || (def.roll.k === 'chips' && makeKind(def.roll.chip) !== 'fee');
+export const addsChips = (def) => !!def.make || ['doom', 'hat', 'handoff', 'block'].includes(def.roll.k) || (def.roll.k === 'chips' && !['fee', 'water'].includes(makeKind(def.roll.chip))); // a Puddle has no thickness: it needs no room
 export function setTarget(b, s, e, tgt) {
   if (b.phase !== 'aim' && b.phase !== 'bid') return false;
   if (!validTargets(b, s, e).some((v) => v.side === tgt.side && v.r === tgt.r && v.c === tgt.c)) return false;
@@ -920,7 +924,7 @@ function strike(b, s, x, o = {}) {
 // on, freeze in the cold and make plants grow faster.
 function water(b, s, x) {
   const cell = x.cell; if (cell.link) return;
-  cell.puddle = { t: b.turn, ice: cell.puddle?.ice || false }; // a stack hit by water stands in a Puddle until it dries
+  if (!cell.puddle) b.fx[setPuddle(b, cell).id] = 'spawn'; else setPuddle(b, cell); // a stack hit by water stands on a Puddle chip until it dries
   if (!solidCount(cell)) return;
   for (const ch of cell.chips) if (!isHazard(ch)) ch.wet = 2;
   for (const ch of cell.chips.filter((y) => y.kind === 'burn' || y.kind === 'lava')) { cell.chips.splice(cell.chips.indexOf(ch), 1); b.fx[ch.id] = 'void'; }
@@ -1211,6 +1215,7 @@ function* playChips(b, s, e, def, x) {
     list.forEach((amt, i) => { const sp = spaces[i % (spaces.length || 1)]; if (!sp) { lost++; return; } const cell = t.grid[sp.r][sp.c]; hit.set(`${sp.r}:${sp.c}`, sp);
       const kind = makeKind(chip);
       if (kind === 'fee') { fees += engage(b, s, t, sp.r, sp.c, amt, { pierce: x.pierce }).placed; return; }
+      if (kind === 'water') { if (cell.puddle) { lost++; return; } water(b, t, { cell, r: sp.r, c: sp.c }); made++; return; } // a Puddle chip goes under the stack
       if (isFxChip(chip)) { if (placeFx(b, t, cell, chip, R.life || 3, e.trick.id)) made++; else lost++; return; }
       if (capacityLeft(t, cell) <= 0) { lost++; return; }
       if (MADE_CHIPS[chip]) { const mc = mkMade(b, chip); if ((MADE_CHIPS[chip].must === 'alone' && solidCount(cell)) || !placeMade(cell, mc, R.place, R.at)) { lost++; return; } b.fx[mc.id] = 'spawn'; made++; (s.madeNew ||= []).push(mc.id); return; }
@@ -1512,7 +1517,7 @@ function* sky(b, s) {
     } else if (o.kind === 'moon') { // the tide: a Puddle spreads
       const p = allCells(s).filter((x) => x.cell.puddle && !x.cell.puddle.ice); if (!p.length) continue;
       const x = b.rng.pick(p), to = allCells(s).filter((y) => Math.abs(y.r - x.r) + Math.abs(y.c - x.c) === 1 && !y.cell.chips.length && !y.cell.puddle && !y.cell.link);
-      if (to.length) { const y = b.rng.pick(to); y.cell.puddle = { t: b.turn, ice: false }; x.cell.puddle.t = b.turn; yield step(b, `The tide rises under the Moon: a Puddle spreads in ${s.name}'s position.`, [ref(s, y.r, y.c)], 'weather'); }
+      if (to.length) { const y = b.rng.pick(to); setPuddle(b, y.cell, false); x.cell.puddle.t = b.turn; yield step(b, `The tide rises under the Moon: a Puddle spreads in ${s.name}'s position.`, [ref(s, y.r, y.c)], 'weather'); }
     } else if (o.kind === 'blizzard') { // at the end of its turn: short stacks freeze solid, wet chips freeze, Puddles ice over
       let n = 0; for (const { cell } of allCells(s)) { if (cell.puddle) cell.puddle.ice = true; if (solidCount(cell) && solidCount(cell) < o.str) for (const ch of cell.chips) if (!isHazard(ch)) ch.wet = Math.max(ch.wet || 0, 1); // its snow wets short stacks
         if (solidCount(cell) && wet(cell)) n += freezeTop(b, cell) ? 1 : 0; }
@@ -1691,6 +1696,7 @@ export function sandboxChip(b, side, r, c, what, op = 'add') {
     return mkChip(b, what.kind || 'std', what.kind === 'block' || what.kind === 'counter' ? 0 : Math.max(1, what.value | 0 || 1));
   };
   if (what.kind === 'debt') { if (!occupied(cell)) return false; setDebt(b, cell, debtOf(cell) + Math.max(1, what.value | 0 || 1)); return true; }
+  if (what.kind === 'puddle') { if (cell.link) return false; if (op === 'remove' || (op === 'change' && cell.puddle)) { delete cell.puddle; return true; } water(b, s, { cell, r, c }); return true; } // the Puddle chip goes under the stack
   const ch = make(); if (!ch) return false;
   if (op === 'change') { if (topI < 0) return false; const old = cell.chips[topI]; cell.chips.splice(topI, 1, ch); b.fx[old.id] = 'void'; b.fx[ch.id] = 'mutate'; return true; }
   if (cell.hole || cell.link || (!isHazard(ch) && capacityLeft(s, cell) <= 0)) return false;
@@ -2007,4 +2013,4 @@ export function summary(b, idx) {
 }
 
 // internals the tests drive directly
-export const _test = { madeWork, placeMade, engage, settleAll, feeShares, setDebt, ticks, play, sidePhase, growth, strike, water, newCreature, setHard, arrange, chipPhase, placeFx, addToMeter };
+export const _test = { madeWork, placeMade, engage, settleAll, feeShares, setDebt, ticks, play, sidePhase, growth, strike, water, freezeTop, newCreature, setHard, arrange, chipPhase, placeFx, addToMeter };

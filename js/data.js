@@ -346,6 +346,7 @@ export const CHIPS = {
   shock: { name: 'Shocking chip', text: 'Hazard. Each turn it puts 1¢ of Debt on two other stacks. Fades after 2 turns.' },
   corrupt: { name: 'Corrupting chip', text: 'Hazard. Each turn it puts 1¢ of Debt on its stack and has a 60% chance to spread to another stack. Fades after 3 turns.' },
   poison: { name: 'Poison chip', text: 'Hazard. Each turn it puts 1¢ of Debt on its stack. It lingers until the stack is gone or it is cleansed.' },
+  puddle: { name: 'Puddle chip', type: 'Ground', text: 'Water with no thickness, always at the bottom of its space. On an empty space nothing can be played until it dries, after a turn without water. Wets the stack on it. Frozen over, it grounds the Frozen chips above it.' },
   boom: { name: 'Boom chip', text: 'Hazard. The turn after it lands it goes off: 5¢ of Debt on its stack and on every stack around it.' },
   // conversions and growth from the workbook's chip list. Instance shields take a whole fee each, not 1¢.
   frozen: { name: 'Frozen chip', text: 'Several wet Royal Paradise chips frozen into one, worth their sum. Anywhere else it is an ordinary chip of that value. Standing in an iced-over Puddle it is frozen to the ground: it cannot be bid or flipped, and cannot be burned, corrupted, shocked or turned into another chip. A fee smaller than it only leaves Debt.' },

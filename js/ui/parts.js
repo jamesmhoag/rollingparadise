@@ -8,7 +8,7 @@ import { facesOf, faceValue, matOf, dieName } from '../dice.js';
 import { traitsOf, traitsHtml } from '../traits.js';
 import { iconStyle, textureOf } from './icons.js';
 
-const GLYPH = { opp: '★', block: '▣', counter: '✸', burn: '🔥', acid: '☣', shock: '⚡', corrupt: '☠', poison: '☘', boom: '💣', frost: '❄', lava: '🌋', flower: '✿', petal: '❀', clay: '▤', brick: '▦', dynamite: '🧨', tree: '🌳', wood: '▥', hard: '⛊', sticky: '◍', hive: '⬢', little: '•', egg: '🥚', hat: '🎩', doom: '☠', volcano: '🌋' };
+const GLYPH = { puddle: '💧', opp: '★', block: '▣', counter: '✸', burn: '🔥', acid: '☣', shock: '⚡', corrupt: '☠', poison: '☘', boom: '💣', frost: '❄', lava: '🌋', flower: '✿', petal: '❀', clay: '▤', brick: '▦', dynamite: '🧨', tree: '🌳', wood: '▥', hard: '⛊', sticky: '◍', hive: '⬢', little: '•', egg: '🥚', hat: '🎩', doom: '☠', volcano: '🌋' };
 // made chips take their face colour from their MADE_CHIPS entry, through one shared style sheet
 let madeCss = '';
 function madeColours() {
@@ -32,6 +32,7 @@ export function chipName(ch) {
   if (ch.kind === 'stray') return `${ch.value}¢ of Debt on nothing`;
   if (ch.kind === 'hard') return `Hardened chip (${ch.life} turn${ch.life === 1 ? '' : 's'})`;
   if (ch.kind === 'sticky') return `Sticky chip (${ch.value})${ch.stuck ? ` on ${ch.stuck}` : ''}`;
+  if (ch.kind === 'puddle') return ch.ice ? 'Iced-over Puddle chip' : 'Puddle chip';
   if (ch.kind === 'egg') return `Dragon Egg${ch.prog ? ` (${ch.prog} of 5 to hatch)` : ''}`;
   if (ch.treasure) return `Treasure chip (${ch.value} Gold)`;
   if (ch.big) return `Big ${ch.value}¢ chip`;

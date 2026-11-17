@@ -53,7 +53,7 @@ export function describeRoll(def) {
     : kind === 'value' ? (R.convert === 'lump' ? 'Make one chip worth the total' : R.convert === 'precise' ? 'Make a chip for each die, worth what it rolled' : 'Make a 1¢ chip for each point of the total')
       : (R.convert === 'lump' ? `Make one ${makeName(R.chip).replace(/s$/, '')}` : R.convert === 'precise' ? `Make one ${makeName(R.chip).replace(/s$/, '')} per die` : `Make one ${makeName(R.chip).replace(/s$/, '')} per point of the total`);
   const where = def.approach === 'none' ? '' : `, ${dep.text} (${(AIMS[def.approach] || def.approach).toLowerCase()} of ${def.side === 'self' ? 'your' : def.side === 'any' ? 'either' : "your opponent's"} position)`;
-  const place = kind === 'fee' ? '' : `, ${PLACE[R.place]?.text || PLACE.over.text}${R.place === 'precise' ? ` (height ${R.at | 0})` : ''}`;
+  const place = kind === 'fee' || kind === 'water' ? (kind === 'water' ? ', at the bottom of each space (no thickness)' : '') : `, ${PLACE[R.place]?.text || PLACE.over.text}${R.place === 'precise' ? ` (height ${R.at | 0})` : ''}`;
   const life = isFxChip(R.chip) ? `, for ${R.life || 3} turns` : '';
   return `${what}${where}${place}${life}.`;
 }
