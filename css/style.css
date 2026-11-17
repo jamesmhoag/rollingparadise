@@ -578,3 +578,9 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .btn.dye { border-color: var(--dye); box-shadow: inset 3px 0 0 var(--dye); } .btn.dye.on { background: color-mix(in srgb, var(--dye) 22%, transparent); }
 .forge-log { margin-top: 10px; display: grid; gap: 4px; } .forge-log .row { gap: 10px; align-items: center; } .forge-log p { margin: 0; font-size: 13px; }
 .dicebox .die.off { opacity: .45; cursor: not-allowed; }
+
+/* hover modes: Context and Guidance (mouse wheel), each concise or verbose (right-click) */
+#tooltip .tt-mode { font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); margin-bottom: 3px; }
+#tooltip.guidance .tt-mode { color: #7dffb5; } #tooltip.guidance { border-color: rgba(125, 255, 181, .45); }
+#tooltip .def { font-style: italic; opacity: .85; }
+#tooltip ul.how { list-style: none; padding: 0; } #tooltip ul.how li { position: relative; padding-left: 14px; } #tooltip ul.how li::before { content: '›'; position: absolute; left: 2px; color: #7dffb5; font-weight: 800; }

@@ -1,5 +1,8 @@
 // DOM helpers shared by every screen: element builder, tooltips, scene and panel
 // transitions, keyed list syncing with enter/leave/move animation, number tweens.
+import { STATS } from '../data.js';
+import { GUIDE } from '../content/guidance.js';
+
 export const W = 1280, H = 720;
 export const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -11,7 +14,7 @@ export function h(tag, props = {}, ...kids) {
   for (const [k, v] of Object.entries(props || {})) {
     if (v == null || v === false) continue;
     if (k === 'class') el.className = v; else if (k === 'text') el.textContent = v; else if (k === 'html') el.innerHTML = v;
-    else if (k === 'tip') tip(el, v); else if (k === 'style') { for (const [p, val] of Object.entries(v)) { if (p.startsWith('--')) el.style.setProperty(p, val); else el.style[p] = val; } }
+    else if (k === 'tip') tip(el, v); else if (k === 'guide') el.dataset.guide = v; else if (k === 'style') { for (const [p, val] of Object.entries(v)) { if (p.startsWith('--')) el.style.setProperty(p, val); else el.style[p] = val; } }
     else if (k.startsWith('on')) el.addEventListener(k.slice(2), v); else el.setAttribute(k, v);
   }
   for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid.nodeType ? kid : document.createTextNode(kid));
@@ -41,6 +44,49 @@ export function setDetail(verbose) {
   for (const fn of detail.listeners) fn(verbose);
 }
 
+// ---------- hover mode ----------
+// Two modes for every hover: Context (how it works, its numbers and outcomes) and Guidance (what to do with it and
+// when; see content/guidance.js). Scroll the mouse wheel over a hover to switch. Both have the concise and verbose
+// levels above: concise shows the name and the essentials, verbose adds what the thing is (its definition).
+const MODE_KEY = 'rollingparadise.hovermode.v1';
+export const hover = { mode: (() => { try { return globalThis.localStorage?.getItem(MODE_KEY) === 'guidance' ? 'guidance' : 'context'; } catch { return 'context'; } })() };
+export function setHoverMode(mode) {
+  hover.mode = mode; try { globalThis.localStorage?.setItem(MODE_KEY, mode); } catch { /* storage unavailable */ }
+  T.el?.classList.toggle('guidance', mode === 'guidance');
+}
+const STAT_BY_SHORT = Object.fromEntries(Object.entries(STATS).map(([k, X]) => [X.short, k]));
+// which guidance entry an element shows: data-guide, or worked out from what the element is
+export function guideKeyOf(el) {
+  if (el.dataset?.guide) return el.dataset.guide;
+  const c = el.classList; if (!c) return null;
+  if (c.contains('die')) return 'die';
+  if (c.contains('chip')) return 'chip';
+  if (c.contains('tcard') || c.contains('tag-t')) return 'trick';
+  if (c.contains('cell')) return 'cell';
+  if (c.contains('room')) { const r = [...c].find((x) => x.startsWith('r-')); return r ? 'room:' + r.slice(2) : null; }
+  if (c.contains('stat')) { const k = STAT_BY_SHORT[el.querySelector('em')?.textContent]; return k ? 'stat:' + k : null; }
+  return null;
+}
+const nameOf = (raw) => { if (!raw) return ''; if (raw.nodeType) return raw.querySelector?.('b')?.textContent || ''; const m = /<b[^>]*>(.*?)<\/b>/.exec(raw); return m ? m[1] : ''; };
+const modeTag = (mode, other) => `<div class="tt-mode">${mode}<span class="v"> · wheel for ${other}</span></div>`;
+// the hover for an element in the current mode and level, as html or a node
+export function tipContent(el) {
+  const raw = typeof el._tip === 'function' ? el._tip() : el._tip, G = GUIDE[guideKeyOf(el)];
+  if (!G) return raw;
+  if (hover.mode === 'guidance') {
+    const how = detail.verbose ? G.how : G.how.slice(0, 1);
+    return `${modeTag('Guidance', 'context')}<b>${nameOf(raw) || G.name}</b>${detail.verbose ? `<p class="def">${G.def}</p>` : ''}<ul class="how">${how.map((x) => `<li>${x}</li>`).join('')}</ul>`;
+  }
+  if (!raw) return raw;
+  const t = document.createElement('template'); if (raw.nodeType) t.content.append(raw.cloneNode(true)); else t.innerHTML = raw;
+  const def = document.createElement('p'); def.className = 'def v'; def.innerHTML = G.def;
+  const first = t.content.firstElementChild;
+  if (first && first.tagName !== 'B') first.after(def); else { let n = t.content.firstChild; while (n && !(n.nodeType === 1 && n.tagName === 'B')) n = n.nextSibling; let m = n?.nextSibling; while (m && m.nodeType === 1 && m.tagName === 'SPAN') m = m.nextSibling; if (m) m.before(def); else t.content.append(def); }
+  const tag = document.createElement('template'); tag.innerHTML = modeTag('Context', 'guidance'); t.content.prepend(tag.content);
+  return t.content;
+}
+const show = (c) => { if (c.nodeType) T.el.replaceChildren(c); else T.el.innerHTML = c; };
+
 // ---------- tooltips ----------
 // tip(el, 'html') or tip(el, () => 'html'). The tooltip fades in and glides after the pointer.
 const T = { el: null, cur: null, x: 0, y: 0, tx: 0, ty: 0, timer: 0, on: false };
@@ -58,19 +104,25 @@ function place(ev) {
 }
 function findTip(node) { while (node && node !== document.body) { if (node._tip) return node; node = node.parentNode; } return null; }
 export function initTips() {
-  T.el = $('tooltip'); setDetail(detail.verbose);
+  T.el = $('tooltip'); setDetail(detail.verbose); setHoverMode(hover.mode);
   document.addEventListener('contextmenu', (ev) => {
     ev.preventDefault(); setDetail(!detail.verbose);
     toast(detail.verbose ? 'Verbose: hovers and prompts explain the rules. Right-click for concise.' : 'Concise: hovers and prompts show just the facts. Right-click for verbose.');
-    if (T.cur) { const el = T.cur, c = typeof el._tip === 'function' ? el._tip() : el._tip; if (c) { if (c.nodeType) T.el.replaceChildren(c); else T.el.innerHTML = c; } }
+    if (T.cur) { const c = tipContent(T.cur); if (c) show(c); }
   });
+  let lastWheel = 0; // the mouse wheel over a showing hover switches Context and Guidance
+  document.addEventListener('wheel', (ev) => {
+    if (!T.cur || !T.el.classList.contains('show') || !GUIDE[guideKeyOf(T.cur)]) return;
+    ev.preventDefault(); const now = performance.now(); if (now - lastWheel < 400) return; lastWheel = now;
+    setHoverMode(hover.mode === 'guidance' ? 'context' : 'guidance'); const c = tipContent(T.cur); if (c) show(c);
+  }, { passive: false });
   document.addEventListener('mousemove', (ev) => {
     const el = findTip(ev.target);
     if (el !== T.cur) {
       T.cur = el; clearTimeout(T.timer); T.el.classList.remove('show');
       if (el) T.timer = setTimeout(() => {
-        const c = typeof el._tip === 'function' ? el._tip() : el._tip; if (!c || T.cur !== el) return;
-        if (c.nodeType) T.el.replaceChildren(c); else T.el.innerHTML = c;
+        const c = tipContent(el); if (!c || T.cur !== el) return;
+        show(c);
         place(ev); if (!T.on) { T.x = T.tx; T.y = T.ty; } T.on = true; T.el.classList.add('show');
       }, 110);
       else T.on = false;
@@ -82,7 +134,7 @@ export function initTips() {
 }
 export function refreshTip() { T.cur = null; }
 // re-render the tooltip that is showing, in place (for hovers whose content follows the pointer within an element)
-export function redrawTip() { const el = T.cur; if (!el || !T.el.classList.contains('show')) return; const c = typeof el._tip === 'function' ? el._tip() : el._tip; if (c) { if (c.nodeType) T.el.replaceChildren(c); else T.el.innerHTML = c; } }
+export function redrawTip() { const el = T.cur; if (!el || !T.el.classList.contains('show')) return; const c = tipContent(el); if (c) show(c); }
 
 // ---------- scenes and panels ----------
 let scene = null, busy = false;

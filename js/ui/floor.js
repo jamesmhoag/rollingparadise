@@ -50,7 +50,7 @@ export function hubScene(root) {
   if (at.floor !== run.floor) { at.floor = run.floor; at.k = 'entry'; }
   const news = h('ul', { class: 'news list' }), book = h('div', { class: 'inv list' }), hint = h('p', { class: 'sub fade-t' });
   const plan = h('div', { class: 'plan', style: { '--fc': FLOOR_HUE[run.floor] } }, h('div', { class: 'carpet' }));
-  const rooms = {}, me = h('div', { class: 'pawn', style: { '--cc': D.CLASSES[run.cls].color }, tip: () => `<b>You</b> <span class="dim">${D.CLASSES[run.cls].name}</span><p>Click anywhere on the floor to walk there.</p>` }, h('i', {}), h('b', { text: 'YOU' }));
+  const rooms = {}, me = h('div', { class: 'pawn', style: { '--cc': D.CLASSES[run.cls].color }, tip: () => `<b>You</b> <span class="dim">${D.heroName(run.cls)}</span><p>Click anywhere on the floor to walk there.</p>` }, h('i', {}), h('b', { text: 'YOU' }));
   const spot = (k) => { const [x, y, w, hh] = P[k]; return { x: x + w / 2 - 15, y: y + hh - 34 }; };
   const stand = (k) => { const p = spot(k); me.style.transform = `translate(${p.x}px, ${p.y}px)`; };
   let walking = false;
@@ -264,7 +264,7 @@ function bookPanel() {
 
 function kitPanel() {
   const run = app.run, st = R.rollerStats(run);
-  openPanel(h('div', {}, head(`${D.CLASSES[run.cls].name}`, D.CLASSES[run.cls].blurb),
+  openPanel(h('div', {}, head(D.heroName(run.cls), D.CLASSES[run.cls].blurb),
     h('div', { class: 'col' }, h('span', { class: 'cap', text: 'Book' }), h('div', { class: 'inv' }, run.tricks.map((t) => trickTag(t, run.cls))),
       h('span', { class: 'cap', text: 'Pouch' }), h('div', { class: 'dicebox' }, run.dice.map((d) => { const el = dieEl(d); el._tip = () => dieTip(d); el.classList.add('has-tip'); return el; })),
       h('span', { class: 'cap', text: `${R.walletOf(run).name} wallet — ${R.walletCards(run).length}/${R.walletOf(run).slots} slots, plus one pass slot · lanyard cards do not take a slot · click a card twice to drop it` }),

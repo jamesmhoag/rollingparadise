@@ -1,0 +1,84 @@
+// Hover guidance: what each thing is (`def`) and how to use it (`how`). Edit freely.
+// Hovers have two modes, switched with the mouse wheel over any hover: Context (how it works, its numbers) and
+// Guidance (what to do with it, and when). Right-click still switches either mode between concise and verbose.
+//   concise: the name and the first `how` line · verbose: the name, `def` and every `how` line
+// `def` says only what the thing is and what it is for; no rules, numbers or advice.
+// Keys: 'die', 'chip', 'trick', 'cell', 'stat:<stat>', 'phase:<phase>', 'room:<room>'. Anything without an entry
+// shows its Context hover in both modes.
+export const GUIDE = {
+  // ---------- at the table ----------
+  die: { name: 'Die', def: 'A die from your pouch. Its faces are the values it can roll.',
+    how: ['In the Roll step, pick the dice to throw, then put each rolled die on a trick on your Run.',
+      'Dice on one trick must all be the same size; a flipped chip can join any of them.',
+      'Leave rolls unused and Conviction pays you Power chips instead.'] },
+  chip: { name: 'Chip', def: 'A chip in a position. Chips are your Worth: fees take them, bids spend them.',
+    how: ['In the Bid step, click an uncovered chip on top of a stack to bid it on a shown trick.',
+      'Bid more than 1¢ on a trick and it lingers a turn for every ¢ over the first.',
+      'In the Roll step you can flip a top chip into your throw instead of a die.'] },
+  trick: { name: 'Trick', def: 'A card from your Book that plays an effect once it has dice and a bid.',
+    how: ['Draw it onto your Run in the Draw step.',
+      'Put rolled dice on it in the Roll step: its total and its Bonus come from them.',
+      'Bid a chip on it in the Bid step so it plays, in its type\'s phase.'] },
+  cell: { name: 'Space', def: 'A space in a position that holds one stack of chips.',
+    how: ['Before the bout, place your chips here when you lay out your position.',
+      'Tricks that target a stack aim at a space; fees that a stack cannot pay spill on down its lane.'] },
+
+  // ---------- your attributes ----------
+  'stat:trickery': { name: 'Trickery (Draw)', def: 'How many tricks you may draw each turn.',
+    how: ['Draw up to this many tricks in the Draw step.', 'Draws you leave unused pay you through Charisma.'] },
+  'stat:ingenuity': { name: 'Ingenuity (Bid)', def: 'How many chips you may bid each turn.',
+    how: ['Bid up to this many chips in the Bid step.', 'Bids you leave unused pay you through Cunning.'] },
+  'stat:proficiency': { name: 'Proficiency (Roll)', def: 'How many dice you may roll each turn.',
+    how: ['Throw up to this many dice (or flipped chips) in the Roll step.', 'Rolls you leave unused pay you through Conviction.'] },
+  'stat:charisma': { name: 'Charisma (Steal)', def: 'The reward for holding back draws.',
+    how: ['Draw fewer tricks than you may and a Steal chip takes ¢ from the Stage in the House phase.'] },
+  'stat:cunning': { name: 'Cunning (Opportunity)', def: 'The reward for holding back bids.',
+    how: ['Bid fewer chips than you may and gain Opportunity chips on your Meter, which you can bid later.'] },
+  'stat:conviction': { name: 'Conviction (Power)', def: 'The reward for holding back rolls.',
+    how: ['Roll fewer dice than you may and gain Power chips that add to your roll effects this turn.'] },
+  'stat:balance': { name: 'Balance (Stack height)', def: 'How tall your stacks can grow.',
+    how: ['Taller stacks let you put more chips in the same spaces when you lay out your position.'] },
+  'stat:versatility': { name: 'Versatility (Meter rows)', def: 'How many rows your Meter has.',
+    how: ['The Meter fills with chips you gain in the bout and covers the Bar behind it.'] },
+  'stat:depth': { name: 'Depth (Bar rows)', def: 'How many rows your Bar has.',
+    how: ['More Bar rows let you commit more chips before the bout.'] },
+
+  // ---------- the House's phases ----------
+  'phase:bids': { name: 'Bids', def: 'The first phase the House calls each turn.',
+    how: ['Nothing to do here: it runs once both Rollers lock in their bids.'] },
+  'phase:investment': { name: 'Investments', def: 'The phase where Investment tricks play.',
+    how: ['Play Investments to boost every other trick you play this turn.'] },
+  'phase:insurance': { name: 'Insurances', def: 'The phase where Insurance tricks play.',
+    how: ['Play Insurance when you expect fees: it resolves before the Expenses land.'] },
+  'phase:expense': { name: 'Expenses', def: 'The phase where Expense tricks charge fees.',
+    how: ['Play Expenses to take chips from your opponent\'s position.'] },
+  'phase:correction': { name: 'Corrections', def: 'The phase where Correction tricks play.',
+    how: ['Play Corrections to clean up Debt and hazards or rearrange chips after the fees.'] },
+  'phase:house': { name: 'House', def: 'The last phase of the turn, where the table itself acts.',
+    how: ['Nothing to do here: hazards and creatures act and rewards for unused actions are paid.'] },
+
+  // ---------- the floor ----------
+  'room:smith': { name: 'Diesmith', def: 'The forge where dice are melted and cast.',
+    how: ['Pick a size, pick dice to melt until there is enough volume, add dyes if you like, then Forge.',
+      'Pick a single die to sell it instead.'] },
+  'room:dice': { name: 'Dice Shop', def: 'A counter selling new dice.',
+    how: ['Buy plain dice to grow your pouch or to melt at the Diesmith.', 'Bone dice carry a fixed trait and can never be changed.'] },
+  'room:trader': { name: 'Trick Trader', def: 'The shop for tricks.',
+    how: ['Buy tricks for your Book, sell ones you no longer want, or open foil packs.', 'Restock the shelf if nothing fits.'] },
+  'room:exchange': { name: 'Chip Exchange', def: 'The shop for special chips.',
+    how: ['Buy effect chips here, then place them in your position before a bout.'] },
+  'room:lounge': { name: 'Lounge', def: 'The bar, for a drink at the next table.',
+    how: ['Buy a drink before you sit down; it changes your attributes until its sips run out.'] },
+  'room:book': { name: 'Sports Book', def: 'The House\'s betting desk.',
+    how: ['Place bets before a bout; they settle as the games finish.'] },
+  'room:table': { name: 'Table', def: 'A game table with a Roller waiting.',
+    how: ['Sit down to play a bout. Beat table 1, then one of the other two, to open the head table.'] },
+  'room:boss': { name: 'Head table', def: 'Where the floor\'s High Roller plays.',
+    how: ['Beat the High Roller to take the stairs to the next floor.'] },
+  'room:kit': { name: 'Coat check', def: 'Where your gear is kept.',
+    how: ['Look through your Pouch, Book and wallet between bouts.'] },
+  'room:search': { name: 'Dodgy corner', def: 'A dark corner of the floor.',
+    how: ['Search it once per floor for something someone dropped.'] },
+  'room:exit': { name: 'Exit', def: 'The way out, through the Gift Shop.',
+    how: ['Leave when you want to cut your losses; what you buy there stays unlocked.'] },
+};

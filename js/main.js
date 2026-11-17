@@ -43,9 +43,9 @@ function titleScene(root) {
     h('div', { class: 'hotel neon-c', text: 'ROYAL PARADISE HOTEL & CASINO' }), sign,
     h('p', { class: 'tagline neon-p', text: 'Gamble your way to the top' }),
     h('div', { class: 'menu' },
-      resume ? btn('Continue', () => { app.run = saved; if (R.needsBouncer(saved)) return bouncerPanel(saved); saved.phase === 'ascent' ? nav.ascent() : nav.hub(); }, `<b>Continue</b><p>${D.CLASSES[saved.cls].name}, ${saved.phase === 'ascent' ? 'on the Paradise Ascent' : `floor ${saved.floor}`}, ${cents(saved.purse)} in the purse.</p>`, 'sign-btn') : null,
+      resume ? btn('Continue', () => { app.run = saved; if (R.needsBouncer(saved)) return bouncerPanel(saved); saved.phase === 'ascent' ? nav.ascent() : nav.hub(); }, `<b>Continue</b><p>${D.heroName(saved.cls)}, ${saved.phase === 'ascent' ? 'on the Paradise Ascent' : `floor ${saved.floor}`}, ${cents(saved.purse)} in the purse.</p>`, 'sign-btn') : null,
       btn('New run', () => (resume ? openPanel(h('div', { class: 'col' }, h('h2', { text: 'Start a new run?' }),
-        h('p', { text: `You have a run in progress: ${D.CLASSES[saved.cls].name}, ${saved.phase === 'ascent' ? 'on the Paradise Ascent' : `floor ${saved.floor}`}, ${cents(saved.purse)} in the purse.` }),
+        h('p', { text: `You have a run in progress: ${D.heroName(saved.cls)}, ${saved.phase === 'ascent' ? 'on the Paradise Ascent' : `floor ${saved.floor}`}, ${cents(saved.purse)} in the purse.` }),
         h('p', { class: 'sub', text: 'You can only have one run at a time. Starting a new one ends that run for good.' }),
         h('div', { class: 'row' }, btn('Keep my run', () => closePanel(), null, 'go'), btn('Start over', () => { R.clearRun(); closePanel(true); nav.select(); }, null, 'danger')))) : nav.select()), resume ? '<b>New run</b><p>You can only have one run at a time. Starting over ends your saved run.</p>' : null, resume ? 'sign-btn p' : 'sign-btn'),
       btn('How to play', () => howTo(), null, 'sign-btn p'),
@@ -67,7 +67,7 @@ function howTo() {
     p('Debt', 'An Expense is a fee on the stacks it hits. The House pays it from the top of each stack, one whole chip at a time. What cannot cover the next chip stays on that stack as Debt, shown as one red marker with the amount; it already counts against Worth, and the chip goes once later fees bring the Debt up to its value. If a stack runs out of chips, the rest (overkill) moves to the next stack behind it in the same lane, never sideways. While aiming, the stacks show what the fee will pay, leave and carry.'),
     p('The Stage', 'Settled fees are stacked on the Stage in front of the House. The winner takes everything on it. Bids go to the House and are gone.'),
     p('Between bouts', 'Shop, drink, place bets, then set your position. Every chip you do not put on the table is wagered on the bout and comes back multiplied if you win.'),
-    p('Anything unclear?', 'Hover it. Every chip, die, trick, number and button explains itself. Right-click anywhere to switch hovers and prompts between verbose (the rules spelled out) and concise (just the facts).')));
+    p('Anything unclear?', 'Hover it. Every chip, die, trick, number and button explains itself. Right-click anywhere to switch hovers and prompts between verbose (the rules spelled out) and concise (just the facts). Scroll the mouse wheel over a hover to switch between Context (how it works and its numbers) and Guidance (what to do with it and when).')));
 }
 
 function selectScene(root) {
@@ -76,7 +76,7 @@ function selectScene(root) {
   const els = Object.entries(D.CLASSES).map(([id, K]) => {
     const dice = Object.entries(K.dice).flatMap(([type, n]) => Array.from({ length: n }, () => type));
     const el = h('button', { class: 'pick-card', style: { '--cc': K.color }, onclick: () => { cls = id; sync(); } },
-      h('h2', { text: K.name }), h('p', { class: 'sub', text: K.blurb }),
+      h('h2', { text: K.hero }), h('p', { class: 'cap', text: `the ${K.name}` }), h('p', { class: 'sub', text: K.blurb }),
       h('span', { class: 'cap', text: 'Each turn' }), statRow(K.tip, ['trickery', 'ingenuity', 'proficiency']),
       h('span', { class: 'cap', text: 'For each one left unused' }), statRow(K.c, ['charisma', 'cunning', 'conviction']),
       h('span', { class: 'cap', text: 'Position bonus' }), statRow(K.bvd, ['balance', 'versatility', 'depth']),
