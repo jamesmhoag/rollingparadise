@@ -13,6 +13,10 @@ const prefixes = [...src.matchAll(/\btt?\(`([\w.]+)\$\{/g)].map((m) => m[1]); //
 for (const k of keys) if (prefixes.some((pre) => k.startsWith(pre))) used.add(k);
 for (const k of used) if (!keys.has(k)) fails.push(`missing text: ${k}`);
 for (const k of keys) if (!used.has(k)) fails.push(`unused text: ${k}`);
+// screens whose text has all moved to text/en.js: no English written straight into what the player reads
+const MOVED = ['js/main.js', 'js/ui/build.js', 'js/ui/trickmaker.js', 'js/ui/chipmaker.js', 'js/ui/rostermaker.js', 'js/ui/tuner.js', 'js/ui/testtable.js', 'js/ui/prep.js', 'js/ui/endgame.js'];
+const LITERAL = /\b(?:text|tip|placeholder|title):\s*['`][A-Z][a-z]+[ ,.']|\b(?:btn|toast|warn)\(\s*['`][A-Z][a-z]+[ ,.'`]/g;
+for (const f of MOVED) for (const m of readFileSync(f, 'utf8').matchAll(LITERAL)) fails.push(`${f}: text written in the code: ${m[0]}…`);
 if (fill('{n} {n|die|dice}', { n: 1 }) !== '1 die' || fill('{n} {n|die|dice}', { n: 3 }) !== '3 dice') fails.push('plurals');
 if (t('floor.stairs.to', { floor: 'X' }) !== 'To X') fails.push('fill');
 if (fails.length) { console.log('FAIL ' + fails.join('\nFAIL ')); process.exit(1); }
