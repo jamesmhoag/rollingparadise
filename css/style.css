@@ -574,6 +574,11 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .controls .btn.big[data-kept]:not([data-kept=''])::after { content: attr(data-kept); position: absolute; right: -6px; top: -9px; white-space: nowrap; font-size: 9px; letter-spacing: .02em; padding: 1px 6px; border-radius: 7px; background: #2a2140; border: 1px solid rgba(255, 215, 106, .55); color: var(--gold); pointer-events: none; }
 .controls .btn.big.allused::after { content: '✓ all used'; position: absolute; right: -6px; top: -9px; font-size: 9px; padding: 1px 6px; border-radius: 7px; background: #1e2a24; border: 1px solid rgba(143, 227, 176, .5); color: #8fe3b0; pointer-events: none; }
 
+/* the Diesmith's cast */
+.btn.dye { border-color: var(--dye); box-shadow: inset 3px 0 0 var(--dye); } .btn.dye.on { background: color-mix(in srgb, var(--dye) 22%, transparent); }
+.forge-log { margin-top: 10px; display: grid; gap: 4px; } .forge-log .row { gap: 10px; align-items: center; } .forge-log p { margin: 0; font-size: 13px; }
+.dicebox .die.off { opacity: .45; cursor: not-allowed; }
+
 /* hover modes: Context and Guidance (mouse wheel), each concise or verbose (right-click) */
 #tooltip .tt-mode { font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); margin-bottom: 3px; }
 #tooltip.guidance .tt-mode { color: #7dffb5; } #tooltip.guidance { border-color: rgba(125, 255, 181, .45); }

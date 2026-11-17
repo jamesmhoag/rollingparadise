@@ -5,14 +5,15 @@
 //   v: face value · w: weight (how often it comes up) · x: multiplier
 //   rig: spent after it comes up · ench: multiplier that dwindles · enc: encased, grows each time it comes up
 // A die saved before faces existed has only `up`; its faces are worked out from it.
-import { DICE, DIE_UPGRADES, DIE_VARS, MATERIALS, DEFAULT_MAT, BONE } from './data.js';
+import { DICE, DIE_UPGRADES, DIE_VARS, MATERIALS, DEFAULT_MAT, BONE, CASTS } from './data.js';
 
 // a die's material (dice saved before materials existed are Plastic) and what that allows
 export const matOf = (die) => die.mat || DEFAULT_MAT;
 export const canMelt = (die) => MATERIALS[matOf(die)]?.melt !== false;
 export const canModify = (die) => MATERIALS[matOf(die)]?.upgrade !== false;
 // a die's name: 'Glass d6', 'Accelerated Bone d8'
-export const dieName = (die) => `${die.bone ? BONE[die.bone].name + ' ' : ''}${MATERIALS[matOf(die)].name} ${die.type}`;
+const mixWord = (die) => (die.cast && CASTS[die.cast]?.mats.length > 1 ? CASTS[die.cast].name.split(' ')[0] + ' ' : '');
+export const dieName = (die) => `${die.bone ? BONE[die.bone].name + ' ' : mixWord(die)}${MATERIALS[matOf(die)].name} ${die.type}`;
 
 const base = (type) => Array.from({ length: DICE[type].faces }, (_, i) => ({ v: i + 1 }));
 const mean = (fs) => fs.reduce((t, f) => t + f.v, 0) / fs.length;

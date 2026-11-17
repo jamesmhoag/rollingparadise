@@ -3,7 +3,7 @@
 // and the bout. During a run, what you own is marked.
 import { h, openPanel, closePanel, btn } from './core.js';
 import { app } from './app.js';
-import { upgrade as upgradeFaces, suggestFace } from '../dice.js';
+import { upgrade as upgradeFaces, suggestFace, dieName } from '../dice.js';
 import { chipEl, chipTip, dieEl, dieTip, faceStrip, trickTip, trickWords, trickLook, cardEl, cardTip, passEl, walletEl, jacketEl, jacketTip, drinkEl, feltEl } from './parts.js';
 import * as D from '../data.js';
 import { CHIP_LIST } from '../chiplist.js';
@@ -120,17 +120,23 @@ function tricksTab(own) {
 }
 
 function diceTab(own) {
-  const out = [sec('Dice', 'Each die is drawn as its solid. Forge one at the Diesmith by melting your smallest dice.')];
+  const out = [sec('Dice', `Each die is drawn as its solid. The Diesmith casts a new die from ${D.MELT.castPerFace} melted volume per face; each die melts to ${D.MELT.meltPerFace} per face.`)];
   for (const [type, X] of Object.entries(D.DICE)) { const d = { type, up: [] }, n = own.die(type);
-    out.push(entry(tipped(dieEl(d), () => dieTip(d)), type, [`Rolls 1–${X.faces}.`, `Forge: ${X.forge.dice} ${X.forge.dice > 1 ? 'dice' : 'die'} + ${cents(X.forge.chips)}, from floor ${X.forge.floor}.`, dim(`Sells for ${cents(X.sell)}.`)], { own: n ? `In your pouch ×${n}` : null })); }
-  out.push(sec('Upgrades', `The workbook's ${Object.keys(D.DIE_UPGRADES).length} upgrades. Most change the faces when you buy them; ▲▼?☠ change how the die rolls. Each puts its own badge on the die. Up to ${D.DIE_UPGRADE_MAX} per die. Cost: 100¢ × floor × (1 + upgrades it already has). Faces shown on a d6, before → after (target face marked).`));
+    out.push(entry(tipped(dieEl(d), () => dieTip(d)), type, [`Rolls 1–${X.faces}.`, D.COMPLEXITY.includes(type) ? `Cast: ${X.faces * D.MELT.castPerFace} volume + ${cents(X.forge.chips)}, from floor ${X.forge.floor}.` : 'Not cast by the Diesmith.', dim(`Melts to ${X.faces * D.MELT.meltPerFace}. Sells for ${cents(X.sell)} (Plastic).`)], { own: n ? `In your pouch ×${n}` : null })); }
+  out.push(sec('Materials', Object.values(D.MATERIALS).map((M) => `<b>${M.name}</b>: ${M.text}`).join('<br>')));
+  out.push(sec('Casts', 'What melts together decides the cast. Each rolls dice of the new size; the face showing each rolled value changes.'));
+  for (const C of Object.values(D.CASTS)) out.push(entry(h('span', { class: 'dim', text: C.mats.map((m) => D.MATERIALS[m].name).join(' + ') }), C.name, [C.text, dim(`Rolls ${C.dice} ${C.dice > 1 ? 'dice' : 'die'}.`)]));
+  out.push(sec('Diamond patterns', D.DIAMOND.map((P) => `<b>${P.name}</b> (${P.when}): ${P.text}`).join('<br>')));
+  out.push(sec('Dyes', `Up to ${D.MELT.maxDyes} per cast, added after the cast.`));
+  for (const Y of Object.values(D.DYES)) out.push(entry(h('span', { class: 'dim', text: cents(Y.price) }), `<span style="color:${Y.color}">●</span> ${Y.name}`, [Y.text, dim(`Rolls ${Y.dice} ${Y.dice > 1 ? 'dice' : 'die'}.`)]));
+  out.push(sec('Bone dice', `Sold at the Dice Shop. Each is carved with one of the old Diesmith upgrades, named in the past tense, and cannot be melted or modified. Faces shown on a d6, before → after (target face marked).`));
   const d6 = { type: 'd6', up: [] };
   for (const [u, U] of Object.entries(D.DIE_UPGRADES)) {
     const t = U.target ? suggestFace(d6, u) : 0, d = upgradeFaces({ type: 'd6', up: [] }, u, t, { int: () => 0 });
-    out.push(entry([dieEl(d6), h('span', { class: 'dim', text: '→' }), tipped(dieEl(d), () => dieTip(d))], `<span style="color:${U.color}">${U.mark}</span> ${U.name}${U.floor > 1 ? ` <span class="dim">floor ${U.floor}+</span>` : ''}`,
+    out.push(entry([dieEl(d6), h('span', { class: 'dim', text: '→' }), tipped(dieEl(d), () => dieTip(d))], `<span style="color:${U.color}">${U.mark}</span> ${Object.values(D.BONE).find((B) => B.up === u)?.name || U.name}`,
       [D.upgradeText(u), `<span class="faces">${faceStrip(d6)}</span> → <span class="faces">${faceStrip(d)}</span>${U.target ? dim(` target face ${t + 1}`) : U.roll ? dim(' faces unchanged; works when rolled') : ''}`])); }
-  const held = (own.run?.dice || []).filter((d) => d.up.length);
-  if (held.length) { out.push(sec('Your upgraded dice')); for (const d of held) out.push(entry(tipped(dieEl(d), () => dieTip(d)), d.type, [d.up.map((u) => D.DIE_UPGRADES[u].name).join(', '), `<span class="faces">${faceStrip(d)}</span>`], { own: true })); }
+  const held = (own.run?.dice || []).filter((d) => d.up.length || d.cast);
+  if (held.length) { out.push(sec('Your cast and carved dice')); for (const d of held) out.push(entry(tipped(dieEl(d), () => dieTip(d)), dieName(d), [d.cast ? `${D.CASTS[d.cast].name}${(d.dyes || []).length ? ', ' + d.dyes.map((k) => D.DYES[k].name).join(', ') : ''}` : d.up.map((u) => D.DIE_UPGRADES[u].name).join(', '), `<span class="faces">${faceStrip(d)}</span>`], { own: true })); }
   return out;
 }
 
