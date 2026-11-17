@@ -67,7 +67,10 @@ export const BONE = {
 // Melting a die gives `meltPerFace` volume for each of its faces (a d4 gives 2, a d20 gives 10). Casting a die
 // needs `castPerFace` volume for each face of the new die. `maxDyes`: dyes and dye mixes per forge.
 // Dice melted together must be one material, or a material mix (two materials) or Diamond (all three).
-export const MELT = { meltPerFace: 0.5, castPerFace: 1, maxDyes: 2, lucky: 7 };
+// `castFromPouch`: the dice each cast and dye rolls come from your pouch (dice of the new die's size, never Bone,
+// never ones being melted) and are lost with the melt. Off, the Diesmith rolls its own.
+// `maxDyes`: dye slots per forge. A dye mix (two different primaries in one cast) takes one slot.
+export const MELT = { meltPerFace: 0.5, castPerFace: 1, maxDyes: 2, lucky: 7, castFromPouch: true };
 
 // What goes into a cast. Each one rolls `dice` dice of the new die's size; the face of the new die that shows
 // each rolled value is then changed by `fx`. `price`: the Diesmith's fee for it, on top of the forging fee.
@@ -88,13 +91,15 @@ export const CASTS = {
   // all three materials
   diamond: { name: 'Diamond', kind: 'cast', mats: ['glass', 'metal', 'plastic'], dice: 6, fx: 'diamond', text: 'Rolls six dice; the pattern they make reshapes every face.' },
 };
+// The primaries (red, blue, yellow) are bought. Two different primaries in one cast combine into the mix whose
+// `from` they are (Red + Yellow → Orange), which plays instead of them and costs what the two primaries cost.
 export const DYES = {
   red: { name: 'Red dye', dice: 1, fx: 'down', price: 20, color: '#e0524a', text: 'The rolled face goes down 1.' },
   blue: { name: 'Blue dye', dice: 1, fx: 'even', price: 20, color: '#4a8fe0', text: 'The rolled face moves 1 toward the average: up if lower, down if higher.' },
   yellow: { name: 'Yellow dye', dice: 1, fx: 'up', price: 20, color: '#f2c94c', text: 'The rolled face goes up 1.' },
-  orange: { name: 'Orange (Reconfigure)', dice: 2, fx: 'reconfigure', from: ['red', 'yellow'], price: 50, color: '#f0913a', text: 'Of the two rolled faces, the higher becomes high + low and the lower becomes high − low.' },
-  purple: { name: 'Purple (Add)', dice: 2, fx: 'add', from: ['red', 'blue'], price: 50, color: '#9a5ad8', text: 'Of the two rolled faces, the lower becomes their sum.' },
-  green: { name: 'Green (Subtract)', dice: 2, fx: 'subtract', from: ['blue', 'yellow'], price: 50, color: '#4fb87a', text: 'Of the two rolled faces, the higher becomes their difference.' },
+  orange: { name: 'Orange (Reconfigure)', dice: 2, fx: 'reconfigure', from: ['red', 'yellow'], color: '#f0913a', text: 'Of the two rolled faces, the higher becomes high + low and the lower becomes high − low.' },
+  purple: { name: 'Purple (Add)', dice: 2, fx: 'add', from: ['red', 'blue'], color: '#9a5ad8', text: 'Of the two rolled faces, the lower becomes their sum.' },
+  green: { name: 'Green (Subtract)', dice: 2, fx: 'subtract', from: ['blue', 'yellow'], color: '#4fb87a', text: 'Of the two rolled faces, the higher becomes their difference.' },
 };
 // Diamond: the first pattern the six dice make, in this order, reshapes the new die.
 export const DIAMOND = [

@@ -4,7 +4,7 @@
 // (one material: its cast; two: a material mix; all three: Diamond). Dyes are added on top. Each cast and dye
 // rolls dice of the new die's size; the face of the new die showing each rolled value is changed.
 import { DICE, MELT, CASTS, DYES, DIAMOND, BASIC_MATS, COMPLEXITY, MATERIALS } from './data.js';
-import { matOf, canMelt } from './dice.js';
+import { matOf, canMelt, facesOf, faceValue } from './dice.js';
 
 const facesOfType = (type) => DICE[type].faces;
 export const meltVolume = (dice) => dice.reduce((t, d) => t + facesOfType(d.type) * MELT.meltPerFace, 0);
@@ -27,9 +27,30 @@ export function forgeBlock(o) {
   const bad = o.melt.find((d) => !canMelt(d)); if (bad) return `${MATERIALS[matOf(bad)].name} dice cannot be melted.`;
   if (!castFor(o.melt.map(matOf))) return 'Those materials do not mix.';
   if (meltVolume(o.melt) < castNeed(o.type)) return `A ${o.type} needs ${castNeed(o.type)} volume; that melts to ${meltVolume(o.melt)}.`;
-  if ((o.dyes || []).length > MELT.maxDyes) return `At most ${MELT.maxDyes} dyes in one cast.`;
-  if ((o.dyes || []).some((k) => !DYES[k])) return 'No such dye.';
+  if ((o.dyes || []).some((k) => !DYES[k] || DYES[k].from)) return 'Add primary dyes; two different ones mix.';
+  if (mixDyes(o.dyes || []).length > MELT.maxDyes) return `At most ${MELT.maxDyes} dyes or dye mixes in one cast.`;
+  if (MELT.castFromPouch && o.pouch) { const n = rollsNeeded(castFor(o.melt.map(matOf)), o.dyes), have = rollers(o.pouch, o.type, o.melt).length;
+    if (have < n) return `The cast rolls ${n} ${o.type}${n > 1 ? 's' : ''} from your pouch; you have ${have} to spare.`; }
   return null;
+}
+
+// The dyes as they play: two different primaries pair into their mix (earliest first); the rest play alone.
+export function mixDyes(primaries = []) {
+  const left = [...primaries], out = [];
+  while (left.length) {
+    const a = left.shift(), j = left.findIndex((b) => b !== a && mixOf(a, b));
+    if (j >= 0) { out.push(mixOf(a, left[j])); left.splice(j, 1); } else out.push(a);
+  }
+  return out;
+}
+export const mixOf = (a, b) => Object.keys(DYES).find((k) => DYES[k].from && DYES[k].from.includes(a) && DYES[k].from.includes(b) && a !== b) || null;
+export const dyePrice = (primaries = []) => primaries.reduce((t, k) => t + (DYES[k]?.price || 0), 0);
+// how many dice of the new size the cast and its dyes roll
+export const rollsNeeded = (castKey, primaries = []) => (CASTS[castKey]?.dice || 0) + mixDyes(primaries).reduce((t, k) => t + DYES[k].dice, 0);
+// the pouch dice a cast would roll: the new size, not Bone, not being melted; plainest (fewest changed faces) first
+export function rollers(pouch, type, melt = []) {
+  const plain = (d) => facesOf(d).filter((f, i) => faceValue(f) !== i + 1).length + (d.up ? 10 : 0);
+  return pouch.filter((d) => d.type === type && canMelt(d) && !melt.includes(d)).sort((a, b) => plain(a) - plain(b));
 }
 
 // ---------- the face changes ----------
@@ -92,8 +113,11 @@ export function diamondFaces(p, fs) {
 }
 
 // Cast a new die of `type` from a cast and dyes. Returns { faces: [values], log: [{ name, rolls, text, missed? }] }.
-export function castFaces(rng, type, castKey, dyes = []) {
-  const n = facesOfType(type), roll = (k) => Array.from({ length: k }, () => 1 + rng.int(n));
+// dyes: primaries (they are mixed here). rolled: dice to roll, in order (their own faces); without them, plain rolls.
+export function castFaces(rng, type, castKey, dyes = [], rolled = null) {
+  const n = facesOfType(type), queue = rolled ? [...rolled] : null;
+  const roll = (k) => Array.from({ length: k }, () => { const d = queue?.shift(); if (!d) return 1 + rng.int(n); const fs = facesOf(d); return faceValue(fs[rng.int(fs.length)]); });
+  dyes = mixDyes(dyes);
   let fs = Array.from({ length: n }, (_, i) => i + 1); const log = [];
   for (const [k, X] of [[castKey, CASTS[castKey]], ...dyes.map((d) => [d, DYES[d]])]) {
     const rolls = roll(X.dice);

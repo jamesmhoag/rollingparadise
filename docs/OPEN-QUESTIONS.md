@@ -264,3 +264,41 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
   Doorman too (and his stake)?
 - **Lanyard cards** (Membership, Suite Key, Punch, Paradise) are no longer called passes. Should they become passes
   of their own, or stay cards?
+
+## Round 18 (the Rolling Paradise requirements sheet, rows 1–17 and Dice)
+
+### Decided
+- **Diesmith upgrades are retired.** They live on only as Bone dice, named in the past tense (Accelerated, Escalated…).
+- **A rolled cast or dye changes the face showing the rolled value.** A roll that no face shows any more misses.
+- **Cast rolls come from your pouch.** Each cast and dye rolls dice of the new die's size from your pouch, and they
+  are lost with the melt (the plainest spares, never Bone, never the ones being melted). `MELT.castFromPouch` in
+  `js/content/dice.js` turns this off.
+- **Mixing materials is always allowed.** No unlock gates Sparkling, Glimmering, Swirling or Diamond.
+- **Dye mixes come from two primaries.** Red + Yellow in one cast plays Orange (Reconfigure), Red + Blue Purple
+  (Add), Blue + Yellow Green (Subtract). A mix takes one dye slot and costs its two primaries; mixes are not sold.
+- **Orange, Purple and Green rules:** Orange: high → high + low, low → high − low. Purple: low → the sum. Green:
+  high → the difference.
+- **The d10 stays.** It is not cast (not in the sheet's complexity list), but the Secret Shelf and the Grand
+  quality die keep it.
+- **Bar is the Stake and Meter is the Bet** everywhere the player reads them; code names are unchanged so saves load.
+- **The Stage** above each position holds bids and made chips. **The Pit** keeps every lost chip as it was; it can
+  be seen, and effects that reach into it come later.
+
+### To confirm (built as proposed)
+- **Sparkling, Glimmering, Swirling:** each mix plays its two materials' casts, the first on the higher rolled
+  face and the second on the lower (Sparkling: lucky 7 / flip; Glimmering: flip / 0; Swirling: lucky 7 / 0).
+- **Diamond** is cast when all three materials are melted together, and rolls six dice. (The sheet only says "roll
+  all six dice"; it could instead be all three dyes.)
+- **A mixed melt** comes out as the material with the most volume in it ("Sparkling Metal d8").
+- **Frozen chips** are grounded only when their space holds a Puddle.
+
+### Still to build
+- **Effects that reach into the Pit.**
+- **Chip maker terms saved but not played:** footprints bigger than one space (2×2, 3×3, 5×5), "anything on top"
+  going past the stack-height limit, and immunity to blocking.
+- **Game text (row 14), parts 2–4:** the floor's shop panels, the bout screen, the Library, and the feed and
+  settlement lines the engine writes. Trick and chip names and rules text are still in the content tables.
+- **Hover guidance (row 1)** covers the table basics, attributes, phases and rooms. Individual tricks, chips, shop
+  items and the bout's buttons have only their Context hover.
+- **Resource files (row 17):** the folder, manifest and check exist, but there are no icon, texture or material
+  files yet, and ordinary chips and hazards are not in the manifest. Everything still draws with emoji and CSS.
