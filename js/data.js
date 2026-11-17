@@ -4,24 +4,26 @@
 // TIP = per-turn action limits. C = reward for each action left unused. BVD = position shape.
 export const CLASSES = {
   hustler: {
-    name: 'Hustler', blurb: 'Draws the most tricks and stacks chips tallest. Deploys from the back.',
+    name: 'Hustler', hero: 'Owl', blurb: 'Draws the most tricks and stacks chips tallest. Deploys from the back.',
     tip: { trickery: 3, ingenuity: 2, proficiency: 2 }, c: { charisma: 2, cunning: 1, conviction: 1 },
     bvd: { balance: 3, versatility: 1, depth: 0 }, primary: 'trickery', deploy: 'end',
     dice: { d4: 4, d6: 4 }, tricks: ['charge', 'mug', 'stir', 'block', 'settle'], color: '#e0a23c',
   },
   rascal: {
-    name: 'Rascal', blurb: 'Bids the most and has the deepest Meter. Deploys from the centre.',
+    name: 'Rascal', hero: 'Fox', blurb: 'Bids the most and has the deepest Meter. Deploys from the centre.',
     tip: { trickery: 2, ingenuity: 3, proficiency: 2 }, c: { charisma: 1, cunning: 2, conviction: 1 },
     bvd: { balance: 0, versatility: 3, depth: 1 }, primary: 'ingenuity', deploy: 'center',
     dice: { d6: 7 }, tricks: ['charge', 'stir', 'bend', 'block', 'settle'], color: '#c0569b',
   },
   technician: {
-    name: 'Technician', blurb: 'Rolls the most dice and has the deepest Bar. Deploys from the front.',
+    name: 'Technician', hero: 'Hog', blurb: 'Rolls the most dice and has the deepest Bar. Deploys from the front.',
     tip: { trickery: 2, ingenuity: 2, proficiency: 3 }, c: { charisma: 1, cunning: 1, conviction: 2 },
     bvd: { balance: 1, versatility: 0, depth: 3 }, primary: 'proficiency', deploy: 'start',
     dice: { d6: 3, d8: 3 }, tricks: ['charge', 'stir', 'block', 'brace', 'settle'], color: '#4aa3c7',
   },
 };
+// a Roller's hero and class together: 'Owl the Hustler'
+export const heroName = (cls) => (CLASSES[cls].hero ? `${CLASSES[cls].hero} the ${CLASSES[cls].name}` : CLASSES[cls].name);
 export const BASE_DIMS = { cols: 5, stackMax: 3, meterRows: 2, barRows: 3 };
 
 // `per`: what each point does, for hover text that says what a +1 or −1 actually changes
@@ -212,7 +214,7 @@ export const TRICKS = {
   shine: { name: 'Shine', type: 'insurance', cls: 'rascal', die: 'd6', count: 2, side: 'none', approach: 'none', dist: 'hit',
     roll: { k: 'reflect', text: 'Reflect: up to the total of the next fee charged to you this turn is sent back at the attacker.' }, bonus: { cond: 'evens', k: 'extend', text: 'Reflects every fee this turn, not just the first.' } },
   chill: { name: 'Chill', type: 'insurance', cls: null, die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'hit',
-    roll: { k: 'freeze', text: 'Freeze up to the total chips of the target stack into one Frozen chip worth their sum. It cannot be bid, burned, corrupted or shocked, and a fee smaller than it only leaves Debt.' }, bonus: { cond: 'evens', k: 'spread', text: 'Freezes the neighbouring stack too (Swipe).' } },
+    roll: { k: 'freeze', text: 'Wet and freeze up to the total chips of the target stack into one Frozen chip worth their sum, and freeze any plants on it. In an iced-over Puddle the Frozen chip is frozen to the ground: it cannot be bid, burned, corrupted or shocked. A fee smaller than it only leaves Debt.' }, bonus: { cond: 'evens', k: 'spread', text: 'Freezes the neighbouring stack too (Swipe).' } },
   float: { name: 'Float', type: 'insurance', cls: 'rascal', die: 'd4', count: 2, side: 'self', approach: 'any', dist: 'hit',
     roll: { k: 'feather', text: 'Turn the top chip of the target stack into a Feather chip for 1 turn per 3 rolled (at least 1): any fee larger than that stack\'s worth misses it.' }, bonus: { cond: 'match', k: 'spread', text: 'Feathers the neighbouring stacks too (Swipe).' } },
   renew: { name: 'Renew', type: 'insurance', cls: null, die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'hit',
@@ -343,7 +345,7 @@ export const CHIPS = {
   poison: { name: 'Poison chip', text: 'Hazard. Each turn it puts 1¢ of Debt on its stack. It lingers until the stack is gone or it is cleansed.' },
   boom: { name: 'Boom chip', text: 'Hazard. The turn after it lands it goes off: 5¢ of Debt on its stack and on every stack around it.' },
   // conversions and growth from the workbook's chip list. Instance shields take a whole fee each, not 1¢.
-  frozen: { name: 'Frozen chip', text: 'Several Royal Paradise chips frozen into one, worth their sum. It cannot be bid or flipped, and cannot be burned, corrupted, shocked or turned into another chip. A fee smaller than it only leaves Debt.' },
+  frozen: { name: 'Frozen chip', text: 'Several wet Royal Paradise chips frozen into one, worth their sum. Anywhere else it is an ordinary chip of that value. Standing in an iced-over Puddle it is frozen to the ground: it cannot be bid or flipped, and cannot be burned, corrupted, shocked or turned into another chip. A fee smaller than it only leaves Debt.' },
   frost: { name: 'Frost chip', text: 'Hazard (Cold). Its stack is frosted over: nothing on it can be bid or flipped. Thaws after 2 turns, or at once if a Burning or Lava chip reaches it.' },
   lava: { name: 'Lava chip', text: 'Hazard (Heat). Each turn it melts the chip beneath it and spills a Burning chip onto a stack next to it. Cools after 2 turns.' },
   feather: { name: 'Feather chip', text: 'A chip turned light for a few turns: any fee larger than its stack\'s worth misses the stack.' },

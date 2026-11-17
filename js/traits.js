@@ -71,8 +71,8 @@ export function traitsOf(ch, o = {}) {
   if (X?.from || ch.kind === 'fx') add(out, 'made', ch.maker ? D.TRICKS[ch.maker]?.name : D.madeBy(ch.shop));
   if (X && PHASE_OF[ch.shop]) add(out, 'phase', PHASE_OF[ch.shop]);
   add(out, 'pays', pay ? `${ch.value}¢` : 'No');
-  add(out, 'biddable', pay && !ch.gold && !ch.frozen);
-  add(out, 'flippable', ch.kind === 'std' && !ch.gold && !ch.frozen);
+  add(out, 'biddable', pay && !ch.gold && !(ch.frozen && o.cell?.puddle?.ice));
+  add(out, 'flippable', ch.kind === 'std' && !ch.gold && !(ch.frozen && o.cell?.puddle?.ice));
   add(out, 'deterrent', ch.kind === 'block' || ch.kind === 'counter');
   add(out, 'hits', D.INSTANCE_SHIELDS.includes(ch.kind) ? ch.hits ?? 1 : null);
   add(out, 'height', OVER.includes(ch.kind) || ch.kind === 'little' ? 'No' : 'Yes');

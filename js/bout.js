@@ -65,7 +65,13 @@ const nextPay = (cell, pierce) => { if (pierce) return topPayableIdx(cell); cons
   for (let k = 0; k < n; k++) { const i = L ? k : n - 1 - k, ch = cell.chips[i]; if (!isHazard(ch) && ch.kind !== 'doom') return i; } return -1; };
 const hasResist = (cell, el) => cell.chips.some((ch) => ch.resist && resistsOf(ch.resist).includes(el));
 // a stack topped by a Frozen chip cannot be burned, corrupted, shocked or changed
-export const iced = (cell) => { const i = topSolid(cell); return i >= 0 && !!cell.chips[i].frozen; };
+// A Frozen chip is frozen to the ground only when its stack stands in an iced-over Puddle. Anywhere else it is an
+// ordinary chip worth what it was made from: it can be bid, flipped, paid, burned or turned into another chip.
+export const grounded = (cell) => !!cell?.puddle?.ice && cell.chips.some((ch) => ch.frozen);
+export const iced = (cell) => { const i = topSolid(cell); return i >= 0 && !!cell.chips[i].frozen && grounded(cell); };
+// Only wet chips freeze together; organic chips (plants and creatures' eggs and hives) freeze where they are.
+export const ORGANIC = ['tree', 'flower', 'petal', 'hive', 'egg', 'wood'];
+const stuckIce = (ch, cell) => ch.frozen && grounded(cell);
 const isDynamite = (cell) => cell.chips.length > 0 && cell.chips.every((ch) => ch.kind === 'dynamite');
 const isTree = (cell) => cell.chips.length > 0 && cell.chips.every((ch) => ch.kind === 'tree');
 const hasShop = (s, id) => s.grid.some((row) => row.some((cell) => cell.chips.some((ch) => ch.shop === id)));
@@ -654,7 +660,7 @@ export function unplace(b, s, dieId) { if (!canMove(b, s, dieId)) return null; c
 export function bidChip(s, r, c) {
   const cell = s.grid[r]?.[c]; if (!cell || !cell.chips.length || cell.chips.some((ch) => ch.kind === 'frost')) return null;
   const top = lifted(cell) ? cell.chips.find((ch) => !isHazard(ch)) : cell.chips[cell.chips.length - 1]; // a lifted stack bids from the bottom
-  return top && isPayable(top) && !top.gold && !top.frozen ? top : null;
+  return top && isPayable(top) && !top.gold && !stuckIce(top, cell) ? top : null;
 }
 // A trick can take any number of bids this turn (one chip per bid); each 1¢ over the first adds a turn of linger.
 export function canBid(b, s, e, r, c) {
@@ -694,7 +700,7 @@ export function handChips(s, picks) {
   for (const { r, c } of picks) {
     const cell = s.grid[r]?.[c], k = taken.get(r + ':' + c) || 0; if (!cell || cell.chips.some((ch) => ch.kind === 'frost')) return null;
     const order = lifted(cell) ? cell.chips.filter((x) => !isHazard(x)) : cell.chips.slice().reverse(), ch = order[k];
-    if (!ch || !isPayable(ch) || ch.gold || ch.frozen) return null;
+    if (!ch || !isPayable(ch) || ch.gold || stuckIce(ch, cell)) return null;
     out.push({ r, c, ch }); taken.set(r + ':' + c, k + 1);
   }
   return out;
@@ -866,14 +872,17 @@ function strike(b, s, x, o = {}) {
 // on, freeze in the cold and make plants grow faster.
 function water(b, s, x) {
   const cell = x.cell; if (cell.link) return;
-  if (!solidCount(cell)) { cell.puddle = { t: b.turn, ice: cell.puddle?.ice || false }; return; }
+  cell.puddle = { t: b.turn, ice: cell.puddle?.ice || false }; // a stack hit by water stands in a Puddle until it dries
+  if (!solidCount(cell)) return;
   for (const ch of cell.chips) if (!isHazard(ch)) ch.wet = 2;
   for (const ch of cell.chips.filter((y) => y.kind === 'burn' || y.kind === 'lava')) { cell.chips.splice(cell.chips.indexOf(ch), 1); b.fx[ch.id] = 'void'; }
 }
 // freeze the top run of value chips on a stack into one Frozen chip (wet ones, or all of them in a Blizzard)
-function freezeTop(b, cell, all) {
-  const take = []; for (let i = cell.chips.length - 1; i >= 0; i--) { const ch = cell.chips[i]; if (isHazard(ch)) continue; if (ch.kind !== 'std' || ch.gold || ch.resist || ch.big || ch.frozen || (!all && !(ch.wet > 0))) break; take.push(ch); }
-  if (!take.length) return 0;
+function freezeTop(b, cell) {
+  if (cell.puddle) cell.puddle.ice = true;
+  let org = 0; for (const ch of cell.chips) if (ORGANIC.includes(ch.kind) && !ch.frozen) { ch.frozen = true; org++; }
+  const take = []; for (let i = cell.chips.length - 1; i >= 0; i--) { const ch = cell.chips[i]; if (isHazard(ch) || ORGANIC.includes(ch.kind)) continue; if (ch.kind !== 'std' || ch.gold || ch.resist || ch.big || ch.frozen || !(ch.wet > 0)) break; take.push(ch); }
+  if (take.length < 2) return org; // one wet chip has nothing to freeze together with
   for (const ch of take) { cell.chips.splice(cell.chips.indexOf(ch), 1); b.fx[ch.id] = 'void'; }
   pushChip(cell, mkChip(b, 'std', sum(take, (ch) => ch.value), { frozen: true })); return take.length;
 }
@@ -1238,8 +1247,10 @@ function* play(b, s, e, opt = {}) {
       yield step(b, `${tag}: ${even ? 'even — effects doubled' : 'odd — effects halved'}.`, [], 'play'); return; }
     case 'freeze': { let n = 0;
       for (const { r, c } of cells) { const st = s.grid[r][c].chips, take = [];
-        for (let i = st.length - 1; i >= 0 && take.length < total; i--) { const ch = st[i]; if (isHazard(ch) || ch.kind === 'debt') continue; if (ch.kind !== 'std' || ch.gold || ch.resist) break; take.push(ch); }
+        for (let i = st.length - 1; i >= 0 && take.length < total; i--) { const ch = st[i]; if (isHazard(ch) || ch.kind === 'debt') continue; if (ch.kind !== 'std' || ch.gold || ch.resist) break; take.push(ch); } // Chill brings its own water: it wets what it freezes
+        for (const ch of st) if (ORGANIC.includes(ch.kind) && !ch.frozen) { ch.frozen = true; n++; }
         if (take.length < 2) continue;
+        if (s.grid[r][c].puddle) s.grid[r][c].puddle.ice = true;
         const sumv = sum(take, (ch) => ch.value); for (const ch of take) { st.splice(st.indexOf(ch), 1); b.fx[ch.id] = 'void'; }
         pushChip(s.grid[r][c], mkChip(b, 'std', sumv, { frozen: true })); n += take.length; }
       yield step(b, `${tag}: ${n ? `${n} chips frozen together` : 'nothing to freeze'}.`, cells.map((x) => ref(s, x.r, x.c)), n ? 'play' : 'miss'); return; }
@@ -1268,7 +1279,7 @@ function* play(b, s, e, opt = {}) {
       const moved = arrange(b, side, def.arrange, all ? null : cells);
       yield step(b, `${tag}: ${moved} chip${moved === 1 ? '' : 's'} moved in ${side.name}'s position.`, moved ? (all ? allCells(side) : cells).map((x) => ref(side, x.r, x.c)) : [], moved ? 'play' : 'miss'); return; }
     case 'gild': { let n = 0; for (const { r, c } of cells) { let left = total; const st = s.grid[r][c].chips;
-        for (let i = st.length - 1; i >= 0 && left > 0; i--) if (st[i].kind === 'std' && !st[i].gold && !st[i].frozen) { st[i].gold = true; left--; n++; } }
+        for (let i = st.length - 1; i >= 0 && left > 0; i--) if (st[i].kind === 'std' && !st[i].gold && !stuckIce(st[i], s.grid[r][c])) { st[i].gold = true; left--; n++; } }
       yield step(b, `${tag}: ${n} chip${n === 1 ? '' : 's'} turned to Gold.`, cells.map((x) => ref(s, x.r, x.c)), 'play'); return; }
     case 'settle': { const n = cleanse(b, s, total); organize(b, s);
       if (bonus === 'blocks') addToMeter(b, s, [mkChip(b, 'block'), mkChip(b, 'block')], null, 'spawn');
@@ -1300,7 +1311,7 @@ const around = (s, r, c) => allCells(s).filter((x) => (x.r !== r || x.c !== c) &
 const emptyOut = (b, cell) => { if (!solidCount(cell) && cell.chips.length) for (const ch of cell.chips.splice(0)) b.fx[ch.id] = 'void'; };
 // a Fairy or Unicorn turns a chip into a random chip of any type
 function transform(b, cell, i) {
-  const v = cell.chips[i]; if (!v || v.frozen || v.big || ['volcano', 'hat', 'egg', 'hive', 'doom', 'fx'].includes(v.kind)) return; // Frozen and Big chips cannot be turned into another chip
+  const v = cell.chips[i]; if (!v || stuckIce(v, cell) || v.big || ['volcano', 'hat', 'egg', 'hive', 'doom', 'fx'].includes(v.kind)) return; // a grounded Frozen chip and Big chips cannot be turned into another chip
   const k = b.rng.pick(['std', 'std', 'opp', 'block', 'counter', 'gold', 'debt', 'poison', 'boom']); delete v.gold; delete v.resist; delete v.shop;
   if (k === 'gold') { v.kind = 'std'; v.value = Math.max(1, v.value); v.gold = true; }
   else if (k === 'std') { v.kind = 'std'; v.value = b.rng.pick(DENOM_VALUES.filter((d) => d <= Math.max(2, b.rules.maxDenom))); }
@@ -1415,7 +1426,8 @@ function* sky(b, s) {
       const x = b.rng.pick(p), to = allCells(s).filter((y) => Math.abs(y.r - x.r) + Math.abs(y.c - x.c) === 1 && !y.cell.chips.length && !y.cell.puddle && !y.cell.link);
       if (to.length) { const y = b.rng.pick(to); y.cell.puddle = { t: b.turn, ice: false }; x.cell.puddle.t = b.turn; yield step(b, `The tide rises under the Moon: a Puddle spreads in ${s.name}'s position.`, [ref(s, y.r, y.c)], 'weather'); }
     } else if (o.kind === 'blizzard') { // at the end of its turn: short stacks freeze solid, wet chips freeze, Puddles ice over
-      let n = 0; for (const { cell } of allCells(s)) { if (cell.puddle) cell.puddle.ice = true; if (solidCount(cell) && solidCount(cell) < o.str) n += freezeTop(b, cell, true) ? 1 : 0; else if (wet(cell)) n += freezeTop(b, cell) ? 1 : 0; }
+      let n = 0; for (const { cell } of allCells(s)) { if (cell.puddle) cell.puddle.ice = true; if (solidCount(cell) && solidCount(cell) < o.str) for (const ch of cell.chips) if (!isHazard(ch)) ch.wet = Math.max(ch.wet || 0, 1); // its snow wets short stacks
+        if (solidCount(cell) && wet(cell)) n += freezeTop(b, cell) ? 1 : 0; }
       s.sky.splice(s.sky.indexOf(o), 1);
       yield step(b, `The Blizzard (strength ${o.str}) passes over ${s.name}'s table: ${n} stack${n === 1 ? '' : 's'} frozen.`, [], 'weather');
     } else if (o.kind === 'b52') { // flies one space along its row, dropping a 52¢ Boom chip

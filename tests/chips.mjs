@@ -124,9 +124,11 @@ const freeCell = (s) => s.grid.flatMap((row, r) => row.map((cell, c) => ({ r, c,
   me.run.push(e); me.fz = { ...me.mods }; drain(B._test.play(bout, me, e));
   const fz = x.cell.chips.find((ch) => ch.frozen);
   assert(fz && x.cell.chips.length < n && B.cellWorth(x.cell) === worth, 'Chill freezes chips into one worth their sum');
-  assert(!B.bidChip(me, x.r, x.c), 'a Frozen chip cannot be bid');
+  assert(B.bidChip(me, x.r, x.c) === fz, 'away from a Puddle a Frozen chip is an ordinary chip: it can be bid');
+  x.cell.puddle = { t: bout.turn, ice: true };
+  assert(B.grounded(x.cell) && !B.bidChip(me, x.r, x.c), 'in an iced-over Puddle a Frozen chip is frozen to the ground: it cannot be bid');
   x.cell.chips.push({ id: 5e6, kind: 'burn', value: 0, life: 3 }); drain(ticks(bout));
-  assert(x.cell.chips.includes(fz) && !x.cell.chips.some((ch) => ch.kind === 'burn'), 'a Frozen chip cannot be burned');
+  assert(x.cell.chips.includes(fz) && !x.cell.chips.some((ch) => ch.kind === 'burn'), 'a grounded Frozen chip cannot be burned');
 }
 { // Feather: a fee larger than the stack misses it
   const { bout, me, opp } = table({});
