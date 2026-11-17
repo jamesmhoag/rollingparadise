@@ -428,7 +428,8 @@ export function advance(b, force = false) {
 export const REWARD = { draw: { stat: 'trickery', c: 'charisma', what: 'Steal' }, roll: { stat: 'proficiency', c: 'conviction', what: 'Power' }, bid: { stat: 'ingenuity', c: 'cunning', what: 'Opportunity' } };
 export function rewardOf(s, phase) {
   const R = REWARD[phase]; if (!R) return null;
-  const unused = Math.max(0, tipOf(s, R.stat) - s.used[phase]), n = cOf(s, R.c) * unused;
+  const used = s.used[phase] + (phase === 'roll' && !s.thrown && s.pick ? s.pick.dice.length + s.pick.flips.length : 0); // dice picked count before they are thrown
+  const unused = Math.max(0, tipOf(s, R.stat) - used), n = cOf(s, R.c) * unused;
   return { phase, unused, n, what: R.what, total: tipOf(s, R.stat) };
 }
 function phaseRewards(b, phase) {
