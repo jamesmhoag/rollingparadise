@@ -8,6 +8,7 @@ import { t } from '../text.js';
 import { trickMaker, newTrick } from './trickmaker.js';
 import { chipMaker, newChip } from './chipmaker.js';
 import { classicChips } from '../chipmodel.js';
+import { classMaker, newClass, rosterMaker, newOpponent, rosterLabel, rosterSub } from './rostermaker.js';
 import { isMade } from '../trickmaker.js';
 
 // the tables, grouped as the editor lists them
@@ -40,11 +41,23 @@ export function buildScene(root) {
   function drawStatus() { const n = B.count(); status.textContent = n ? t('build.status', { n }) : t('build.status.none'); }
   function drawTables() {
     const tool = (k, label) => h('button', { class: `b-item tool ${ui.tool === k ? 'on' : ''}`, text: label, onclick: () => { ui.tool = k; ui.key = null; ui.filter = ''; filter.value = ''; draw(); } });
-    tables.replaceChildren(h('span', { class: 'cap', text: t('build.group.makers') }), tool('tricks', t('maker.title')), tool('chips', t('chipmaker.title')),
+    tables.replaceChildren(h('span', { class: 'cap', text: t('build.group.makers') }), tool('tricks', t('maker.title')), tool('chips', t('chipmaker.title')), tool('classes', t('roster.class.title')), tool('roster', t('roster.title')),
       ...GROUPS.flatMap(([g, list]) => [h('span', { class: 'cap', text: t(g) }),
       ...list.filter((tb) => D.TABLES[tb]).map((tb) => h('button', { class: `b-item ${ui.tool === 'tables' && ui.table === tb ? 'on' : ''} ${B.changed(tb) ? 'ch' : ''}`, text: t(`build.table.${tb}`), onclick: () => { ui.tool = 'tables'; ui.table = tb; ui.key = null; ui.filter = ''; filter.value = ''; draw(); } }))]));
   }
   function drawEntries() {
+    if (ui.tool === 'classes' || ui.tool === 'roster') {
+      const roster = ui.tool === 'roster', T = roster ? D.ROSTER : D.CLASSES, keys = Object.keys(T); filter.style.display = '';
+      if (!ui.key || !T[ui.key]) ui.key = keys[0];
+      const lab = (k) => (roster ? rosterLabel(k) : `${T[k].hero} the ${T[k].name}`), sub = (k) => (roster ? rosterSub(k) : k);
+      const item = (k) => h('button', { class: `b-item ${ui.key === k ? 'on' : ''} ${B.changed(D.subPath(roster ? 'ROSTER' : 'CLASSES', k)) ? 'ch' : ''}`, onclick: () => { ui.key = k; draw(); } }, h('b', { text: lab(k) }), h('small', { text: sub(k) }));
+      const shown = keys.filter((k) => !ui.filter || `${k} ${lab(k)}`.toLowerCase().includes(ui.filter));
+      entries.replaceChildren(...(roster ? [btn(t('roster.new'), () => { const id = newOpponent(false); if (id) { ui.key = id; draw(); } }, null, 'small go'), btn(t('roster.newBoss'), () => { const id = newOpponent(true); if (id) { ui.key = id; draw(); } }, null, 'small'),
+        h('span', { class: 'cap', text: t('roster.list.tables') }), ...shown.filter((k) => !T[k].boss).map(item),
+        ...[1, 2, 3, 4].flatMap((n) => { const bs = shown.filter((k) => T[k].boss && (T[k].floors || []).includes(n)); return bs.length ? [h('span', { class: 'cap', text: t('roster.list.bosses', { floor: D.FLOORS[n].name }) }), ...bs.map(item)] : []; })]
+        : [btn(t('roster.class.new'), () => { const id = newClass(ui.key); if (id) { ui.key = id; draw(); } }, null, 'small go'), ...shown.map(item)]));
+      return;
+    }
     if (ui.tool === 'chips') {
       const made = Object.keys(D.MADE_CHIPS), old = classicChips(); filter.style.display = '';
       if (!ui.key || (!D.MADE_CHIPS[ui.key] && !old.some((c) => c.id === ui.key))) ui.key = made[0] || old[0]?.id;
@@ -72,6 +85,8 @@ export function buildScene(root) {
       h('b', { text: label(ui.table, k) }), label(ui.table, k) !== k ? h('small', { text: k }) : null)));
   }
   function drawEditor() {
+    if (ui.tool === 'classes') { editor.replaceChildren(h('h2', { text: `${D.CLASSES[ui.key].hero} the ${D.CLASSES[ui.key].name}` }), h('p', { class: 'sub mono', text: D.subPath('CLASSES', ui.key) }), classMaker(ui.key, draw)); return; }
+    if (ui.tool === 'roster') { editor.replaceChildren(h('h2', { text: rosterLabel(ui.key) }), h('p', { class: 'sub mono', text: D.subPath('ROSTER', ui.key) }), rosterMaker(ui.key, draw)); return; }
     if (ui.tool === 'chips') {
       const old = classicChips().find((c) => c.id === ui.key), name = D.MADE_CHIPS[ui.key]?.name || old?.name || '';
       editor.replaceChildren(h('h2', { text: name }), h('p', { class: 'sub mono', text: old ? t('chipmaker.mappedFrom') : D.subPath('MADE_CHIPS', ui.key) }),

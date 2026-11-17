@@ -1,7 +1,12 @@
 // Automated Roller. Plans a turn through the same API the player uses.
-import { TRICKS, defOf } from './data.js';
+import { TRICKS, defOf, DEFAULT_BEHAVE, DICE } from './data.js';
 import * as B from './bout.js';
 
+// How this Roller plays (Opponent maker): its roster behaviour, with a High Roller's current phase on top
+export const behaveOf = (s) => ({ ...DEFAULT_BEHAVE, ...(s.behave || {}), ...(s.phaseBehave || {}) });
+// rabid and cowardly Rollers change temper when their Worth runs low (under half of what they sat down with)
+function temperOf(s) { const t = behaveOf(s).temper, low = s.startWorth && B.worth(s) < s.startWorth / 2;
+  return t === 'rabid' ? (low ? 'aggressive' : 'passive') : t === 'cowardly' ? (low ? 'passive' : 'aggressive') : t; }
 function cheapestBidSpot(s) {
   let best = null;
   for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) {
@@ -14,7 +19,9 @@ function cheapestBidSpot(s) {
 
 export function evalTarget(b, s, e, tgt) {
   const def = TRICKS[e.trick.id], t = b.sides[tgt.side];
-  const cells = B.affected(b, t, def, tgt, e.dice.length);
+  const cells = B.affected(b, t, def, tgt, e.dice.length), aim = behaveOf(s).aim;
+  if (aim === 'chips' && t !== s) return cells.reduce((n, { r, c }) => n + t.grid[r][c].chips.length, 0);
+  if (aim === 'least' && t !== s) return -cells.reduce((n, { r, c }) => n + Math.max(0, B.cellWorth(t.grid[r][c])) + t.grid[r][c].chips.length, 0);
   const total = Math.max(1, B.previewTotal(s, e));
   if (def.type === 'expense') {
     const live = cells.filter(({ r, c }) => B.occupied(t.grid[r][c])); if (!live.length) return -1;
@@ -85,6 +92,11 @@ function planDraw(b, s) {
     if (d.roll.k === 'scatter') x += 1;
     if (d.type === 'insurance' && b.turn <= 2) x += 0.8;
     if (d.type === 'investment' && !s.run.some((e) => TRICKS[e.trick.id].type === 'expense') && !s.book.some((y) => TRICKS[y.id].type === 'expense')) x -= 1;
+    const bh = behaveOf(s), temper = temperOf(s);
+    if (bh.draw === 'random') return rng.next();
+    if (bh.draw === d.type) x += 2.5;
+    if (bh.draw === 'self' && d.side !== 'opp') x += 1.5; if (bh.draw === 'foe' && d.side === 'opp') x += 1.5;
+    if (temper === 'aggressive') x += d.type === 'expense' ? 1.5 : 0; if (temper === 'passive') x += d.type === 'expense' ? -1 : d.type === 'insurance' || d.type === 'investment' ? 1 : 0;
     return x + rng.next() * 1.2;
   };
   const shown = s.run.filter((e) => e.state === 'shown').length;
@@ -95,14 +107,16 @@ function planDraw(b, s) {
 // The tricks the roll can feed: room left, and a die type that fits
 const room = (e) => e.state !== 'play' && e.dice.length < TRICKS[e.trick.id].count;
 const takes = (e, d) => { const t = e.dice.find((x) => !x.chip)?.type || defOf(e.trick).die; return d.chip || t === d.type; };
+const behaviourRoll = (s) => behaveOf(s);
 function planRoll(b, s) {
   // pick the dice that suit the shown tricks; they are thrown as the Bid opens
   const open = s.run.filter(room).sort((x, y) => prio(x) - prio(y) || y.dice.length - x.dice.length);
   if (!open.length || !B.canThrowAny(s)) return;
   const wanted = open.map((e) => e.dice.find((d) => !d.chip)?.type || defOf(e.trick).die);
-  const rank = (d) => { const k = wanted.indexOf(d.type); return k < 0 ? 99 - +d.type.slice(1) / 100 : k; };
-  const space = open.reduce((n, e) => n + TRICKS[e.trick.id].count - e.dice.length, 0) - s.tray.length;
-  const n = Math.max(1, Math.min(space, B.tipOf(s, 'proficiency')));
+  const bh = behaviourRoll(s), faces = (d) => DICE[d.type]?.faces || 6;
+  const rank = bh.dice === 'highest' ? (d) => -faces(d) : bh.dice === 'lowest' ? (d) => faces(d) : (d) => { const k = wanted.indexOf(d.type); return k < 0 ? 99 - +d.type.slice(1) / 100 : k; };
+  const space = bh.roll === 'partial' ? TRICKS[open[0].trick.id].count - open[0].dice.length : open.reduce((n, e) => n + TRICKS[e.trick.id].count - e.dice.length, 0) - s.tray.length;
+  const n = Math.max(1, Math.min(bh.roll === 'all' ? Infinity : space, B.tipOf(s, 'proficiency')));
   let ids = s.pouch.slice().sort((x, y) => rank(x) - rank(y)).slice(0, n).map((d) => d.id);
   if (!ids.some((id) => open.some((e) => takes(e, s.pouch.find((d) => d.id === id))))) { const fit = s.pouch.find((d) => open.some((e) => takes(e, d))); if (fit) ids = [fit.id, ...ids.filter((x) => x !== fit.id)].slice(0, n); }
   let flips = [];
@@ -112,7 +126,13 @@ function planRoll(b, s) {
 // In the Bluff: put the values where they do the most, bid tricks first; every die that fits a trick must go on one
 function placeDice(b, s) {
   const fill = () => { for (let guard = 0; guard < 20 && B.trayPlaceable(s); guard++) for (const d of s.tray.slice()) { const e = s.run.filter((x) => !B.canPlace(b, s, d.id, x)).sort((x, y) => (y.state === 'bid') - (x.state === 'bid') || prio(x) - prio(y))[0]; if (e) B.place(b, s, d.id, e); } };
-  const open = s.run.filter(room).sort((x, y) => (y.state === 'bid') - (x.state === 'bid') || prio(x) - prio(y));
+  const bh = behaveOf(s), bonusW = bh.bonus === 'no' ? 0 : 4;
+  let open = s.run.filter(room).sort((x, y) => (y.state === 'bid') - (x.state === 'bid') || prio(x) - prio(y));
+  if (bh.bluff === 'build') open = open.sort((x, y) => y.dice.length - x.dice.length); // keep loading the trick already started
+  if (bh.bluff === 'many') { // a die on each trick first, round the tricks
+    for (const e of open) { const d = s.tray.find((x) => !B.canPlace(b, s, x.id, e)); if (d) B.place(b, s, d.id, e); }
+  }
+  if (bh.bluff === 'big' && open.length) open = [open[0], ...open.slice(1)]; // everything that fits goes on the first trick
   for (const e of open) {
     const def = TRICKS[e.trick.id], space = def.count - e.dice.length, tray = s.tray.slice(0, 8);
     if (space <= 0 || !tray.length) continue;
@@ -122,7 +142,7 @@ function placeDice(b, s) {
       if (pick.some((d) => B.canPlace(b, s, d.id, e))) continue;
       const type = e.dice.find((d) => !d.chip)?.type || pick.find((d) => !d.chip)?.type; if (type && pick.some((d) => !d.chip && d.type !== type)) continue;
       const trial = { ...e, dice: [...e.dice, ...pick] };
-      const x = B.previewTotal(s, trial) + (B.bonusMet(s, trial) ? 4 : 0) + pick.length * 0.01;
+      const x = B.previewTotal(s, trial) + (B.bonusMet(s, trial) ? bonusW : 0) + pick.length * (bh.bluff === 'big' || bh.bluff === 'build' ? 2 : 0.01);
       if (x > bv) { bv = x; best = pick; }
     }
     if (best) for (const d of best) B.place(b, s, d.id, e);
@@ -134,9 +154,15 @@ function planBid(b, s) {
   const v = seen(b, s), rng = b.rng;
   const fed = (e) => e.dice.length > 0 || s.tray.some((d) => takes(e, d)); // dice on it, or a die in the roll that fits it
   const ready = s.run.filter((e) => e.state === 'shown').sort((x, y) => fed(y) - fed(x) || prio(x) - prio(y));
+  const bh = behaveOf(s);
   for (const e of ready) {
     const def = TRICKS[e.trick.id];
     if (s.used.bid >= B.tipOf(s, 'ingenuity')) break;
+    if (bh.bid === 'refund' && s.used.bid >= 1) break; // holds the rest back for Opportunity
+    if (bh.bid === 'effect' && fed(e)) { // piles its bids onto its best trick, so it lingers
+      while (s.used.bid < B.tipOf(s, 'ingenuity')) { const sp = cheapestBidSpot(s); if (!sp || B.worth(s) - sp.ch.value <= 1 || !B.bid(b, s, e, sp.r, sp.c)) break; }
+      break;
+    }
     if (!fed(e) && !rng.chance(0.2)) continue;
     if (!s.tray.some((d) => takes(e, d)) && e.dice.length && e.dice.length < def.count && s.pouch.some((d) => d.type === e.dice[0].type) && rng.chance(0.35)) continue; // keep loading dice
     const spot = cheapestBidSpot(s); if (!spot) break;
