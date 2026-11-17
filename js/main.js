@@ -17,7 +17,9 @@ import { t } from './text.js';
 const nav = app.nav;
 nav.title = () => go(titleScene);
 nav.select = () => go(selectScene);
-nav.build = () => go(buildScene);
+nav.build = (o) => go((root) => buildScene(root, o));
+// the test table: a throwaway bout from Build mode, back to Build when you leave; nothing touches your run
+nav.test = (o) => { const { bout, ctx } = R.testTable(o); if (window.RP) window.RP.bout = bout; go((root) => boutScene(root, bout, ctx, () => nav.build({ tool: 'test' }))); };
 nav.hub = () => go(hubScene);
 nav.prep = (kind, idx) => go((root) => prepScene(root, kind, idx));
 nav.bout = ({ bout, ctx }) => go((root) => { if (window.RP) window.RP.bout = bout; boutScene(root, bout, ctx, () => { const res = R.settle(app.run, ctx, bout); go((r) => resultScene(r, ctx, res)); }); });

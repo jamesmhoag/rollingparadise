@@ -618,3 +618,9 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 
 /* the gameplay tuner */
 .b-related { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* the test table */
+.test-tools { position: absolute; left: 50%; transform: translateX(-50%); top: 2px; padding: 3px 8px !important; z-index: 900; display: flex; gap: 6px; align-items: center; background: rgba(13, 10, 28, .92); border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; font-size: 12px; }
+.test-tools select, .test-tools input { background: #0d0a1c; color: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 3px 5px; font: inherit; max-width: 160px; } .test-tools > b { white-space: nowrap; } .test-tools input { width: 54px; }
+.test-tools .btn.on { outline: 2px solid var(--gold); }
+.b-tricks { max-height: 220px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; padding: 6px; margin: 4px 0; }

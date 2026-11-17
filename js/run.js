@@ -354,6 +354,19 @@ export function searchFloor(run) {
 
 // ---------- wagers, tilts, position ----------
 // tilts are on (1) or off (0)
+// The test table (Build mode): a throwaway run and bout, never saved. o: { cls, floor, tricks: [ids], q, dice: { d6: 7 },
+// purse, roster (an opponent id, or null for a generated one), rules: true for match rules, false for a sandbox }
+export function testTable(o) {
+  const floor = clamp(o.floor || 1, 1, 4), run = newRun(o.cls || 'hustler', 'standard', o.seed || 7);
+  run.phase = 'floor'; enterFloor(run, floor); run.purse = Math.max(10, o.purse || 500);
+  if (o.tricks?.length) run.tricks = o.tricks.filter((id) => D.TRICKS[id]).map((id) => mkTrick(run, id, clamp(o.q || 1, 1, 4)));
+  if (o.dice && Object.keys(o.dice).length) run.dice = Object.entries(o.dice).flatMap(([type, n]) => (D.DICE[type] ? Array.from({ length: n }, () => mkDie(run, type)) : []));
+  const worth = D.FLOORS[floor].worth[0];
+  run.fs.tables[0].opp = genOpponent(run, floor, worth, o.roster && D.ROSTER[o.roster] ? { name: D.ROSTER[o.roster].name, roster: o.roster, ...(D.ROSTER[o.roster].cls ? { cls: D.ROSTER[o.roster].cls } : {}), ...(D.ROSTER[o.roster].boss ? { boss: true } : {}) } : {});
+  const { bout, ctx } = startTable(run, newPrep(run, 'table', 0));
+  if (!o.rules) { bout.rules.sandbox = true; bout.rules.maxTurns = 999; }
+  return { bout, ctx: { ...ctx, kind: 'test', test: true, sandbox: !o.rules }, run };
+}
 export const newPrep = (run, kind, idx) => ({ kind, idx, tilts: Object.fromEntries(Object.keys(D.TILTS).map((k) => [k, 0])), dd: false });
 export const tiltOpen = (run, key) => (run.floor || 1) >= D.TILTS[key].floor;
 export function setTilt(run, prep, key, on) { if (on && !tiltOpen(run, key)) return false; prep.tilts[key] = on ? 1 : 0; return true; }

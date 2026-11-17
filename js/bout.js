@@ -1662,6 +1662,28 @@ function* ticks(b) {
 }
 
 
+// ---------- the test table (Build mode) ----------
+// What the test table can put on a space: a Royal Paradise chip of a value, a Block or Counter chip, a hazard, an
+// effect chip (lasting the bout) or a made chip. op: 'add' on top, 'change' the top chip into it, 'remove' the top.
+export function sandboxChip(b, side, r, c, what, op = 'add') {
+  const s = b.sides[side], cell = s.grid[r]?.[c]; if (!cell) return false;
+  const topI = (() => { for (let i = cell.chips.length - 1; i >= 0; i--) if (!isHazard(cell.chips[i])) return i; return cell.chips.length - 1; })();
+  if (op === 'remove') { if (topI < 0) return false; const ch = cell.chips.splice(topI, 1)[0]; b.fx[ch.id] = 'void'; return true; }
+  const make = () => {
+    if (what.made && MADE_CHIPS[what.made]) return mkMade(b, what.made);
+    if (what.shop && SHOP_CHIPS[what.shop]) return mkChip(b, 'fx', 0, { shop: what.shop, resist: what.shop, life: 99, maker: null });
+    if (what.kind && HAZARD_LIFE[what.kind]) return mkHazard(b, what.kind);
+    if (what.kind === 'debt') return null;
+    return mkChip(b, what.kind || 'std', what.kind === 'block' || what.kind === 'counter' ? 0 : Math.max(1, what.value | 0 || 1));
+  };
+  if (what.kind === 'debt') { if (!occupied(cell)) return false; setDebt(b, cell, debtOf(cell) + Math.max(1, what.value | 0 || 1)); return true; }
+  const ch = make(); if (!ch) return false;
+  if (op === 'change') { if (topI < 0) return false; const old = cell.chips[topI]; cell.chips.splice(topI, 1, ch); b.fx[old.id] = 'void'; b.fx[ch.id] = 'mutate'; return true; }
+  if (cell.hole || cell.link || (!isHazard(ch) && capacityLeft(s, cell) <= 0)) return false;
+  if (ch.kind === 'made') placeMade(cell, ch, 'over') || cell.chips.push(ch); else cell.chips.push(ch);
+  b.fx[ch.id] = 'spawn'; return true;
+}
+
 // ---------- High Roller phases (Opponent maker) ----------
 // A High Roller with phases changes how it plays as its Worth falls: each phase starts when Worth drops below
 // `below` of what it sat down with. A phase can cheat: extra dice of its best kind join the pouch, and tricks come
@@ -1906,7 +1928,7 @@ export function* resolve(b) {
   }
   b.ctx = { phase: 'house' };
   const w = b.sides.map(worth);
-  if (w[0] <= 0 || w[1] <= 0 || b.turn >= b.rules.maxTurns) {
+  if (!b.rules.sandbox && (w[0] <= 0 || w[1] <= 0 || b.turn >= b.rules.maxTurns)) { // a sandbox bout (test table) runs until you leave it
     b.over = true; b.winner = w[0] > w[1] ? 0 : 1; b.timeout = w[0] > 0 && w[1] > 0;
     yield step(b, b.timeout ? `Last call. ${b.sides[b.winner].name} holds the most Worth.` : `${b.sides[1 - b.winner].name} is broke. ${b.sides[b.winner].name} wins the bout.`, [], 'over');
     return;
