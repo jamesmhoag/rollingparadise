@@ -40,6 +40,8 @@ Hover anything — every chip, die, trick, number and button explains itself.
 | Path | What it holds |
 | --- | --- |
 | `js/data.js` | All content: Rollers, tricks, dice, chips, tilts, floors, drinks, sports, jackets, cards |
+| `js/content/` | Editable tables: dice materials, the Dice Shop, casts and dyes (`dice.js`); hover guidance (`guidance.js`) |
+| `js/text/en.js` | Every line of game text, by key. `js/text.js` looks lines up (`t('floor.dice.sub', { n })`) |
 | `js/bout.js` | The bout engine. Pure logic, no DOM. `resolve()` yields a step after every visible change |
 | `js/ai.js` | The automated Roller, planning through the same API the player uses |
 | `js/run.js` | Everything between bouts: floors, shops, wagers, settlement, the Ascent, saving |

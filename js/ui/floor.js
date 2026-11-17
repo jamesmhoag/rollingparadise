@@ -7,6 +7,7 @@ import { dieEl, dieTip, trickTip, trickWords, drinkTip, cardTip, chipEl, chipTip
 import * as D from '../data.js';
 import * as R from '../run.js';
 import { cents } from '../util.js';
+import { t } from '../text.js';
 
 const MIN_BUYIN = 5;
 let rerender = () => {};
@@ -63,36 +64,37 @@ export function hubScene(root) {
   plan.append(me); stand(at.k);
   root.append(H.el, h('div', { class: 'page' }, h('div', { class: 'hub' }, plan,
     h('div', { class: 'side' },
-      h('div', { class: 'box scroll', style: { flex: '1' } }, h('span', { class: 'cap', text: 'Word on the floor' }), news),
-      h('div', { class: 'box' }, h('span', { class: 'cap', text: 'Your book' }), book, hint)))));
+      h('div', { class: 'box scroll', style: { flex: '1' } }, h('span', { class: 'cap', text: t('floor.news') }), news),
+      h('div', { class: 'box' }, h('span', { class: 'cap', text: t('floor.yourBook') }), book, hint)))));
 
   function tiles() {
-    const out = [];
-    fs.tables.forEach((t, i) => { const st = R.tableState(run, i);
-      const lock = { later: 'Beat table 1 first. Then pick table 2 or table 3.', passed: 'You took the other table. This one has packed up.' }[st];
-      out.push({ k: 't' + i, unseen: !t.seen, cls: `table ${st === 'beaten' ? 'done' : ''} ${lock ? 'locked' : ''}`, ico: '🎴', name: t.seen ? t.opp.name : `Table ${i + 1}`, tag: `${i ? 'Choice · ' : ''}${D.feltOf(t.felt).name} felt`, felt: t.felt,
-        sub: st === 'beaten' ? 'Beaten.' : st === 'passed' ? 'Packed up: you chose the other table.' : st === 'later' ? 'Opens after table 1. Pick this or the table beside it.' : t.seen ? `${D.CLASSES[t.opp.cls].name} · ${cents(t.opp.worth)} on the table${i ? ' · closes the other table' : ''}` : 'A stranger. Sit down to find out.',
-        tip: () => `${t.seen ? oppTip(t.opp) : '<b>Unknown Roller</b><p>You have not seen this table play. Their name, gear and attributes stay hidden until table 1 is closed.</p>'}${lock ? `<p class="bad keep">${lock}</p>` : i ? '<p class="keep">Tables 2 and 3 are a choice: beat one and the other closes. Then the High Roller sees you.</p>' : '<p class="keep">Table 1 comes first on every floor.</p>'}`,
-        on: () => { if (st === 'beaten') return toast('That table is closed.'); if (lock) return toast(lock, 'warn'); if (run.purse < MIN_BUYIN) return toast(`You need at least ${cents(MIN_BUYIN)} to sit down.`, 'warn'); app.nav.prep('table', i); } }); });
+    const out = [], buyin = () => toast(t('floor.buyin', { min: cents(MIN_BUYIN) }), 'warn');
+    fs.tables.forEach((tb, i) => { const st = R.tableState(run, i);
+      const lock = { later: t('floor.table.later'), passed: t('floor.table.passed') }[st];
+      out.push({ k: 't' + i, unseen: !tb.seen, cls: `table ${st === 'beaten' ? 'done' : ''} ${lock ? 'locked' : ''}`, ico: '🎴', name: tb.seen ? tb.opp.name : t('floor.table.name', { n: i + 1 }), tag: t('floor.table.tag', { choice: i ? t('floor.table.choice') : '', felt: D.feltOf(tb.felt).name }), felt: tb.felt,
+        sub: st === 'beaten' ? t('floor.table.beaten') : st === 'passed' ? t('floor.table.packed') : st === 'later' ? t('floor.table.opensAfter') : tb.seen ? t('floor.table.seen', { cls: D.CLASSES[tb.opp.cls].name, worth: cents(tb.opp.worth), closes: i ? t('floor.table.closesOther') : '' }) : t('floor.table.stranger'),
+        tip: () => `${tb.seen ? oppTip(tb.opp) : t('floor.table.unknown')}${lock ? `<p class="bad keep">${lock}</p>` : `<p class="keep">${t(i ? 'floor.table.choiceTip' : 'floor.table.firstTip')}</p>`}`,
+        on: () => { if (st === 'beaten') return toast(t('floor.table.closed')); if (lock) return toast(lock, 'warn'); if (run.purse < MIN_BUYIN) return buyin(); app.nav.prep('table', i); } }); });
     const b = fs.boss;
-    out.push({ k: 'boss', felt: b.felt || 'royal', cls: `boss ${fs.bossOpen ? '' : 'locked'} ${b.beaten ? 'done' : ''}`, ico: '👑', name: b.opp.name, tag: 'Head table', sub: fs.bossOpen ? `High Roller · ${cents(b.opp.worth)} on the table · wager ×${D.WAGER_BOSS}` : `${R.tablesLeft(run) === 2 ? 'Beat table 1, then table 2 or 3.' : 'Beat table 2 or table 3.'}`,
-      tip: () => (fs.bossOpen ? oppTip(b.opp) : `<b>${b.opp.name}</b> <span class="dim">High Roller</span><p>Visible at the head table, but only their name. Beat table 1 and then one of tables 2 and 3, or win a Double Down, and they will see you. Beat them to take the stairs to the next floor.</p>`),
-      on: () => { if (!fs.bossOpen) return toast('The High Roller will not see you yet.', 'warn'); if (run.purse < MIN_BUYIN) return toast(`You need at least ${cents(MIN_BUYIN)} to sit down.`, 'warn'); app.nav.prep('boss', 0); } });
-    out.push({ k: 'smith', ico: '⚒️', name: 'Diesmith', sub: 'Melt, cast and sell dice.', tip: '<b>Diesmith</b><p>Melts your dice down and casts a new one, coloured by dyes, and buys the dice you no longer need.</p>', on: () => smithPanel() });
-    out.push({ k: 'dice', ico: '🎲', name: 'Dice Shop', sub: `${R.diceShop(run).length} dice on the counter.`, tip: '<b>Dice Shop</b><p>Plain Glass, Plastic and Metal dice, and pricier Bone dice that each carry a trait of their own. Bone dice cannot be melted or modified.</p>', on: () => diceShopPanel() });
-    out.push({ k: 'trader', ico: '🃏', name: 'Trick Trader', sub: `${fs.shop.length} trick${fs.shop.length === 1 ? '' : 's'} on the shelf.`, tag: R.hasCard(run, 'membership') ? 'Member' : null, tip: '<b>Trick Trader</b><p>Buy new tricks, upgrade the ones in your Book, or sell them. Buy 5 on one floor to earn a Membership Card.</p>', on: () => traderPanel() });
-    out.push({ k: 'exchange', ico: '🪙', name: 'Chip Exchange', sub: `Chips up to ${R.maxDenom(run.floor)}¢ on this floor.`, tip: '<b>Chip Exchange</b><p>Shows which chip values this floor deals in and sells colourful chips that protect a stack from hazards.</p>', on: () => exchangePanel() });
-    out.push({ k: 'lounge', ico: '🍹', name: 'Lounge', sub: fs.lounge.happy ? 'Happy hour! Drinks half price.' : 'A drink for the table.', tag: run.drink ? `${run.drink.name}` : null, tip: '<b>Lounge</b><p>Bring a drink to the table and sip it before a turn for a bonus. Pay for it, or challenge the Roller at the bar: the loser buys.</p>', on: () => loungePanel() });
+    out.push({ k: 'boss', felt: b.felt || 'royal', cls: `boss ${fs.bossOpen ? '' : 'locked'} ${b.beaten ? 'done' : ''}`, ico: '👑', name: b.opp.name, tag: t('floor.boss.tag'), sub: fs.bossOpen ? t('floor.boss.open', { worth: cents(b.opp.worth), mult: D.WAGER_BOSS }) : t(R.tablesLeft(run) === 2 ? 'floor.boss.need2' : 'floor.boss.need1'),
+      tip: () => (fs.bossOpen ? oppTip(b.opp) : t('floor.boss.hidden', { name: b.opp.name })),
+      on: () => { if (!fs.bossOpen) return toast(t('floor.boss.notYet'), 'warn'); if (run.purse < MIN_BUYIN) return buyin(); app.nav.prep('boss', 0); } });
+    out.push({ k: 'smith', ico: '⚒️', name: t('floor.smith.name'), sub: t('floor.smith.sub'), tip: t('floor.smith.tip'), on: () => smithPanel() });
+    out.push({ k: 'dice', ico: '🎲', name: t('floor.dice.name'), sub: t('floor.dice.sub', { n: R.diceShop(run).length }), tip: t('floor.dice.tip'), on: () => diceShopPanel() });
+    out.push({ k: 'trader', ico: '🃏', name: t('floor.trader.name'), sub: t('floor.trader.sub', { n: fs.shop.length }), tag: R.hasCard(run, 'membership') ? t('floor.trader.member') : null, tip: t('floor.trader.tip'), on: () => traderPanel() });
+    out.push({ k: 'exchange', ico: '🪙', name: t('floor.exchange.name'), sub: t('floor.exchange.sub', { max: R.maxDenom(run.floor) }), tip: t('floor.exchange.tip'), on: () => exchangePanel() });
+    out.push({ k: 'lounge', ico: '🍹', name: t('floor.lounge.name'), sub: t(fs.lounge.happy ? 'floor.lounge.happy' : 'floor.lounge.sub'), tag: run.drink ? `${run.drink.name}` : null, tip: t('floor.lounge.tip'), on: () => loungePanel() });
     const open = fs.book.events.filter((e) => e.bet && !e.done).length;
-    out.push({ k: 'book', ico: '🏇', name: 'Sports Book', sub: open ? `${open} ticket${open > 1 ? 's' : ''} riding on the next bout.` : 'Are you here to gamble?', tip: '<b>Sports Book</b><p>Place long bets before you sit down. Games are played while you are at the table, so a winning ticket can fund another try after a loss.</p>', on: () => bookPanel() });
-    out.push({ k: 'search', cls: fs.searched ? 'done' : '', ico: '🔎', name: 'Dodgy corner', sub: fs.searched ? 'Nothing else down here.' : 'Somebody always drops something.', tip: '<b>Search the floor</b><p>Once per floor you will find a card for your wallet.</p>',
-      on: () => { const id = R.searchFloor(run); if (!id) return toast('You already looked.'); if (run.pendingCard) { render(); return walletFullPanel(); } toast(`Found: ${D.CARDS[id].name}.`); render(); } });
-    out.push({ k: 'kit', ico: '🎒', name: 'Coat check', sub: `${run.dice.length} dice · ${run.tricks.length} tricks · ${run.cards.length} cards`, tip: '<b>Coat check</b><p>Your gear is kept here. Look through your Pouch, Book and Wallet.</p>', on: () => kitPanel() });
-    out.push({ k: 'exit', cls: 'exit', ico: '🚪', name: 'Exit', sub: 'Through the Gift Shop. Ends the run.', tip: '<b>Exit through the Gift Shop</b><p>Cut your losses. Spend what is left on gear that stays unlocked for future runs, then leave. You cannot come back to the tables.</p>', on: () => exitPanel() });
-    out.push({ k: 'stairs', cls: fs.boss.beaten ? '' : 'locked', name: run.floor < 4 ? 'Stairs up' : 'Penthouse lift', sub: run.floor < 4 ? `To ${D.FLOORS[run.floor + 1].name}` : 'To the Penthouse',
-      tip: `<b>${run.floor < 4 ? 'Stairs up' : 'Penthouse lift'}</b><p>Behind the head table. The High Roller decides who goes up: beat them and you climb straight away.</p>`, on: () => toast(`${fs.boss.opp.name} is not letting anyone past.`, 'warn') });
-    out.push({ k: 'entry', name: run.floor > 1 ? 'Stairs down' : 'Front door', sub: 'Step out. Your run is saved.', tip: '<b>Step out</b><p>Saves this run and goes back to the main menu. Continue from there to come back to this floor as you left it.</p><p class="dim">You have one run at a time: starting a new run replaces this one.</p>',
-      on: () => { R.saveRun(run); toast('Run saved. Continue from the main menu.'); app.nav.title(); } });
+    out.push({ k: 'book', ico: '🏇', name: t('floor.book.name'), sub: open ? t('floor.book.riding', { n: open }) : t('floor.book.sub'), tip: t('floor.book.tip'), on: () => bookPanel() });
+    out.push({ k: 'search', cls: fs.searched ? 'done' : '', ico: '🔎', name: t('floor.search.name'), sub: t(fs.searched ? 'floor.search.done' : 'floor.search.sub'), tip: t('floor.search.tip'),
+      on: () => { const id = R.searchFloor(run); if (!id) return toast(t('floor.search.again')); if (run.pendingCard) { render(); return walletFullPanel(); } toast(t('floor.search.found', { card: D.CARDS[id].name })); render(); } });
+    out.push({ k: 'kit', ico: '🎒', name: t('floor.kit.name'), sub: t('floor.kit.sub', { dice: run.dice.length, tricks: run.tricks.length, cards: run.cards.length }), tip: t('floor.kit.tip'), on: () => kitPanel() });
+    out.push({ k: 'exit', cls: 'exit', ico: '🚪', name: t('floor.exit.name'), sub: t('floor.exit.sub'), tip: t('floor.exit.tip'), on: () => exitPanel() });
+    const up = t(run.floor < 4 ? 'floor.stairs.up' : 'floor.stairs.lift');
+    out.push({ k: 'stairs', cls: fs.boss.beaten ? '' : 'locked', name: up, sub: run.floor < 4 ? t('floor.stairs.to', { floor: D.FLOORS[run.floor + 1].name }) : t('floor.stairs.toPenthouse'),
+      tip: t('floor.stairs.tip', { name: up }), on: () => toast(t('floor.stairs.blocked', { boss: fs.boss.opp.name }), 'warn') });
+    out.push({ k: 'entry', name: t(run.floor > 1 ? 'floor.entry.down' : 'floor.entry.door'), sub: t('floor.entry.sub'), tip: t('floor.entry.tip'),
+      on: () => { R.saveRun(run); toast(t('floor.entry.saved')); app.nav.title(); } });
     return out;
   }
   function render() {
@@ -104,7 +106,7 @@ export function hubScene(root) {
       el.classList.toggle('unseen', !!t.unseen); el.onclick = () => visit(t.k, t.on); el._tip = t.tip; el.classList.add('has-tip'); }
     syncList(news, run.news.slice(-7).map((text, i) => ({ text, k: run.news.length - Math.min(7, run.news.length) + i })).reverse(), (n) => n.k, (n) => h('li', { text: n.text }));
     syncList(book, run.tricks, (t) => t.uid + ':' + t.q + ':' + D.condOf(t), (t) => trickTag(t, run.cls));
-    swapText(hint, R.brokeHint(run) || `${diceSummary(run.dice)} in your pouch.`);
+    swapText(hint, R.brokeHint(run) || t('floor.pouchHint', { dice: diceSummary(run.dice) }));
     R.saveRun(run);
   }
   rerender = render; render();

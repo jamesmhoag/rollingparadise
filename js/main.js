@@ -10,6 +10,7 @@ import { openLibrary } from './ui/library.js';
 import * as D from './data.js';
 import * as R from './run.js';
 import { cents } from './util.js';
+import { t } from './text.js';
 
 const nav = app.nav;
 nav.title = () => go(titleScene);
@@ -28,46 +29,48 @@ nav.alley = () => go(alleyScene);
 
 // coming back to a saved run without the pass for your floor: the Bouncer stops you at the door
 function bouncerPanel(run) {
-  openPanel(h('div', { class: 'col' }, h('h2', { text: 'The Bouncer stops you' }),
-    h('p', { class: 'sub', text: `Your wallet ${run.pass ? `holds only the ${D.PASSES[run.pass].name}` : 'holds no pass'}, and you left from ${D.FLOORS[run.floor].name}. Beat the Bouncer to get back in: you start again at the Boogey Basement, with all your things.` }),
-    h('div', { class: 'row' }, btn('Face the Bouncer', () => { closePanel(true); nav.bouncer(); }, null, 'go'), btn('Not now', () => closePanel()))));
+  openPanel(h('div', { class: 'col' }, h('h2', { text: t('bouncer.title') }),
+    h('p', { class: 'sub', text: t('bouncer.text', { wallet: run.pass ? t('bouncer.passOnly', { pass: D.PASSES[run.pass].name }) : t('bouncer.noPass'), floor: D.FLOORS[run.floor].name }) }),
+    h('div', { class: 'row' }, btn(t('bouncer.face'), () => { closePanel(true); nav.bouncer(); }, null, 'go'), btn(t('bouncer.later'), () => closePanel()))));
 }
+// who, where and how much, for the saved run
+const runWhere = (run) => ({ who: D.heroName(run.cls), where: run.phase === 'ascent' ? t('title.where.ascent') : t('title.where.floor', { floor: run.floor }), purse: cents(run.purse) });
 function titleScene(root) {
   const meta = app.meta = R.loadMeta(), saved = R.loadRun();
   const resume = saved && ['floor', 'ascent'].includes(saved.phase);
   // drifting neon motes; positions are fixed per load so the scene is calm, not noisy
   const motes = Array.from({ length: 26 }, (_, i) => h('span', { class: 'mote', style: { left: `${(i * 37 + 11) % 100}%`, '--mc': i % 3 ? 'var(--gold)' : 'var(--pink)', '--d': `${7 + (i * 13) % 9}s`, '--w': `${-((i * 7) % 12)}s`, '--dx': `${((i * 29) % 120) - 60}px` } }));
-  const sign = h('div', { class: 'sign', tip: '<b>Rolling Paradise</b><p>A pair of dice. Say it out loud.</p>' }, h('div', { class: 'glow' }),
+  const sign = h('div', { class: 'sign', tip: t('title.sign.tip') }, h('div', { class: 'glow' }),
     h('img', { class: 'l-pink', src: 'assets/logo-pink.png', alt: '', draggable: 'false' }), h('img', { class: 'l-cyan', src: 'assets/logo-cyan.png', alt: 'Rolling Paradise', draggable: 'false' }), h('img', { class: 'l-dice', src: 'assets/logo-dice.png', alt: '', draggable: 'false' }));
   root.append(h('div', { class: 'title' }, h('div', { class: 'sky' }), h('div', { class: 'gridfloor' }), ...motes, h('div', { class: 'inner' },
-    h('div', { class: 'hotel neon-c', text: 'ROYAL PARADISE HOTEL & CASINO' }), sign,
-    h('p', { class: 'tagline neon-p', text: 'Gamble your way to the top' }),
+    h('div', { class: 'hotel neon-c', text: t('title.hotel') }), sign,
+    h('p', { class: 'tagline neon-p', text: t('title.tagline') }),
     h('div', { class: 'menu' },
-      resume ? btn('Continue', () => { app.run = saved; if (R.needsBouncer(saved)) return bouncerPanel(saved); saved.phase === 'ascent' ? nav.ascent() : nav.hub(); }, `<b>Continue</b><p>${D.heroName(saved.cls)}, ${saved.phase === 'ascent' ? 'on the Paradise Ascent' : `floor ${saved.floor}`}, ${cents(saved.purse)} in the purse.</p>`, 'sign-btn') : null,
-      btn('New run', () => (resume ? openPanel(h('div', { class: 'col' }, h('h2', { text: 'Start a new run?' }),
-        h('p', { text: `You have a run in progress: ${D.heroName(saved.cls)}, ${saved.phase === 'ascent' ? 'on the Paradise Ascent' : `floor ${saved.floor}`}, ${cents(saved.purse)} in the purse.` }),
-        h('p', { class: 'sub', text: 'You can only have one run at a time. Starting a new one ends that run for good.' }),
-        h('div', { class: 'row' }, btn('Keep my run', () => closePanel(), null, 'go'), btn('Start over', () => { R.clearRun(); closePanel(true); nav.select(); }, null, 'danger')))) : nav.select()), resume ? '<b>New run</b><p>You can only have one run at a time. Starting over ends your saved run.</p>' : null, resume ? 'sign-btn p' : 'sign-btn'),
-      btn('How to play', () => howTo(), null, 'sign-btn p'),
-      btn('Library', () => openLibrary(null, { title: true }), '<b>Library</b><p>Every chip, trick, die, card, drink, wallet, jacket and felt in the game, and the upgrades for each.</p>', 'sign-btn')),
+      resume ? btn(t('title.continue'), () => { app.run = saved; if (R.needsBouncer(saved)) return bouncerPanel(saved); saved.phase === 'ascent' ? nav.ascent() : nav.hub(); }, t('title.continue.tip', runWhere(saved)), 'sign-btn') : null,
+      btn(t('title.new'), () => (resume ? openPanel(h('div', { class: 'col' }, h('h2', { text: t('title.new.confirm') }),
+        h('p', { text: t('title.new.inProgress', runWhere(saved)) }),
+        h('p', { class: 'sub', text: t('title.new.warn') }),
+        h('div', { class: 'row' }, btn(t('title.new.keep'), () => closePanel(), null, 'go'), btn(t('title.new.over'), () => { R.clearRun(); closePanel(true); nav.select(); }, null, 'danger')))) : nav.select()), resume ? t('title.new.tip') : null, resume ? 'sign-btn p' : 'sign-btn'),
+      btn(t('title.howto'), () => howTo(), null, 'sign-btn p'),
+      btn(t('title.library'), () => openLibrary(null, { title: true }), t('title.library.tip'), 'sign-btn')),
     h('div', { class: 'stats records' },
-      [['Runs', meta.runs, 'Runs you have finished.'], ['Best floor', meta.best > 4 ? 'Ascent' : meta.best || '—', 'The highest floor any of your Rollers reached.'], ['Crowns', meta.crowns, 'Times you reached the top step of the Paradise Ascent.'], ['Jackets', meta.jackets.length, 'Jackets unlocked in the Gift Shop.'], ['Wallets', (meta.wallets || []).length, 'Wallets unlocked in the Gift Shop.'], ['ATM', cents(meta.atm), 'Chips banked for Gift Shop purchases.']]
+      [[t('title.rec.runs'), meta.runs, t('title.rec.runs.tip')], [t('title.rec.best'), meta.best > 4 ? t('title.rec.ascent') : meta.best || '—', t('title.rec.best.tip')], [t('title.rec.crowns'), meta.crowns, t('title.rec.crowns.tip')], [t('title.rec.jackets'), meta.jackets.length, t('title.rec.jackets.tip')], [t('title.rec.wallets'), (meta.wallets || []).length, t('title.rec.wallets.tip')], [t('title.rec.atm'), cents(meta.atm), t('title.rec.atm.tip')]]
         .map(([a, b, t]) => h('span', { class: 'stat', tip: `<b>${a}</b><p>${t}</p>` }, h('em', { text: a }), h('b', { text: b })))))));
 }
 
 function howTo() {
   const p = (t, s) => h('div', {}, h('h3', { text: t }), h('p', { class: 'sub', text: s }));
-  openPanel(h('div', { class: 'col' }, h('div', { class: 'row between' }, h('h2', { text: 'How to play' }), btn('Got it', () => closePanel(), null, 'small go')),
-    p('The goal', 'Deplete your opponent\'s Worth before they deplete yours. Worth is the chips in your position. Reach zero and you are broke.'),
-    p('Your turn: three steps', '1 · Draw: click tricks in your Book to show them on your Run. Draw at least one, then press Roll. 2 · Roll: pick dice from your Pouch (or a top chip to flip as a coin-toss die) and press Roll. Everything you picked lands in the roll at once, showing its value. Put at least one on a shown trick and leave the rest. 3 · Bid: click one of your stacks to pick up its top chip, then click a trick to pay it. Keep going until you are out of bids; a trick can take more than one. Then press Play. Each step closes the one before it.'),
-    p('You do not see their move until you make yours', 'Your opponent goes through the same three steps. What they draw, roll and bid in a step is shown only once you have locked in the same step, and they cannot see yours either.'),
-    p('The House runs the table', 'Once both Rollers have bid, the House calls each effect type in order: Investments, Insurances, Expenses, Corrections. It has two arms, one for each Roller, and plays both sides of a phase together, so nothing you play changes what your opponent plays in the same phase. The feed under the table posts both calls.'),
-    p('Tricks', 'A bid with no dice plays only the small Trait. A bid with dice plays the Roll effect, scaled by the total. Fill the trick with the right dice and meet its condition for the Bonus. You can load dice over several turns before bidding.'),
-    p('Holding back pays', 'Each draw, roll and bid you leave unused earns something: Power for your next roll, Opportunity chips, or chips stolen from the Stage.'),
-    p('Debt', 'An Expense is a fee on the stacks it hits. The House pays it from the top of each stack, one whole chip at a time. What cannot cover the next chip stays on that stack as Debt, shown as one red marker with the amount; it already counts against Worth, and the chip goes once later fees bring the Debt up to its value. If a stack runs out of chips, the rest (overkill) moves to the next stack behind it in the same lane, never sideways. While aiming, the stacks show what the fee will pay, leave and carry.'),
-    p('The Stage', 'Settled fees are stacked on the Stage in front of the House. The winner takes everything on it. Bids go to the House and are gone.'),
-    p('Between bouts', 'Shop, drink, place bets, then set your position. Every chip you do not put on the table is wagered on the bout and comes back multiplied if you win.'),
-    p('Anything unclear?', 'Hover it. Every chip, die, trick, number and button explains itself. Right-click anywhere to switch hovers and prompts between verbose (the rules spelled out) and concise (just the facts). Scroll the mouse wheel over a hover to switch between Context (how it works and its numbers) and Guidance (what to do with it and when).')));
+  openPanel(h('div', { class: 'col' }, h('div', { class: 'row between' }, h('h2', { text: t('howto.title') }), btn(t('howto.done'), () => closePanel(), null, 'small go')),
+    p(t('howto.goal.title'), t('howto.goal.text')),
+    p(t('howto.turn.title'), t('howto.turn.text')),
+    p(t('howto.blind.title'), t('howto.blind.text')),
+    p(t('howto.house.title'), t('howto.house.text')),
+    p(t('howto.tricks.title'), t('howto.tricks.text')),
+    p(t('howto.holdback.title'), t('howto.holdback.text')),
+    p(t('howto.debt.title'), t('howto.debt.text')),
+    p(t('howto.stage.title'), t('howto.stage.text')),
+    p(t('howto.between.title'), t('howto.between.text')),
+    p(t('howto.unclear.title'), t('howto.unclear.text'))));
 }
 
 function selectScene(root) {
@@ -76,24 +79,24 @@ function selectScene(root) {
   const els = Object.entries(D.CLASSES).map(([id, K]) => {
     const dice = Object.entries(K.dice).flatMap(([type, n]) => Array.from({ length: n }, () => type));
     const el = h('button', { class: 'pick-card', style: { '--cc': K.color }, onclick: () => { cls = id; sync(); } },
-      h('h2', { text: K.hero }), h('p', { class: 'cap', text: `the ${K.name}` }), h('p', { class: 'sub', text: K.blurb }),
-      h('span', { class: 'cap', text: 'Each turn' }), statRow(K.tip, ['trickery', 'ingenuity', 'proficiency']),
-      h('span', { class: 'cap', text: 'For each one left unused' }), statRow(K.c, ['charisma', 'cunning', 'conviction']),
-      h('span', { class: 'cap', text: 'Position bonus' }), statRow(K.bvd, ['balance', 'versatility', 'depth']),
-      h('span', { class: 'cap', text: 'Pouch' }), h('div', { class: 'dicebox' }, dice.map((type) => { const d = dieEl({ type }); d._tip = () => dieTip({ type }); d.classList.add('has-tip'); return d; })),
-      h('span', { class: 'cap', text: 'Book' }), h('div', { class: 'inv' }, K.tricks.map((tid) => { const t = { id: tid, q: 1 }; return h('span', { class: 'tag-t', style: { '--tc': D.TYPES[D.TRICKS[tid].type].color }, tip: () => trickTip(t, id) }, D.TRICKS[tid].name); })));
+      h('h2', { text: K.hero }), h('p', { class: 'cap', text: t('select.hero.the', { cls: K.name }) }), h('p', { class: 'sub', text: K.blurb }),
+      h('span', { class: 'cap', text: t('select.eachTurn') }), statRow(K.tip, ['trickery', 'ingenuity', 'proficiency']),
+      h('span', { class: 'cap', text: t('select.unused') }), statRow(K.c, ['charisma', 'cunning', 'conviction']),
+      h('span', { class: 'cap', text: t('select.position') }), statRow(K.bvd, ['balance', 'versatility', 'depth']),
+      h('span', { class: 'cap', text: t('select.pouch') }), h('div', { class: 'dicebox' }, dice.map((type) => { const d = dieEl({ type }); d._tip = () => dieTip({ type }); d.classList.add('has-tip'); return d; })),
+      h('span', { class: 'cap', text: t('select.book') }), h('div', { class: 'inv' }, K.tricks.map((tid) => { const t = { id: tid, q: 1 }; return h('span', { class: 'tag-t', style: { '--tc': D.TYPES[D.TRICKS[tid].type].color }, tip: () => trickTip(t, id) }, D.TRICKS[tid].name); })));
     el._id = id; return el; });
   cards.append(...els);
-  const jb = meta.jackets.map((id) => { const b = btn(`🧥 ${D.JACKETS[id].name}`, () => { jacket = id; sync(); }, () => { const K = D.CLASSES[cls]; return jacketTip(id, { ...K.tip, ...K.c, ...K.bvd }) + `<p class="dim">Shown against the ${K.name}'s own numbers.</p>`; }, 'small'); b._id = id; return b; });
-  jackets.append(h('span', { class: 'cap', text: 'Jacket' }), ...jb);
+  const jb = meta.jackets.map((id) => { const b = btn(`🧥 ${D.JACKETS[id].name}`, () => { jacket = id; sync(); }, () => { const K = D.CLASSES[cls]; return jacketTip(id, { ...K.tip, ...K.c, ...K.bvd }) + `<p class="dim">${t('select.jacket.against', { cls: K.name })}</p>`; }, 'small'); b._id = id; return b; });
+  jackets.append(h('span', { class: 'cap', text: t('select.jacket') }), ...jb);
   const wb = meta.wallets.map((id) => { const b = btn(`👛 ${D.WALLETS[id].name}`, () => { wallet = id; sync(); }, () => walletTip(id), 'small'); b._id = id; return b; });
   const keptEl = h('span', { class: 'sub fade-t' });
-  jackets.append(h('span', { class: 'cap', style: { marginLeft: '18px' }, text: 'Wallet' }), ...wb, keptEl);
+  jackets.append(h('span', { class: 'cap', style: { marginLeft: '18px' }, text: t('select.wallet') }), ...wb, keptEl);
   function sync() { for (const el of els) el.classList.toggle('sel', el._id === cls); for (const b of jb) b.classList.toggle('on', b._id === jacket); for (const b of wb) b.classList.toggle('on', b._id === wallet);
-    const k = (meta.kept || []).slice(0, D.WALLETS[wallet].slots); keptEl.textContent = k.length ? `On the dresser from your last run: ${k.map((c) => D.CARDS[c].name).join(', ')}` : ''; }
+    const k = (meta.kept || []).slice(0, D.WALLETS[wallet].slots); keptEl.textContent = k.length ? t('select.kept', { cards: k.map((c) => D.CARDS[c].name).join(', ') }) : ''; }
   sync();
-  root.append(h('div', { class: 'page', style: { top: 0, padding: '22px 40px' } }, h('div', { class: 'row between' }, h('div', {}, h('h1', { text: 'Choose a Roller' }), h('p', { class: 'sub', text: 'Hover anything to see what it does. The doorman wants a word before you go in.' })),
-    h('div', { class: 'row' }, btn('Back', () => nav.title()), btn('Walk in', () => { app.run = R.newRun(cls, jacket, undefined, { wallet, kept: meta.kept, pass: meta.keptPass }); meta.kept = []; meta.keptPass = 0; meta.lastWallet = wallet; R.saveMeta(meta); nav.intro().then(() => { if (app.meta.seenHow) return toast('Beat the doorman to earn your welcome stake.'); app.meta.seenHow = true; R.saveMeta(app.meta); howTo(); }); }, '<b>Walk in</b><p>You start with an intro bout on house chips. Win it and the House stakes you 200¢ to enter floor 1.</p>', 'big go'))),
+  root.append(h('div', { class: 'page', style: { top: 0, padding: '22px 40px' } }, h('div', { class: 'row between' }, h('div', {}, h('h1', { text: t('select.title') }), h('p', { class: 'sub', text: t('select.sub') })),
+    h('div', { class: 'row' }, btn(t('select.back'), () => nav.title()), btn(t('select.walkIn'), () => { app.run = R.newRun(cls, jacket, undefined, { wallet, kept: meta.kept, pass: meta.keptPass }); meta.kept = []; meta.keptPass = 0; meta.lastWallet = wallet; R.saveMeta(meta); nav.intro().then(() => { if (app.meta.seenHow) return toast(t('select.doorman')); app.meta.seenHow = true; R.saveMeta(app.meta); howTo(); }); }, t('select.walkIn.tip'), 'big go'))),
     h('div', { style: { marginTop: '16px' } }, cards), h('div', { style: { marginTop: '14px' } }, jackets)));
 }
 
