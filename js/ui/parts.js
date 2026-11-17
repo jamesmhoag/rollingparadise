@@ -1,6 +1,7 @@
 // Small visual pieces and the tooltip text used across screens.
 import { h } from './core.js';
 import * as D from '../data.js';
+import * as CM from '../content/chipmaker.js';
 import { cents, cap } from '../util.js';
 import { multOf, traitOf } from '../bout.js';
 import { facesOf, faceValue, matOf, dieName } from '../dice.js';
@@ -72,6 +73,12 @@ export function madeRules(M, ch = {}) {
   if (M.must && M.must !== 'any') parts.push(`must sit ${{ top: 'on top', bottom: 'at the bottom', sandwiched: 'between chips', alone: 'alone', with: 'with others' }[M.must]}`);
   if (M.onTop === 'none') parts.push('nothing can go on it');
   if (M.immune?.length) parts.push(`immune to ${M.immune.join(', ')}`);
+  if (M.move && M.move !== 'still') parts.push(CM.MOVES[M.move].toLowerCase());
+  if (M.triggers?.length && M.actions?.length) {
+    const when = M.triggers.map((x) => (x.on === 'phase' || x.on === 'effect') && x.type ? `${CM.TRIGGERS[x.on].toLowerCase()} (${D.TYPES[x.type]?.name})` : x.on === 'exposed' && x.what ? `when a ${x.what} is exposed` : CM.TRIGGERS[x.on].toLowerCase()).join(' or ');
+    const what = M.actions.map((x) => ({ move: `moves them ${x.dir || 'right'}`, value: `${(x.n ?? 1) >= 0 ? '+' : ''}${x.n ?? 1}¢ value`, hits: `${(x.n ?? 1) >= 0 ? '+' : ''}${x.n ?? 1} strength`, power: `${(x.n ?? 1) >= 0 ? '+' : ''}${x.n ?? 1} effect`, become: `turns them into ${D.MADE_CHIPS[x.chip]?.name || D.CHIPS[x.chip]?.name || 'Royal Paradise chips'}` }[x.k])).join(', ');
+    parts.push(`${when}: ${what} on ${(CM.REACH[M.reach?.to || 'touching'] || '').toLowerCase()}${M.reach?.to === 'named' ? ` "${M.reach.name}"` : ''}${(M.reach?.range || 1) > 1 ? ` within ${M.reach.range}` : ''}`);
+  }
   return parts.join(' · ') + '.';
 }
 export const chipEl = (ch, cls = '') => h('span', { class: `chip static ${chipSig(ch)} ${cls}` }, h('i', { text: chipGlyph(ch) }));
