@@ -598,3 +598,9 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .b-field.ch > input, .b-field.ch > textarea { border-color: var(--gold); }
 .build input[type=text], .build input[type=number], .build textarea, .b-filter { background: #0d0a1c; color: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 4px 7px; font: inherit; font-size: 12.5px; width: 100%; box-sizing: border-box; }
 .b-export { width: 640px; max-width: 100%; background: #0d0a1c; color: inherit; }
+
+/* the trick maker */
+.b-maker { display: grid; grid-template-columns: 1fr 300px; gap: 16px; align-items: start; } .b-maker .cap { display: block; margin: 10px 0 4px; }
+.build select { background: #0d0a1c; color: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; font: inherit; font-size: 12.5px; width: 100%; }
+.b-card { background: #120e24; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 13px; } .b-card p { margin: 5px 0 0; } .b-card b { color: var(--gold); }
+.b-item.tool { font-weight: 700; } .b-entries > .btn { width: 100%; margin-bottom: 6px; }

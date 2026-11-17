@@ -7,6 +7,7 @@
 // effect type for both Rollers at once and yields a step after each visible change.
 // Fees go out as Debt first; the House then settles every stack that took Debt.
 import { RNG, sum, clone, clamp, order1D } from './util.js';
+import { instances, deployOrder, placeIndex, makeKind, isFxChip } from './trickmaker.js';
 import { rollDie, boutCopy, facesOf, upgrade as upgradeFaces } from './dice.js';
 export { rollDie };
 import { DIE_UPGRADES, TRICKS, TYPES, QDIE, FOIL, WEAR, defOf, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, CREATURES, ORBITALS, FELTS, TILTS, TILT_PRESSURE, DENOM_VALUES, tiltChance, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS } from './data.js';
@@ -246,7 +247,7 @@ function mkSide(b, spec, idx) {
     tray: [], used: { draw: 0, roll: 0, bid: 0 }, turnBonus: {}, rolled: {},
     status: { resist: 0, resistNext: 0, evade: null, evadeNext: null, reflect: 0, reflectAll: false, enfeebleNext: 0 },
     mods: { boost: 0, enfeeble: 0, press: 0, bend: null, mul: 1, pierce: false },
-    drink: spec.drink ? { ...spec.drink } : null, sipped: false, food: [], roostDragons: 0, sky: [], bees: [], hatsDue: 0, absorbUsed: {}, forgotUsed: {},
+    drink: spec.drink ? { ...spec.drink } : null, sipped: false, food: [], roostDragons: 0, sky: [], bees: [], hatsDue: 0, absorbUsed: {}, forgotUsed: {}, echoes: [],
     familiars: spec.familiars || 0, interventions: spec.interventions || 0, positionTilt: spec.positionTilt || 0, intervened: false, spawners: spec.spawners || 0, calamities: spec.calamities || [],
     bidsPaid: 0, dealt: 0, destroyed: 0, snap: null,
   };
@@ -726,9 +727,17 @@ export function resetPlan(b, s) {
 }
 export const needsTarget = (e) => TRICKS[e.trick.id].approach !== 'none' && e.dice.length > 0;
 export function targetSide(b, s, def) { return def.side === 'opp' ? b.sides[1 - s.idx] : def.side === 'self' ? s : null; }
+// the sides a trick can aim at: its own zone, or both for a trick that plays on either side
+const aimSides = (b, s, def) => (def.side === 'any' ? [b.sides[1 - s.idx], s] : [targetSide(b, s, def)].filter(Boolean));
 export function validTargets(b, s, e, payOnly) {
-  const def = TRICKS[e.trick.id], t = targetSide(b, s, def), out = [];
-  if (!t || def.approach === 'none') return out;
+  const def = TRICKS[e.trick.id];
+  if (def.side === 'any') return aimSides(b, s, def).flatMap((t) => validOn(b, s, def, t, payOnly));
+  const t = targetSide(b, s, def); if (!t || def.approach === 'none') return [];
+  return validOn(b, s, def, t, payOnly);
+}
+function validOn(b, s, def, t, payOnly) {
+  const out = [];
+  if (def.approach === 'none') return out;
   const C = t.dims.cols, m = t.dims.meterRows, hidden = t !== s;
   // your opponent cannot aim at a Transpara stack, or a Shadow stack behind a taller one
   const fear = haunted(b, t); // a Ghost's row cannot be aimed at, by either Roller
@@ -748,7 +757,7 @@ export function validTargets(b, s, e, payOnly) {
   return out;
 }
 // tricks whose roll effect puts chips on the stack they aim at
-export const addsChips = (def) => !!def.make || ['doom', 'hat', 'handoff', 'block'].includes(def.roll.k);
+export const addsChips = (def) => !!def.make || ['doom', 'hat', 'handoff', 'block'].includes(def.roll.k) || (def.roll.k === 'chips' && makeKind(def.roll.chip) !== 'fee');
 export function setTarget(b, s, e, tgt) {
   if (b.phase !== 'aim' && b.phase !== 'bid') return false;
   if (!validTargets(b, s, e).some((v) => v.side === tgt.side && v.r === tgt.r && v.c === tgt.c)) return false;
@@ -1139,6 +1148,32 @@ function recoup(b, s, n, both) {
 }
 
 // opt.again: a Repeater or Mimic plays the roll effect once more (no trait) · opt.forgotten: a Forgetter negates it
+// A made trick (trick maker, roll.k 'chips'): the roll becomes instances (lump sum, precise change or petty cash),
+// each dealt to the next space of the deployment pattern from the target and placed over, under or at a height
+// in that stack. A fee instance charges Debt there instead. Bonuses: linger (plays again with this roll for a few
+// turns), multiply (more instances), bid multiplier (in the total), extra chip (more of another chip).
+function* playChips(b, s, e, def, x) {
+  const R = def.roll, t = x.t, origin = x.origin || { r: 0, c: 0 };
+  let inst = instances(R.convert, x.vals, x.total);
+  if (x.bonus === 'multiply') inst = Array.from({ length: def.bonus.x || 2 }, () => inst).flat();
+  const spaces = deployOrder(t.rows, t.dims.cols, origin, R.deploy).filter(({ r, c }) => !t.grid[r][c].hole && !t.grid[r][c].link);
+  const make = (chip, list) => { let made = 0, fees = 0, lost = 0; const hit = new Map();
+    list.forEach((amt, i) => { const sp = spaces[i % (spaces.length || 1)]; if (!sp) { lost++; return; } const cell = t.grid[sp.r][sp.c]; hit.set(`${sp.r}:${sp.c}`, sp);
+      const kind = makeKind(chip);
+      if (kind === 'fee') { fees += engage(b, s, t, sp.r, sp.c, amt, { pierce: x.pierce }).placed; return; }
+      if (isFxChip(chip)) { if (placeFx(b, t, cell, chip, R.life || 3, e.trick.id)) made++; else lost++; return; }
+      if (capacityLeft(t, cell) <= 0) { lost++; return; }
+      const ch = HAZARD_LIFE[chip] ? mkHazard(b, chip) : mkChip(b, chip, kind === 'value' ? amt : chip === 'block' || chip === 'counter' ? 1 : 0);
+      if (isHazard(ch)) cell.chips.push(ch); else cell.chips.splice(placeIndex(R.place, R.at, cell.chips.filter((y) => !isHazard(y)).length), 0, ch);
+      b.fx[ch.id] = 'spawn'; made++; });
+    return { made, fees, lost, cells: [...hit.values()] }; };
+  const main = make(R.chip, inst);
+  let extra = null; if (x.bonus === 'extra') extra = make(def.bonus.chip || 'block', Array.from({ length: def.bonus.n || 1 }, () => 1));
+  if (x.bonus === 'linger' && !x.again && x.total > 0) s.echoes.push({ from: b.turn, e: { ...e, dice: e.dice.map((d) => ({ ...d })), lingerLeft: 0, lingerTotal: 0 }, left: def.bonus.turns || 2, phase: phaseOf(e.trick.id) });
+  const kind = makeKind(R.chip), refs = [...main.cells, ...(extra?.cells || [])].map((p) => ref(t, p.r, p.c));
+  const said = kind === 'fee' ? `${main.fees}¢ of Debt on ${main.cells.length} stack${main.cells.length === 1 ? '' : 's'}` : `${main.made} chip${main.made === 1 ? '' : 's'} made`;
+  yield step(b, `${x.tag}: ${inst.length ? said : 'nothing to make'}${extra ? `, and ${extra.made} extra` : ''}${main.lost ? `; ${main.lost} had no room` : ''}${x.bonus === 'linger' && !x.again ? `; it will play again for ${def.bonus.turns || 2} turns` : ''}.`, refs, main.made || main.fees || extra?.made ? 'play' : 'miss');
+}
 function* play(b, s, e, opt = {}) {
   const def = TRICKS[e.trick.id], o = b.sides[1 - s.idx], inv = def.type === 'investment', reprint = e.trick.rar === 'reprint';
   // a Reprint's older rule: an Expense plays its roll effect once per die (each die plus the Trait value); the
@@ -1174,6 +1209,7 @@ function* play(b, s, e, opt = {}) {
   if (!inv) { total += fz.boost - fz.enfeeble + 0 + (def.type === 'expense' ? fz.press : 0) + (def.vengeance ? s.paidLast || 0 : 0); }
   total = Math.max(0, Math.round(total * (inv ? investMult(effTrick(e)) : trickMult(effTrick(e)) * fz.mul) * (def.type === 'expense' ? heat(b.turn) : 1)));
   if (bonus === 'double') total *= 2;
+  if (bonus === 'bidmult') total *= Math.max(1, sum(e.paid || []) || e.bidValue || 1);
   const plusT = opt.plus || (reprint && def.type === 'expense' ? traitOf(effTrick(e)) : 0);
   const tag = `${opt.again ? `${opt.again}: ` : ''}${s.name}'s ${def.name} (${vals.join('+')}${plusT ? ` +${plusT} Trait` : ''}${bonus ? ', bonus' : ''})`;
   if (total >= 10 && !opt.again) for (const { cell } of allCells(s)) if (cell.roost) for (const egg of cell.chips.filter((ch) => ch.kind === 'egg')) { // a big trick hatches the eggs on your Roost
@@ -1183,7 +1219,7 @@ function* play(b, s, e, opt = {}) {
   const pierce = def.type === 'expense' && (fz.pierce || bonus === 'pierce');
   // re-find the origin: positions may have changed since the target was picked
   let origin = null;
-  if (t && def.approach !== 'none') {
+  if ((t || def.side === 'any') && def.approach !== 'none') {
     const valid = validTargets(b, s, e, pierce), want = e.target || valid[0];
     const far = (x) => (x.side !== want.side ? 1000 : 0) + Math.abs(x.c - want.c) * 10 + Math.abs(x.r - want.r);
     const lane = ['front', 'rear', 'body'].includes(def.approach);
@@ -1220,6 +1256,7 @@ function* play(b, s, e, opt = {}) {
       }
       yield step(b, placed ? `${tag}: ${placed}¢ of Debt on ${hit.length} stack${hit.length > 1 ? 's' : ''}${tail()}.` : `${tag}: the fee is ${[...notes].join(', ') || 'lost'}.`, hit.map((x) => ref(t || o, x.r, x.c)), placed || notes.size ? 'play' : 'miss'); return;
     }
+    case 'chips': yield* playChips(b, s, e, def, { t: t || o, origin, total, vals, bonus, pierce, tag, again: opt.again }); return;
     case 'block': { const kind = bonus === 'counter' ? 'counter' : 'block'; const n = Math.min(total, 60);
       const left = addToMeter(b, s, Array.from({ length: n }, () => mkChip(b, kind)), origin, 'spawn');
       yield step(b, `${tag}: ${n} ${kind === 'counter' ? 'Counter' : 'Block'} chips to the Meter${overText(left)}.`, origin ? [origin] : [], 'play'); return; }
@@ -1634,6 +1671,9 @@ function* sidePhase(b, s, type, cx) {
     for (const rp of tops(s, 'repeater').filter((x) => x.n === roll)) for (let k = 0; k <= rp.charge; k++) yield* play(b, s, e, { again: 'Repeater' });
   }
   for (const mm of tops(s, 'mimic')) { void mm; if (!done.length) break; const e = b.rng.pick(done); cx.uid = e.uid; yield* play(b, s, e, { again: 'Mimic' }); }
+  for (const ec of s.echoes.filter((x) => x.phase === type && x.from !== b.turn)) { // lingering made tricks play again with the same roll
+    cx.uid = ec.e.uid; yield* play(b, s, ec.e, { again: 'Lingering' }); ec.left--; }
+  s.echoes = s.echoes.filter((x) => x.left > 0);
 }
 export function* resolve(b) {
   b.phase = 'resolve';

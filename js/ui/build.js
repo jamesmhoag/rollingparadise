@@ -5,6 +5,8 @@ import { app } from './app.js';
 import * as D from '../data.js';
 import * as B from '../build/draft.js';
 import { t } from '../text.js';
+import { trickMaker, newTrick } from './trickmaker.js';
+import { isMade } from '../trickmaker.js';
 
 // the tables, grouped as the editor lists them
 const GROUPS = [
@@ -23,7 +25,7 @@ const entriesOf = (tb) => { const T = D.TABLES[tb]; const vals = Object.entries(
 const label = (tb, k) => { const v = D.TABLES[tb][k]; return isObj(v) && typeof v.name === 'string' ? v.name : k; };
 
 export function buildScene(root) {
-  const ui = { table: 'CLASSES', key: null, filter: '' };
+  const ui = { tool: 'tricks', table: 'CLASSES', key: null, filter: '' }; // tool: 'tricks' (the trick maker) or 'tables'
   const status = h('span', { class: 'sub' }), tables = h('div', { class: 'b-tables' }), entries = h('div', { class: 'b-entries' }), editor = h('div', { class: 'b-editor' });
   const filter = h('input', { class: 'b-filter', placeholder: t('build.filter'), oninput: (e) => { ui.filter = e.target.value.toLowerCase(); drawEntries(); } });
   const fileIn = h('input', { type: 'file', accept: '.js,.json', style: { display: 'none' }, onchange: (e) => importFile(e.target.files[0]) });
@@ -35,10 +37,20 @@ export function buildScene(root) {
 
   function drawStatus() { const n = B.count(); status.textContent = n ? t('build.status', { n }) : t('build.status.none'); }
   function drawTables() {
-    tables.replaceChildren(...GROUPS.flatMap(([g, list]) => [h('span', { class: 'cap', text: t(g) }),
-      ...list.filter((tb) => D.TABLES[tb]).map((tb) => h('button', { class: `b-item ${ui.table === tb ? 'on' : ''} ${B.changed(tb) ? 'ch' : ''}`, text: t(`build.table.${tb}`), onclick: () => { ui.table = tb; ui.key = null; ui.filter = ''; filter.value = ''; draw(); } }))]));
+    const tool = (k, label) => h('button', { class: `b-item tool ${ui.tool === k ? 'on' : ''}`, text: label, onclick: () => { ui.tool = k; ui.key = null; ui.filter = ''; filter.value = ''; draw(); } });
+    tables.replaceChildren(h('span', { class: 'cap', text: t('build.group.makers') }), tool('tricks', t('maker.title')),
+      ...GROUPS.flatMap(([g, list]) => [h('span', { class: 'cap', text: t(g) }),
+      ...list.filter((tb) => D.TABLES[tb]).map((tb) => h('button', { class: `b-item ${ui.tool === 'tables' && ui.table === tb ? 'on' : ''} ${B.changed(tb) ? 'ch' : ''}`, text: t(`build.table.${tb}`), onclick: () => { ui.tool = 'tables'; ui.table = tb; ui.key = null; ui.filter = ''; filter.value = ''; draw(); } }))]));
   }
   function drawEntries() {
+    if (ui.tool === 'tricks') {
+      const keys = Object.keys(D.TRICKS); if (!ui.key || !D.TRICKS[ui.key]) ui.key = keys[0]; filter.style.display = '';
+      const shown = keys.filter((k) => !ui.filter || `${k} ${D.TRICKS[k].name}`.toLowerCase().includes(ui.filter));
+      entries.replaceChildren(btn(t('maker.new'), () => { const id = newTrick(); if (id) { ui.key = id; draw(); } }, t('maker.new.tip'), 'small go'),
+        ...shown.map((k) => h('button', { class: `b-item ${ui.key === k ? 'on' : ''} ${B.changed(D.subPath('TRICKS', k)) ? 'ch' : ''}`, onclick: () => { ui.key = k; draw(); } },
+          h('b', { text: D.TRICKS[k].name }), h('small', { text: `${D.TYPES[D.TRICKS[k].type]?.name || D.TRICKS[k].type} · ${isMade(D.TRICKS[k]) ? t('maker.made') : t('maker.classic')}` }))));
+      return;
+    }
     const keys = entriesOf(ui.table);
     filter.style.display = keys ? '' : 'none';
     if (!keys) { entries.replaceChildren(h('p', { class: 'sub', text: t('build.oneBlock') })); return; }
@@ -48,6 +60,7 @@ export function buildScene(root) {
       h('b', { text: label(ui.table, k) }), label(ui.table, k) !== k ? h('small', { text: k }) : null)));
   }
   function drawEditor() {
+    if (ui.tool === 'tricks') { editor.replaceChildren(h('h2', { text: D.TRICKS[ui.key]?.name || '' }), h('p', { class: 'sub mono', text: D.subPath('TRICKS', ui.key) }), trickMaker(ui.key, draw)); return; }
     const keys = entriesOf(ui.table), path = keys ? D.subPath(ui.table, ui.key) : ui.table, v = D.getPath(path);
     editor.replaceChildren(
       h('div', { class: 'row between' }, h('h2', { text: keys ? label(ui.table, ui.key) : t(`build.table.${ui.table}`) }),
