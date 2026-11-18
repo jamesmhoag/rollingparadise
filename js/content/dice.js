@@ -103,12 +103,14 @@ export const CASTS = {
   plastic: { name: 'Plastic cast', kind: 'cast', mats: ['plastic'], out: 'plastic', fx: 'nullify', text: 'The rolled face becomes 0.' },
   metal: { name: 'Metal cast', kind: 'cast', mats: ['metal'], out: 'metal', fx: 'lucky', text: 'The rolled face becomes lucky 7.' },
   // two basic materials in equal parts: a complex material
-  sparkling: { name: 'Sparkling mix', kind: 'cast', mats: ['glass', 'metal'], out: 'sparkling', unlock: 'mix', fx: 'reconfigure',
-    text: 'Of the two rolled faces, the higher becomes their sum and the lower their difference.' },
+  // Sparkling is Orange's opposite: Orange adds into the high face and subtracts into the low; Sparkling subtracts
+  // into the high face and adds into the low
+  sparkling: { name: 'Sparkling mix', kind: 'cast', mats: ['glass', 'metal'], out: 'sparkling', unlock: 'mix', fx: 'reconfigure-low',
+    text: 'Of the two rolled faces, the higher becomes their difference and the lower their sum (the opposite of Orange).' },
   glimmering: { name: 'Glimmering mix', kind: 'cast', mats: ['glass', 'plastic'], out: 'glimmering', unlock: 'mix', fx: 'pair', pair: ['nullify', 'lucky'],
     text: 'Of the two rolled faces, the higher becomes 0 and the lower lucky 7.' },
   swirling: { name: 'Swirling mix', kind: 'cast', mats: ['metal', 'plastic'], out: 'swirling', unlock: 'mix', fx: 'swirl',
-    text: 'Washes the die: every face showing the higher roll becomes their difference, every face showing the lower their sum.' },
+    text: 'Both rolled faces take one of the die\'s other values, at random, so that value shows three times.' },
   // the three complex materials with the three secondary dyes
   diamond: { name: 'Diamond', kind: 'cast', mats: ['sparkling', 'glimmering', 'swirling'], out: 'diamond', unlock: 'complex', needs: ['orange', 'purple', 'green'], fx: 'diamond',
     text: 'Rolls six dice (one per complex material, one per secondary dye); the pattern they make reshapes every face.' },

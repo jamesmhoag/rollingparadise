@@ -5,7 +5,7 @@ import * as D from '../data.js';
 import * as B from '../build/draft.js';
 import { chipEl, madeRules } from './parts.js';
 import { t } from '../text.js';
-import { SOURCES, LASTS, HEIGHT, FOOTPRINT, MUST, ON_TOP, IMMUNE, MOVES, REACH, TRIGGERS, ACTIONS, PULL_FROM, NEW_CHIP } from '../content/chipmaker.js';
+import { SOURCES, LASTS, HEIGHT, FOOTPRINT, MUST, ON_TOP, STICKY, IMMUNE, MOVES, REACH, TRIGGERS, ACTIONS, PULL_FROM, NEW_CHIP } from '../content/chipmaker.js';
 import { asMade } from '../chipmodel.js';
 
 const path = (id, ...ks) => ks.reduce((p, k) => D.subPath(p, k), D.subPath('MADE_CHIPS', id));
@@ -54,6 +54,7 @@ export function chipMaker(id, classic, redraw, onCopy) {
     field(t('chipmaker.foot'), select(['foot'], opts(FOOTPRINT), m.foot), ['foot']),
     field(t('chipmaker.must'), select(['must'], opts(MUST), m.must), ['must']),
     field(t('chipmaker.onTop'), select(['onTop'], opts(ON_TOP), m.onTop), ['onTop']),
+    field(t('chipmaker.sticky'), h('select', { onchange: (e) => set(['sticky'], e.target.value === 'yes' || undefined) }, Object.entries(STICKY).map(([k, v]) => h('option', { value: k, text: v, ...((m.sticky ? 'yes' : 'no') === k ? { selected: 'selected' } : {}) }))), ['sticky']),
     h('span', { class: 'cap', text: t('chipmaker.part.immune') }),
     field(t('chipmaker.immune'), checks(['immune'], IMMUNE, m.immune || []), ['immune']),
     h('span', { class: 'cap', text: t('chipmaker.part.behaviour') }),

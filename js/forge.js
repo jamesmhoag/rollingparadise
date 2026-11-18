@@ -102,14 +102,15 @@ function one(fx, fs, i) {
   }
 }
 // apply a one- or two-die effect for the rolled values; returns what changed, for the log
-function apply(fx, fs, rolls, pair) {
+function apply(fx, fs, rolls, pair, rng) {
   const before = fs.slice();
   if (rolls.length === 1) { const i = at(fs, rolls[0]); if (i < 0) return { missed: true }; one(fx, fs, i); return { faces: [i], before, after: fs.slice() }; }
   const hi = Math.max(...rolls), lo = Math.min(...rolls), iH = at(fs, hi), iL = at(fs, lo, iH);
-  if (fx === 'swirl') { // every face showing either value: the high ones become the difference, the low ones the sum
-    const H = fs.map((v, i) => (v === hi ? i : -1)).filter((i) => i >= 0), L = fs.map((v, i) => (v === lo && hi !== lo ? i : -1)).filter((i) => i >= 0);
-    if (!H.length && !L.length) return { missed: true };
-    for (const i of H) fs[i] = hi - lo; for (const i of L) fs[i] = hi + lo; return { faces: [...H, ...L], before, after: fs.slice() }; }
+  if (fx === 'swirl') { // both rolled faces take one value left over on the die, at random: it then shows three times
+    if (iH < 0 || iL < 0) return { missed: true };
+    const left = fs.filter((_, i) => i !== iH && i !== iL); if (!left.length) return { missed: true };
+    const v = left[rng ? rng.int(left.length) : 0]; fs[iH] = v; fs[iL] = v; return { faces: [iH, iL], before, after: fs.slice() }; }
+  if (fx === 'reconfigure-low') { if (iH < 0 && iL < 0) return { missed: true }; if (iH >= 0) fs[iH] = hi - lo; if (iL >= 0) fs[iL] = hi + lo; return { faces: [iH, iL].filter((i) => i >= 0), before, after: fs.slice() }; }
   if (iH < 0 && iL < 0) return { missed: true };
   if (fx === 'pair') { if (iH >= 0) one(pair[0], fs, iH); if (iL >= 0) one(pair[1], fs, iL); return { faces: [iH, iL].filter((i) => i >= 0), before, after: fs.slice() }; }
   if (iH < 0 || iL < 0) return { missed: true }; // two-face mixes need both faces
@@ -168,7 +169,7 @@ export function castFaces(rng, type, castKey, played = [], rolled = null) {
   }
   for (const [k, X, dice] of [[castKey, C, C.mats.length], ...played.map((d) => [d, DYES[d], DYES[d].dice])]) {
     const { rolls, again } = roll(take(dice));
-    const r = apply(X.fx, fs, rolls, X.pair), re = again ? tx('forge.rolled-again-on-doubles', { v: again === 1 ? 'once' : again + ' times' }) : '';
+    const r = apply(X.fx, fs, rolls, X.pair, rng), re = again ? tx('forge.rolled-again-on-doubles', { v: again === 1 ? 'once' : again + ' times' }) : '';
     log.push({ k, name: X.name, rolls, text: (r.missed ? tx('forge.no-face-shows-any', { join: rolls.join(' or ') }) : X.text) + re, missed: !!r.missed, after: fs.slice() });
   }
   return { faces: fs, log };
