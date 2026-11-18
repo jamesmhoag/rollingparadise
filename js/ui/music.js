@@ -20,7 +20,7 @@ export function initMusic(stage) {
   }
   const button = btn('♪', () => { on = !on; keep(on); if (on) play(); else audio?.pause(); mark(); },
     () => (on ? t('music.playing', { title: now().title, by: now().by, year: now().year }) : t('music.off')), 'small music-btn');
-  const mark = () => button.classList.toggle('off', !on);
+  const mark = () => button.classList.toggle('muted', !on);
   mark(); stage.append(button);
   const first = () => { document.removeEventListener('pointerdown', first, true); if (on) play(); };
   document.addEventListener('pointerdown', first, true);

@@ -489,7 +489,7 @@ export function boutScene(root, bout, ctx, onDone) {
   }
   function sync(fx = {}) {
     const plan = B.restorePlan(bout, me); // the live restore preview: follows the board after every action
-    syncFolds(); syncLedger();
+    syncFolds(); syncLedger(); syncMeters();
     layoutEffects();
     const cards = cardLayout();
     // trick cards
@@ -668,9 +668,6 @@ export function boutScene(root, bout, ctx, onDone) {
     if (s.drink) add('drk', `${s.drink.name} ×${s.drink.sips}`, () => drinkTip(s.drink));
     for (const k of Object.keys(s.turnBonus)) if (s.turnBonus[k]) add('tb' + k, `${signed(s.turnBonus[k])} ${D.STATS[k].name}`, () => statTip(k, B.tipOf(s, k)) + statSplit(B.statParts(s, k)), s.turnBonus[k] > 0 ? 'good' : 'bad');
     const P = B.restorePlan(bout, s), o = P.o;
-    add('rst', tx('table.badge-restore', { t: Math.min(P.nTricks, s.tapped.tricks.length), d: Math.min(P.nDice, s.tapped.dice.length) }), () => tx('table.badge-restore-tip', { bet: o.betColsOcc, betOf: o.betCols.length, stake: o.stakeColsOcc, stakeOf: o.stakeCols.length, tt: s.tapped.tricks.length, td: s.tapped.dice.length, t: P.tricks.length, d: P.dice.length }), s.tapped.tricks.length + s.tapped.dice.length ? '' : 'dim');
-    add('full', tx('table.badge-bet', { n: o.betSpaces, of: o.betTotal }), () => tx('table.badge-bet-tip', { n: o.betSpaces, of: o.betTotal, cols: s.dims.meterRows, v: s.fullTurn ? tx('table.badge-bet-now', { n: s.fullTurn.n }) : '' }), o.full ? 'good' : '');
-    add('ccc', tx('table.badge-stake', { n: o.stakeRows.filter((x) => x.n > 0).length, of: o.stakeRows.length }), () => (o.stakeCovered ? tx('table.ccc-on') : tx('table.ccc-off')), o.stakeCovered ? 'good' : 'bad');
     if (s.familiars) add('fam', `Familiar ×${s.familiars}`, `<b>Familiar</b><p>${D.TILTS.familiar.text}</p>`, 'good');
     if (s.interventions) add('int', 'Intervention', `<b>Intervention</b><p>${D.TILTS.intervention.text}</p>`, 'good');
     if (s.spawners) add('spn', `Spawner ×${s.spawners}`, `<b>Spawner</b><p>${D.TILTS.spawner.text}</p>`, 'bad');
@@ -678,6 +675,31 @@ export function boutScene(root, bout, ctx, onDone) {
     return out;
   }
   root.querySelector('.who.me').append(badgeBox[0]); root.querySelector('.who.them').append(badgeBox[1]);
+  // The occupancy meters, small pictures of the position instead of numbers (the numbers are in their hovers):
+  // Bet: every Bet space, lit when held (all lit is Fully Occupied); Stake: a bar per lane, lit when that lane of the
+  // Stake holds a chip (all lit keeps Charisma, Cunning and Conviction paying); Restore: a bar per column, side by side
+  // as on the table, lit when the column is held: each lit Bet column restores a tapped trick, each Stake column a die.
+  // Laid out as the position is, so yours mirror theirs.
+  const meterEls = [0, 1].map((si) => { const s = sideOf(si), mk = (k, guide, tipFn) => { const icon = h('span', { class: `mi mi-${k}` });
+      return { el: h('div', { class: `meter-i ${k}`, guide, tip: tipFn }, icon, h('small', { text: { bet: tx('table.meter-bet'), stake: tx('table.meter-stake'), restore: tx('table.meter-restore') }[k] })), icon }; };
+    const P = () => B.restorePlan(bout, s);
+    const M = { bet: mk('bet', 'bet-meter', () => { const o = P().o; return tx('table.badge-bet-tip', { n: o.betSpaces, of: o.betTotal, cols: s.dims.meterRows, v: s.fullTurn ? tx('table.badge-bet-now', { n: s.fullTurn.n }) : '' }); }),
+      stake: mk('stake', 'stake-rows', () => (P().o.stakeCovered ? tx('table.ccc-on') : tx('table.ccc-off'))),
+      restore: mk('restore', 'restore', () => { const p = P(), o = p.o; return tx('table.badge-restore-tip', { bet: o.betColsOcc, betOf: o.betCols.length, stake: o.stakeColsOcc, stakeOf: o.stakeCols.length, tt: s.tapped.tricks.length, td: s.tapped.dice.length, t: p.tricks.length, d: p.dice.length }); }) };
+    const box = h('div', { class: `meters s${si}` }, M.bet.el, M.stake.el, M.restore.el), seat = root.querySelector(si ? '.who.them' : '.who.me');
+    seat.insertBefore(box, si ? seat.firstChild : seat.querySelector('.worth').nextSibling); return M; });
+  function syncMeters() {
+    bout.sides.forEach((s, si) => { const M = meterEls[si], o = B.occupancy(s), m = s.dims.meterRows, cols = s.dims.cols;
+      const order = (rs) => (si === 0 ? rs.slice().reverse() : rs); // your rows run outward to the left, theirs to the right
+      const betRows = order([...Array(m).keys()]), stakeRs = order([...Array(s.dims.barRows).keys()].map((k) => m + k));
+      M.bet.icon.style.setProperty('--gc', betRows.length); M.bet.icon.style.setProperty('--gr', cols);
+      M.bet.icon.replaceChildren(...Array.from({ length: cols }, (_, c) => betRows.map((r) => h('i', { class: s.grid[r][c].hole ? 'x' : B.spaceOccupied(s, r, c) ? 'on' : '' }))).flat());
+      M.bet.el.classList.toggle('full', o.full);
+      M.stake.icon.replaceChildren(...o.stakeRows.map((x) => h('i', { class: x.n > 0 ? 'on' : '' }))); M.stake.el.classList.toggle('full', o.stakeCovered);
+      const col = (x, k) => h('i', { class: `${k}${x.n > 0 ? ' on' : ''}` }), bc = order(o.betCols).map((x) => col(x, 'b')), sc = order(o.stakeCols).map((x) => col(x, 's'));
+      M.restore.icon.replaceChildren(...(si === 0 ? [...sc, h('b'), ...bc] : [...bc, h('b'), ...sc]));
+      M.restore.el.classList.toggle('full', o.betColsOcc + o.stakeColsOcc === o.betCols.length + o.stakeCols.length); });
+  }
 
   // board highlights for the current mode
   let hover = null;
