@@ -14,7 +14,7 @@ import { MADE_CHIPS, HEIGHT } from './content/chipmaker.js';
 import { TUNING } from './content/tuning.js';
 import { rollDie, boutCopy, facesOf, upgrade as upgradeFaces } from './dice.js';
 export { rollDie };
-import { DIE_UPGRADES, TRICKS, TYPES, QDIE, FOIL, WEAR, defOf, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, CREATURES, ORBITALS, FELTS, TILTS, TILT_PRESSURE, DENOM_VALUES, tiltChance, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS } from './data.js';
+import { CLASSES as CLASS_BASE, DEFAULT_MAT, DIE_UPGRADES, TRICKS, TYPES, QDIE, FOIL, WEAR, defOf, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, CREATURES, ORBITALS, FELTS, TILTS, TILT_PRESSURE, DENOM_VALUES, tiltChance, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS } from './data.js';
 import { t as tx } from './text.js';
 
 // The turn: Draw tricks; Roll (pick the dice; they are thrown as the Bid opens); Bid on tricks, seeing both rolls;
@@ -193,7 +193,7 @@ function setDebt(b, cell, n, how) {
 export function debtTarget(cell) { const i = topPayableIdx(cell); return i < 0 ? null : cell.chips[i]; }
 // A step carries who acted, which trick, and which phase the House is calling, so the table can show it.
 // the player's side is named "You", so fix the grammar once here
-const say = (t) => t.replace(/\bYou's\b/g, 'Your').replace(/\bYou (plays|pays|charges|steals|gains|resists|evades|reflects|holds|wins|owes|takes)\b/g, (m, v) => tx('feed.you', { slice: v.slice(0, -1) })).replace(/\bYou is\b/g, 'You are').replace(/\bYou has\b/g, 'You have').replace(/(?<=[a-z,:] )Your\b/g, 'your').replace(/^You .*/, (m) => m.replace(/, (gain|steal)s /g, ', $1 '));
+const say = (t) => t.replace(/\bYou's\b/g, 'Your').replace(/\bYou (plays|pays|charges|steals|gains|resists|evades|reflects|holds|wins|owes|takes|restores)\b/g, (m, v) => tx('feed.you', { slice: v.slice(0, -1) })).replace(/\bYou is\b/g, 'You are').replace(/\bYou has\b/g, 'You have').replace(/(?<=[a-z,:] )Your\b/g, 'your').replace(/^You .*/, (m) => m.replace(/, (gain|steal)s /g, ', $1 '));
 function step(b, text, cells = [], kind = '') { text = say(text); const st = { text, cells, kind, fx: b.fx, ...(b.ctx || {}) }; b.fx = {}; if (text) b.log.push(text); return st; }
 const ref = (s, r, c) => ({ side: s.idx, r, c });
 
@@ -333,7 +333,7 @@ function mkSide(b, spec, idx) {
     idx, name: spec.name, cls: spec.cls, ai: !!spec.ai, title: spec.title || '', deploy: spec.deploy, why: spec.why || null,
     tip: { ...spec.tip }, c: { ...spec.c }, dims: { ...d }, rows,
     grid: Array.from({ length: rows }, () => Array.from({ length: d.cols }, () => ({ chips: [], hole: false, hard: 0 }))),
-    book: spec.tricks.map((t) => ({ ...t })), run: [], pouch: spec.dice.map(boutCopy),
+    book: spec.tricks.map((t) => ({ ...t })), run: [], pouch: spec.dice.map(boutCopy), tapped: { tricks: [], dice: [] }, turnSrc: [], fullBet: false,
     tray: [], used: { draw: 0, roll: 0, bid: 0 }, turnBonus: {}, rolled: {},
     status: { resist: 0, resistNext: 0, evade: null, evadeNext: null, reflect: 0, reflectAll: false, enfeebleNext: 0 },
     mods: { boost: 0, enfeeble: 0, press: 0, bend: null, mul: 1, pierce: false },
@@ -438,6 +438,7 @@ export function createBout(opts) {
     for (let k = 0; k < (spec.shields || 0); k++) addToMeter(b, s, Array.from({ length: s.dims.stackMax }, () => mkChip(b, 'block')));
     for (let k = 0; k < (spec.creatures || 0); k++) b.creatures.push(mkCreature(b, i, b.rng.range(1, 5)));
   });
+  for (const s of b.sides) s.fullBet = occupancy(s).full;
   startTurn(b);
   return b;
 }
@@ -465,13 +466,20 @@ function hurt(b, def, cr, notes) {
 function startTurn(b) {
   for (const s of b.sides) {
     s.used = { draw: 0, roll: 0, bid: 0 }; s.turnBonus = {}; s.rolled = {}; s.thrown = false; s.pick = { dice: [], flips: [] }; s.heat = heat(b.turn);
-    for (const f of s.food || []) { for (const [k, v] of Object.entries(f.mods)) s.turnBonus[k] = (s.turnBonus[k] || 0) + v; f.turns--; } // food still working
+    s.turnSrc = []; const temp = (k, n, from) => { if (!n) return; s.turnBonus[k] = (s.turnBonus[k] || 0) + n; s.turnSrc.push({ k, n, from }); };
+    for (const f of s.food || []) { for (const [k, v] of Object.entries(f.mods)) temp(k, v, f.label || 'Food'); f.turns--; } // food and drink still working
+    s.fullTurn = null;
+    if (s.fullBet) { // the Bet was Fully Occupied at the end of last turn: restore everything, +1 Draw, Roll and Bid per Bet column
+      const n = s.dims.meterRows, got = restoreAll(s);
+      for (const k of ['trickery', 'proficiency', 'ingenuity']) temp(k, n, 'Full Bet');
+      s.fullTurn = { n, ...got };
+    }
     s.food = (s.food || []).filter((f) => f.turns > 0);
     s.mods = { boost: 0, enfeeble: s.status.enfeebleNext, press: 0, bend: null, mul: 1, pierce: false }; s.wardUsed = 0; for (const x of powerChips(s)) delete x.ch.on;
     s.paidLast = s.paidTurn || 0; s.paidTurn = 0; // fees paid last turn, for Vengeance
     s.status.enfeebleNext = 0; s.absorbUsed = {}; s.forgotUsed = {};
     const curses = allCells(s).reduce((n, x) => n + x.cell.chips.filter((ch) => ch.cursed).length, 0); s.cursed = curses; // a Cursed chip in your pile: Draw, Roll or Bid 1 lower
-    for (let k = 0; k < curses; k++) { const can = ['trickery', 'proficiency', 'ingenuity'].filter((x) => tipOf(s, x) > 1); if (can.length) { const x = b.rng.pick(can); s.turnBonus[x] = (s.turnBonus[x] || 0) - 1; } }
+    for (let k = 0; k < curses; k++) { const can = ['trickery', 'proficiency', 'ingenuity'].filter((x) => tipOf(s, x) > 1); if (can.length) temp(b.rng.pick(can), -1, 'Curse'); }
   }
   b.creatures = b.creatures.filter((cr) => !cr.gone);
   b.phase = 'draw'; openPhase(b);
@@ -532,8 +540,8 @@ export const REWARD = { draw: { stat: 'trickery', c: 'charisma', what: 'Steal' }
 export function rewardOf(s, phase) {
   const R = REWARD[phase]; if (!R) return null;
   const used = s.used[phase] + (phase === 'roll' && !s.thrown && s.pick ? s.pick.dice.length + s.pick.flips.length : 0); // dice picked count before they are thrown
-  const unused = Math.max(0, tipOf(s, R.stat) - used), n = cOf(s, R.c) * unused;
-  return { phase, unused, n, what: R.what, total: tipOf(s, R.stat) };
+  const unused = Math.max(0, tipOf(s, R.stat) - used), gated = !occupancy(s).stakeCovered, n = gated ? 0 : cOf(s, R.c) * unused;
+  return { phase, unused, n, what: R.what, total: tipOf(s, R.stat), gated };
 }
 function phaseRewards(b, phase) {
   b.rewards = b.rewards || [];
@@ -572,7 +580,66 @@ export function addPower(b, s, n) {
 }
 // Saturate's bonus knocks off the Power your opponent added (Empower's chips stay)
 function dropPower(b, s) { for (const x of powerChips(s)) if (!x.ch.maker) { x.cell.chips.splice(x.cell.chips.indexOf(x.ch), 1); b.fx[x.ch.id] = 'void'; } }
-function homeDie(b, s, d) { if (d.chip) addToMeter(b, s, [d.chip], null, 'spawn'); else { const { value, t, ...die } = d; void value; void t; s.pouch.push(die); } } // a flipped chip comes back to the Bet
+function homeDie(b, s, d, at) { if (d.chip) addToMeter(b, s, [d.chip], null, 'spawn'); else { const { value, t, ...die } = d; void value; void t; s.tapped.dice.push({ die, at }); } } // a flipped chip comes back to the Bet; a die taps
+
+// ---------- occupancy, tapping and restoring ----------
+// Words: a space is OCCUPIED with at least one chip in it (FILLED would mean its stack is at full height). On the
+// table a Bet or Stake COLUMN is one depth line (engine row r, its 5 spaces across the lanes) and a ROW is a lane
+// (engine column c). Columns vary with Versatility and Depth; rows are always 5.
+// A space covered by a big chip's footprint counts as its home space; a Hole holds no chips, so the Bet does not
+// need it to be Fully Occupied.
+const holds = (s, r, c) => !s.grid[r][c].hole;
+export const spaceOccupied = (s, r, c) => { const h0 = homeOf(s, r, c); return s.grid[h0.r][h0.c].chips.some((ch) => ch.kind !== 'stray'); };
+export function occupancy(s) {
+  const m = s.dims.meterRows, cols = s.dims.cols, betCols = [], stakeCols = [], stakeRows = [];
+  for (let r = 0; r < s.rows; r++) { let n = 0, of = 0; for (let c = 0; c < cols; c++) { if (holds(s, r, c)) of++; if (spaceOccupied(s, r, c)) n++; } (r < m ? betCols : stakeCols).push({ r, n, of }); }
+  for (let c = 0; c < cols; c++) { let n = 0; for (let r = m; r < s.rows; r++) if (spaceOccupied(s, r, c)) n++; stakeRows.push({ c, n }); }
+  const betSpaces = sum(betCols, (x) => x.n), betTotal = sum(betCols, (x) => x.of);
+  return { betCols, stakeCols, stakeRows, betSpaces, betTotal, betColsOcc: betCols.filter((x) => x.n > 0).length, stakeColsOcc: stakeCols.filter((x) => x.n > 0).length,
+    stakeCovered: stakeRows.every((x) => x.n > 0), full: betTotal > 0 && betSpaces >= betTotal };
+}
+// Restore order: tapped longest first. Ties: tricks by the phase they belong to, worse quality, basic before exotic
+// prints; dice smaller before larger, plain before fancy; then the one you got first.
+const RAR = { basic: 0, misprint: 1, reprint: 2, foil: 3 };
+const exotic = (t) => (t.foil ? 3 + t.foil : RAR[t.rar] || 0) + (t.gem ? 1 : 0);
+const fancy = (d) => (d.up?.length || 0) + (d.mat && d.mat !== DEFAULT_MAT ? 1 : 0) + (d.bone ? 1 : 0) + (d.cast ? 1 : 0) + (d.faces ? 1 : 0);
+const cmp = (a, b) => { for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1; return 0; };
+const trickKey = (x) => [x.at, TYPES[phaseOf(x.trick.id)]?.order ?? 9, x.trick.q || 1, exotic(x.trick), String(x.trick.uid)];
+const dieKey = (x) => [x.at, DICE[x.die.type]?.faces ?? 99, fancy(x.die), x.die.id];
+export const tappedInOrder = (s) => ({ tricks: s.tapped.tricks.slice().sort((a, b) => cmp(trickKey(a), trickKey(b))), dice: s.tapped.dice.slice().sort((a, b) => cmp(dieKey(a), dieKey(b))) });
+// What the end of this turn restores if the table stays as it is now: one trick per occupied Bet column, one die per
+// occupied Stake column. The UI calls this after every action, so it follows the board as effects change it.
+export function restorePlan(b, s) {
+  const o = occupancy(s), q = tappedInOrder(s);
+  return { o, nTricks: o.betColsOcc, nDice: o.stakeColsOcc, tricks: q.tricks.slice(0, o.betColsOcc).map((x) => x.trick.uid), dice: q.dice.slice(0, o.stakeColsOcc).map((x) => x.die.id), fullNext: o.full };
+}
+function untap(s, plan) {
+  const tr = s.tapped.tricks.filter((x) => plan.tricks.includes(x.trick.uid)), di = s.tapped.dice.filter((x) => plan.dice.includes(x.die.id));
+  s.tapped.tricks = s.tapped.tricks.filter((x) => !tr.includes(x)); s.tapped.dice = s.tapped.dice.filter((x) => !di.includes(x));
+  for (const x of tappedSort(tr, trickKey)) s.book.push(x.trick); for (const x of tappedSort(di, dieKey)) s.pouch.push(x.die);
+  return { tricks: tr.length, dice: di.length };
+}
+const tappedSort = (list, key) => list.slice().sort((a, b) => cmp(key(a), key(b)));
+function restoreAll(s) { return untap(s, { tricks: s.tapped.tricks.map((x) => x.trick.uid), dice: s.tapped.dice.map((x) => x.die.id) }); }
+// End of turn: restore by column, then note whether the Bet is Fully Occupied for the start of the next turn.
+function* restorePhase(b) {
+  const cxs = b.sides.map((s) => ({ phase: 'house', who: s.idx }));
+  yield* zip(b, b.sides.map((s) => (function* () {
+    const plan = restorePlan(b, s), got = untap(s, plan); s.fullBet = plan.o.full;
+    const left = s.tapped.tricks.length + s.tapped.dice.length;
+    if (!got.tricks && !got.dice && !s.fullBet && !left) return;
+    const cells = []; for (const col of [...plan.o.betCols, ...plan.o.stakeCols]) if (col.n) for (let c = 0; c < s.dims.cols; c++) if (spaceOccupied(s, col.r, c)) cells.push(ref(s, col.r, c));
+    yield step(b, tx('feed.restores', { name: s.name, tricks: got.tricks, dice: got.dice, bet: plan.o.betColsOcc, betOf: plan.o.betCols.length, stake: plan.o.stakeColsOcc, stakeOf: plan.o.stakeCols.length })
+      + (s.fullBet ? tx('feed.full-bet-next', { name: s.name, n: s.dims.meterRows }) : ''), cells, 'bonus');
+  })()), cxs);
+}
+// A stat as it stands this turn: the class's base, what gear and the run add (jacket, cards, rest, floor), and each
+// temporary change with where it came from (food, drink, Full Bet, Curse).
+export function statParts(s, k) {
+  const inTip = k in s.tip, base = (inTip ? CLASS_BASE[s.cls]?.tip?.[k] : CLASS_BASE[s.cls]?.c?.[k]) ?? (inTip ? s.tip[k] : s.c[k]);
+  const own = inTip ? s.tip[k] : s.c[k], temp = (s.turnSrc || []).filter((x) => x.k === k);
+  return { k, base, gear: own - base, temp, tempN: sum(temp, (x) => x.n), total: inTip ? tipOf(s, k) : cOf(s, k) };
+}
 
 // ---------- food ----------
 // Eat a food chip from the top of one of your stacks. Its bonus starts now and runs for its turns.
@@ -2003,12 +2070,12 @@ export function* resolve(b) {
   }
   for (const s of b.sides) s.fz = null;
   b.ctx = { phase: 'house' };
-  // finished tricks and their dice go back to the Book and Pouch
-  let done = 0;
+  // finished tricks and their dice tap: they wait in the tapped piles until restored (flipped chips still come home)
+  let done = 0; const at = b.tapClock = (b.tapClock || 0) + 1; // one stamp for everything tapped in this action
   for (const { s, e } of plays) {
     if (e.lingerLeft > 0) { e.lingerLeft--; continue; }
-    s.run.splice(s.run.indexOf(e), 1); s.book.push(e.trick); done++;
-    for (const d of e.dice) homeDie(b, s, d);
+    s.run.splice(s.run.indexOf(e), 1); s.tapped.tricks.push({ trick: e.trick, at }); done++;
+    for (const d of e.dice) homeDie(b, s, d, at);
   }
   if (done) yield step(b, '', [], 'return');
   for (const s of b.sides) { b.ctx = { phase: 'house', who: s.idx }; yield* madeWork(b, s, 'turn', false); }
@@ -2047,6 +2114,8 @@ export function* resolve(b) {
     }
   }
   b.ctx = { phase: 'house' };
+  yield* restorePhase(b);
+  b.ctx = { phase: 'house' };
   const w = b.sides.map(worth);
   if (!b.rules.sandbox && (w[0] <= 0 || w[1] <= 0 || b.turn >= b.rules.maxTurns)) { // a sandbox bout (test table) runs until you leave it
     b.over = true; b.winner = w[0] > w[1] ? 0 : 1; b.timeout = w[0] > 0 && w[1] > 0;
@@ -2078,7 +2147,7 @@ export function effectChips(b, s) {
   if (st.reflect) add('reflect', 'Reflect', '◑', st.reflect, 3, true, `Up to this much of ${st.reflectAll ? 'every fee' : 'the next fee'} is sent back.`);
   if (st.resistNext) add('resist-next', 'Resist next turn', '⛉', st.resistNext, 3, true, 'Endure\'s bonus: next turn every fee charged here is reduced by this much.');
   if (st.evadeNext != null) add('evade-next', 'Evade next turn', '〰', st.evadeNext, 3, true, 'Hop\'s bonus: next turn any fee larger than this misses.');
-  for (const [k, v] of Object.entries(s.turnBonus || {})) if (v) add('tb-' + k, `${v > 0 ? '+' : ''}${v} ${STAT_SHORT[k] || k}`, v > 0 ? '+' : '−', Math.abs(v), 1, v > 0, 'From a drink or food, this turn.');
+  for (const [k, v] of Object.entries(s.turnBonus || {})) if (v) add('tb-' + k, `${v > 0 ? '+' : ''}${v} ${STAT_SHORT[k] || k}`, v > 0 ? '+' : '−', Math.abs(v), 1, v > 0, `This turn, from ${(s.turnSrc || []).filter((x) => x.k === k).map((x) => `${x.from} ${x.n > 0 ? '+' : ''}${x.n}`).join(', ') || 'food or drink'}.`);
   (s.food || []).forEach((f, i) => add('food-' + i, f.label || 'Food', '🍴', f.turns, 1, true, `${Object.entries(f.mods).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${STAT_SHORT[k] || k}`).join(', ')} for ${f.turns} more turn${f.turns > 1 ? 's' : ''}.`));
   if (s.familiars) add('familiar', 'Familiar', '🐾', s.familiars, 1, true, 'Clears a Debt or hazard chip each turn and may chase creatures away.');
   if (s.bees?.length) add('bees', 'Bumble Bees', '🐝', s.bees.length, 1, true, 'Familiars from your Hive: they sting creatures over your table and pollinate your Flowers into Honey.');

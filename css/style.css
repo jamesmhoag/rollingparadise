@@ -745,3 +745,18 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
   z-index: 7; opacity: 0; pointer-events: none; transition: opacity .25s; cursor: pointer; }
 .peek-panel.book { left: 44px; width: 234px; } .peek-panel.dice { left: 832px; width: 204px; }
 .scene.bout.peek-book .peek-panel.book, .scene.bout.peek-dice .peek-panel.dice { opacity: 1; pointer-events: auto; }
+
+/* tapping and restoring: tapped tricks wait under the Book and tapped dice after the Pouch; the ones the end of this
+   turn restores (as the board stands now) are ringed. Temporary stat changes colour their stat (up or down). */
+.good-t { color: var(--good); } .bad-t { color: var(--bad); }
+.tcard.tapped { filter: grayscale(.85) brightness(.7); cursor: default; } .tcard.tapped .c-compact .req { visibility: hidden; }
+.tcard.tapped::after { content: 'TAPPED'; position: absolute; right: 6px; top: 4px; font-size: 8.5px; letter-spacing: .14em; color: var(--dim); }
+.tcard.tapped.restoring { filter: grayscale(.4) brightness(.85); outline: 1px dashed var(--good) !important; }
+.tcard.tapped.restoring::after { content: 'RESTORES'; color: var(--good); }
+.die.tapped { filter: grayscale(.85) brightness(.6); cursor: default; }
+.die.tapped.restoring { filter: grayscale(.3) brightness(.85); outline: 1px dashed var(--good); outline-offset: 1px; }
+.pill.temp b, .pill.temp > span { color: var(--amber); }
+.pill.temp.temp-up::before { content: '▲'; font-size: 8px; margin-right: 2px; color: var(--good); }
+.pill.temp.temp-down::before { content: '▼'; font-size: 8px; margin-right: 2px; color: var(--bad); }
+.statsplit { font-size: 11.5px; color: var(--dim); } .statsplit .temp-up { color: var(--good); } .statsplit .temp-down { color: var(--bad); }
+.badge.dim { opacity: .55; }

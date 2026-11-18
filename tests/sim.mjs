@@ -24,8 +24,8 @@ function check(bout) {
       if (firstHaz >= 0 && cell.chips.slice(firstHaz).some((ch) => !B.isHazard(ch))) throw new Error('hazard under a chip');
       for (const ch of cell.chips) { if (ids.has(ch.id)) throw new Error('duplicate chip'); ids.add(ch.id); }
     }
-    const total = s.book.length + s.run.length; if (total !== s._tricks) throw new Error('trick lost');
-    const dice = s.pouch.length + s.tray.filter((d) => !d.chip).length + s.run.reduce((n, e) => n + e.dice.filter((d) => !d.chip).length, 0); // dice left in the roll stay there if (dice !== s._dice) throw new Error('die lost');
+    const total = s.book.length + s.run.length + s.tapped.tricks.length; if (total !== s._tricks) throw new Error('trick lost'); // tapped tricks wait to be restored
+    const dice = s.pouch.length + s.tapped.dice.length + s.tray.filter((d) => !d.chip).length + s.run.reduce((n, e) => n + e.dice.filter((d) => !d.chip).length, 0); // dice left in the roll stay there if (dice !== s._dice) throw new Error('die lost');
   }
   if (bout.stage.paid.some((v) => v < 0)) throw new Error('negative stage');
 }
