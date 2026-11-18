@@ -506,8 +506,8 @@ export function canAct(b, s, phase = b.phase) {
   return false;
 }
 export const placedThisTurn = (b, s) => s.run.some((e) => e.dice.some((d) => d.t === b.turn));
-// Dice in the roll must be used: one that fits a shown trick has to go on one. A die with nowhere to go stays in the
-// roll, keeping its value, until a trick has room for it (it is never rerolled).
+// Dice in the roll are kept: each Bluff you put at least one on a trick (when one fits), and the rest stay in the
+// roll, keeping their values, turn after turn, to pick from later, like tricks waiting on your Run (never rerolled).
 export const trayPlaceable = (s) => s.tray.some((d) => s.run.some((e) => fitsOn(d, e)));
 export const canThrowAny = (s) => !s.thrown && tipOf(s, 'proficiency') > 0 && s.run.some(roomOn) && (flippable(s).length > 0 || s.pouch.some((d) => s.run.some((e) => fitsOn(d, e))));
 // The most a trick holds: its dice count. Room left on it now.
@@ -517,7 +517,7 @@ export function needOf(b, s) {
   if (b.phase === 'draw') return s.used.draw > 0 || !canAct(b, s) ? null : tx('feed.draw-at-least-one');
   if (b.phase === 'roll') return s.thrown || !canThrowAny(s) || s.pick.dice.length + s.pick.flips.length ? null : tx('feed.pick-at-least-one');
   if (b.phase === 'bid') return s.used.bid > 0 || !canAct(b, s) ? null : tx('feed.bid-at-least-one');
-  if (b.phase === 'aim') return trayPlaceable(s) ? tx('feed.put-every-die-in') : null;
+  if (b.phase === 'aim') return !trayPlaceable(s) || placedThisTurn(b, s) ? null : tx('feed.put-a-die-in');
   return null;
 }
 // Close the current phase for both Rollers. Returns false if either still owes its required action (unless forced).

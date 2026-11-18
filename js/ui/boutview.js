@@ -66,12 +66,15 @@ export function boutScene(root, bout, ctx, onDone) {
   }
   const dieSlot = (cl, i) => ({ x: cl.x + 7 + (i % 3) * 36, y: cl.y + 50 + Math.floor(i / 3) * 36 });
   // a dice column, top-aligned with the Run: the Roll's tray, then the Pouch (titles sit on the row above)
-  const DY = { tray: DICE_Y, pouch: DICE_Y + 86, dice: DICE_Y + 104 }; // just under the commit button; five dice a row
+  // just under the commit button, five dice a row. The roll keeps dice from turn to turn, so it grows a row at a
+  // time and the Pouch moves down under it.
+  const trayRows = (si = 0) => Math.max(2, Math.ceil(sideOf(si).tray.length / 5));
+  const DY = { tray: DICE_Y, get pouch() { return DICE_Y + trayRows() * 36 + 14; }, get dice() { return this.pouch + 18; } };
   const pouchSlot = (i, n) => { const x0 = diceAt() + 6;
     if (!diceOpen() && ui.peek !== 'dice') return { x: runSpan().dice + 3, y: DICE_Y + 22 + Math.min(i, 30) * 6, folded: true }; // folded into its spine
     if (bout.phase === 'roll' && me.thrown && ui.peek !== 'dice') return { x: x0 + Math.min(i, 30) * Math.min(10, 150 / Math.max(1, n)), y: DY.dice + 4 - (i % 2) * 2 }; // thrown: the rest of the Pouch closes up
     const per = n > 15 ? 6 : 5, st = n > 15 ? 30 : 36; return { x: x0 + (i % per) * st, y: DY.dice + Math.floor(i / per) * st }; };
-  const traySlot = (i, si = 0) => ({ x: diceAt(si) + 10 + (i % 5) * 36, y: DY.tray + 8 + Math.floor(i / 5) * 36 }); // the roll: room for two rows of dice
+  const traySlot = (i, si = 0) => ({ x: diceAt(si) + 10 + (i % 5) * 36, y: DY.tray + 8 + Math.floor(i / 5) * 36 }); // the roll: a row per five dice kept
   // the Stage: what each Roller has paid, stacked in front of the House
   // the Pit: each Roller's lost chips, in the order they were lost, filling two stacks on their own side, then rising
   const pitSlot = (si, k, n) => { const per = Math.ceil(n / 2), step = Math.min(4, (PIT.bottom - PIT.top - CHIP) / Math.max(1, per - 1));
@@ -473,13 +476,13 @@ export function boutScene(root, bout, ctx, onDone) {
     const R = runSpan(), dx = diceAt();
     runEmpty.style.left = R.l + 'px'; runEmpty.style.width = R.w + 'px'; ztRun.style.left = R.l + 6 + 'px';
     for (const el of [ztRoll, ztPouch]) el.style.left = dx + 6 + 'px';
-    trayBox.style.left = dx + 'px'; trayCap.style.left = dx + 84 + 'px';
+    trayBox.style.left = dx + 'px'; trayCap.style.left = dx + 84 + 'px'; trayBox.style.height = trayRows(0) * 36 + 8 + 'px'; ztPouch.style.top = DY.pouch + 'px';
     spines.dice.style.left = R.dice + 'px'; peekPanels.dice.style.left = R.dice - 212 + 'px';
     // their half, mirrored: dice by the middle, then their Run, their Book (closed) at the far edge
     const O = runSpan(1), od = diceOpen(1);
     oppEmpty.style.left = O.l + 'px'; oppEmpty.style.width = O.w + 'px'; oppEmpty.style.opacity = opp.run.length ? 0 : 1; them.run.style.left = O.l + 6 + 'px';
     for (const el of [them.roll, them.pouch]) el.style.left = O.dice + 6 + 'px';
-    them.tray.style.left = O.dice + 'px'; them.dspine.style.left = O.dice + 'px'; them.bspine.style.left = O.book + 'px';
+    them.tray.style.left = O.dice + 'px'; them.tray.style.height = trayRows(1) * 36 + 8 + 'px'; them.pouch.style.top = DICE_Y + trayRows(1) * 36 + 14 + 'px'; them.dspine.style.left = O.dice + 'px'; them.bspine.style.left = O.book + 'px';
     for (const el of [them.roll, them.pouch, them.tray]) el.classList.toggle('away', !od); them.dspine.classList.toggle('away', od);
     them.tray.classList.toggle('has', opp.tray.length > 0);
     swapText(them.pouch, `${tx('table.pouch')} ${opp.pouch.length}`); swapText(them.dspine.firstChild, `${tx('table.pouch')} ${opp.pouch.length}`); swapText(them.bspine.firstChild, `${tx('table.book')} ${opp.book.length}`);
