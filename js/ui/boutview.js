@@ -13,9 +13,6 @@ import { t as tt } from '../text.js';
 import { facesOf, faceValue, dieName } from '../dice.js';
 import { solidEl } from './solid.js';
 import { t as tx } from '../text.js';
-import { app } from './app.js';
-import { saveMeta } from '../run.js';
-import { NEON } from '../content/assets.js';
 
 // the table: the House's phase track runs along the top edge (y 100-124), the positions below it, and between them
 // the Pit (right under the House's arms), each Roller's pot, and the ledger of bids and tapped pieces
@@ -48,7 +45,7 @@ export function boutScene(root, bout, ctx, onDone) {
   const sideOf = (si) => bout.sides[si];
   const bookOpen = (si = 0) => si === 0 && bout.phase === 'draw';
   const diceOpen = (si = 0) => { const s = sideOf(si); return (bout.phase === 'roll' && !s.thrown) || s.tray.length > 0; };
-  const RUN_Y = 466, TITLE_Y = 454, DICE_Y = 452, CARD_H = 242, G = 10, BOOK_W = 180, DICE_W = 196, SPINE = 28;
+  const RUN_Y = 478, TITLE_Y = 466, DICE_Y = 452, CARD_H = 230, G = 10, BOOK_W = 180, DICE_W = 196, SPINE = 28;
   const HALF = [{ l: 14, r: 630 }, { l: 650, r: 1266 }];
   const ckey = (si, uid) => (si ? 'o' + uid : uid), dkey = (si, id) => (si ? 'o' + id : id); // their ids are counted apart from yours
   function runSpan(si = 0) {
@@ -120,19 +117,13 @@ export function boutScene(root, bout, ctx, onDone) {
   let lightsBase = 'idle', flashing = false, lightsT = 0;
   function lights(mode, ms) { clearTimeout(lightsT); flashing = true; marquee.className = `marquee ${mode}`; if (ms) lightsT = setTimeout(() => { flashing = false; marquee.className = `marquee ${lightsBase}`; }, ms); }
   function lightsAt(base) { lightsBase = base; if (!flashing) marquee.className = `marquee ${base}`; }
-  // neon colours for each Roller: click either name to pick them; kept between bouts
-  const neon = () => ({ you: NEON[0].c, them: NEON[1].c, ...(app.meta?.neon || {}) });
-  const paintNeon = () => { const n = neon(); root.style.setProperty('--you', n.you); root.style.setProperty('--them', n.them); };
-  let palette = null;
-  function togglePalette() {
-    if (palette) { palette.remove(); palette = null; return; }
-    const row = (k, label) => h('div', { class: 'np-row' }, h('em', { text: label }), NEON.map((c) => h('button', { class: `np-sw${neon()[k] === c.c ? ' on' : ''}`, style: { '--sw': c.c }, title: c.name,
-      onclick: (ev) => { ev.stopPropagation(); if (app.meta) { app.meta.neon = { ...neon(), [k]: c.c }; saveMeta(app.meta); } paintNeon(); togglePalette(); togglePalette(); } })));
-    palette = h('div', { class: 'neon-pick', onclick: (ev) => ev.stopPropagation() }, h('b', { text: tx('table.neon-pick') }), row('you', D.heroName(me.cls)), row('them', opp.name),
-      btn(tx('table.neon-done'), () => togglePalette(), null, 'small')); root.append(palette);
-  }
+  // each Roller's name as a neon sign: the name in script, their class (or title) in capitals under it. The colours
+  // are D.NEON's, set in Build mode: a tube colour and a glow colour for the frame, the name and the class.
+  const nameSign = (name, cls, tipFn) => h('div', { class: 'name nsign', tip: tipFn }, h('b', { class: 'neon-name', text: name }), h('span', { class: 'neon-class', text: cls }));
+  function paintNeon() { for (const [who, N] of Object.entries(D.NEON)) for (const [part, pair] of Object.entries(N)) pair.forEach((c, i) => root.style.setProperty(`--${who}-${part}${i + 1}`, c));
+    root.style.setProperty('--you', D.NEON.you.name[0]); root.style.setProperty('--them', D.NEON.them.name[0]); }
   const header = h('div', { class: 'bout-head' },
-    h('div', { class: 'who me' }, h('div', { class: 'name', onclick: () => togglePalette(), tip: tx('table.neon-name-tip') }, h('b', { class: 'neon-name', text: D.heroName(me.cls) })),
+    h('div', { class: 'who me' }, nameSign(D.CLASSES[me.cls].hero || D.CLASSES[me.cls].name, D.CLASSES[me.cls].name, () => tx('table.sign-tip', { name: D.heroName(me.cls), cls: D.CLASSES[me.cls].name })),
       h('div', { class: 'worth', tip: worthTip(me) }, 'Worth ', worthEl[0], '¢', owesEl[0]),
       h('div', { class: 'pills steps' }, STEPS.map(([k, name, stat, reward, what], i) => (pillEl[k] = h('span', { class: 'pill step', tip: pillTip(stat, reward, what, k) },
         h('em', { text: String(i + 1) }), ` ${name} `, (pill[k] = h('span'))))))),
@@ -140,7 +131,7 @@ export function boutScene(root, bout, ctx, onDone) {
       h('div', { class: 'hs-name', text: tx('table.house-sign') }),
       h('div', { class: 'turn', tip: () => tx('table.turn-both-rollers-plan', { turn: bout.turn, LASTCALL: B.LAST_CALL + 1, maxTurns: bout.rules.maxTurns }) }, 'Turn ', h('b', { class: 'num turn-n', text: '1' }))))),
     h('div', { class: 'who them' }, h('div', { class: 'worth', tip: worthTip(opp) }, 'Worth ', worthEl[1], '¢', owesEl[1]),
-      h('div', { class: 'name', onclick: () => togglePalette(), tip: tx('table.neon-name-tip') }, h('b', { class: 'neon-name', text: opp.name }), h('span', { class: 'dim', text: ` ${opp.title || ''} · ${D.CLASSES[opp.cls].name}` })),
+      nameSign(opp.name, opp.title || D.CLASSES[opp.cls].name, () => tx('table.sign-tip', { name: opp.title ? `${opp.name} the ${opp.title}` : opp.name, cls: D.CLASSES[opp.cls].name })),
       (oppPills = h('div', { class: 'pills' }, ['trickery', 'proficiency', 'ingenuity', 'charisma', 'cunning', 'conviction'].map((k) =>
         h('span', { class: 'pill small', 'data-k': k, tip: () => statTip(k, k in opp.tip ? B.tipOf(opp, k) : B.cOf(opp, k)) + statSplit(B.statParts(opp, k)) + (k in opp.tip ? '' : cccGate(opp)) }, `${D.STATS[k].short} `, h('b', { text: k in opp.tip ? opp.tip[k] : opp.c[k] })))))));
   // the middle of the table: the Pit right under the House's arms, each Roller's pot under it, then a ledger per

@@ -752,13 +752,13 @@ export { ROSTER, BEHAVE, DEFAULT_BEHAVE };
 import { TUNING } from './content/tuning.js';
 export { TUNING };
 import { GUIDE } from './content/guidance.js';
-import { FONTS, IMAGES, ICONS, TEXTURES } from './content/assets.js';
-export { FONTS, IMAGES, ICONS, TEXTURES };
+import { FONTS, IMAGES, ICONS, TEXTURES, NEON } from './content/assets.js';
+export { FONTS, IMAGES, ICONS, TEXTURES, NEON };
 import TEXT from './text/en.js';
 import { MATERIALS as _MAT, DICE_SHOP as _DS, BONE as _BONE, MELT as _MELT, CASTS as _CASTS, DYES as _DYES, DIAMOND as _DIA } from './content/dice.js';
 export const TABLES = { CLASSES, BASE_DIMS, STATS, DICE, MATERIALS: _MAT, DICE_SHOP: _DS, BONE: _BONE, MELT: _MELT, CASTS: _CASTS, DYES: _DYES, DIAMOND: _DIA, DIE_VARS,
   TYPES, TRICKS, CHIPS, SHOP_CHIPS, CHIP_TIERS, CREATURES, ORBITALS, CALAMITIES, TILTS, TILT_PRESSURE, FELTS, FLOORS, BOSSES, OPPONENTS, DRINKS, SPORTS, JACKETS, CARDS, WALLETS,
-  PASSES, CONDITIONS, PACKS, QDIE, PRIZES, GUIDE, TEXT, MADE_CHIPS, ROSTER, TUNING, ODDS, DENOMS, WEAR, IMAGES, ICONS, TEXTURES };
+  PASSES, CONDITIONS, PACKS, QDIE, PRIZES, GUIDE, TEXT, MADE_CHIPS, ROSTER, TUNING, ODDS, DENOMS, WEAR, IMAGES, ICONS, TEXTURES, NEON };
 const isObj = (x) => x && typeof x === 'object';
 // a path's steps: keys are joined by '.', and a '.' inside a key (as in text keys) is written '\\.'
 export const splitPath = (path) => path.split(/(?<!\\)\./).map((k) => k.replace(/\\\./g, '.'));

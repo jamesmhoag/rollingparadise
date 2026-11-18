@@ -796,7 +796,7 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 .controls { left: 1046px; right: 16px; top: auto; bottom: 262px; flex-wrap: wrap-reverse; row-gap: 6px; } .controls .big { padding: 7px 20px; } .scene.bout .lib-btn { top: 376px; left: 1046px; right: auto; }
 .zone-title { text-transform: uppercase; }
 .tray-box { top: 466px; } .tray-cap { top: 454px; width: 112px; font-size: 9px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } .run-empty { top: 466px; height: 242px; }
-.spine { top: 466px; height: 242px; } .peek-panel { top: 458px; height: 256px; } .peek-panel.book { width: 196px; }
+.spine { top: 478px; height: 230px; } .peek-panel { top: 458px; height: 256px; } .peek-panel.book { width: 196px; }
 .spine.them { opacity: 1; pointer-events: auto; cursor: help; color: var(--pink); } .spine.them:hover { box-shadow: none; }
 .away { opacity: 0 !important; pointer-events: none !important; }
 .zone-title, .tray-box, .spine.them { transition: left .45s var(--ease), opacity .3s; }
@@ -853,18 +853,9 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 @keyframes flash { 0%, 49% { background: #fff; box-shadow: 0 0 8px #fff, 0 0 16px var(--lc); } 50%, 100% { background: var(--lc); box-shadow: 0 0 4px var(--lc); } }
 .stick { height: 4px; } .stick::after { top: -9px; height: 22px; width: 10px; }
 /* the Rollers' seats: name signs in their colours */
-.who.seat { width: 416px; } .who.seat .name { cursor: pointer; }
-.neon-name { font-family: var(--script) !important; font-weight: 400; font-size: 26px !important; line-height: 26px; letter-spacing: .01em; }
-.who.me .neon-name { color: color-mix(in srgb, var(--you) 30%, #fff) !important; text-shadow: 0 0 3px #fff, 0 0 9px var(--you), 0 0 20px var(--you) !important; }
-.who.them .neon-name { color: color-mix(in srgb, var(--them) 30%, #fff) !important; text-shadow: 0 0 3px #fff, 0 0 9px var(--them), 0 0 20px var(--them) !important; }
 .who.seat .name:hover .neon-name { filter: brightness(1.25); }
 .feed .f-c.you { --fc: var(--you); } .feed .f-c.them { --fc: var(--them); } .ledger.s0 { border-top-color: var(--you); } .ledger.s1 { border-top-color: var(--them); }
 .ledger.s0 .num { color: var(--you); } .ledger.s1 .num { color: var(--them); } .stick.arm0 { --ac: var(--you); } .stick.arm1 { --ac: var(--them); } .spine.them { color: var(--them); }
-.neon-pick { position: absolute; left: 16px; top: 404px; z-index: 1300; padding: 10px 12px; border-radius: 12px; background: #0b0720; border: 1px solid var(--line); box-shadow: 0 14px 40px rgba(0, 0, 0, .65); display: grid; gap: 8px; }
-.neon-pick > b { font-family: var(--script); font-size: 20px; font-weight: 400; color: #fff; text-shadow: 0 0 8px var(--you); }
-.np-row { display: flex; align-items: center; gap: 6px; } .np-row em { font-style: normal; font-size: 11px; color: var(--dim); width: 112px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.np-sw { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #0b0720; background: var(--sw); box-shadow: 0 0 8px var(--sw); cursor: pointer; padding: 0; }
-.np-sw.on { outline: 2px solid #fff; outline-offset: 1px; } .np-sw:hover { transform: scale(1.12); }
 /* the phase signs: the Rollers' set, then the House's set flipping in over it, tile by tile */
 .phases { perspective: 400px; } .phases .ph-set { position: absolute; inset: 0; display: flex; }
 .phases .ph-set span { transition: transform .45s var(--ease), opacity .35s, color .4s, text-shadow .4s; transition-delay: calc(var(--i) * 70ms); transform-origin: 50% 50%; }
@@ -876,4 +867,22 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 .music-btn { position: absolute; left: 50%; bottom: 2px; translate: -50% 0; z-index: 1500; padding: 0 7px !important; height: 18px; font-size: 12px; line-height: 16px; }
 .music-btn.off { opacity: .45; text-decoration: line-through; }
 .who.seat .pills.steps .pill { white-space: nowrap; padding: 2px 7px; font-size: 11.5px; } .who.seat .pills.steps { flex-wrap: nowrap; }
-.who.them .name .dim { margin-left: 6px; }
+
+/* ---------- the Rollers' name signs (colours from D.NEON, set in Build mode › Neon) ----------
+   The name in script over the class in capitals, each in its own tube and glow colours; your seat wears a neon frame. */
+.who.seat { width: 424px; top: 368px; align-items: center; row-gap: 4px; }
+.who.seat.me { padding: 4px 10px 5px; left: 10px; border-radius: 12px; border: 2px solid var(--you-border1);
+  box-shadow: 0 0 4px var(--you-border1), 0 0 14px var(--you-border2), inset 0 0 8px color-mix(in srgb, var(--you-border1) 35%, transparent), inset 0 0 18px color-mix(in srgb, var(--you-border2) 18%, transparent); }
+.who .name.nsign { display: inline-grid; justify-items: start; line-height: 1; cursor: help; } .who.them .name.nsign { justify-items: end; }
+.neon-name { font-family: var(--script) !important; font-weight: 400; font-size: 27px !important; line-height: 26px; letter-spacing: .01em; }
+.neon-class { font-family: var(--display); font-size: 9.5px; font-weight: 700; letter-spacing: .32em; text-transform: uppercase; margin-top: 1px; padding-left: 2px; }
+.who.me .neon-name { color: color-mix(in srgb, var(--you-name1) 28%, #fff) !important; text-shadow: 0 0 2px #fff, 0 0 7px var(--you-name1), 0 0 16px var(--you-name1), 0 0 28px var(--you-name2), 0 0 44px var(--you-name2) !important; }
+.who.them .neon-name { color: color-mix(in srgb, var(--them-name1) 28%, #fff) !important; text-shadow: 0 0 2px #fff, 0 0 7px var(--them-name1), 0 0 16px var(--them-name1), 0 0 28px var(--them-name2), 0 0 44px var(--them-name2) !important; }
+.who.me .neon-class { color: color-mix(in srgb, var(--you-cls1) 70%, #fff); text-shadow: 0 0 4px var(--you-cls1), 0 0 10px var(--you-cls2); }
+.who.them .neon-class { color: color-mix(in srgb, var(--them-cls1) 70%, #fff); text-shadow: 0 0 4px var(--them-cls1), 0 0 10px var(--them-cls2); }
+.who.seat .pills, .who.seat .badges { flex-basis: 100%; }
+/* the Neon tool's preview */
+.neon-maker .neon-side { display: grid; gap: 6px; margin-bottom: 14px; } .neon-sample { display: flex; padding: 8px 14px; border-radius: 12px; background: #07040f; width: max-content; }
+.neon-sample.me { border: 2px solid var(--you-border1); box-shadow: 0 0 4px var(--you-border1), 0 0 14px var(--you-border2); }
+.neon-in { display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; } .neon-in input { width: 34px; height: 24px; padding: 0; border: 0; background: none; cursor: pointer; }
+.scene.bout .tcard .c-text { line-height: 1.17; } .scene.bout .tcard .c-open { gap: 3px; }

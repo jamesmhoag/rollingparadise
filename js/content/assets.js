@@ -8,11 +8,13 @@ export const FONTS = {
   script: { family: "Yellowtail", files: ["assets/fonts/yellowtail-latin-400-normal.woff2"], license: "assets/fonts/OFL-yellowtail.txt" },
 };
 
-// neon colours a Roller's name and side of the table can glow in (picked by clicking a name at the table)
-export const NEON = [
-  { name: "Ice", c: "#6ef0ff" }, { name: "Flamingo", c: "#ff6edc" }, { name: "Lime", c: "#9dff6e" }, { name: "Tangerine", c: "#ffa13d" },
-  { name: "Violet", c: "#b98bff" }, { name: "Lemon", c: "#fff36e" }, { name: "Cherry", c: "#ff4d6a" }, { name: "Electric", c: "#4da6ff" },
-];
+// each Roller's neon at the table, set in Build mode (Neon): a pair of colours for each part of their sign, the tube's
+// own colour first and the glow it throws second. border: the frame around your seat; name: the script name; cls:
+// the class (or title) under it. Their name's colour also marks their side: the feed, the ledger, the House's arm.
+export const NEON = {
+  you: { border: ["#6ef0ff", "#4d6bff"], name: ["#ff6edc", "#b98bff"], cls: ["#fff36e", "#ffa13d"] },
+  them: { border: ["#ff4d6a", "#ffa13d"], name: ["#9dff6e", "#2fd0ff"], cls: ["#b98bff", "#ff6edc"] },
+};
 
 // the lounge's music, played in turn on a loop: Scott Joplin's rags, all published 1901-1909 and in the public domain,
 // from the public-domain Mutopia Project engravings, played by the game's own piano (tools/render-music.py)
