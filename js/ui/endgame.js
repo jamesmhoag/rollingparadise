@@ -1,7 +1,7 @@
 // Suites, the Gift Shop exit, the Paradise Ascent and the end of a run.
-import { h, syncList, toast, btn, tween, pulse, wait } from './core.js';
+import { h, syncList, toast, btn, tween, pulse, wait, tip } from './core.js';
 import { app, hud, oppTip, trickTag } from './app.js';
-import { jacketTip, trickTip, trickWords, cardTip, dieTip, passEl } from './parts.js';
+import { jacketTip, trickTip, trickWords, cardTip, dieTip, dieEl, passEl } from './parts.js';
 import { planner } from './prep.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
@@ -79,7 +79,7 @@ export function ascentScene(root) {
 // The alley: robbed of everything, with one roll to hold on to the wallet.
 export function alleyScene(root) {
   const run = app.run, roll = R.alleyRoll(run), Wl = R.walletOf(run);
-  const dice = roll.dice.map((d) => h('span', { class: `die static big ${d.type}`, tip: () => dieTip(d) }, h('i', { text: '?' })));
+  const dice = roll.dice.map((d) => tip(dieEl(d, '?', 'big'), () => dieTip(d)));
   const total = h('span', { class: 'total num', text: '—' }), verdict = h('h2', { class: 'fade-t', style: { opacity: 0 } }), kept = h('div', { class: 'inv list' });
   const cont = btn(t('title.continue'), () => { app.kept = roll.kept ? roll.cards : []; app.keptPass = roll.kept ? roll.pass : 0; app.nav.summary(); }, null, 'big go off');
   root.append(h('div', { class: 'page', style: { top: 0, display: 'grid', placeItems: 'center' } }, h('div', { class: 'col', style: { width: '620px', textAlign: 'center', alignItems: 'center', gap: '14px' } },

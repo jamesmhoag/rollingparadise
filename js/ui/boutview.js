@@ -1,7 +1,7 @@
 // The table. Every chip, die, trick card and creature is one persistent element that is
 // moved, faded or flipped to follow the bout state, so nothing ever pops between states.
 import { h, tip, wait, tween, swapText, setOn, pulse, syncList, toast, btn, refreshTip, redrawTip, box, vc, detail, paint, guided } from './core.js';
-import { chipSig, chipGlyph, chipName, chipText, chipTip, dieTip, trickTip, trickWord, trickWords, statTip, drinkTip, dieMarks, dieClass, trickLook, feltStyle, seenAs, traitsOf, traitsHtml, dieEl } from './parts.js';
+import { chipSig, chipGlyph, chipName, chipText, chipTip, dieTip, trickTip, trickWord, trickWords, statTip, drinkTip, dieMarks, dieDyes, dieStyle, dieClass, trickLook, feltStyle, seenAs, traitsOf, traitsHtml, dieEl } from './parts.js';
 import { iconKids, iconFill } from './icons.js';
 import { flyerTraits } from '../traits.js';
 import { openLibrary } from './library.js';
@@ -10,7 +10,8 @@ import * as B from '../bout.js';
 import { planPhase, drinkPhase, bestTarget, seen as seenBy } from '../ai.js';
 import { sum } from '../util.js';
 import { t as tt } from '../text.js';
-import { facesOf } from '../dice.js';
+import { facesOf, faceValue, dieName } from '../dice.js';
+import { solidEl } from './solid.js';
 import { t as tx } from '../text.js';
 
 // the table: each position's Stage runs along its top (y 100-126), the positions below it, and the Pit between them
@@ -22,7 +23,7 @@ const fmtX = (m) => '×' + (m % 1 ? m.toFixed(2).replace(/0$/, '') : m);
 export function boutScene(root, bout, ctx, onDone) {
   const [me, opp] = bout.sides;
   const cw = bout.sides.map((s) => Math.min(52, Math.floor(540 / s.rows)));
-  const ui = { handAim: new Set(), mode: null, die: null, entry: null, locked: false, speed: globalThis.RP_FAST || 1, first: true, sel: new Set(), flips: [], hand: [], card: null, point: null }; // RP_FAST: set by automated playthroughs
+  const ui = { peek: null, peekPhase: null, handAim: new Set(), mode: null, die: null, entry: null, locked: false, speed: globalThis.RP_FAST || 1, first: true, sel: new Set(), flips: [], hand: [], card: null, point: null }; // RP_FAST: set by automated playthroughs
   // sel: Pouch dice picked for the throw · flips: stacks whose top chip is picked to flip · hand: the bid chips picked up, one {r,c} per chip (a stack picked twice gives its top two) · card: trick under the pointer · point: the chip under the pointer in a stack
   const els = { chips: new Map(), dice: new Map(), cards: new Map(), cells: [[], []], creatures: new Map(), stage: new Map() };
   const layer = h('div', { class: 'bout-layer' }), rings = new Map(); // rings: the BID ring over each bid pile
@@ -35,17 +36,27 @@ export function boutScene(root, bout, ctx, onDone) {
   // ---------- geometry ----------
   const cellPos = (side, r, c) => ({ x: side === 0 ? PX - (r + 1) * cw[0] : OX + r * cw[1], y: TOP + c * CH, w: cw[side] });
   const chipPos = (side, r, c, lvl) => { const p = cellPos(side, r, c); return { x: p.x + p.w / 2 - CHIP / 2, y: p.y + CH - CHIP - 5 - Math.min(lvl, 12) * 4, z: 20 + c * 40 + lvl }; };
+  // The Book and the dice (the Roll and the Pouch) fold away to thin spines when there is nothing to do with them,
+  // and give their whole width to the Run. Click a spine, or press B or D, to peek inside at any time.
+  const bookOpen = () => bout.phase === 'draw';
+  const diceOpen = () => (bout.phase === 'roll' && !me.thrown) || me.tray.length > 0;
+  const runSpan = () => { const l = bookOpen() ? 248 : 52, r = diceOpen() ? 874 : 1036; return { l, r, w: r - l }; };
+  const DICE_DX = -44; // a peek at the dice sits clear of its spine
   function cardLayout() {
-    const out = new Map(), n = me.run.length, w = Math.min(122, Math.floor(626 / Math.max(1, n)) - 6);
-    me.run.forEach((e, i) => out.set(e.uid, { x: 248 + i * (w + 6), y: 466, w, h: 242, open: true, e }));
-    const drawing = bout.phase === 'draw', step = drawing ? Math.min(34, Math.floor(262 / Math.max(1, me.book.length))) : Math.min(9, Math.floor(120 / Math.max(1, me.book.length))); // the Book opens only while you draw
-    me.book.forEach((t, i) => out.set(t.uid, { x: 16, y: 444 + i * step, w: 220, h: drawing ? Math.min(30, step - 3) : 30, open: false, t, deck: !drawing }));
+    const out = new Map(), n = me.run.length, R = runSpan(), w = Math.min(122, Math.floor(R.w / Math.max(1, n)) - 6);
+    me.run.forEach((e, i) => out.set(e.uid, { x: R.l + i * (w + 6), y: 466, w, h: 242, open: true, e }));
+    const peek = ui.peek === 'book', step = Math.min(34, Math.floor(262 / Math.max(1, me.book.length)));
+    me.book.forEach((t, i) => out.set(t.uid, bookOpen() ? { x: 16, y: 444 + i * step, w: 220, h: Math.min(30, step - 3), open: false, t }
+      : peek ? { x: 50, y: 444 + i * step, w: 220, h: Math.min(30, step - 3), open: false, t, peek: true }
+        : { x: 16, y: 430 + i * 3, w: 26, h: 24, open: false, t, folded: true }));
     return out;
   }
   const dieSlot = (cl, i) => ({ x: cl.x + 7 + (i % 3) * 36, y: cl.y + 50 + Math.floor(i / 3) * 36 });
-  const pouchSlot = (i, n) => { if (bout.phase !== 'roll' || me.thrown) return { x: 888 + Math.min(i, 30) * Math.min(10, 150 / Math.max(1, n)), y: 548 - (i % 2) * 2 }; // the Pouch opens only while you pick dice to roll
-    const per = n > 15 ? 6 : 5, st = n > 15 ? 30 : 36; return { x: 888 + (i % per) * st, y: 544 + Math.floor(i / per) * st }; };
-  const traySlot = (i) => ({ x: 892 + (i % 5) * 36, y: 442 + Math.floor(i / 5) * 36 }); // the roll: room for two rows of dice
+  const pouchSlot = (i, n) => { const dx = ui.peek === 'dice' ? DICE_DX : 0;
+    if (!diceOpen() && ui.peek !== 'dice') return { x: 1047, y: 440 + Math.min(i, 30) * 6, folded: true }; // folded into its spine
+    if (bout.phase === 'roll' && me.thrown && ui.peek !== 'dice') return { x: 888 + Math.min(i, 30) * Math.min(10, 150 / Math.max(1, n)), y: 548 - (i % 2) * 2 }; // thrown: the rest of the Pouch closes up
+    const per = n > 15 ? 6 : 5, st = n > 15 ? 30 : 36; return { x: 888 + dx + (i % per) * st, y: 544 + Math.floor(i / per) * st }; };
+  const traySlot = (i) => ({ x: 892 + (ui.peek === 'dice' ? DICE_DX : 0) + (i % 5) * 36, y: 442 + Math.floor(i / 5) * 36 }); // the roll: room for two rows of dice
   // the Stage: what each Roller has paid, stacked in front of the House
   // the Pit: each Roller's lost chips, in the order they were lost, filling two stacks on their own side, then rising
   const pitSlot = (si, k, n) => { const per = Math.ceil(n / 2), step = Math.min(4, (PIT.bottom - PIT.top - CHIP) / Math.max(1, per - 1));
@@ -176,10 +187,19 @@ export function boutScene(root, bout, ctx, onDone) {
   const speedBtn = guided(btn('1×', () => { ui.speed = ui.speed === 1 ? 2 : ui.speed === 2 ? 4 : 1; swapText(speedBtn, `${ui.speed}×`); }, tx('table.speed-how-fast-the'), 'small'), 'btn:speed');
   const commitBtn = btn(tx('table.roll'), () => commit(), () => commitTip(), 'big');
   const trayBox = h('div', { class: 'tray-box', text: tx('table.draw-then-press-roll') }), trayCap = h('div', { class: 'tray-cap' });
+  // the spines the Book and the dice fold into, and the panel a peek opens over the Run
+  const togglePeek = (k) => { ui.peek = ui.peek === k ? null : k; ui.peekPhase = bout.phase; sync(); };
+  const spines = {
+    book: h('button', { class: 'spine book', onclick: () => togglePeek('book'), tip: () => tx('table.spine-book', { n: me.book.length, list: me.book.map((t) => `<span style="color:${D.TYPES[D.defOf(t).type].color}">${D.defOf(t).name}</span>`).join(', ') || tx('table.spine-empty') }) },
+      h('span', { class: 'sp-t' }), h('span', { class: 'sp-marks' })),
+    dice: h('button', { class: 'spine dice', onclick: () => togglePeek('dice'), tip: () => tx('table.spine-dice', { n: me.pouch.length, list: me.pouch.map((d) => dieName(d)).join(', ') || tx('table.spine-empty') }) },
+      h('span', { class: 'sp-t' }), h('span', { class: 'sp-marks' })) };
+  const peekPanels = { book: h('div', { class: 'peek-panel book', onclick: () => togglePeek('book') }), dice: h('div', { class: 'peek-panel dice', onclick: () => togglePeek('dice') }) };
   const frameEls = [header, stageBox, phasesEl, feedEl, runEmpty,
-    h('div', { class: 'zone-title', style: { left: '16px', top: '418px' }, tip: tx('table.book-tricks-you-own'), text: tx('table.book') }),
-    h('div', { class: 'zone-title', style: { left: '888px', top: '418px' }, tip: tx('table.the-roll-everything-you'), text: tx('table.the-roll') }), trayBox, trayCap,
-    h('div', { class: 'zone-title', style: { left: '888px', top: '524px' }, tip: tx('table.pouch-your-dice-in'), text: tx('table.pouch') }),
+    h('div', { class: 'zone-title zt-book', style: { left: '16px', top: '418px' }, tip: tx('table.book-tricks-you-own'), text: tx('table.book') }),
+    h('div', { class: 'zone-title zt-dice', style: { left: '888px', top: '418px' }, tip: tx('table.the-roll-everything-you'), text: tx('table.the-roll') }), trayBox, trayCap,
+    h('div', { class: 'zone-title zt-dice', style: { left: '888px', top: '524px' }, tip: tx('table.pouch-your-dice-in'), text: tx('table.pouch') }),
+    peekPanels.book, peekPanels.dice, spines.book, spines.dice,
     h('div', { class: 'zone-title', style: { left: '1082px', top: '418px' }, tip: tx('table.s-run-the-tricks', { name: opp.name }), text: tx('table.their-run') }),
     h('div', { class: 'controls' }, sipBtn, undoBtn, speedBtn, commitBtn),
     btn(tx('title.library'), () => openLibrary(), tx('table.library-every-chip-trick'), 'small lib-btn')];
@@ -267,26 +287,37 @@ export function boutScene(root, bout, ctx, onDone) {
   // ---------- element factories ----------
   function mkChip(ch) { const el = h('div', { class: `chip ${chipSig(ch)}` }, h('i', { text: chipGlyph(ch) })); el._sig = chipSig(ch); layer.append(el); return el; }
   // ---------- the toss ----------
-  // Thrown dice leave the Pouch together, arc up over the roll and tumble down onto it as solid shapes, each side
-  // showing one of the die's real faces, and land with the rolled value up. Heavier dice (more faces) fly lower.
+  // Thrown dice leave the Pouch together, arc up over the roll and tumble down onto it as their real solids (solid.js),
+  // each face showing the die's own value, and land with the rolled value toward you. Heavier dice (more faces) fly lower.
   let tossN = 0;
   function toss(el, d, value, from, to, k) {
-    const cs = getComputedStyle(el), dc = cs.getPropertyValue('--dc').trim() || '#f1ead8', sh = cs.getPropertyValue('--sh').trim() || 'none';
-    const vals = d.chip ? [value, 0, d.chip.value, 0, d.chip.value, 0] : (() => { const fs = facesOf(d).map((f) => f.v); const rest = fs.filter((v, i) => i !== fs.indexOf(value)); return [value, ...Array.from({ length: 5 }, (_, i) => rest[i % Math.max(1, rest.length)] ?? value)]; })();
-    const S = 30, half = S / 2, turns = ['rotateY(0deg)', 'rotateY(180deg)', 'rotateY(90deg)', 'rotateY(-90deg)', 'rotateX(90deg)', 'rotateX(-90deg)'];
-    const cube = h('div', { class: 'toss-cube', style: { width: S + 'px', height: S + 'px' } }, ...vals.map((v, i) => h('div', { class: 'toss-face', style: { transform: `${turns[i]} translateZ(${half}px)`, '--dc': dc, '--sh': sh }, text: String(v) })));
-    const box3 = h('div', { class: 'toss', style: { zIndex: 1300 } }, cube); layer.append(box3);
+    const dur = 950 / ui.speed, delay = (k % 8) * 70 / ui.speed;
+    let body, land;
+    if (d.chip) { // a flipped chip spins as a coin
+      const cs = getComputedStyle(el), dc = cs.getPropertyValue('--dc').trim() || '#efe6cf', sh = cs.getPropertyValue('--sh').trim() || 'none', S = 30;
+      body = h('div', { class: 'toss-cube', style: { width: S + 'px', height: S + 'px' } }, ...[value, d.chip.value].map((v, i) => h('div', { class: 'toss-face', style: { transform: `rotateY(${i * 180}deg) translateZ(1px)`, '--dc': dc, '--sh': sh }, text: String(v) })));
+      land = null;
+    } else {
+      const labels = facesOf(d).map(faceValue); let at = labels.findIndex((v) => v === value); if (at < 0) { at = 0; labels[0] = value; } // a roll that changed the value shows it
+      const sol = solidEl(d, 30, labels); body = sol.el; const final = sol.faceFront(at), ax = [[1, 0.4, 0.2], [0.3, 1, 0.5], [0.6, 0.2, 1]][k % 3], turns = 2 + (k % 2);
+      land = (e) => sol.setRotation(new DOMMatrix().rotateAxisAngleSelf(ax[0], ax[1], ax[2], 360 * turns * (1 - e)).multiplySelf(final));
+      land(0);
+    }
+    const box3 = h('div', { class: 'toss', style: { zIndex: 1300 } }, body); layer.append(box3);
     el.classList.add('tossing');
-    const faces = D.DICE[d.type]?.faces || 6, lift = Math.max(50, 130 - faces * 3), mx = (from.x + to.x) / 2, top = Math.min(from.y, to.y) - lift, spin = 2 + (k % 2);
+    const faces = D.DICE[d.type]?.faces || 6, lift = Math.max(50, 130 - faces * 3), mx = (from.x + to.x) / 2, top = Math.min(from.y, to.y) - lift;
     const pos = (x, y, sc = 1) => `translate(${x}px, ${y}px) scale(${sc})`;
+    const done = () => { el.classList.remove('tossing'); box3.remove(); };
     box3.animate([{ transform: pos(from.x, from.y, 0.9) }, { transform: pos(mx, top, 1.25), offset: 0.42 }, { transform: pos(to.x, to.y, 1), offset: 0.72 }, { transform: pos(to.x, to.y - 12, 1.04), offset: 0.84 }, { transform: pos(to.x, to.y, 1) }],
-      { duration: 950 / ui.speed, delay: (k % 8) * 70 / ui.speed, easing: 'cubic-bezier(.3,.1,.4,1)', fill: 'both' });
-    cube.animate([{ transform: 'rotateX(0deg) rotateY(0deg) rotateZ(0deg)' }, { transform: `rotateX(${300 * spin}deg) rotateY(${200 * spin}deg) rotateZ(40deg)`, offset: 0.6 }, { transform: `rotateX(${360 * spin}deg) rotateY(${360 * (spin - 1)}deg) rotateZ(0deg)`, offset: 0.84 }, { transform: `rotateX(${360 * spin}deg) rotateY(${360 * (spin - 1)}deg) rotateZ(0deg)` }],
-      { duration: 950 / ui.speed, delay: (k % 8) * 70 / ui.speed, easing: 'cubic-bezier(.2,.6,.3,1)', fill: 'both' })
-      .finished.then(() => { el.classList.remove('tossing'); box3.remove(); }, () => { el.classList.remove('tossing'); box3.remove(); });
+      { duration: dur, delay, easing: 'cubic-bezier(.3,.1,.4,1)', fill: 'both' }).finished.then(done, done);
+    if (land) { const t0 = performance.now() + delay, spinFor = dur * 0.84;
+      const step = (now) => { if (!box3.isConnected) return; const t = Math.min(1, Math.max(0, (now - t0) / spinFor)); land(1 - Math.pow(1 - t, 3)); if (t < 1) requestAnimationFrame(step); };
+      requestAnimationFrame(step); }
+    else body.animate([{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(720deg)' }], { duration: dur * 0.84, delay, easing: 'cubic-bezier(.2,.6,.3,1)', fill: 'both' });
   }
   function mkDie(d) {
-    const el = h('div', { class: `die ${d.chip ? 'flipc' : d.type} ${d.chip ? '' : dieClass(d)}`, onclick: () => clickDie(d.id) }, h('i', { text: d.type.slice(1) }), d.chip ? null : dieMarks(d));
+    const el = h('div', { class: `die ${d.chip ? 'flipc' : d.type} ${d.chip ? '' : dieClass(d)}`, style: d.chip ? {} : dieStyle(d), onclick: () => clickDie(d.id) }, h('i', { text: d.type.slice(1) }), d.chip ? null : dieMarks(d), d.chip ? null : dieDyes(d));
+    if (!d.chip) el._die = d;
     tip(el, () => {
       const on = B.holderOf(me, d.id), live = on ? on.dice.find((x) => x.id === d.id) : me.tray.find((x) => x.id === d.id);
       const where = on ? tx('table.on', { name: D.TRICKS[on.trick.id].name, v: B.canMove(bout, me, d.id) ? tx('table.click-to-take-it') : tx('table.it-stays-until-the') }) : live ? tx('table.click-it-then-click') : tx('table.click-to-roll-it');
@@ -344,15 +375,28 @@ export function boutScene(root, bout, ctx, onDone) {
     for (const [k, el] of fxEls) if (!keep.has(k)) { el.style.opacity = '0'; fxEls.delete(k); setTimeout(() => el.remove(), 400); }
   }
   const fxTip = (si, r, c) => { const list = fxAt.get(`${si}:${r}:${c}`) || []; return list.length ? tx('table.effects', { join: list.map((t) => `<b style="color:${t.good ? 'var(--good)' : 'var(--bad)'}">${t.name}${t.value !== '' ? ' ' + t.value : ''}</b><span class="v">: ${t.text}</span>`).join('; ') }) : ''; };
+  // folds: which columns are folded, what their spines show, and where the Run (and the feed above it) reaches
+  function syncFolds() {
+    if (ui.peek && (ui.peekPhase !== bout.phase || (ui.peek === 'book' ? bookOpen() : diceOpen()))) ui.peek = null; // a peek lasts while its column stays folded, in the phase it was opened
+    const fb = !bookOpen(), fd = !diceOpen();
+    root.classList.toggle('fold-book', fb); root.classList.toggle('fold-dice', fd);
+    root.classList.toggle('peek-book', ui.peek === 'book'); root.classList.toggle('peek-dice', ui.peek === 'dice');
+    spines.book.classList.toggle('peeking', ui.peek === 'book'); spines.dice.classList.toggle('peeking', ui.peek === 'dice');
+    swapText(spines.book.children[0], `${tx('table.book')} ${me.book.length}`); swapText(spines.dice.children[0], `${tx('table.pouch')} ${me.pouch.length}`);
+    syncList(spines.book.children[1], me.book, (t) => t.uid, (t) => h('i', { style: { '--tc': D.TYPES[D.defOf(t).type].color } }), () => {});
+    syncList(spines.dice.children[1], me.pouch.slice(0, 12), (d) => `${d.id}:${d.mat || ''}`, (d) => dieEl(d, '', 'mini'), () => {});
+    const R = runSpan(); for (const el of [feedEl, runEmpty]) { el.style.left = R.l + 'px'; el.style.width = R.w + 'px'; }
+  }
   function sync(fx = {}) {
+    syncFolds();
     layoutEffects();
     const cards = cardLayout();
     // trick cards
     for (const [uid, cl] of cards) {
       const t = cl.e ? cl.e.trick : cl.t; let el = els.cards.get(uid);
       if (!el) { el = mkCard(t); els.cards.set(uid, el); spawn(el, cl.x, cl.y + 20, ''); el.style.width = cl.w + 'px'; el.style.height = cl.h + 'px'; void el.offsetWidth; }
-      el.style.opacity = '1'; place(el, cl.x, cl.y); el.style.width = cl.w + 'px'; el.style.height = cl.h + 'px';
-      el.classList.toggle('open', cl.open); el.style.zIndex = cl.open ? 3 : 2;
+      el.style.opacity = cl.folded ? '0' : '1'; el.style.pointerEvents = cl.folded ? 'none' : ''; place(el, cl.x, cl.y); el.style.width = cl.w + 'px'; el.style.height = cl.h + 'px';
+      el.classList.toggle('open', cl.open); el.style.zIndex = cl.peek ? 9 : cl.open ? 3 : 2;
       const e = cl.e; el.classList.toggle('narrow', cl.open && cl.w < 104);
       el.classList.toggle('bid', !!e && e.state === 'bid'); el.classList.toggle('inplay', !!e && e.state === 'play');
       el.classList.toggle('can', !e ? !ui.locked && !B.canDraw(bout, me, uid) : false);
@@ -385,7 +429,7 @@ export function boutScene(root, bout, ctx, onDone) {
     for (const [id, w] of wantDice) {
       let el = els.dice.get(id); if (!el) { el = mkDie(w.d); els.dice.set(id, el); const from = (w.d.chip && els.flipFrom?.get(id)) || { x: w.x, y: w.y - 16 }; spawn(el, from.x, from.y, 'scale(.4)'); }
       const from = /translate\(([-\d.]+)px, ([-\d.]+)px\)/.exec(el.style.transform);
-      el.style.opacity = '1'; place(el, w.x, w.y); el.style.zIndex = w.on ? 6 : 4; el.classList.toggle('on', !!w.on); el.classList.toggle('rolled', !!w.rolled); el.classList.toggle('sel', (ui.mode === 'die' && ui.die === id) || !!w.picked);
+      el.style.opacity = w.folded ? '0' : '1'; el.style.pointerEvents = w.folded ? 'none' : ''; place(el, w.x, w.y, w.folded ? 'scale(.5)' : ''); el.style.zIndex = w.on ? 6 : ui.peek === 'dice' ? 9 : 4; el.classList.toggle('on', !!w.on); el.classList.toggle('rolled', !!w.rolled); el.classList.toggle('sel', (ui.mode === 'die' && ui.die === id) || !!w.picked);
       el.classList.toggle('fixed', !!w.on && !B.canMove(bout, me, id));
       const label = el.firstChild, text = w.rolled ? String(w.value) : w.d.type.slice(1);
       if (w.rolled && !el._rolled) { label.textContent = text; toss(el, w.d, w.value, from ? { x: +from[1], y: +from[2] } : { x: w.x, y: w.y + 90 }, { x: w.x, y: w.y }, tossN++); }
@@ -710,7 +754,11 @@ export function boutScene(root, bout, ctx, onDone) {
     act(() => { const f = B.eat(bout, me, r, c); toast(tx('table.you-eat', { label: f.label, join: Object.entries(f.mods).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${D.STATS[k].short}`).join(', '), v: f.turns > 1 ? ` for ${f.turns} turns` : ' this turn' })); });
   }
   function hoverCell(si, r, c) { hover = r < 0 ? null : { side: si, r, c }; if (ui.mode === 'target') { marks(); hint(); } }
-  const onKey = (ev) => { if (ev.key === 'Escape' && feedEl.classList.contains('open')) return toggleHistory(false); if (ev.key === 'Escape' && (ui.mode || ui.hand.length)) act(() => { setMode(null); ui.hand = []; }); };
+  const onKey = (ev) => { if (ev.target?.closest?.('input, textarea, select')) return;
+    if (ev.key === 'Escape' && ui.peek) { ui.peek = null; return sync(); }
+    if ((ev.key === 'b' || ev.key === 'B') && !bookOpen()) return togglePeek('book'); // B: peek at the Book
+    if ((ev.key === 'd' || ev.key === 'D') && !diceOpen()) return togglePeek('dice'); // D: peek at the dice
+    if (ev.key === 'Escape' && feedEl.classList.contains('open')) return toggleHistory(false); if (ev.key === 'Escape' && (ui.mode || ui.hand.length)) act(() => { setMode(null); ui.hand = []; }); };
   document.addEventListener('keydown', onKey);
   const onDetail = () => { if (root.isConnected) hint(); else detail.listeners.delete(onDetail); }; detail.listeners.add(onDetail);
 

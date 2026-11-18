@@ -102,8 +102,13 @@ export function dieTip(d, extra = '') {
 }
 // one badge per upgrade, so every upgrade a die carries can be read off the die itself
 export const dieMarks = (d) => ((d.up || []).length ? h('span', { class: 'ups' }, d.up.map((u) => h('b', { class: `u-${u}`, style: { '--uc': D.DIE_UPGRADES[u].color }, text: D.DIE_UPGRADES[u].mark }))) : null);
+// the dyes a cast die was made with, as small drops of each colour on its lower left
+export const dieDyes = (d) => ((d.dyes || []).length ? h('span', { class: 'dyes' }, d.dyes.map((k) => h('b', { style: { '--yc': D.DYES[k]?.color || '#fff' } }))) : null);
 export const dieClass = (d) => `m-${matOf(d)} ${(d.up || []).length ? 'upg' : ''} ${(d.up || []).map((u) => 'u-' + u).join(' ')}`;
-export const dieEl = (d, value, cls = '') => h('span', { class: `die static ${d.type} ${dieClass(d)} ${cls}` }, h('i', { text: value ?? d.type.slice(1) }), dieMarks(d));
+// A die's look comes from its material (MATERIALS in content/dice.js): the material's colour, set here from the
+// table, and its finish (css .m-*). Its shape alone tells its size. `_die` lets any die be grabbed and spun (spin.js).
+export const dieStyle = (d) => ({ '--dc': D.MATERIALS[matOf(d)]?.color || '#e8e2d4' });
+export const dieEl = (d, value, cls = '') => { const el = h('span', { class: `die static ${d.type} ${dieClass(d)} ${cls}`, style: dieStyle(d) }, h('i', { text: value ?? d.type.slice(1) }), dieMarks(d), dieDyes(d)); el._die = d; return el; };
 
 const fx = (m) => '×' + (m % 1 ? m.toFixed(2).replace(/0$/, '') : m);
 // what a trick's quality, print and condition do, spelled out

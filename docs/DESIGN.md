@@ -202,7 +202,15 @@ the ones that cannot be built yet, what is missing; `docs/CHIP-STATUS.md` is the
 - Creatures (UFO, Fairy, Dragon, Mole, and from the 5¢ and 10¢ floors Unicorn and Mothership), Familiars, Spawners
   and Calamities (Inferno, House Audit, Black Hole, Volcano, Tornado), used by the tilts.
 - Dice are drawn as their solids (d4 triangle, d6 square, d8 diamond, d10 hexagon, d20 octagon) and chips as discs
-  with an edge.
+  with an edge. A die's shape alone says its size; its colour and finish come from its material (`MATERIALS` in
+  `js/content/dice.js` gives the colour, the `.m-*` skins in `css/style.css` the finish): Plastic matte, Glass clear,
+  Metal brushed, Sparkling glittering gold, Glimmering pearly, Swirling marbled, Diamond prismatic, Bone flecked ivory.
+  Cast dice show a drop for each dye on their lower left.
+- Grab any die, anywhere (a match, the Library, the shops, the Diesmith), and drag to spin it: it lifts out as its real
+  3D solid with every face's value on it (`js/ui/solid.js`, `js/ui/spin.js`). A spin is never a click and hides the
+  hover. Thrown dice tumble as the same solids and land with the rolled face up.
+- In a match the Book and the dice (the Roll and the Pouch) fold to thin spines outside the steps that use them, and
+  the Run takes their width. A spine shows what is inside; click it, or press B or D, to peek.
 - Upgrades are drawn on the upgraded thing: each die upgrade puts its own badge on the die (Accelerate +, Escalate
   ▲, Stabilize =); trick quality is the card's frame (Fine silver, Grand gold, Royal gold with a halo) and each
   upgrade adds a ▲ and a moving foil; a gilded chip turns gold.
