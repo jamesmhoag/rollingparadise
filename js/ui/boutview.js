@@ -239,14 +239,17 @@ export function boutScene(root, bout, ctx, onDone) {
     tip: () => tx('table.s-roll', { name: opp.name, vc: vc(tx('table.the-dice-they-threw', { join: opp.tray.map((d) => d.value).join(', ') || '—' }), tx('table.their-throw-placed-in')) }) }),
     pouch: h('div', { class: 'zone-title zt-dice them', style: { top: DY.pouch + 'px' }, tip: kitTip }), run: h('div', { class: 'zone-title', style: { top: TITLE_Y + 'px' }, tip: tx('table.s-run-the-tricks', { name: opp.name }), text: tx('table.their-run') }),
     dspine: h('div', { class: 'spine dice them', tip: kitTip }, h('span', { class: 'sp-t' })), bspine: h('div', { class: 'spine book them', tip: kitTip }, h('span', { class: 'sp-t' })) };
-  const frameEls = [header, stageBox, phasesEl, feedEl, runEmpty, oppEmpty,
+  // the match history sits up top, yours on the House's left and theirs on its right; each Roller's name, Worth,
+  // steps and badges sit above their own plays, under the table, with the commit button between the two
+  const seats = [...header.querySelectorAll('.who')]; for (const el of seats) el.classList.add('seat');
+  const frameEls = [header, ...seats, stageBox, phasesEl, feedEl, runEmpty, oppEmpty,
     h('div', { class: 'zone-title zt-book', style: { left: '16px', top: TITLE_Y + 'px' }, tip: tx('table.book-tricks-you-own'), text: tx('table.book') }),
     (ztRun = h('div', { class: 'zone-title', style: { top: TITLE_Y + 'px' }, tip: tx('table.run-tricks-you-have'), text: tx('table.your-run') })),
     (ztRoll = h('div', { class: 'zone-title zt-dice', style: { top: TITLE_Y + 'px' }, tip: tx('table.the-roll-everything-you'), text: tx('table.the-roll') })), trayBox, trayCap,
     (ztPouch = h('div', { class: 'zone-title zt-dice', style: { top: DY.pouch + 'px' }, tip: tx('table.pouch-your-dice-in'), text: tx('table.pouch') })),
     peekPanels.book, peekPanels.dice, spines.book, spines.dice, ...Object.values(them),
-    h('div', { class: 'controls' }, sipBtn, undoBtn, speedBtn, commitBtn),
-    btn(tx('title.library'), () => openLibrary(), tx('table.library-every-chip-trick'), 'small lib-btn')];
+    h('div', { class: 'controls' }, sipBtn, undoBtn, commitBtn, speedBtn)];
+  feedEl.firstChild.prepend(btn(tx('title.library'), () => openLibrary(), tx('table.library-every-chip-trick'), 'small lib-btn'));
   const banner = h('div', { class: 'banner' });
   const fcLayer = h('div', { class: 'fc-layer' }); // fee forecasts and Debt tags over the stacks
   root.append(...frameEls, layer, fcLayer, arms[0].el, arms[1].el, phaseCall, banner);

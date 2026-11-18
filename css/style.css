@@ -804,3 +804,29 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 /* the BID ring stays beside its pile: click the ring (or the card) to bid more, the pile to take the top chip back */
 .tcard.bid .bidslot { font-size: 17px; font-weight: 600; } .tcard.bid .c-math { margin-left: 32px; }
 .run-empty { text-align: center; padding: 0 24px; }
+
+/* ---------- header swap: the history up top around the House, the Rollers above their plays ----------
+   The feed runs across the top: your column left of the House, theirs right of it, the prompt along the bottom.
+   Each Roller's seat (name, Worth, steps, badges) sits above their half under the table, the commit button between. */
+.bout-head { grid-template-columns: 1fr 190px 1fr; pointer-events: none; z-index: 6; } .bout-head .mid { grid-column: 2; pointer-events: auto; position: relative; z-index: 3; }
+.feed { left: 16px; top: 2px; width: 1248px; height: 97px; background: rgba(9, 6, 24, .45); }
+.feed:not(.open) .feed-lines { top: 2px; bottom: 2px; }
+.feed:not(.open) .f-row { grid-template-columns: 82px minmax(0, 1fr) 190px minmax(0, 1fr) 82px; }
+.feed:not(.open) .f-c.you, .feed:not(.open) .f-c.span { grid-column: 2; } .feed:not(.open) .f-c.them { grid-column: 4; }
+.feed:not(.open) .feed-line.prompt { text-align: center; padding-left: 0; }
+.feed-head { display: flex; } .scene.bout .feed-head .lib-btn { position: static; padding: 0 10px; font-size: 9px; border-radius: 0 0 0 6px; } .feed-head .hist { border-radius: 0 10px 0 0; }
+.who.seat { position: absolute; top: 374px; width: 470px; z-index: 4; } .who.seat.me { left: 16px; } .who.seat.them { right: 16px; }
+.controls { left: 496px; right: auto; width: 288px; top: 392px; bottom: auto; justify-content: center; flex-wrap: nowrap; }
+/* the House's phases as a neon sign: unlit tubes in each phase's colour, the one being played switched on */
+.phases { height: 26px; top: 99px !important; border: 1.5px solid rgba(110, 240, 255, .35); border-radius: 14px; background: radial-gradient(ellipse at 50% 120%, rgba(110, 240, 255, .08), transparent 70%), #07040f;
+  box-shadow: 0 0 10px rgba(110, 240, 255, .18), inset 0 0 14px rgba(0, 0, 0, .8); }
+.phases span { font-family: var(--script); font-size: 18px; letter-spacing: .02em; text-transform: none; line-height: 24px; border-left: 0; gap: 5px;
+  color: color-mix(in srgb, var(--pc) 32%, #2a2238); text-shadow: 0 0 2px color-mix(in srgb, var(--pc) 25%, transparent); transition: color .4s, text-shadow .4s; }
+.phases span em { font-family: var(--display); width: 13px; height: 13px; font-size: 8px; border-color: color-mix(in srgb, var(--pc) 35%, transparent); color: color-mix(in srgb, var(--pc) 45%, #2a2238); }
+.phases span.done { color: color-mix(in srgb, var(--pc) 50%, #3a3050); }
+.phases span.on { background: none; box-shadow: none; color: #fff; text-shadow: 0 0 3px #fff, 0 0 8px var(--pc), 0 0 16px var(--pc), 0 0 28px var(--pc); animation: neonOn .7s steps(1) both; }
+.phases span.on em { background: var(--pc); color: #120c24; border-color: #fff; box-shadow: 0 0 8px var(--pc); }
+@keyframes neonOn { 0% { opacity: .3; } 12% { opacity: 1; } 22% { opacity: .35; } 34% { opacity: 1; } 46% { opacity: .6; } 58%, 100% { opacity: 1; } }
+.phase-call { font-family: var(--script); font-size: 78px; letter-spacing: .02em !important; text-indent: 0; text-transform: none; color: #fff;
+  text-shadow: 0 0 4px #fff, 0 0 12px var(--pc), 0 0 28px var(--pc), 0 0 56px var(--pc); }
+.phase-call.in { animation: neonOn .7s steps(1) both; }
