@@ -77,7 +77,7 @@ export function boutScene(root, bout, ctx, onDone) {
   const PH_ORDER = ['draw', 'roll', 'bid', 'aim'];
   const pillTip = (k, c, what, ph) => () => !k ? tx('table.bluff', { what }) : tx('table.left-unused-you-see', { statTip: statTip(k, B.tipOf(me, k)), rewardLine: rewardLine(ph), replace: statTip(c, B.cOf(me, c)).replace(/<b>.*?<\/b>/, ''), what, name: opp.name });
   const header = h('div', { class: 'bout-head' },
-    h('div', { class: 'who me' }, h('div', { class: 'name' }, h('b', { text: 'You' }), h('span', { class: 'dim', text: ` ${D.heroName(me.cls)}` })),
+    h('div', { class: 'who me' }, h('div', { class: 'name' }, h('b', { text: tx('end.you') }), h('span', { class: 'dim', text: ` ${D.heroName(me.cls)}` })),
       h('div', { class: 'worth', tip: worthTip(me) }, 'Worth ', worthEl[0], '¢', owesEl[0]),
       h('div', { class: 'pills steps' }, STEPS.map(([k, name, stat, reward, what], i) => (pillEl[k] = h('span', { class: 'pill step', tip: pillTip(stat, reward, what, k) },
         h('em', { text: String(i + 1) }), ` ${name} `, (pill[k] = h('span'))))))),
@@ -89,10 +89,10 @@ export function boutScene(root, bout, ctx, onDone) {
         h('span', { class: 'pill small', tip: () => statTip(k, k in opp.tip ? B.tipOf(opp, k) : B.cOf(opp, k)) }, `${D.STATS[k].short} `, h('b', { text: k in opp.tip ? opp.tip[k] : opp.c[k] }))))));
   const stageBox = h('div', { class: 'stage-box' },
     h('div', { class: 'pit', style: { left: PX + 'px', width: OX - PX + 'px', top: TOP + 'px', height: 5 * CH + 'px' }, tip: tx('table.the-pit-every-chip') }),
-    h('div', { class: 'pot you', style: { left: PX + 2 + 'px', top: PIT.bottom + 2 + 'px' } }, h('em', { text: 'YOURS ' }), stageEl[0], '¢'),
-    h('div', { class: 'pot them', style: { left: PX + 72 + 'px', top: PIT.bottom + 2 + 'px' } }, h('em', { text: 'THEIRS ' }), stageEl[1], '¢'),
+    h('div', { class: 'pot you', style: { left: PX + 2 + 'px', top: PIT.bottom + 2 + 'px' } }, h('em', { text: tx('table.yours') }), stageEl[0], '¢'),
+    h('div', { class: 'pot them', style: { left: PX + 72 + 'px', top: PIT.bottom + 2 + 'px' } }, h('em', { text: tx('table.theirs') }), stageEl[1], '¢'),
     ...[0, 1].map((si) => h('div', { class: `stage-strip s${si}`, style: si === 0 ? { left: PX - bout.sides[0].rows * cw[0] + 'px', width: bout.sides[0].rows * cw[0] + 'px', top: STAGE_Y + 'px' } : { left: OX + 'px', width: bout.sides[1].rows * cw[1] + 'px', top: STAGE_Y + 'px' },
-      tip: tx('table.stage-chips-played-wait', { v: si === 0 ? 'Your' : `${opp.name}'s` }) }, h('span', { text: 'STAGE' }))));
+      tip: tx('table.stage-chips-played-wait', { v: si === 0 ? 'Your' : `${opp.name}'s` }) }, h('span', { text: tx('table.stage') }))));
   // the action feed: always on screen, newest line at the bottom, with the House's phase tracker above it
   const PHASES = [['bids', 'Bids', '#ffd76a'], ...['investment', 'insurance', 'expense', 'correction'].map((k) => [k, D.TYPES[k].name + 's', D.TYPES[k].color]), ['house', 'House', '#ffd76a']];
   const phaseEls = {};
@@ -101,7 +101,7 @@ export function boutScene(root, bout, ctx, onDone) {
   // The feed keeps the whole match in one list. Short, it shows the last few rows; History opens the same list to
   // every row of the bout, by turn, scrolled to the latest (Esc or History again closes it).
   const feedLines = h('div', { class: 'feed-lines list' });
-  const histBtn = btn('History', () => toggleHistory(), () => tx('table.match-history', { v: feedEl.classList.contains('open') ? tx('table.close-the-history') : tx('table.open-every-action-of') }), 'small hist');
+  const histBtn = btn(tx('table.history'), () => toggleHistory(), () => tx('table.match-history', { v: feedEl.classList.contains('open') ? tx('table.close-the-history') : tx('table.open-every-action-of') }), 'small hist');
   phasesEl.style.cssText = `left:${PX + 4}px;width:${OX - PX - 8}px;top:${TOP + 4}px`; // the phase bar hangs under the House's arms, at the top of the Pit
   const feedEl = h('div', { class: 'feed' }, h('div', { class: 'feed-head' }, histBtn), feedLines);
   const feed = []; let feedN = 0, prompt = '';
@@ -145,7 +145,7 @@ export function boutScene(root, bout, ctx, onDone) {
     if (open && !items.length) items.push({ k: 'empty', text: tx('table.nothing-has-happened-yet') });
     const sig = (x) => x.k + (x.row ? `:${cellTxt(x.row.you)}|${cellTxt(x.row.them)}|${cellTxt(x.row.house)}|${!!x.row.head}` : '');
     const atEnd = feedLines.scrollHeight - feedLines.scrollTop - feedLines.clientHeight < 30;
-    syncList(feedLines, items, sig, (x) => (x.row ? rowEl(x.row) : x.turn != null ? h('div', { class: 'f-row turn' }, h('div', { class: 'f-ph', text: tx('table.turn-2', { turn: x.turn }) }), h('div', { class: 'f-c', text: 'You' }), h('div', { class: 'f-c', text: opp.name })) : h('div', { class: 'feed-line prompt' })),
+    syncList(feedLines, items, sig, (x) => (x.row ? rowEl(x.row) : x.turn != null ? h('div', { class: 'f-row turn' }, h('div', { class: 'f-ph', text: tx('table.turn-2', { turn: x.turn }) }), h('div', { class: 'f-c', text: tx('end.you') }), h('div', { class: 'f-c', text: opp.name })) : h('div', { class: 'feed-line prompt' })),
       (el, x) => { if (!x.row && x.turn == null) swapText(el, x.text); el.classList.toggle('now', x === items[items.length - 1]); });
     if (open && atEnd) feedLines.scrollTop = feedLines.scrollHeight;
   }
@@ -170,19 +170,19 @@ export function boutScene(root, bout, ctx, onDone) {
   function setCalling(parts) { const next = parts.map(callEl).filter(Boolean); for (const el of calling) if (!next.includes(el)) el.classList.remove('calling'); for (const el of next) el.classList.add('calling'); calling = next; }
   function trickPoint(st) { if (st.uid == null) return null; if (st.who === 0) { const cl = cardLayout().get(st.uid); return cl ? { x: cl.x + cl.w / 2, y: cl.y + 12 } : null; } const el = [...oppRun.children].find((x) => x._key === st.uid); if (!el) return null; const bx = box(el); return { x: bx.x + 8, y: bx.y + bx.h / 2 }; }
   const runEmpty = h('div', { class: 'run-empty', tip: tx('table.run-tricks-you-have'), text: tx('table.your-run-click-a') });
-  const sipBtn = btn('Sip', () => { const why = B.canSip(bout, me); if (why) return nope(why, sipBtn); act(() => { B.sip(bout, me); toast(tx('table.you-sip-your-it', { name: me.drink.name })); }); }, () => (me.drink ? tx('table.sip-once-a-round', { drinkTip: drinkTip(me.drink) }) : ''), 'small');
-  const undoBtn = btn('Undo', () => act(() => { B.resetPlan(bout, me); ui.sel.clear(); ui.flips = []; ui.hand = []; ui.handAim.clear(); setMode(null); if (bout.phase === 'aim') aimBest(); }),
+  const sipBtn = btn(tx('table.sip'), () => { const why = B.canSip(bout, me); if (why) return nope(why, sipBtn); act(() => { B.sip(bout, me); toast(tx('table.you-sip-your-it', { name: me.drink.name })); }); }, () => (me.drink ? tx('table.sip-once-a-round', { drinkTip: drinkTip(me.drink) }) : ''), 'small');
+  const undoBtn = btn(tx('table.undo-2'), () => act(() => { B.resetPlan(bout, me); ui.sel.clear(); ui.flips = []; ui.hand = []; ui.handAim.clear(); setMode(null); if (bout.phase === 'aim') aimBest(); }),
     () => tx('table.undo', { v: bout.phase === 'draw' ? tx('table.put-back-the-tricks') : bout.phase === 'roll' ? (me.thrown ? tx('table.take-the-dice-off') : tx('table.clear-the-dice-and')) : tx('table.take-back-the-bids') }), 'small');
   const speedBtn = btn('1×', () => { ui.speed = ui.speed === 1 ? 2 : ui.speed === 2 ? 4 : 1; swapText(speedBtn, `${ui.speed}×`); }, tx('table.speed-how-fast-the'), 'small');
-  const commitBtn = btn('Roll', () => commit(), () => commitTip(), 'big');
+  const commitBtn = btn(tx('table.roll'), () => commit(), () => commitTip(), 'big');
   const trayBox = h('div', { class: 'tray-box', text: tx('table.draw-then-press-roll') }), trayCap = h('div', { class: 'tray-cap' });
   const frameEls = [header, stageBox, phasesEl, feedEl, runEmpty,
-    h('div', { class: 'zone-title', style: { left: '16px', top: '418px' }, tip: tx('table.book-tricks-you-own'), text: 'BOOK' }),
+    h('div', { class: 'zone-title', style: { left: '16px', top: '418px' }, tip: tx('table.book-tricks-you-own'), text: tx('table.book') }),
     h('div', { class: 'zone-title', style: { left: '888px', top: '418px' }, tip: tx('table.the-roll-everything-you'), text: tx('table.the-roll') }), trayBox, trayCap,
-    h('div', { class: 'zone-title', style: { left: '888px', top: '524px' }, tip: tx('table.pouch-your-dice-in'), text: 'POUCH' }),
+    h('div', { class: 'zone-title', style: { left: '888px', top: '524px' }, tip: tx('table.pouch-your-dice-in'), text: tx('table.pouch') }),
     h('div', { class: 'zone-title', style: { left: '1082px', top: '418px' }, tip: tx('table.s-run-the-tricks', { name: opp.name }), text: tx('table.their-run') }),
     h('div', { class: 'controls' }, sipBtn, undoBtn, speedBtn, commitBtn),
-    btn('Library', () => openLibrary(), tx('table.library-every-chip-trick'), 'small lib-btn')];
+    btn(tx('title.library'), () => openLibrary(), tx('table.library-every-chip-trick'), 'small lib-btn')];
   const oppRun = h('div', { class: 'opp-run' });
   const banner = h('div', { class: 'banner' });
   const fcLayer = h('div', { class: 'fc-layer' }); // fee forecasts and Debt tags over the stacks
@@ -204,8 +204,8 @@ export function boutScene(root, bout, ctx, onDone) {
         els.cells[si][r][c] = el; root.insertBefore(el, layer);
       } }
     const m = s.dims.meterRows, x0 = cellPos(si, si === 0 ? m - 1 : 0, 0).x, x1 = cellPos(si, si === 0 ? s.rows - 1 : m, 0).x;
-    root.insertBefore(h('div', { class: 'zone-label', style: { left: x0 + 'px', width: m * cw[si] + 'px', top: TOP + 5 * CH + 4 + 'px' }, text: 'BET', tip: () => positionTip(s, 'meter') }), layer);
-    root.insertBefore(h('div', { class: 'zone-label', style: { left: x1 + 'px', width: s.dims.barRows * cw[si] + 'px', top: TOP + 5 * CH + 4 + 'px' }, text: 'STAKE', tip: () => positionTip(s, 'bar') }), layer);
+    root.insertBefore(h('div', { class: 'zone-label', style: { left: x0 + 'px', width: m * cw[si] + 'px', top: TOP + 5 * CH + 4 + 'px' }, text: tx('prep.label.bet'), tip: () => positionTip(s, 'meter') }), layer);
+    root.insertBefore(h('div', { class: 'zone-label', style: { left: x1 + 'px', width: s.dims.barRows * cw[si] + 'px', top: TOP + 5 * CH + 4 + 'px' }, text: tx('prep.label.stake'), tip: () => positionTip(s, 'bar') }), layer);
   });
 
   // ---------- tooltips ----------
@@ -237,7 +237,7 @@ export function boutScene(root, bout, ctx, onDone) {
     const groups = []; for (let i = cell.chips.length - 1; i >= 0; i--) { const ch = seenAs(cell.chips[i], si), g = groups[groups.length - 1]; if (g && g.sig === chipSig(ch)) { g.n++; g.lo = i; } else groups.push({ sig: chipSig(ch), ch, n: 1, hi: i, lo: i }); }
     const ti = cell.chips.length - 1, top = seenAs(cell.chips[ti], si), debt = B.debtOf(cell), next = B.debtTarget(cell), hard = B.hardOf(cell), full = B.capacityLeft(s, cell) <= 0;
     const pi = ui.point && ui.point.si === si && ui.point.r === r && ui.point.c === c ? Math.min(ui.point.i, ti) : ti, pt = seenAs(cell.chips[pi], si);
-    const sec = (who, ch) => `<div class="chip-sec"><span class="who">${who}</span><b>${chipName(ch)}</b><p>${chipText(ch)}</p>${traitsHtml(traitsOf(ch, { cell }), { title: 'Properties' })}</div>`;
+    const sec = (who, ch) => `<div class="chip-sec"><span class="who">${who}</span><b>${chipName(ch)}</b><p>${chipText(ch)}</p>${traitsHtml(traitsOf(ch, { cell }), { title: tx('table.properties') })}</div>`;
     return tx('table.stack-high-worth', { zone, solidCount: B.solidCount(cell), stackMax: s.dims.stackMax, v: full ? ' (full)' : '', cellWorth: B.cellWorth(cell), v2: debt ? tx('table.owes', { debt }) : '', v3: full ? `<p class="keep dim">${vc(tx('table.full-nothing-more-can'), tx('table.full-nothing-more-fits'))}</p>` : '', v4: hard > 0 ? tx('table.hardened-for-more-each', { hard }) : '', v5: B.lifted(cell) ? tx('table.lifted-by-a-heli') : '', v6: cell.anchor ? tx('table.covers-spaces-by', { v: cell.anchor.n || 2 }) : '', v7: cell.cut ? tx('table.a-dormant-volcano-left', { cut: cell.cut }) : '', v8: debt && next ? tx('table.owes-debt-only-pays', { debt, value: next.value, value2: next.value - debt }) : '', v9: debt ? `<p class="dim">${DEBT_RULE}</p>` : '', join: groups.map((g) => `<li class="${pi <= g.hi && pi >= g.lo ? 'pt' : ''}"><span class="chip static mini ${g.sig}"><i>${chipGlyph(g.ch)}</i></span> ${g.n} × ${chipName(g.ch)}${g.hi === ti ? ' <span class="n">top</span>' : ''}</li>`).join(''), v10: cell.puddle ? tx('table.bottom-no-thickness', { chipGlyph: chipGlyph(cell.puddle), chipName: chipName(cell.puddle), v: B.grounded(cell) ? tx('table.grounds-the-frozen-chips') : '' }) : '', v11: si === 0 && !B.canEat(bout, me, r, c) ? (() => { const f = B.foodOf(me, r, c); return tx('table.double-click-to-eat', { label: f.label, join: Object.entries(f.mods).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${D.STATS[k].name}`).join(', '), v: f.turns > 1 ? ` for ${f.turns} turns` : ' this turn' }); })() : '', sec: sec('Top', top), v12: pi !== ti ? (chipSig(pt) === chipSig(top) && chipName(pt) === chipName(top) ? tx('table.pointer-of-from-the', { pi: pi + 1, ti: ti + 1 }) : sec(tx('table.pointer-of-from-the-2', { pi: pi + 1, ti: ti + 1 }), pt)) : `<p class="dim">${vc(tx('table.move-the-pointer-down'), '')}</p>`, fxTip: fxTip(si, r, c), dimLine });
   }
   // which chip of a stack the pointer is on: the space's height is shared out over the chips, bottom to top
@@ -302,8 +302,8 @@ export function boutScene(root, bout, ctx, onDone) {
         h('div', { class: 'c-name' }, h('b', { text: def.name }), h('span', { class: 'q', html: trickWord(t) })),
         h('div', { class: 'c-type' }, T.name, h('span', { class: `xm ${t.foil ? 'up' : ''}`, text: ` ${fmtX(B.multOf(t))}` }), h('span', { class: 'qd', tip: tx('table.quality-2', { QNAME: D.QNAME[t.q], qdieText: D.qdieText(t.q) }) }), h('span', { class: 'tgt', text: 'aim', 'data-act': 'target', tip: tx('table.aim-change-where-this') })),
         h('div', { class: 'c-slots', tip: tx('table.dice-holds-at-most', { name: def.name, count: def.count, die: def.die }) }, Array.from({ length: def.count }, () => h('span', { class: 'slot', text: def.die }))),
-        h('div', { class: 'c-bid' }, h('span', { class: 'bidslot', text: 'BID', 'data-act': 'bid' }), h('div', { class: 'c-math' })), // the roll breakdown sits beside the bid pile
-        h('div', { class: 'c-text' }, h('p', {}, h('em', { text: 'Roll ' }), def.roll.text), h('p', { class: 'bonus' }, h('em', { text: 'Bonus ' }), def.bonus.text)),
+        h('div', { class: 'c-bid' }, h('span', { class: 'bidslot', text: tx('table.bid-5'), 'data-act': 'bid' }), h('div', { class: 'c-math' })), // the roll breakdown sits beside the bid pile
+        h('div', { class: 'c-text' }, h('p', {}, h('em', { text: tx('table.roll-2') }), def.roll.text), h('p', { class: 'bonus' }, h('em', { text: tx('table.bonus') }), def.bonus.text)),
         h('div', { class: 'c-total' }, h('span', { class: 'state' }), h('b', { class: 'num' }))));
     tip(el, () => cardTip(t.uid)); layer.append(el); return el;
   }
@@ -859,9 +859,9 @@ export function boutScene(root, bout, ctx, onDone) {
   async function finish() {
     document.removeEventListener('keydown', onKey);
     const win = bout.winner === 0; await wait(500);
-    banner.append(h('div', { class: `banner-card ${win ? 'win' : 'lose'}` }, h('h1', { text: win ? tx('table.the-table-is-yours') : 'Broke' }),
+    banner.append(h('div', { class: `banner-card ${win ? 'win' : 'lose'}` }, h('h1', { text: win ? tx('table.the-table-is-yours') : tx('table.broke') }),
       h('p', { text: win ? tx('table.is-out-of-worth', { name: opp.name, turn: bout.turn }) : tx('table.takes-everything-on-the', { name: opp.name }) }),
-      btn('Continue', () => onDone(), null, 'big go')));
+      btn(tx('title.continue'), () => onDone(), null, 'big go')));
     requestAnimationFrame(() => requestAnimationFrame(() => banner.classList.add('in')));
   }
 

@@ -19,7 +19,7 @@ const sec = (title, sub) => h('div', { class: 'lib-sec' }, h('h3', { text: title
 // one entry: the piece as it looks, then its data
 function entry(vis, name, lines, o = {}) {
   return h('div', { class: `lib-e ${o.own ? 'own' : ''} ${o.wide ? 'wide' : ''}`, tip: o.tip },
-    h('div', { class: 'vis' }, vis), h('div', { class: 'txt' }, h('b', { html: name }), ...lines.filter(Boolean).map((l) => h('p', { html: l })), o.own ? h('span', { class: 'own-t', text: typeof o.own === 'string' ? o.own : 'Owned' }) : null));
+    h('div', { class: 'vis' }, vis), h('div', { class: 'txt' }, h('b', { html: name }), ...lines.filter(Boolean).map((l) => h('p', { html: l })), o.own ? h('span', { class: 'own-t', text: typeof o.own === 'string' ? o.own : tx('library.owned') }) : null));
 }
 const dim = (t) => `<span class="dim">${t}</span>`;
 const fx = (m) => '×' + (m % 1 ? m.toFixed(2).replace(/0$/, '') : m);
@@ -126,7 +126,7 @@ function diceTab(own) {
     out.push(entry(tipped(dieEl(d), () => dieTip(d)), type, [tx('library.rolls-1', { faces: X.faces }), D.COMPLEXITY.includes(type) ? tx('library.cast-volume-from-floor', { faces: X.faces * D.MELT.castPerFace, chips: cents(X.forge.chips), floor: X.forge.floor }) : tx('library.not-cast-by-the'), dim(tx('library.melts-to-sells-for', { faces: X.faces * D.MELT.meltPerFace, sell: cents(X.sell) }))], { own: n ? tx('library.in-your-pouch', { n }) : null })); }
   out.push(sec('Materials', Object.values(D.MATERIALS).map((M) => `<b>${M.name}</b>: ${M.text}`).join('<br>')));
   out.push(sec('Casts', tx('library.what-melts-together-decides')));
-  for (const C of Object.values(D.CASTS)) out.push(entry(h('span', { class: 'dim', text: C.mats.map((m) => D.MATERIALS[m].name).join(' + ') }), C.name, [C.text, dim(tx('library.rolls', { dice: C.dice }))]));
+  for (const C of Object.values(D.CASTS)) out.push(entry(h('span', { class: 'dim', text: C.mats.map((m) => D.MATERIALS[m].name).join(' + ') }), C.name, [C.text, dim(tx('library.rolls', { dice: C.mats.length + (C.needs || []).length }))]));
   out.push(sec(tx('build.table.DIAMOND'), D.DIAMOND.map((P) => `<b>${P.name}</b> (${P.when}): ${P.text}`).join('<br>')));
   out.push(sec('Dyes', tx('library.up-to-per-cast', { maxDyes: D.MELT.maxDyes })));
   for (const Y of Object.values(D.DYES)) out.push(entry(h('span', { class: 'dim', text: Y.from ? Y.from.map((k) => D.DYES[k].name.replace(/ dye$/, '')).join(' + ') : cents(Y.price) }), `<span style="color:${Y.color}">●</span> ${Y.name}`, [Y.text, dim(tx('library.rolls-from-your-pouch', { dice: Y.dice, v: Y.from ? tx('library.made-by-putting-both') : '' }))]));
@@ -234,6 +234,6 @@ export function openLibrary(start, o = {}) {
   tabs.append(...tabBtns);
   function render() { for (const b of tabBtns) b.classList.toggle('on', b._k === tab); body.replaceChildren(...BUILD[tab](own, render)); body.parentElement?.parentElement?.scrollTo?.({ top: 0 }); }
   render();
-  openPanel(h('div', { class: 'lib' }, h('div', { class: 'row between' }, h('div', {}, h('h2', { text: 'Library' }),
-    h('p', { class: 'sub', text: own.run ? tx('library.everything-in-the-game') : tx('library.everything-in-the-game-2') })), btn('Close', () => closePanel(), null, 'small')), tabs, body), { wide: true });
+  openPanel(h('div', { class: 'lib' }, h('div', { class: 'row between' }, h('div', {}, h('h2', { text: tx('title.library') }),
+    h('p', { class: 'sub', text: own.run ? tx('library.everything-in-the-game') : tx('library.everything-in-the-game-2') })), btn(tx('library.close'), () => closePanel(), null, 'small')), tabs, body), { wide: true });
 }

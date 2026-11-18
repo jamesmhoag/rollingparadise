@@ -41,8 +41,11 @@ const SKIP_CALLS = new Set(['t', 'tt', 'tx', 'getItem', 'setItem', 'removeItem',
   'addEventListener', 'removeEventListener', 'toggle', 'add', 'remove', 'contains', 'require', 'import', 'warn', 'log', 'error', 'info', 'debug', 'matchMedia', 'createElement', 'closest', 'dispatchEvent',
   'subPath', 'getPath', 'setPath', 'splitPath', 'deletePath', 'changed', 'revert', 'animate', 'pulse', 'toFixed', 'split', 'join', 'replace', 'match', 'test', 'localeCompare', 'padStart']);
 const strip = (s) => s.replace(/<[^>]*>/g, ' ').replace(/\{[^}]*\}/g, ' X ').replace(/\s+/g, ' ').trim();
-function english(text) {
+// label: the literal sits where only a label can go (a button, a toast, a text/title/tip/label value), so a single
+// capitalised word counts too
+function english(text, label) {
   const plain = strip(text);
+  if (label && /^[A-Z][A-Za-z'’]+[.!?…]?$/.test(plain)) return true;
   if (!/[A-Za-z]{2}/.test(plain) || !/\s/.test(plain)) return false;
   if (/(^|\s|\})(px|%|deg|rgba?\(|var\(--|translate|scale\(|cubic-bezier|calc\()/.test(text) || /\dpx\b/.test(text) || /^[#.]/.test(text)) return false;
   if (/^[a-z0-9_:.\- ]+$/.test(plain)) return false; // classes and ids: lowercase words
@@ -84,9 +87,16 @@ function pluralOf(e) { // `${n === 1 ? '' : 's'}` and friends: { subject, one, m
 function convertFile(file) {
   const src = fs.readFileSync(file, 'utf8'), ast = parse(src), picks = [];
   walk.ancestor(ast, {
-    Literal(n, _s, anc) { if (typeof n.value === 'string' && candidate(n, anc) && english(n.value)) picks.push(n); },
-    TemplateLiteral(n, _s, anc) { const p = anc[anc.length - 2]; if (p?.type === 'TaggedTemplateExpression') return; const txt = n.quasis.map((q) => q.value.cooked).join('{x}'); if (candidate(n, anc) && english(txt)) picks.push(n); },
+    Literal(n, _s, anc) { if (typeof n.value === 'string' && candidate(n, anc) && english(n.value, labelSpot(n, anc))) picks.push(n); },
+    TemplateLiteral(n, _s, anc) { const p = anc[anc.length - 2]; if (p?.type === 'TaggedTemplateExpression') return; const txt = n.quasis.map((q) => q.value.cooked).join('{x}'); if (candidate(n, anc) && english(txt, labelSpot(n, anc))) picks.push(n); },
   });
+  function labelSpot(n, anc) {
+    const p = anc[anc.length - 2]; if (!p) return false;
+    if (p.type === 'Property' && p.value === n && ['text', 'title', 'tip', 'label', 'placeholder', 'name', 'sub', 'alt', 'html'].includes(p.key?.name || p.key?.value)) return true;
+    if (p.type === 'CallExpression' && p.arguments[0] === n && ['btn', 'toast', 'warn', 'swapText'].includes(p.callee.name)) return true;
+    if (p.type === 'ConditionalExpression' || p.type === 'LogicalExpression') return labelSpot(p, anc.slice(0, -1));
+    return false;
+  }
   function candidate(n, anc) {
     const p = anc[anc.length - 2], gp = anc[anc.length - 3];
     if (!p) return false;

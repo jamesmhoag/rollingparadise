@@ -176,7 +176,7 @@ export function cardEl(id, cls = '') {
 // a pass: not a card, it rides in the wallet's own pass slot
 export const passTip = (f) => tx('parts.every-wallet-holds-one', { name: D.PASSES[f].name, text: D.PASSES[f].text });
 export function passEl(f, cls = '') {
-  const P = D.PASSES[f]; const el = h('span', { class: `gcard gpass ${cls}`, style: { '--gc': P.color, '--ink': '#fff' } }, h('em', { text: 'Pass' }), h('b', { text: P.glyph }), h('small', { text: P.name.replace(/ Pass$/, '') }));
+  const P = D.PASSES[f]; const el = h('span', { class: `gcard gpass ${cls}`, style: { '--gc': P.color, '--ink': '#fff' } }, h('em', { text: tx('parts.pass') }), h('b', { text: P.glyph }), h('small', { text: P.name.replace(/ Pass$/, '') }));
   el._tip = () => passTip(f); el.classList.add('has-tip'); return el;
 }
 export function walletEl(id, cls = '') {
