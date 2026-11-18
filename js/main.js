@@ -1,5 +1,5 @@
 // Entry point: boots the stage, owns navigation between screens.
-import { h, fit, initTips, go, btn, toast, closePanel, openPanel } from './ui/core.js';
+import { h, fit, initTips, go, btn, toast, closePanel, openPanel, guided } from './ui/core.js';
 import { app } from './ui/app.js';
 import { statRow, jacketTip, dieEl, dieTip, trickTip } from './ui/parts.js';
 import { hubScene } from './ui/floor.js';
@@ -93,9 +93,9 @@ function selectScene(root) {
       h('span', { class: 'cap', text: t('select.book') }), h('div', { class: 'inv' }, K.tricks.map((tid) => { const t = { id: tid, q: 1 }; return h('span', { class: 'tag-t', style: { '--tc': D.TYPES[D.TRICKS[tid].type].color }, tip: () => trickTip(t, id) }, D.TRICKS[tid].name); })));
     el._id = id; return el; });
   cards.append(...els);
-  const jb = meta.jackets.map((id) => { const b = btn(`🧥 ${D.JACKETS[id].name}`, () => { jacket = id; sync(); }, () => { const K = D.CLASSES[cls]; return jacketTip(id, { ...K.tip, ...K.c, ...K.bvd }) + `<p class="dim">${t('select.jacket.against', { cls: K.name })}</p>`; }, 'small'); b._id = id; return b; });
+  const jb = meta.jackets.map((id) => { const b = guided(btn(`🧥 ${D.JACKETS[id].name}`, () => { jacket = id; sync(); }, () => { const K = D.CLASSES[cls]; return jacketTip(id, { ...K.tip, ...K.c, ...K.bvd }) + `<p class="dim">${t('select.jacket.against', { cls: K.name })}</p>`; }, 'small'), 'jacket'); b._id = id; return b; });
   jackets.append(h('span', { class: 'cap', text: t('select.jacket') }), ...jb);
-  const wb = meta.wallets.map((id) => { const b = btn(`👛 ${D.WALLETS[id].name}`, () => { wallet = id; sync(); }, () => walletTip(id), 'small'); b._id = id; return b; });
+  const wb = meta.wallets.map((id) => { const b = guided(btn(`👛 ${D.WALLETS[id].name}`, () => { wallet = id; sync(); }, () => walletTip(id), 'small'), 'wallet'); b._id = id; return b; });
   const keptEl = h('span', { class: 'sub fade-t' });
   jackets.append(h('span', { class: 'cap', style: { marginLeft: '18px' }, text: t('select.wallet') }), ...wb, keptEl);
   function sync() { for (const el of els) el.classList.toggle('sel', el._id === cls); for (const b of jb) b.classList.toggle('on', b._id === jacket); for (const b of wb) b.classList.toggle('on', b._id === wallet);

@@ -1,7 +1,8 @@
 // DOM helpers shared by every screen: element builder, tooltips, scene and panel
 // transitions, keyed list syncing with enter/leave/move animation, number tweens.
 import { STATS } from '../data.js';
-import { GUIDE } from '../content/guidance.js';
+import { GUIDE, GUIDE_BY_CLASS } from '../content/guidance.js';
+import { t as tx } from '../text.js';
 
 export const W = 1280, H = 720;
 export const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -68,15 +69,29 @@ export function setHoverMode(mode) {
 }
 const STAT_BY_SHORT = Object.fromEntries(Object.entries(STATS).map(([k, X]) => [X.short, k]));
 // which guidance entry an element shows: data-guide, or worked out from what the element is
+// mark an element with the guidance entry it shows (for things with no fixed class or label)
+export const guided = (el, key) => { if (el?.dataset) el.dataset.guide = key; return el; };
+// a button shows the entry whose `labels` (text keys) give its label, so rewording a button keeps its guidance
+function labelGuide(el) {
+  const txt = (el.textContent || '').trim(); if (!txt) return null; let best = null;
+  for (const [k, G] of Object.entries(GUIDE)) for (const lk of G.labels || []) {
+    const s = tx(lk).split('{')[0].trim(); if (!s) continue;
+    if ((txt === s || txt.startsWith(s + ' ') || (s.length > 3 && txt.startsWith(s))) && (!best || s.length > best[0].length)) best = [s, k];
+  }
+  return best?.[1] || null;
+}
 export function guideKeyOf(el) {
   if (el.dataset?.guide) return el.dataset.guide;
   const c = el.classList; if (!c) return null;
+  for (const [cls, key] of GUIDE_BY_CLASS) if (cls.split('.').every((x) => c.contains(x))) return key;
   if (c.contains('die')) return 'die';
   if (c.contains('chip')) return 'chip';
   if (c.contains('tcard') || c.contains('tag-t')) return 'trick';
   if (c.contains('cell')) return 'cell';
   if (c.contains('room')) { const r = [...c].find((x) => x.startsWith('r-')); return r ? 'room:' + r.slice(2) : null; }
-  if (c.contains('stat')) { const k = STAT_BY_SHORT[el.querySelector('em')?.textContent]; return k ? 'stat:' + k : null; }
+  if (c.contains('stat')) { const k = STAT_BY_SHORT[el.querySelector('em')?.textContent]; return k ? 'stat:' + k : 'record'; }
+  if (c.contains('pill')) { const name = (el.textContent || '').trim().split(' ')[0]; const k = Object.keys(STATS).find((x) => STATS[x].name === name); return k ? 'stat:' + k : 'step'; }
+  if (el.tagName === 'BUTTON') return labelGuide(el);
   return null;
 }
 const nameOf = (raw) => { if (!raw) return ''; if (raw.nodeType) return raw.querySelector?.('b')?.textContent || ''; const m = /<b[^>]*>(.*?)<\/b>/.exec(raw); return m ? m[1] : ''; };

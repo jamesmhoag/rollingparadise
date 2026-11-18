@@ -65,12 +65,12 @@ export function ascentScene(root) {
   const run = app.run, A = run.ascent, rung = A.ladder[A.step], H = hud(t('ascent.title'), t('ascent.sub', { step: A.step + 1, of: A.ladder.length }));
   const ladder = h('div', { class: 'ladder list' });
   const P = planner(() => ({}), () => H.update());
-  syncList(ladder, A.ladder.map((l, i) => ({ ...l, i })), (l) => l.i, (l) => h('div', { class: 'rung', tip: () => oppTip(l.opp) }, h('span', {}, h('b', { text: l.name }), h('small', { class: 'dim', text: ` ${l.opp.title}` })), h('span', { class: 'gold-t', text: cents(l.networth) })),
+  syncList(ladder, A.ladder.map((l, i) => ({ ...l, i })), (l) => l.i, (l) => h('div', { class: 'rung', guide: 'ascent-step', tip: () => oppTip(l.opp) }, h('span', {}, h('b', { text: l.name }), h('small', { class: 'dim', text: ` ${l.opp.title}` })), h('span', { class: 'gold-t', text: cents(l.networth) })),
     (el, l) => { el.classList.toggle('cur', l.i === A.step); el.classList.toggle('done', l.i < A.step); });
   root.append(H.el, h('div', { class: 'page', style: { display: 'grid', gridTemplateColumns: '300px 1fr 270px', gap: '16px' } },
-    h('div', { class: 'box col scroll' }, h('span', { class: 'cap', tip: t('ascent.steps.tip'), text: t('ascent.steps') }), ladder),
+    h('div', { class: 'box col scroll' }, h('span', { class: 'cap', guide: 'ascent-step', tip: t('ascent.steps.tip'), text: t('ascent.steps') }), ladder),
     h('div', { class: 'box' }, P.el),
-    h('div', { class: 'col' }, h('div', { class: 'box col', tip: () => oppTip(rung.opp) }, h('span', { class: 'cap', text: t('ascent.holding') }), h('h2', { text: rung.name }), h('p', { class: 'sub', text: t('ascent.holder', { title: rung.opp.title, amt: cents(rung.opp.worth) }) }), h('div', { class: 'inv' }, rung.opp.tricks.map((t) => trickTag(t, rung.opp.cls)))),
+    h('div', { class: 'col' }, h('div', { class: 'box col', guide: 'opponent', tip: () => oppTip(rung.opp) }, h('span', { class: 'cap', text: t('ascent.holding') }), h('h2', { text: rung.name }), h('p', { class: 'sub', text: t('ascent.holder', { title: rung.opp.title, amt: cents(rung.opp.worth) }) }), h('div', { class: 'inv' }, rung.opp.tricks.map((t) => trickTag(t, rung.opp.cls)))),
       btn(t('ascent.climb'), () => { if (P.worth() < 1) return toast(t('prep.needChip'), 'warn'); app.nav.bout(R.startAscent(run)); }, t('ascent.climb.tip'), 'big go'),
       h('p', { class: 'sub', text: t('ascent.safe') }))));
   P.update();
@@ -85,7 +85,7 @@ export function alleyScene(root) {
   root.append(h('div', { class: 'page', style: { top: 0, display: 'grid', placeItems: 'center' } }, h('div', { class: 'col', style: { width: '620px', textAlign: 'center', alignItems: 'center', gap: '14px' } },
     h('h1', { class: 'neon-p', text: t('alley.title') }),
     h('p', { class: 'sub', text: t('alley.sub') }),
-    h('div', { class: 'box col', style: { alignItems: 'center', width: '100%' }, tip: () => walletTip(run.wallet) }, h('span', { class: 'cap', text: t(roll.pass ? 'alley.wallet.pass' : 'alley.wallet', { name: Wl.name, n: roll.cards.length, pass: roll.pass ? D.PASSES[roll.pass].name : '', need: roll.need }) }),
+    h('div', { class: 'box col', guide: 'wallet', style: { alignItems: 'center', width: '100%' }, tip: () => walletTip(run.wallet) }, h('span', { class: 'cap', text: t(roll.pass ? 'alley.wallet.pass' : 'alley.wallet', { name: Wl.name, n: roll.cards.length, pass: roll.pass ? D.PASSES[roll.pass].name : '', need: roll.need }) }),
       h('div', { class: 'row', style: { gap: '18px', margin: '10px 0' } }, dice, h('span', { class: 'dim', text: '=' }), total), verdict, kept), cont)));
   (async () => {
     await wait(900);

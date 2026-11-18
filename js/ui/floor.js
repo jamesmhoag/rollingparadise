@@ -1,5 +1,5 @@
 // The floor: a map of places to visit between bouts, each opening as a panel.
-import { h, syncList, openPanel, closePanel, toast, btn, tween, pulse, swapText } from './core.js';
+import { h, syncList, openPanel, closePanel, toast, btn, tween, pulse, swapText, guided } from './core.js';
 import { app, hud, oppTip, trickTag, diceSummary } from './app.js';
 import { faceList, dieName, canMelt, matOf } from '../dice.js';
 import { meltVolume, castNeed, castFor, mixDyes, mixOpen } from '../forge.js';
@@ -135,7 +135,7 @@ function smithPanel() {
   const meltDice = () => melt.map((id) => run.dice.find((d) => d.id === id)).filter(Boolean);
   function render() {
     melt = melt.filter((id) => run.dice.some((d) => d.id === id));
-    syncList(sizes, D.COMPLEXITY, (t) => t, (t) => { const el = btn('', () => { type = t; render(); }, null, 'small'); el.append(dieEl({ type: t })); return el; },
+    syncList(sizes, D.COMPLEXITY, (t) => t, (t) => { const el = btn('', () => { type = t; render(); }, null, 'small'); el.append(dieEl({ type: t })); return guided(el, 'btn:cast'); },
       (el, t) => { el.classList.toggle('on', t === type); el.classList.toggle('off', run.floor < R.forgeFloor(t)); el._tip = () => tx('floor.cast-a-needs-melted', { t, castNeed: castNeed(t), forgeCost: cents(R.forgeCost(run, t)), v: run.floor < R.forgeFloor(t) ? tx('floor.from-floor', { forgeFloor: R.forgeFloor(t) }) : '' }); el.classList.add('has-tip'); });
     syncList(pouch, run.dice, (d) => d.id + ':' + faceList(d).join(), (d) => { const el = dieEl(d); pouchEl.set(d.id, el);
       el.onclick = () => { if (!canMelt(d)) return toast(tx('floor.dice-cannot-be-melted', { name: D.MATERIALS[d.mat].name }), 'warn'); melt = melt.includes(d.id) ? melt.filter((x) => x !== d.id) : [...melt, d.id]; render(); };
@@ -241,7 +241,7 @@ function exchangePanel() {
     h('span', { class: 'cap', text: tx('floor.standard-chips-on-this') }),
     h('div', { class: 'row wrap', style: { margin: '8px 0 14px' } }, D.DENOMS.map((d) => h('div', { class: `box row ${run.floor < d.floor ? 'off' : ''}`, tip: () => `${chipTip({ kind: 'std', value: d.value })}${run.floor < d.floor ? `<p class="bad">${d.floor >= D.ASCENT_FLOOR ? tx('floor.dealt-in-the-paradise') : tx('floor.dealt-from-floor', { floor: d.floor })}</p>` : ''}` }, chipEl({ kind: 'std', value: d.value }), h('span', {}, `${d.value}¢`, h('small', { class: 'dim', text: run.floor < d.floor ? `  floor ${d.floor}` : '' }))))),
     h('p', { class: 'sub', style: { marginBottom: '12px' }, text: tx('floor.a-big-chip-pays') }),
-    h('span', { class: 'cap', tip: tx('floor.shop-chip-tiers-priced', { join: D.CHIP_TIERS.slice(1).map((t) => `${t.name} ${cents(t.price)}${t.floor > 1 ? tx('floor.floor', { floor: t.floor }) : ''}`).join(' · ') }), text: tx('floor.shop-chips-deployed-at') }), list), { wide: true });
+    h('span', { class: 'cap', guide: 'shop:tiers', tip: tx('floor.shop-chip-tiers-priced', { join: D.CHIP_TIERS.slice(1).map((t) => `${t.name} ${cents(t.price)}${t.floor > 1 ? tx('floor.floor', { floor: t.floor }) : ''}`).join(' · ') }), text: tx('floor.shop-chips-deployed-at') }), list), { wide: true });
 }
 
 function loungePanel() {
@@ -270,8 +270,8 @@ function bookPanel() {
   function render() {
     tween(stakeNum, stake, cents, 250);
     for (const { ev, field, status } of rows) {
-      syncList(field, ev.field.map((x, i) => ({ ...x, i })), (x) => x.i, (x) => btn('', () => { if (ev.bet) return; if (stake > run.purse || stake < B.min) return toast(tx('floor.the-minimum-bet-is', { min: cents(B.min) }), 'warn'); R.placeBet(run, ev.key, x.i, stake); stake = Math.min(stake, Math.max(B.min, run.purse)); done(); },
-        () => tx('floor.a-winning-ticket-pays', { name: x.name, label: x.label, stake: cents(stake), stake2: cents(Math.round(stake * (1 + x.pay))) }), 'small'),
+      syncList(field, ev.field.map((x, i) => ({ ...x, i })), (x) => x.i, (x) => guided(btn('', () => { if (ev.bet) return; if (stake > run.purse || stake < B.min) return toast(tx('floor.the-minimum-bet-is', { min: cents(B.min) }), 'warn'); R.placeBet(run, ev.key, x.i, stake); stake = Math.min(stake, Math.max(B.min, run.purse)); done(); },
+        () => tx('floor.a-winning-ticket-pays', { name: x.name, label: x.label, stake: cents(stake), stake2: cents(Math.round(stake * (1 + x.pay))) }), 'small'), 'btn:bet'),
       (el, x) => { el.innerHTML = `${x.name} <span class="q">${x.label}</span>`; el.classList.toggle('on', !!ev.bet && ev.bet.pick === x.i); el.classList.toggle('off', (!!ev.bet && ev.bet.pick !== x.i) || (!ev.bet && run.purse < B.min)); });
       swapText(status, ev.done ? (ev.winner === ev.bet.pick ? tx('floor.paid-out') : tx('floor.lost-won', { name: ev.field[ev.winner].name })) : ev.bet ? tx('floor.riding-on', { stake: cents(ev.bet.stake), name: ev.field[ev.bet.pick].name }) : tx('floor.no-bet-placed'));
     }
