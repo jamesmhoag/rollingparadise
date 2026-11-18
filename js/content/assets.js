@@ -8,6 +8,21 @@ export const FONTS = {
   script: { family: "Yellowtail", files: ["assets/fonts/yellowtail-latin-400-normal.woff2"], license: "assets/fonts/OFL-yellowtail.txt" },
 };
 
+// neon colours a Roller's name and side of the table can glow in (picked by clicking a name at the table)
+export const NEON = [
+  { name: "Ice", c: "#6ef0ff" }, { name: "Flamingo", c: "#ff6edc" }, { name: "Lime", c: "#9dff6e" }, { name: "Tangerine", c: "#ffa13d" },
+  { name: "Violet", c: "#b98bff" }, { name: "Lemon", c: "#fff36e" }, { name: "Cherry", c: "#ff4d6a" }, { name: "Electric", c: "#4da6ff" },
+];
+
+// the lounge's music, played in turn on a loop: Scott Joplin's rags, all published 1901-1909 and in the public domain,
+// from the public-domain Mutopia Project engravings, played by the game's own piano (tools/render-music.py)
+export const MUSIC = [
+  { title: "The Easy Winners", by: "Scott Joplin", year: 1901, src: "assets/music/easy-winners.mp3" },
+  { title: "Wall Street Rag", by: "Scott Joplin", year: 1909, src: "assets/music/wall-street-rag.mp3" },
+  { title: "The Entertainer", by: "Scott Joplin", year: 1902, src: "assets/music/the-entertainer.mp3" },
+  { title: "Solace", by: "Scott Joplin", year: 1909, src: "assets/music/solace.mp3" },
+];
+
 export const IMAGES = {
   logoPink: "assets/logo-pink.png", logoCyan: "assets/logo-cyan.png", logoDice: "assets/logo-dice.png",
 };

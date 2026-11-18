@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import * as D from '../js/data.js';
-import { FONTS } from '../js/content/assets.js';
+import { FONTS, MUSIC } from '../js/content/assets.js';
 
 let fail = 0;
 const ok = (c, m) => { if (!c) { fail++; console.error('✗', m); } };
@@ -18,6 +18,7 @@ for (const [k, F] of Object.entries(FONTS)) { F.files.forEach((p) => want(p, `fo
 for (const [k, p] of Object.entries(D.IMAGES)) want(p, `image ${k}`);
 for (const [k, I] of Object.entries(D.ICONS)) { want(I.src, `icon ${k}`); ok(I.src || I.glyph || ['creature', 'orbital', 'chip'].includes(k.split(':')[0]), `icon ${k}: no file and no glyph`); }
 for (const [k, p] of Object.entries(D.TEXTURES)) want(p, `texture ${k}`);
+for (const M of MUSIC) want(M.src, `music ${M.title}`);
 
 // 2 · every manifest id names something in the game
 const known = { room: ['smith', 'dice', 'trader', 'exchange', 'lounge', 'book', 'search', 'kit'], creature: [...Object.keys(D.CREATURES), 'bee'], orbital: Object.keys(D.ORBITALS), chip: Object.keys(D.SHOP_CHIPS), felt: Object.keys(D.FELTS) };
