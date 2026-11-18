@@ -14,10 +14,12 @@ import { facesOf, faceValue, dieName } from '../dice.js';
 import { solidEl } from './solid.js';
 import { t as tx } from '../text.js';
 
-// the table: each position's Stage runs along its top (y 100-126), the positions below it, and the Pit between them
+// the table: the House's phase track runs along the top edge (y 100-124), the positions below it, and between them
+// the Pit (right under the House's arms), each Roller's pot, and the ledger of bids and tapped pieces
 const TOP = 128, CH = 44, PX = 570, OX = 710, CHIP = 32, STAGE_Y = 100;
-const PIT = { left: PX, right: OX, top: TOP + 104, bottom: TOP + 5 * CH - 4 }; // the Pit's chips sit under the phase bar
-const STAGE = [{ x: 604, y: PIT.bottom - CHIP }, { x: 644, y: PIT.bottom - CHIP }], HOUSE = { x: 624, y: 30 };
+const PIT = { left: PX, right: OX, top: TOP, bottom: TOP + 98 }; // the Pit's chips stack up from its floor
+const LEDGER_Y = PIT.bottom + 30; // under the pots: what each Roller has bid, and what is tapped
+const STAGE = [{ x: PX + 18, y: PIT.bottom - CHIP - 4 }, { x: OX - 50, y: PIT.bottom - CHIP - 4 }], HOUSE = { x: 624, y: 30 };
 const fmtX = (m) => '×' + (m % 1 ? m.toFixed(2).replace(/0$/, '') : m);
 
 export function boutScene(root, bout, ctx, onDone) {
@@ -26,7 +28,7 @@ export function boutScene(root, bout, ctx, onDone) {
   const ui = { peek: null, peekPhase: null, handAim: new Set(), mode: null, die: null, entry: null, locked: false, speed: globalThis.RP_FAST || 1, first: true, sel: new Set(), flips: [], hand: [], card: null, point: null }; // RP_FAST: set by automated playthroughs
   // sel: Pouch dice picked for the throw · flips: stacks whose top chip is picked to flip · hand: the bid chips picked up, one {r,c} per chip (a stack picked twice gives its top two) · card: trick under the pointer · point: the chip under the pointer in a stack
   const els = { chips: new Map(), dice: new Map(), cards: new Map(), cells: [[], []], creatures: new Map(), stage: new Map() };
-  const layer = h('div', { class: 'bout-layer' }), rings = new Map(); // rings: the BID ring over each bid pile
+  const layer = h('div', { class: 'bout-layer' });
   root.classList.add('bout');
   // the table's felt: for now it only sets the colour
   const feltBg = h('div', { class: 'table-felt', style: feltStyle(ctx?.felt || 'felt'), tip: () => { const F = D.feltOf(ctx?.felt || 'felt'); return tx('table.felt-no-board-effect', { name: F.name, line: F.line }); } });
@@ -40,11 +42,19 @@ export function boutScene(root, bout, ctx, onDone) {
   // and give their whole width to the Run. Click a spine, or press B or D, to peek inside at any time.
   const bookOpen = () => bout.phase === 'draw';
   const diceOpen = () => (bout.phase === 'roll' && !me.thrown) || me.tray.length > 0;
-  const runSpan = () => { const l = bookOpen() ? 248 : 52, r = diceOpen() ? 874 : 1036; return { l, r, w: r - l }; };
-  const DICE_DX = -44; // a peek at the dice sits clear of its spine
+  // The Run (your drawn hand) is centred on the middle of the screen; the dice (the Roll and the Pouch, or their
+  // spine) sit right after its last card, top-aligned with it. A long hand slides left and narrows to fit.
+  const RUN_Y = 466, GAP = 14, MID = 640, RMAX = 1072; // RMAX: the dice end before their Run
+  function runSpan() {
+    const l = bookOpen() ? 248 : 52, d = diceOpen() ? 196 : 28, n = me.run.length;
+    const w = Math.min(122, Math.floor((RMAX - l - GAP - d + 6) / Math.max(1, n)) - 6), W = n ? n * (w + 6) - 6 : 420;
+    const x = Math.max(l, Math.min(MID - W / 2, RMAX - d - GAP - W));
+    return { l: x, r: x + W, w: W, cw: w, dice: x + W + GAP, feedL: l };
+  }
+  const diceAt = () => { const R = runSpan(); return diceOpen() ? R.dice : ui.peek === 'dice' ? R.dice - 200 : R.dice; }; // where the dice column starts
   function cardLayout() {
-    const out = new Map(), n = me.run.length, R = runSpan(), w = Math.min(122, Math.floor(R.w / Math.max(1, n)) - 6);
-    me.run.forEach((e, i) => out.set(e.uid, { x: R.l + i * (w + 6), y: 466, w, h: 242, open: true, e }));
+    const out = new Map(), R = runSpan(), w = R.cw;
+    me.run.forEach((e, i) => out.set(e.uid, { x: R.l + i * (w + 6), y: RUN_Y, w, h: 242, open: true, e }));
     const peek = ui.peek === 'book', tapT = B.tappedInOrder(me).tricks.map((x) => x.trick), shelf = [...me.book, ...tapT], step = Math.min(34, Math.floor(262 / Math.max(1, shelf.length)));
     shelf.forEach((t, i) => out.set(t.uid, bookOpen() ? { x: 16, y: 444 + i * step, w: 220, h: Math.min(30, step - 3), open: false, t }
       : peek ? { x: 50, y: 444 + i * step, w: 220, h: Math.min(30, step - 3), open: false, t, peek: true }
@@ -52,17 +62,19 @@ export function boutScene(root, bout, ctx, onDone) {
     return out;
   }
   const dieSlot = (cl, i) => ({ x: cl.x + 7 + (i % 3) * 36, y: cl.y + 50 + Math.floor(i / 3) * 36 });
-  const pouchSlot = (i, n) => { const dx = ui.peek === 'dice' ? DICE_DX : 0;
-    if (!diceOpen() && ui.peek !== 'dice') return { x: 1047, y: 440 + Math.min(i, 30) * 6, folded: true }; // folded into its spine
-    if (bout.phase === 'roll' && me.thrown && ui.peek !== 'dice') return { x: 888 + Math.min(i, 30) * Math.min(10, 150 / Math.max(1, n)), y: 548 - (i % 2) * 2 }; // thrown: the rest of the Pouch closes up
-    const per = n > 15 ? 6 : 5, st = n > 15 ? 30 : 36; return { x: 888 + dx + (i % per) * st, y: 544 + Math.floor(i / per) * st }; };
-  const traySlot = (i) => ({ x: 892 + (ui.peek === 'dice' ? DICE_DX : 0) + (i % 5) * 36, y: 442 + Math.floor(i / 5) * 36 }); // the roll: room for two rows of dice
+  // the dice column, top-aligned with the Run: the Roll (title, tray), then the Pouch (title, dice)
+  const DY = { roll: RUN_Y, tray: RUN_Y + 18, pouch: RUN_Y + 108, dice: RUN_Y + 128 };
+  const pouchSlot = (i, n) => { const x0 = diceAt() + 6;
+    if (!diceOpen() && ui.peek !== 'dice') return { x: runSpan().dice + 3, y: RUN_Y + 22 + Math.min(i, 30) * 6, folded: true }; // folded into its spine
+    if (bout.phase === 'roll' && me.thrown && ui.peek !== 'dice') return { x: x0 + Math.min(i, 30) * Math.min(10, 150 / Math.max(1, n)), y: DY.dice + 4 - (i % 2) * 2 }; // thrown: the rest of the Pouch closes up
+    const per = n > 15 ? 6 : 5, st = n > 15 ? 30 : 36; return { x: x0 + (i % per) * st, y: DY.dice + Math.floor(i / per) * st }; };
+  const traySlot = (i) => ({ x: diceAt() + 10 + (i % 5) * 36, y: DY.tray + 6 + Math.floor(i / 5) * 36 }); // the roll: room for two rows of dice
   // the Stage: what each Roller has paid, stacked in front of the House
   // the Pit: each Roller's lost chips, in the order they were lost, filling two stacks on their own side, then rising
   const pitSlot = (si, k, n) => { const per = Math.ceil(n / 2), step = Math.min(4, (PIT.bottom - PIT.top - CHIP) / Math.max(1, per - 1));
     return { x: (si === 0 ? PX + 2 : PX + 72) + (k % 2) * 34, y: PIT.bottom - CHIP - Math.floor(k / 2) * step, z: 30 + k }; };
-  // each position's Stage: bids wait on it, a pile per trick, and chips a trick makes appear on it before they land
-  const stageX = (si, j) => (si === 0 ? PX - 36 - j * 38 : OX + 4 + j * 38);
+  // a bid pile sits on its trick: on your card's BID ring, or on the corner of their small card
+  function bidSpot(el) { const s = el?.querySelector('.bidslot'); return s ? { x: s.offsetLeft + (s.offsetWidth - CHIP) / 2, y: s.offsetTop + (s.offsetHeight - CHIP) / 2 } : { x: 8, y: 80 }; }
 
   // ---------- static frame ----------
   const worthEl = [h('b', { class: 'num' }), h('b', { class: 'num' })], stageEl = [h('b', { class: 'num' }), h('b', { class: 'num' })];
@@ -104,22 +116,38 @@ export function boutScene(root, bout, ctx, onDone) {
       h('div', { class: 'worth', tip: worthTip(opp) }, 'Worth ', worthEl[1], '¢', owesEl[1]),
       (oppPills = h('div', { class: 'pills' }, ['trickery', 'proficiency', 'ingenuity', 'charisma', 'cunning', 'conviction'].map((k) =>
         h('span', { class: 'pill small', 'data-k': k, tip: () => statTip(k, k in opp.tip ? B.tipOf(opp, k) : B.cOf(opp, k)) + statSplit(B.statParts(opp, k)) + (k in opp.tip ? '' : cccGate(opp)) }, `${D.STATS[k].short} `, h('b', { text: k in opp.tip ? opp.tip[k] : opp.c[k] })))))));
+  // the middle of the table: the Pit right under the House's arms, each Roller's pot under it, then a ledger per
+  // Roller of what is bid on tricks this turn and what is tapped (waiting to be restored)
+  const ledEl = [0, 1].map((si) => ({ bid: h('b', { class: 'num' }), on: h('small'), tap: h('span', { class: 'led-tap' }) }));
   const stageBox = h('div', { class: 'stage-box' },
-    h('div', { class: 'pit', style: { left: PX + 'px', width: OX - PX + 'px', top: TOP + 'px', height: 5 * CH + 'px' }, tip: tx('table.the-pit-every-chip') }),
-    h('div', { class: 'pot you', style: { left: PX + 2 + 'px', top: PIT.bottom + 2 + 'px' } }, h('em', { text: tx('table.yours') }), stageEl[0], '¢'),
-    h('div', { class: 'pot them', style: { left: PX + 72 + 'px', top: PIT.bottom + 2 + 'px' } }, h('em', { text: tx('table.theirs') }), stageEl[1], '¢'),
-    ...[0, 1].map((si) => h('div', { class: `stage-strip s${si}`, style: si === 0 ? { left: PX - bout.sides[0].rows * cw[0] + 'px', width: bout.sides[0].rows * cw[0] + 'px', top: STAGE_Y + 'px' } : { left: OX + 'px', width: bout.sides[1].rows * cw[1] + 'px', top: STAGE_Y + 'px' },
-      tip: tx('table.stage-chips-played-wait', { v: si === 0 ? 'Your' : `${opp.name}'s` }) }, h('span', { text: tx('table.stage') }))));
+    h('div', { class: 'pit', style: { left: PX + 'px', width: OX - PX + 'px', top: PIT.top + 'px', height: PIT.bottom - PIT.top + 'px' }, tip: tx('table.the-pit-every-chip') }, h('span', { class: 'pit-t', text: tx('table.pit') })),
+    h('div', { class: 'pot you', style: { left: PX + 3 + 'px', top: PIT.bottom + 4 + 'px' }, tip: tx('table.the-pit-every-chip') }, h('em', { text: tx('table.yours') }), stageEl[0], '¢'),
+    h('div', { class: 'pot them', style: { left: OX - 67 + 'px', top: PIT.bottom + 4 + 'px' }, tip: tx('table.the-pit-every-chip') }, h('em', { text: tx('table.theirs') }), stageEl[1], '¢'),
+    ...[0, 1].map((si) => h('div', { class: `ledger s${si}`, style: { left: (si ? OX - 67 : PX + 3) + 'px', top: LEDGER_Y + 'px' }, tip: () => ledgerTip(si) },
+      h('em', { text: si ? tx('table.ledger-them') : tx('table.ledger-you') }),
+      h('div', { class: 'led-row' }, h('span', { class: 'led-k', text: tx('table.ledger-bid') }), ledEl[si].bid, '¢'), ledEl[si].on,
+      h('div', { class: 'led-row' }, h('span', { class: 'led-k', text: tx('table.ledger-tapped') })), ledEl[si].tap)));
+  function ledgerTip(si) {
+    const s = bout.sides[si], bids = s.run.filter((e) => e.state === 'bid' && e.bid.length);
+    return tx('table.ledger-tip', { who: si ? opp.name : tx('end.you'), list: bids.map((e) => `${D.TRICKS[e.trick.id].name} ${sum(e.bid, (ch) => ch.value)}¢`).join(', ') || tx('table.ledger-none'), t: s.tapped.tricks.length, d: s.tapped.dice.length });
+  }
+  function syncLedger() {
+    bout.sides.forEach((s, si) => { const bids = s.run.filter((e) => e.state === 'bid' && e.bid.length), L = ledEl[si];
+      tween(L.bid, sum(bids, (e) => sum(e.bid, (ch) => ch.value)));
+      swapText(L.on, bids.length ? tx('table.ledger-on', { n: bids.length }) : tx('table.ledger-none'));
+      const tt0 = s.tapped.tricks.length, td = s.tapped.dice.length;
+      L.tap.replaceChildren(...(tt0 + td ? [h('span', { class: 'led-n', text: `${tt0}` }), h('i', { class: 'led-card' }), h('span', { class: 'led-n', text: ` ${td}` }), ...s.tapped.dice.slice(0, 3).map((x) => dieEl(x.die, '', 'mini'))] : [h('small', { text: tx('table.ledger-none') })])); });
+  }
   // the action feed: always on screen, newest line at the bottom, with the House's phase tracker above it
   const PHASES = [['bids', 'Bids', '#ffd76a'], ...['investment', 'insurance', 'expense', 'correction'].map((k) => [k, D.TYPES[k].name + 's', D.TYPES[k].color]), ['house', 'House', '#ffd76a']];
   const phaseEls = {};
-  const phasesEl = h('div', { class: 'phases' }, PHASES.map(([k, name, color]) => (phaseEls[k] = h('span', { style: { '--pc': color }, text: name, guide: 'phase:' + k,
-    tip: k === 'bids' ? tx('table.bids-first-the-house') : k === 'house' ? tx('table.house-last-hazards-creatures') : tx('table.both-rollers-play-together', { name, text: D.TYPES[k].text, toLowerCase: name.toLowerCase() }) }))));
+  const phasesEl = h('div', { class: 'phases', tip: tx('table.phase-track') }, PHASES.map(([k, name, color], i) => (phaseEls[k] = h('span', { style: { '--pc': color }, guide: 'phase:' + k,
+    tip: k === 'bids' ? tx('table.bids-first-the-house') : k === 'house' ? tx('table.house-last-hazards-creatures') : tx('table.both-rollers-play-together', { name, text: D.TYPES[k].text, toLowerCase: name.toLowerCase() }) }, h('em', { text: String(i + 1) }), name))));
   // The feed keeps the whole match in one list. Short, it shows the last few rows; History opens the same list to
   // every row of the bout, by turn, scrolled to the latest (Esc or History again closes it).
   const feedLines = h('div', { class: 'feed-lines list' });
   const histBtn = btn(tx('table.history'), () => toggleHistory(), () => tx('table.match-history', { v: feedEl.classList.contains('open') ? tx('table.close-the-history') : tx('table.open-every-action-of') }), 'small hist');
-  phasesEl.style.cssText = `left:${PX + 4}px;width:${OX - PX - 8}px;top:${TOP + 4}px`; // the phase bar hangs under the House's arms, at the top of the Pit
+  { const l = PX - me.rows * cw[0], r = OX + opp.rows * cw[1]; phasesEl.style.cssText = `left:${l}px;width:${r - l}px;top:${STAGE_Y + 1}px`; } // the phase track runs along the top edge of both positions
   const feedEl = h('div', { class: 'feed' }, h('div', { class: 'feed-head' }, histBtn), feedLines);
   const feed = []; let feedN = 0, prompt = '';
   // The feed is a table: a row per phase, headed by the phase and a note on what it does, with what each side
@@ -201,10 +229,11 @@ export function boutScene(root, bout, ctx, onDone) {
     dice: h('button', { class: 'spine dice', onclick: () => togglePeek('dice'), tip: () => tx('table.spine-dice', { n: me.pouch.length, list: me.pouch.map((d) => dieName(d)).join(', ') || tx('table.spine-empty') }) },
       h('span', { class: 'sp-t' }), h('span', { class: 'sp-marks' })) };
   const peekPanels = { book: h('div', { class: 'peek-panel book', onclick: () => togglePeek('book') }), dice: h('div', { class: 'peek-panel dice', onclick: () => togglePeek('dice') }) };
+  let ztRoll, ztPouch;
   const frameEls = [header, stageBox, phasesEl, feedEl, runEmpty,
     h('div', { class: 'zone-title zt-book', style: { left: '16px', top: '418px' }, tip: tx('table.book-tricks-you-own'), text: tx('table.book') }),
-    h('div', { class: 'zone-title zt-dice', style: { left: '888px', top: '418px' }, tip: tx('table.the-roll-everything-you'), text: tx('table.the-roll') }), trayBox, trayCap,
-    h('div', { class: 'zone-title zt-dice', style: { left: '888px', top: '524px' }, tip: tx('table.pouch-your-dice-in'), text: tx('table.pouch') }),
+    (ztRoll = h('div', { class: 'zone-title zt-dice', style: { top: RUN_Y + 'px' }, tip: tx('table.the-roll-everything-you'), text: tx('table.the-roll') })), trayBox, trayCap,
+    (ztPouch = h('div', { class: 'zone-title zt-dice', style: { top: RUN_Y + 108 + 'px' }, tip: tx('table.pouch-your-dice-in'), text: tx('table.pouch') })),
     peekPanels.book, peekPanels.dice, spines.book, spines.dice,
     h('div', { class: 'zone-title', style: { left: '1082px', top: '418px' }, tip: tx('table.s-run-the-tricks', { name: opp.name }), text: tx('table.their-run') }),
     h('div', { class: 'controls' }, sipBtn, undoBtn, speedBtn, commitBtn),
@@ -220,8 +249,13 @@ export function boutScene(root, bout, ctx, onDone) {
       ...Array.from({ length: 26 }, (_, i) => h('i', { style: { left: `${(i * 37) % 100}%`, animationDelay: `${-(i * 0.73) % 6}s`, animationDuration: `${4 + (i % 5)}s` } })));
     root.insertBefore(el, layer); return el; });
 
-  // cells
+  // cells, laid on two printed felt zones per position, like a casino layout: the Bet (front rows, by the Pit) on
+  // green felt, the Stake (back rows) on red felt, each chequered space by space and named in the felt
   bout.sides.forEach((s, si) => {
+    const m0 = s.dims.meterRows, zone = (k, r0, n) => { const a = cellPos(si, si === 0 ? r0 + n - 1 : r0, 0);
+      root.insertBefore(h('div', { class: `zone-band ${k} s${si}`, style: { left: a.x - 3 + 'px', top: TOP - 3 + 'px', width: n * cw[si] + 6 + 'px', height: s.dims.cols * CH + 6 + 'px', '--cw': cw[si] + 'px', '--ch': CH + 'px' } },
+        h('span', { class: 'zb-print', text: tx(k === 'bet' ? 'prep.label.bet' : 'prep.label.stake') })), fxLayer); }; // under the effect chips
+    zone('bet', 0, m0); zone('stake', m0, s.dims.barRows);
     for (let r = 0; r < s.rows; r++) { els.cells[si][r] = [];
       for (let c = 0; c < s.dims.cols; c++) {
         const p = cellPos(si, r, c);
@@ -230,8 +264,9 @@ export function boutScene(root, bout, ctx, onDone) {
         els.cells[si][r][c] = el; root.insertBefore(el, layer);
       } }
     const m = s.dims.meterRows, x0 = cellPos(si, si === 0 ? m - 1 : 0, 0).x, x1 = cellPos(si, si === 0 ? s.rows - 1 : m, 0).x;
-    root.insertBefore(h('div', { class: 'zone-label', style: { left: x0 + 'px', width: m * cw[si] + 'px', top: TOP + 5 * CH + 4 + 'px' }, text: tx('prep.label.bet'), tip: () => positionTip(s, 'meter') }), layer);
-    root.insertBefore(h('div', { class: 'zone-label', style: { left: x1 + 'px', width: s.dims.barRows * cw[si] + 'px', top: TOP + 5 * CH + 4 + 'px' }, text: tx('prep.label.stake'), tip: () => positionTip(s, 'bar') }), layer);
+    const yl = TOP + s.dims.cols * CH + 6;
+    root.insertBefore(h('div', { class: 'zone-label bet', style: { left: x0 + 'px', width: m * cw[si] + 'px', top: yl + 'px' }, tip: () => positionTip(s, 'meter') }, h('b', { text: tx('prep.label.bet') }), m * cw[si] >= 150 ? h('small', { text: tx('table.zone-bet-note') }) : null), layer);
+    root.insertBefore(h('div', { class: 'zone-label stake', style: { left: x1 + 'px', width: s.dims.barRows * cw[si] + 'px', top: yl + 'px' }, tip: () => positionTip(s, 'bar') }, h('b', { text: tx('prep.label.stake') }), s.dims.barRows * cw[si] >= 150 ? h('small', { text: tx('table.zone-stake-note') }) : null), layer);
   });
 
   // ---------- tooltips ----------
@@ -394,11 +429,17 @@ export function boutScene(root, bout, ctx, onDone) {
     swapText(spines.book.children[0], `${tx('table.book')} ${me.book.length}${tapN(me.tapped.tricks.length)}`); swapText(spines.dice.children[0], `${tx('table.pouch')} ${me.pouch.length}${tapN(me.tapped.dice.length)}`);
     syncList(spines.book.children[1], me.book, (t) => t.uid, (t) => h('i', { style: { '--tc': D.TYPES[D.defOf(t).type].color } }), () => {});
     syncList(spines.dice.children[1], me.pouch.slice(0, 12), (d) => `${d.id}:${d.mat || ''}`, (d) => dieEl(d, '', 'mini'), () => {});
-    const R = runSpan(); for (const el of [feedEl, runEmpty]) { el.style.left = R.l + 'px'; el.style.width = R.w + 'px'; }
+    // the feed spans the table from the Book to the dice's far edge; the Run and the dice move as one, centred
+    const R = runSpan(), dx = diceAt();
+    feedEl.style.left = R.feedL + 'px'; feedEl.style.width = RMAX - R.feedL + 'px';
+    runEmpty.style.left = R.l + 'px'; runEmpty.style.width = R.w + 'px';
+    for (const el of [ztRoll, ztPouch]) el.style.left = dx + 6 + 'px';
+    trayBox.style.left = dx + 'px'; trayCap.style.left = dx + 70 + 'px';
+    spines.dice.style.left = R.dice + 'px'; peekPanels.dice.style.left = R.dice - 212 + 'px';
   }
   function sync(fx = {}) {
     const plan = B.restorePlan(bout, me); // the live restore preview: follows the board after every action
-    syncFolds();
+    syncFolds(); syncLedger();
     layoutEffects();
     const cards = cardLayout();
     // trick cards
@@ -455,6 +496,25 @@ export function boutScene(root, bout, ctx, onDone) {
     swapText(trayBox, bout.phase === 'draw' ? (me.tray.length ? '' : tx('table.draw-then-press-roll')) : bout.phase === 'roll' && !me.thrown && !me.tray.length ? (selCount() ? tx('table.picked-press-bid', { selCount: selCount() }) : tx('table.pick-up-to-dice', { tipOf: B.tipOf(me, 'proficiency') })) : me.tray.length ? '' : bout.phase === 'aim' ? tx('table.all-placed') : tx('table.rolled-for-this-turn'));
     trayCap.textContent = `thrown ${me.used.roll}/${B.tipOf(me, 'proficiency')}${me.tray.length ? tx('table.in-the-roll', { trayN: me.tray.length }) : ''}`;
 
+    // their roll shows as a row on top of their Run from the Bid (both throws land as it opens) until the dice are placed
+    const oppRoll = opp.tray.length ? [{ uid: '__roll', roll: true }] : [];
+    // their Run, a small mirror of yours: each trick as a card with its type, dice, roll total, bid and state; their
+    // roll above (from the Bid until they place it); their Book and Pouch below
+    const oDice = (list) => list.map((d) => dieEl(d.chip ? { type: 'd6', up: [] } : d, d.value, 'mini'));
+    syncList(oppRun, [...oppRoll, ...opp.run, { uid: '__kit', kit: true }], (e) => e.uid, (e) => {
+      if (e.kit) return h('div', { class: 'okit', tip: () => tx('table.s-kit-in-their', { name: opp.name, bookN: opp.book.length, pouchN: opp.pouch.length }) });
+      if (e.roll) return h('div', { class: 'ocard roll', tip: () => tx('table.s-roll', { name: opp.name, vc: vc(tx('table.the-dice-they-threw', { join: opp.tray.map((d) => `${d.value} (${d.chip ? 'a flipped chip' : d.type})`).join(', ') }), tx('table.their-throw-placed-in')) }) }, h('b', { text: tx('table.their-roll') }), h('div', { class: 'odice' }));
+      const def = D.TRICKS[e.trick.id];
+      return h('div', { class: 'ocard', style: { '--tc': D.TYPES[def.type].color }, tip: () => trickTip(e.trick, opp.cls, `<p class="live">${e.dice.length ? tx('table.dice-roll-total-2', { join: e.dice.map((d) => d.value).join(' + '), previewTotal: B.previewTotal(opp, e) }) : tx('table.no-dice-on-it')}${e.state === 'bid' ? tx('table.bid-on-it-plays') : e.state === 'play' ? tx('table.in-play-2') : tx('table.shown-not-bid')}</p>`) },
+        h('div', { class: 'ohead' }, h('b', { text: def.name }), h('span', { class: 'oreq', text: `${def.count}${def.die}` })), h('div', { class: 'odice' }), h('div', { class: 'ofoot' }, h('span', { class: 'ostate' }), h('b', { class: 'ototal' })));
+    }, (el, e) => {
+      if (e.kit) return swapText(el, tx('table.book-pouch', { bookN: opp.book.length, pouchN: opp.pouch.length }));
+      if (e.roll) return el.querySelector('.odice').replaceChildren(...oDice(opp.tray));
+      el.querySelector('.odice').replaceChildren(...oDice(e.dice));
+      swapText(el.querySelector('.ostate'), e.state === 'bid' ? tx('table.bid-4', { bidValue: e.bidValue }) : e.state === 'play' ? (e.lingerLeft ? `lingers ${e.lingerLeft}` : 'in play') : 'shown');
+      swapText(el.querySelector('.ototal'), e.dice.length ? `= ${B.previewTotal(opp, e)}` : '');
+      el.classList.toggle('bid', e.state === 'bid'); el.classList.toggle('inplay', e.state === 'play');
+    });
     // chips
     const want = new Map();
     bout.sides.forEach((s, si) => { for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const cell = s.grid[r][c];
@@ -462,18 +522,14 @@ export function boutScene(root, bout, ctx, onDone) {
       if (cell.anchor && r + fn - 1 < s.rows && c + fn - 1 < s.dims.cols) { const a = cellPos(si, r, c), b2 = cellPos(si, r + fn - 1, c + fn - 1), cx = (a.x + b2.x) / 2 + a.w / 2, cy = (a.y + b2.y) / 2 + CH / 2;
         cell.chips.forEach((ch, lvl) => want.set(ch.id, { x: cx - CHIP / 2, y: cy - CHIP / 2 + 10 - Math.min(lvl, 12) * 5, z: 20 + c * 40 + lvl, ch: seenAs(ch, si), side: si, s: ch.big || ch.kind === 'volcano' ? 1.9 : B.footOf(ch) > 1 ? B.footOf(ch) * 0.95 : 0 })); }
       else cell.chips.forEach((ch, lvl) => want.set(ch.id, { ...chipPos(si, r, c, lvl), ch: seenAs(ch, si), side: si })); } });
-    const pileOf = new Map(); me.run.filter((e) => e.bid.length).forEach((e, j) => pileOf.set(e.uid, j));
-    for (const e of me.run) { if (!e.bid.length) continue; const x = stageX(0, pileOf.get(e.uid)); e.bid.forEach((ch, i) => want.set(ch.id, { x, y: STAGE_Y - 4 - i * 3, z: 900 + i, ch, side: 0, unbid: e.uid })); }
-    // the BID ring rides on the top chip of each pile: click it to bid straight onto that trick from your stacks
-    const ringOn = new Set();
-    for (const e of me.run) { const cl = cards.get(e.uid), nb = e.bid.length; if (!cl || !nb || e.state !== 'bid' || bout.phase !== 'bid' || ui.locked) continue; ringOn.add(e.uid);
-      let el = rings.get(e.uid); if (!el) { el = h('span', { class: 'bidslot ring', text: '+', onclick: (ev) => { ev.stopPropagation(); clickCard(e.uid, ev); }, tip: () => cardTip(e.uid) }); layer.append(el); rings.set(e.uid, el); }
-      place(el, stageX(0, pileOf.get(e.uid)) - 1, STAGE_Y - 5 - (nb - 1) * 3); el.style.zIndex = 900 + nb;
-      const card = els.cards.get(e.uid); el.classList.toggle('active', !!card?.classList.contains('active')); el.classList.toggle('pick', !!card?.classList.contains('pick')); }
-    for (const [k, el] of rings) if (!ringOn.has(k)) { el.remove(); rings.delete(k); }
+    // bids pile on their trick's BID ring (click the pile to take its top chip back; click the card to bid more)
+    for (const e of me.run) { const cl = cards.get(e.uid); if (!cl || !e.bid.length) continue; const sp = bidSpot(els.cards.get(e.uid));
+      e.bid.forEach((ch, i) => want.set(ch.id, { x: cl.x + sp.x, y: cl.y + sp.y - i * 3, z: 900 + i, ch, side: 0, unbid: e.uid })); }
     const flipIds = new Set(ui.flips.map(({ r, c }) => B.bidChip(me, r, c)?.id)), handIds = new Set((B.handChips(me, ui.hand) || []).map((x) => x.ch.id));
     const orow0 = opp.tray.length ? 1 : 0, ostep = Math.min(48, Math.floor(216 / Math.max(1, opp.run.length + orow0))); oppRun.style.setProperty('--oh', `${ostep - 6}px`); // their roll row sits first
-    opp.run.filter((e) => e.bid.length).forEach((e, j) => e.bid.forEach((ch, i) => want.set(ch.id, { x: stageX(1, j), y: STAGE_Y - 4 - i * 3, z: 900 + i, ch, side: 1 })));
+    // their bids sit small on the corner of their trick's card
+    for (const e of opp.run) { if (!e.bid.length) continue; const el = [...oppRun.children].find((x) => x._key === e.uid); if (!el) continue; const bx = box(el);
+      e.bid.forEach((ch, i) => want.set(ch.id, { x: bx.x + bx.w - CHIP + 2, y: bx.y + bx.h - CHIP - 2 - i * 2, z: 900 + i, ch, side: 1, s: 0.62 })); }
     // the Pit: every chip each Roller has lost, as it was
     [0, 1].forEach((si) => { const list = B.pitOf(bout, si); list.forEach((ch, k) => want.set(ch.id, { ...pitSlot(si, k, list.length), ch, side: si, pit: true })); });
     let n = 0;
@@ -482,7 +538,7 @@ export function boutScene(root, bout, ctx, onDone) {
       if (!el) { el = mkChip(w.ch); els.chips.set(id, el);
         if (fx[id] === 'from-stage' || fx[id] === 'from-pit') spawn(el, STAGE[w.side].x, STAGE[w.side].y, 'scale(.5)');
         else if (fx[id] === 'debt') spawn(el, HOUSE.x, HOUSE.y + 30, 'scale(.5)'); // Debt is dealt out by the House
-        else if (fx[id] === 'spawn' && !ui.first && !w.pit) spawn(el, w.x, STAGE_Y - 4, 'scale(.8)'); // made chips appear on the Stage, then land
+        else if (fx[id] === 'spawn' && !ui.first && !w.pit) spawn(el, w.x, w.y - 34, 'scale(.8)'); // made chips appear just above their space, then land
         else if (ui.first) spawn(el, w.x, w.y - 46, '', Math.min(900, n * 5));
         else spawn(el, w.x, w.y, 'scale(.1)'); n++; }
       el._side = w.side; el.style.opacity = '1'; el.style.zIndex = w.z; place(el, w.x, w.y, extra); el.classList.toggle('inpit', !!w.pit);
@@ -535,25 +591,6 @@ export function boutScene(root, bout, ctx, onDone) {
     STEPS.forEach(([k, , stat], i) => { swapText(pill[k], stat ? `${B.rewardOf(me, k).unused}/${B.tipOf(me, stat)}` : tx('table.to-aim', { filterN: me.run.filter((x) => x.state === 'bid' && B.needsTarget(x)).length })); pillEl[k].classList.toggle('now', i === at && !ui.locked); pillEl[k].classList.toggle('done', at < 0 || i < at);
       if (stat) tempCls(pillEl[k], B.statParts(me, stat));
  });
-    // their roll shows as a row on top of their Run from the Bid (both throws land as it opens) until the dice are placed
-    const oppRoll = opp.tray.length ? [{ uid: '__roll', roll: true }] : [];
-    // their Run, a small mirror of yours: each trick as a card with its type, dice, roll total, bid and state; their
-    // roll above (from the Bid until they place it); their Book and Pouch below
-    const oDice = (list) => list.map((d) => dieEl(d.chip ? { type: 'd6', up: [] } : d, d.value, 'mini'));
-    syncList(oppRun, [...oppRoll, ...opp.run, { uid: '__kit', kit: true }], (e) => e.uid, (e) => {
-      if (e.kit) return h('div', { class: 'okit', tip: () => tx('table.s-kit-in-their', { name: opp.name, bookN: opp.book.length, pouchN: opp.pouch.length }) });
-      if (e.roll) return h('div', { class: 'ocard roll', tip: () => tx('table.s-roll', { name: opp.name, vc: vc(tx('table.the-dice-they-threw', { join: opp.tray.map((d) => `${d.value} (${d.chip ? 'a flipped chip' : d.type})`).join(', ') }), tx('table.their-throw-placed-in')) }) }, h('b', { text: tx('table.their-roll') }), h('div', { class: 'odice' }));
-      const def = D.TRICKS[e.trick.id];
-      return h('div', { class: 'ocard', style: { '--tc': D.TYPES[def.type].color }, tip: () => trickTip(e.trick, opp.cls, `<p class="live">${e.dice.length ? tx('table.dice-roll-total-2', { join: e.dice.map((d) => d.value).join(' + '), previewTotal: B.previewTotal(opp, e) }) : tx('table.no-dice-on-it')}${e.state === 'bid' ? tx('table.bid-on-it-plays') : e.state === 'play' ? tx('table.in-play-2') : tx('table.shown-not-bid')}</p>`) },
-        h('div', { class: 'ohead' }, h('b', { text: def.name }), h('span', { class: 'oreq', text: `${def.count}${def.die}` })), h('div', { class: 'odice' }), h('div', { class: 'ofoot' }, h('span', { class: 'ostate' }), h('b', { class: 'ototal' })));
-    }, (el, e) => {
-      if (e.kit) return swapText(el, tx('table.book-pouch', { bookN: opp.book.length, pouchN: opp.pouch.length }));
-      if (e.roll) return el.querySelector('.odice').replaceChildren(...oDice(opp.tray));
-      el.querySelector('.odice').replaceChildren(...oDice(e.dice));
-      swapText(el.querySelector('.ostate'), e.state === 'bid' ? tx('table.bid-4', { bidValue: e.bidValue }) : e.state === 'play' ? (e.lingerLeft ? `lingers ${e.lingerLeft}` : 'in play') : 'shown');
-      swapText(el.querySelector('.ototal'), e.dice.length ? `= ${B.previewTotal(opp, e)}` : '');
-      el.classList.toggle('bid', e.state === 'bid'); el.classList.toggle('inplay', e.state === 'play');
-    });
     setOn(sipBtn, !ui.locked && !B.canSip(bout, me)); sipBtn.classList.toggle('gone', !me.drink);
     runEmpty.style.opacity = me.run.length ? 0 : 1;
     setOn(undoBtn, !ui.locked && (bout.phase === 'draw' ? me.used.draw > 0 : bout.phase === 'roll' ? selCount() > 0 : bout.phase === 'bid' ? me.used.bid > 0 : bout.phase === 'aim' ? B.placedThisTurn(bout, me) || ui.handAim.size > 0 : false));
@@ -872,7 +909,8 @@ export function boutScene(root, bout, ctx, onDone) {
       for (const p of parts) if (p.text) feedPush(p.text, p.who, p.cells, p.phase || st.phase || 'house');
       if (st.kind === 'phase') { const bx = box(phaseEls[st.phase]); arms[0].to(bx.x + bx.w / 2 - 14, bx.y + bx.h + 4); arms[1].to(bx.x + bx.w / 2 + 14, bx.y + bx.h + 4); await call(D.TYPES[st.phase].name + 's', D.TYPES[st.phase].color); continue; }
       if (st.kind === 'settle') { arms[0].to(STAGE[0].x + 16, STAGE[0].y + 16); arms[1].to(STAGE[1].x + 16, STAGE[1].y + 16); await call('Settle', '#ffd76a'); continue; }
-      if (st.kind === 'bid') { arms[0].to(560, 476); arms[1].to(1090, 470); await pace(560); sync(st.fx); arms[0].to(HOUSE.x - 30, 70); arms[1].to(HOUSE.x + 60, 70); await pace(820); continue; }
+      if (st.kind === 'bid') { const myBid = me.run.find((e) => e.bid.length), cl = myBid && cardLayout().get(myBid.uid), ob = [...oppRun.children].find((x) => opp.run.some((e) => e.uid === x._key && e.bid.length)), obx = ob && box(ob);
+        arms[0].to(cl ? cl.x + 24 : 560, cl ? cl.y + 90 : 476); arms[1].to(obx ? obx.x + obx.w - 16 : 1090, obx ? obx.y + obx.h - 16 : 470); await pace(560); sync(st.fx); arms[0].to(HOUSE.x - 30, 70); arms[1].to(HOUSE.x + 60, 70); await pace(820); continue; }
       const armOf = (p) => arms[p.who ?? p.cells[0]?.side ?? 0];
       const tps = parts.map((p) => (p.kind === 'play' ? trickPoint(p) : null));
       if (tps.some(Boolean)) { parts.forEach((p, i) => tps[i] && armOf(p).to(tps[i].x, tps[i].y)); await pace(600); parts.forEach((p, i) => tps[i] && armOf(p).tap()); await pace(320); }

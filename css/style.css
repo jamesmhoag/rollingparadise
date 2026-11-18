@@ -214,8 +214,8 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .c-open { opacity: 0; pointer-events: none; padding: 7px 8px; display: flex; flex-direction: column; gap: 4px; } .tcard.open .c-open { opacity: 1; pointer-events: auto; } .tcard.open .c-compact { opacity: 0; pointer-events: none; }
 .c-name { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; } .c-type { font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--tc); font-weight: 800; }
 .c-slots { display: flex; gap: 6px; height: 34px; flex: none; align-content: flex-start; flex-wrap: wrap; } .slot { width: 30px; height: 30px; border-radius: 7px; border: 1.5px dashed #6f7fb0; font-size: 9px; color: #6f7fb0; display: grid; place-items: center; transition: border-color .3s, color .3s; } .slot.full { border-color: transparent; color: transparent; }
-.c-bid { display: flex; gap: 6px; align-items: center; height: 34px; flex: none; } .bidslot.ring { position: absolute; left: 0; top: 0; pointer-events: auto; cursor: pointer; font-size: 15px; background: rgba(9, 6, 24, .75); transition: transform .45s var(--ease), border-color .3s, box-shadow .3s; } .bidslot { width: 34px; height: 34px; border-radius: 50%; border: 2px dashed #6f7fb0; display: grid; place-items: center; font-size: 8.5px; font-weight: 800; color: #9fb0d8; transition: all .3s; }
-.tcard.open:not(.inplay) .bidslot:hover, .tcard.active .bidslot, .bidslot.ring:hover, .bidslot.ring.active { border-color: var(--pink); background: rgba(255, 110, 220, .22); color: #fff; box-shadow: 0 0 10px rgba(255, 110, 220, .6); } .tcard.bid .bidslot, .tcard.inplay .bidslot { border-color: transparent; color: transparent; }
+.c-bid { display: flex; gap: 6px; align-items: center; height: 34px; flex: none; } .bidslot { width: 34px; height: 34px; border-radius: 50%; border: 2px dashed #6f7fb0; display: grid; place-items: center; font-size: 8.5px; font-weight: 800; color: #9fb0d8; transition: all .3s; }
+.tcard.open:not(.inplay) .bidslot:hover, .tcard.active .bidslot { border-color: var(--pink); background: rgba(255, 110, 220, .22); color: #fff; box-shadow: 0 0 10px rgba(255, 110, 220, .6); } .tcard.bid .bidslot, .tcard.inplay .bidslot { border-color: transparent; color: transparent; }
 .c-bid .tgt { font-size: 10px; padding: 2px 8px; border-radius: 9px; background: var(--coral); color: #fff; opacity: 0; pointer-events: none; transition: opacity .3s; margin-left: auto; } .c-bid .tgt.on { opacity: 1; pointer-events: auto; }
 .c-text { font-size: 10.5px; line-height: 1.25; flex: 1; overflow: hidden; } .c-text p { margin: 0 0 3px; } .c-text em { font-style: normal; font-weight: 800; color: var(--tc); } .c-text .bonus { transition: all .35s; padding: 1px 3px; border-radius: 4px; }
 .bonus.met { background: #2f8f55; color: #fff; } .bonus.met em { color: #fff; } .bonus.na { opacity: .45; } .tcard.narrow .c-text { font-size: 9.5px; } .tcard.narrow .c-name { font-size: 12px; }
@@ -373,7 +373,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .cell.soft { border-color: rgba(110, 240, 255, .4); cursor: pointer; } .cell.soft:hover { background: rgba(110, 240, 255, .14); }
 .cell.sel { border-color: #fff; background: rgba(255, 255, 255, .14); box-shadow: 0 0 12px rgba(110, 240, 255, .6); }
 .c-type { display: flex; align-items: center; gap: 3px; } .c-type .tgt { font-size: 9.5px; padding: 1px 7px; border-radius: 9px; background: var(--coral); color: #fff; opacity: 0; pointer-events: none; transition: opacity .3s; margin-left: auto; } .c-type .tgt.on { opacity: 1; pointer-events: auto; }
-.scene.bout.m-bid .tcard.pick .bidslot, .scene.bout.m-bid .bidslot.ring.pick { border-color: var(--pink); border-style: solid; background: rgba(255, 110, 220, .25); color: #fff; box-shadow: 0 0 12px rgba(255, 110, 220, .7); animation: breathe 1.2s ease-in-out infinite; }
+.scene.bout.m-bid .tcard.pick .bidslot { border-color: var(--pink); border-style: solid; background: rgba(255, 110, 220, .25); color: #fff; box-shadow: 0 0 12px rgba(255, 110, 220, .7); animation: breathe 1.2s ease-in-out infinite; }
 .tcard.bid .bidslot { border-color: #6f7fb0; color: #9fb0d8; } .tcard.inplay .bidslot { border-color: transparent; color: transparent; }
 .orow.reveal { animation: reveal .8s var(--ease); } @keyframes reveal { 0% { box-shadow: 0 0 0 2px var(--pink), 0 0 18px var(--pink); } 100% { box-shadow: none; } }
 .fc-layer { position: absolute; inset: 0; pointer-events: none; z-index: 990; }
@@ -657,12 +657,10 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .ocount { position: absolute; right: 1px; bottom: -1px; font-size: 8px; color: var(--gold); }
 .b-layout.painting input { cursor: crosshair; caret-color: transparent; } .b-layout.painting { touch-action: none; }
 
-/* ---------- the table, round 18: Stage strips, the Pit, the phase bar under the House's arms ---------- */
+/* ---------- the table, round 18: the Pit and the phase bar (laid out again in the table layout pass below) ---------- */
 .table-felt { top: 92px; height: 268px; }
 .pit { position: absolute; z-index: 1; border-radius: 14px; background: radial-gradient(ellipse at 50% 35%, rgba(0, 0, 0, .55), rgba(0, 0, 0, .25) 70%); box-shadow: inset 0 6px 18px rgba(0, 0, 0, .7), inset 0 -2px 6px rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .05); }
 .pot { width: 64px; top: auto; z-index: 2; font-size: 11px; } .pot em { font-size: 7px; }
-.stage-strip { position: absolute; height: 26px; z-index: 1; border-radius: 8px; border: 1px dashed rgba(255, 215, 106, .28); background: linear-gradient(180deg, rgba(255, 215, 106, .06), rgba(9, 6, 24, .3)); }
-.stage-strip span { position: absolute; top: 7px; font-size: 8px; letter-spacing: .4em; color: rgba(255, 215, 106, .45); pointer-events: none; } .stage-strip.s0 span { left: 8px; } .stage-strip.s1 span { right: 8px; }
 .phases { position: absolute; z-index: 3; display: flex; flex-direction: column; height: auto; border: 1px solid var(--line); border-radius: 8px; background: rgba(9, 6, 24, .7); overflow: hidden; }
 .phases span { line-height: 16px; font-size: 8.5px; letter-spacing: .12em; }
 .feed-head { position: absolute; right: 0; top: 0; z-index: 2; } .feed-head .btn { height: 18px; padding: 0 10px; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; border-radius: 0 10px 0 6px; }
@@ -731,7 +729,7 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 .scene.bout .zt-book, .scene.bout .zt-dice, .tray-box, .tray-cap { transition: opacity .3s, translate .3s var(--ease); }
 .scene.bout.fold-book:not(.peek-book) .zt-book, .scene.bout.fold-dice:not(.peek-dice) :is(.zt-dice, .tray-box, .tray-cap) { opacity: 0; pointer-events: none; }
 .scene.bout.peek-book .zt-book { z-index: 8; left: 52px !important; }
-.scene.bout.peek-dice :is(.zt-dice, .tray-box, .tray-cap) { z-index: 8; translate: -44px 0; }
+.scene.bout.peek-dice :is(.zt-dice, .tray-box, .tray-cap) { z-index: 8; }
 .spine { position: absolute; top: 418px; width: 28px; height: 248px; padding: 8px 0; border-radius: 9px; border: 1px solid var(--line); background: rgba(9, 6, 24, .6); color: var(--gold);
   display: flex; flex-direction: column; align-items: center; gap: 8px; font: inherit; cursor: pointer; opacity: 0; pointer-events: none; overflow: hidden; z-index: 5; transition: opacity .35s, border-color .25s, background .25s, box-shadow .25s; }
 .spine.book { left: 14px; } .spine.dice { left: 1044px; }
@@ -760,3 +758,43 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 .pill.temp.temp-down::before { content: '▼'; font-size: 8px; margin-right: 2px; color: var(--bad); }
 .statsplit { font-size: 11.5px; color: var(--dim); } .statsplit .temp-up { color: var(--good); } .statsplit .temp-down { color: var(--bad); }
 .badge.dim { opacity: .55; }
+
+/* ---------- the table layout pass (boutview.js) ----------
+   The House's phases run as a numbered track along the top edge of both positions. The Pit sits right under the
+   House's arms, each Roller's pot under it, then a ledger per Roller of bids and tapped pieces. Each position is two
+   printed felt zones, like a casino layout: the Bet (front rows, by the Pit) on green, the Stake (back rows) on red,
+   chequered space by space. Bids pile on their trick's card. The Run is centred, with the dice right after it. */
+.table-felt { height: 274px; }
+.phases { flex-direction: row; height: 24px; align-items: stretch; border: 1px solid rgba(255, 215, 106, .35); border-radius: 12px; background: linear-gradient(180deg, rgba(30, 20, 60, .85), rgba(9, 6, 24, .85)); box-shadow: 0 2px 10px rgba(0, 0, 0, .4); }
+.phases span { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; line-height: 22px; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; border-left: 1px solid rgba(255, 215, 106, .14); color: rgba(190, 200, 230, .6); }
+.phases span:first-child { border-left: 0; }
+.phases span em { font-style: normal; line-height: 1; flex: none; display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; font-size: 9px; letter-spacing: 0; border: 1px solid color-mix(in srgb, var(--pc) 70%, transparent); color: var(--pc); }
+.phases span.on em { background: var(--pc); color: #120c24; }
+.pit { border: 1px solid rgba(255, 255, 255, .08); }
+.pit-t { position: absolute; left: 0; right: 0; top: 5px; text-align: center; font-size: 8px; letter-spacing: .35em; color: rgba(190, 200, 230, .4); pointer-events: none; }
+.pot { width: 64px; height: 20px; line-height: 18px; font-size: 11px; }
+.ledger { position: absolute; z-index: 2; width: 64px; padding: 4px 5px 5px; border-radius: 8px; background: rgba(9, 6, 24, .55); border: 1px solid var(--line); font-size: 9.5px; line-height: 13px; color: var(--cream); cursor: help; }
+.ledger.s0 { border-top: 2px solid var(--gold); } .ledger.s1 { border-top: 2px solid var(--pink); }
+.ledger > em { display: block; font-style: normal; font-size: 8px; letter-spacing: .25em; color: var(--dim); text-align: center; margin-bottom: 2px; }
+.ledger .led-row { display: flex; align-items: baseline; gap: 3px; margin-top: 3px; } .ledger .led-k { color: var(--dim); font-size: 8.5px; letter-spacing: .06em; text-transform: uppercase; margin-right: auto; }
+.ledger .num { font-family: var(--display); font-size: 13px; color: var(--gold); } .ledger.s1 .num { color: var(--pink); }
+.ledger > small { display: block; text-align: right; font-size: 8.5px; color: var(--dim); }
+.led-tap { display: flex; align-items: center; justify-content: flex-end; gap: 2px; min-height: 18px; flex-wrap: wrap; } .led-tap small { font-size: 8.5px; color: var(--dim); }
+.led-card { display: inline-block; width: 8px; height: 11px; border-radius: 2px; border: 1px solid var(--cream); opacity: .7; } .led-tap .die.mini { width: 13px; height: 13px; } .led-tap .die.mini i { font-size: 7px; }
+/* the felt zones and their spaces */
+.zone-band { position: absolute; z-index: 0; border-radius: 10px; pointer-events: none; overflow: hidden;
+  background: conic-gradient(rgba(255, 255, 255, .055) 25%, transparent 0 50%, rgba(255, 255, 255, .055) 0 75%, transparent 0) 3px 3px / calc(var(--cw) * 2) calc(var(--ch) * 2), var(--zf); box-shadow: inset 0 0 0 2px var(--zr), inset 0 0 18px rgba(0, 0, 0, .45); }
+.zone-band.bet { --zf: linear-gradient(180deg, rgba(22, 120, 86, .5), rgba(10, 70, 52, .5)); --zr: rgba(125, 255, 181, .55); }
+.zone-band.stake { --zf: linear-gradient(180deg, rgba(140, 28, 52, .5), rgba(82, 14, 32, .5)); --zr: rgba(255, 196, 120, .55); }
+.zb-print { position: absolute; left: 50%; top: 50%; translate: -50% -50%; writing-mode: vertical-rl; font-family: var(--display); font-size: 30px; letter-spacing: .5em; white-space: nowrap; color: rgba(255, 255, 255, .07); }
+.zone-band.bet .zb-print { color: rgba(170, 255, 210, .1); } .zone-band.stake .zb-print { color: rgba(255, 210, 160, .1); }
+.scene.bout .cell { border: 1px solid rgba(255, 255, 255, .16); background-color: transparent; }
+.scene.bout .cell.meter { border-color: rgba(125, 255, 181, .3); } .scene.bout .cell.bar { border-color: rgba(255, 196, 120, .28); }
+.zone-label { display: flex; justify-content: center; align-items: baseline; height: 14px; line-height: 14px; letter-spacing: .06em; white-space: nowrap; overflow: hidden; }
+.zone-label b { font-size: 10px; letter-spacing: .3em; } .zone-label small { font-size: 8.5px; color: var(--dim); letter-spacing: .02em; }
+.zone-label.bet b { color: #7dffb5; text-shadow: 0 0 8px rgba(125, 255, 181, .5); } .zone-label.stake b { color: #ffc478; text-shadow: 0 0 8px rgba(255, 196, 120, .45); }
+/* bids pile on the trick's card: the pile is clickable (takes the top chip back), the card around it bids more */
+/* the dice column follows the Run */
+.zone-title.zt-dice, .tray-box, .tray-cap, .spine.dice, .peek-panel.dice { transition: left .45s var(--ease), opacity .3s; }
+.tray-box { top: 484px; } .tray-cap { top: 466px; } .spine.dice { top: 466px; height: 242px; } .peek-panel.dice { top: 458px; height: 256px; }
+.run-empty { transition: left .45s var(--ease), width .45s var(--ease), opacity .5s; }
