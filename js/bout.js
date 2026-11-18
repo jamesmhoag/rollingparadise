@@ -58,6 +58,24 @@ const tiny = (ch) => ch.kind === 'little' || madeOf(ch)?.height === 'tiny'; // L
 const heightOf = (ch) => HEIGHT[madeOf(ch)?.height]?.h ?? 1; // made chips can be short (½) or tall (2)
 export const solidCount = (cell) => cell.chips.reduce((t, ch) => (isHazard(ch) || tiny(ch) ? t : t + heightOf(ch)), 0);
 // a made chip that lets nothing on top of it closes its stack while it is the top chip
+// Sticky is a trait: a sticky chip binds to the value chips it touches and their values combine into one chip. A
+// chip is sticky when it was made sticky (by a Sticky chip it touched, or its made-chip model), or while it is both
+// wet and frozen (a conditional binding).
+export const isSticky = (ch) => !!(ch.sticky || madeOf(ch)?.sticky || (ch.wet > 0 && ch.frozen));
+const binds = (ch) => (ch.kind === 'std' || ch.kind === 'opp' || ch.kind === 'bounty' || (ch.kind === 'made' && ch.value > 0)) && !ch.gold;
+// a Sticky chip makes the chips directly above and below it sticky
+function stickAround(cell) { // the Sticky chip is an overlay: the chips it touches are the nearest value chips above and below it
+  cell.chips.forEach((ch, i) => { if (ch.kind !== 'sticky') return;
+    for (const dir of [-1, 1]) for (let j = i + dir; j >= 0 && j < cell.chips.length; j += dir) { const y = cell.chips[j]; if (isHazard(y)) continue; if (binds(y)) y.sticky = true; break; } }); }
+// bind: in a stack, two touching value chips where either is sticky become one, the lower taking the upper's value
+export function bind(b, cell) {
+  stickAround(cell); let n = 0;
+  for (let again = true; again;) { again = false; const st = cell.chips.filter((ch) => !isHazard(ch));
+    for (let i = 0; i + 1 < st.length; i++) { const lo = st[i], up = st[i + 1];
+      if (!binds(lo) || !binds(up) || !(isSticky(lo) || isSticky(up))) continue;
+      lo.value += up.value; lo.sticky = true; cell.chips.splice(cell.chips.indexOf(up), 1); b.fx[up.id] = 'void'; b.fx[lo.id] = 'mutate'; n++; again = true; break; } }
+  return n;
+}
 const closed = (cell) => { for (let i = cell.chips.length - 1; i >= 0; i--) { const ch = cell.chips[i]; if (isHazard(ch)) continue; return madeOf(ch)?.onTop === 'none'; } return false; };
 // Holes, the parts of a Big chip or Volcano, Roosts and Puddles take nothing; a dormant Volcano leaves the space lower
 export const capacityLeft = (s, cell) => (cell.hole || cell.link || cell.roost || (cell.puddle && !cell.chips.length) || closed(cell) ? 0 : cell.chips.some((y) => madeOf(y)?.onTop === 'anything') ? 99 : Math.max(0, Math.floor(s.dims.stackMax - (cell.cut || 0) - solidCount(cell)))); // 'anything on top': no height cap
@@ -69,7 +87,7 @@ const unHard = (b, cell) => { for (const ch of cell.chips.filter((x) => x.kind =
 export const lifted = (cell) => cell.chips.some((ch) => ch.shop === 'heli');
 export const wet = (cell) => cell.chips.some((ch) => ch.wet > 0);
 // Sticky: the first timed modifier on the stack stops counting down
-const MODS = ['hard', 'feather', 'regen', 'burn', 'shock', 'corrupt', 'frost', 'lava', 'petal', 'made']; // a Sticky chip glues the first of these on its stack
+const MODS = ['hard', 'feather', 'regen', 'burn', 'shock', 'corrupt', 'frost', 'lava', 'petal'];
 function firstMod(cell) { for (const k of MODS) if (cell.chips.some((ch) => ch.kind === k || ((k === 'feather' || k === 'regen') && ch[k] > 0))) return k; return null; }
 export function stuck(cell, what) { const st = cell.chips.find((ch) => ch.kind === 'sticky'); if (!st) return false; if (!st.stuck) st.stuck = firstMod(cell); return st.stuck === what; }
 export function frontRow(s, c, payOnly) { for (let r = 0; r < s.rows; r++) if (occupied(s.grid[r][c], payOnly)) return r; return -1; }
@@ -130,14 +148,16 @@ function footBlock(s, r, c, n) {
 function claimFoot(s, r, c, n) { s.grid[r][c].anchor = { n }; for (let dr = 0; dr < n; dr++) for (let dc = 0; dc < n; dc++) if (dr || dc) s.grid[r + dr][c + dc].link = { r, c }; }
 // big made chips that have gone free their spaces
 function tidyFeet(s) { for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const cell = s.grid[r][c]; if (cell.anchor?.n && !cell.chips.some((ch) => footOf(ch) > 1)) freeLinks(s, r, c); } }
-// Whether a chip fits on a stack. No-thickness chips (tiny, hazards, Debt) always fit, and so do flying chips; a
-// stack with an 'anything on top' chip in it has no height cap; anything else must fit under the cap, half-height
-// chips included. A stack closed by a 'nothing on top' chip takes nothing, unless the chip is immune to blocking.
+// Whether a chip fits on a stack. Flying chips always do: they hover, they do not stack. A stack closed by a
+// 'nothing on top' chip takes nothing else, not even Debt. Otherwise no-thickness chips (tiny, hazards, Debt) fit;
+// a stack with an 'anything on top' chip in it has no height cap; anything else must fit under the cap, half-height
+// chips included.
 export function fits(s, cell, ch) {
   if (cell.hole || cell.link || cell.roost) return false;
-  if (closed(cell) && !immuneTo(ch, 'blocks')) return false;
+  if (madeOf(ch)?.move === 'flying') return true; // flying chips hover; they do not stack
+  if (closed(cell)) return false; // 'nothing on top': not even a chip with no height, Debt included
   const hh = isHazard(ch) || tiny(ch) || ch.kind === 'debt' ? 0 : heightOf(ch);
-  if (hh === 0 || madeOf(ch)?.move === 'flying') return true;
+  if (hh === 0) return true;
   if (cell.chips.some((y) => madeOf(y)?.onTop === 'anything')) return true;
   return solidCount(cell) + hh <= s.dims.stackMax - (cell.cut || 0) + 1e-9;
 }
@@ -970,6 +990,10 @@ function freezeTop(b, cell) {
 const canTake = (cell, pierce) => sum(cell.chips, (ch) => (isPayable(ch) ? ch.value : !pierce && (ch.kind === 'block' || ch.kind === 'counter') ? 1 : 0)) - debtOf(cell);
 function engage(b, att, def, r, c, amount, o = {}) {
   ({ r, c } = homeOf(def, r, c));
+  if (closed(def.grid[r][c])) { // 'nothing on top': no Debt can sit on it, so the fee goes on down the lane
+    for (let rr = r + 1; rr < def.rows; rr++) if (occupied(def.grid[rr][c]) && !closed(def.grid[rr][c])) { const x = engage(b, att, def, rr, c, amount, o); return { ...x, notes: [tx('feed.closed-past'), ...(x.notes || [])] }; }
+    return { placed: 0, notes: [tx('feed.closed-stops')] };
+  }
   const cell = def.grid[r][c], st = def.status, notes = [];
   if (o.pierce && hardOf(cell)) { unHard(b, cell); notes.push('the Hardened chip is pierced'); }
   const open = !o.pierce && !o.reflected;
@@ -1402,7 +1426,7 @@ function* play(b, s, e, opt = {}) {
       yield step(b, tx('feed.regen-for', { tag, n, turns }), cells.map((x) => ref(s, x.r, x.c)), n ? 'play' : 'miss'); return; }
     case 'sticky': { let n = 0;
       for (const { r, c } of cells) { const cell = t.grid[r][c]; if (!solidCount(cell) || cell.chips.some((ch) => ch.kind === 'sticky')) continue;
-        const st = mkChip(b, 'sticky', solidCount(cell), { stuck: firstMod(cell) }); cell.chips.push(st); b.fx[st.id] = 'spawn'; n++; }
+        const st = mkChip(b, 'sticky', solidCount(cell), { stuck: firstMod(cell) }); cell.chips.push(st); b.fx[st.id] = 'spawn'; bind(b, cell); n++; }
       yield step(b, tx('feed.gummed-with-a-sticky', { tag, n }), cells.map((x) => ref(t, x.r, x.c)), n ? 'play' : 'miss'); return; }
     case 'doom': { let n = 0; const list = bonus === 'aura' ? allCells(t) : cells.map(({ r, c }) => ({ r, c, cell: t.grid[r][c] }));
       for (const x of list) { if (n >= total || !solidCount(x.cell) || capacityLeft(t, x.cell) <= 0 || x.cell.chips[topSolid(x.cell)]?.kind === 'doom') continue; const d = mkChip(b, 'doom', 0, { owner: s.idx }); pushChip(x.cell, d); b.fx[d.id] = 'spawn'; n++; }
@@ -1827,9 +1851,18 @@ function act(b, s, A, target, M) {
   }
   void M;
 }
+// A Block or Counter chip in a stack on the other side stops one of a made chip's actions there (and is used up),
+// unless the made chip is immune to blocking: then the Block chip is ignored and the action applies.
+function blockedBy(b, s, tg, M) {
+  const side = tg.x.side || s; if (side === s || lastsOfModel(M) === 'match' || (M.immune || []).includes('blocks')) return false;
+  const cell = tg.x.cell, i = cell.chips.findIndex((ch) => ch.kind === 'block' || ch.kind === 'counter'); if (i < 0) return false;
+  const sh = cell.chips[i]; cell.chips.splice(i, 1); b.fx[sh.id] = 'void'; return true;
+}
+const lastsOfModel = (M) => M.lasts;
 // one made chip's triggered work: its actions on everything its reach covers
 function fire(b, s, at, M) { let n = 0; const list = reachOf(b, s, at, M);
-  for (const A of M.actions || []) { if (A.k === 'pull') { n += pullTo(b, s, at, A); continue; } for (const tg of list) n += act(b, s, A, tg, M); }
+  for (const A of M.actions || []) { if (A.k === 'pull') { n += pullTo(b, s, at, A); continue; }
+    for (const tg of list) { if (blockedBy(b, s, tg, M)) continue; n += act(b, s, A, tg, M); } }
   return { n, refs: [...new Set(list.map((tg) => tg.x))].map((x) => ref(x.side || s, x.r, x.c)) }; }
 // a made chip's Pull action: up to A.n¢ of real chips out of a Pit (A.from: mine, theirs or both), onto the chip's
 // stack under it, then the Bet; what finds no room goes back
@@ -1868,8 +1901,7 @@ function moveByRule(b, s, at, M) {
 }
 function* madeWork(b, s, when, tricksPlayed) {
   const has = (M, on) => (M.triggers || []).some((tg) => tg.on === on && (on !== 'phase' && on !== 'effect' ? true : !tg.type || tg.type === when));
-  // a made chip on a stack whose Sticky chip glues made chips does nothing, unless it is immune to blocking
-  const mine = () => allCells(s).flatMap((x) => x.cell.chips.map((ch, i) => ({ ...x, i, ch }))).filter((y) => y.ch.kind === 'made' && madeOf(y.ch) && (!stuck(y.cell, 'made') || immuneTo(y.ch, 'blocks')));
+  const mine = () => allCells(s).flatMap((x) => x.cell.chips.map((ch, i) => ({ ...x, i, ch }))).filter((y) => y.ch.kind === 'made' && madeOf(y.ch));
   const said = [];
   // made this phase
   for (const id of s.madeNew || []) { const at = findMade(s, id); if (!at) continue; const M = madeOf(at.ch); if (has(M, 'created')) { const f = fire(b, s, at, M); if (f.n) said.push({ M, f, why: 'made' }); } }
@@ -2004,7 +2036,7 @@ export function* resolve(b) {
     })()), cxs);
   }
   for (const s of b.sides) {
-    tidyFeet(s);
+    tidyFeet(s); for (const { cell } of allCells(s)) bind(b, cell); // sticky chips bind to the chips they touch
     const st = s.status; st.resist = st.resistNext; st.resistNext = 0; st.evade = st.evadeNext; st.evadeNext = null; st.reflect = 0; st.reflectAll = false;
     for (const { cell } of allCells(s)) {
       if (!stuck(cell, 'hard')) for (const h0 of cell.chips.filter((ch) => ch.kind === 'hard')) if (--h0.life <= 0) { cell.chips.splice(cell.chips.indexOf(h0), 1); b.fx[h0.id] = 'void'; }
@@ -2081,4 +2113,4 @@ export function summary(b, idx) {
 }
 
 // internals the tests drive directly
-export const _test = { madeWork, placeMade, engage, settleAll, feeShares, setDebt, ticks, play, sidePhase, growth, strike, water, freezeTop, newCreature, setHard, arrange, chipPhase, placeFx, addToMeter };
+export const _test = { blockedBy, madeWork, placeMade, engage, settleAll, feeShares, setDebt, ticks, play, sidePhase, growth, strike, water, freezeTop, newCreature, setHard, arrange, chipPhase, placeFx, addToMeter };

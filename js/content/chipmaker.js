@@ -18,10 +18,12 @@ export const HEIGHT = { tiny: { name: 'Tiny', h: 0, text: 'takes no stack height
 export const FOOTPRINT = { basic: '1 space', big: 'Big, 2×2', large: 'Large, 3×3', huge: 'Huge, 5×5' };
 // where it must sit, and what may go on it (only chips of its own footprint stack together)
 export const MUST = { any: 'Anywhere in a stack', top: 'On top', bottom: 'At the bottom', sandwiched: 'Sandwiched between chips', alone: 'Alone in its space', with: 'With other chips' };
-export const ON_TOP = { anything: 'Anything (no height cap)', fits: 'Anything that fits under the height cap', none: 'Nothing' };
+export const ON_TOP = { anything: 'Anything (no height cap)', fits: 'Anything that fits under the height cap', none: 'Nothing (not even Debt; flying chips hover over it)' };
+// Sticky: a trait. A sticky chip binds to the value chips it touches in its stack and their values combine into one.
+export const STICKY = { no: 'Not sticky', yes: 'Sticky (binds to the value chips it touches)' };
 // what it shrugs off. Elements match the Resist system: a stack holding the chip resists them too.
 export const IMMUNE = { burn: 'Fire', frost: 'Ice', shock: 'Electricity', corrupt: 'Corruption', acid: 'Acid', poison: 'Poison', debt: 'Debt (fees pass it by)',
-  moves: 'Being moved', holes: 'Falling in Holes', buffs: 'Buffs', debuffs: 'Debuffs', blocks: 'Blocking (Sticky chips and closed stacks do not stop it)' };
+  moves: 'Being moved', holes: 'Falling in Holes', buffs: 'Buffs', debuffs: 'Debuffs', blocks: 'Blocking (Block chips are ignored and its actions apply)' };
 // how it moves (in the House phase), and what its effect reaches
 export const MOVES = {
   still: 'Does not move', nearest: 'Creature: to the nearest stack', tallest: 'Creature: to the tallest stack', richest: 'Creature: to the highest value', poorest: 'Creature: to the lowest value',

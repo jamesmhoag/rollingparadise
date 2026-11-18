@@ -24,7 +24,15 @@ const stackOf = (n) => { const x = cells().find((y) => !y.cell.hole && !y.cell.l
 // closed stacks and blocking
 { const x = stackOf(1); x.cell.chips.push(chip('lid', { onTop: 'none' }));
   ok(!B.fits(me, x.cell, chip('plain', {})), 'a closed stack takes nothing');
-  ok(B.fits(me, x.cell, chip('pushy', { immune: ['blocks'] })), 'a chip immune to blocking goes on a closed stack'); }
+  ok(!B.fits(me, x.cell, chip('pushy', { immune: ['blocks'] })), 'immunity to blocking does not open a closed stack');
+  ok(!B.fits(me, x.cell, chip('flat', { height: 'tiny' })), 'not even a chip with no height goes on a closed stack');
+  ok(B.fits(me, x.cell, chip('bird2', { move: 'flying' })), 'a flying chip hovers over a closed stack'); }
+// nothing on top refuses Debt: a fee aimed at a closed stack goes on down the lane
+{ const opp = bout.sides[1], col = 2; for (let r = 0; r < opp.rows; r++) opp.grid[r][col].chips = [];
+  const front = opp.grid[opp.dims.meterRows][col], back = opp.grid[opp.dims.meterRows + 1][col];
+  front.chips = [{ id: 8e6, kind: 'std', value: 5 }, chip('lid2', { onTop: 'none' })]; back.chips = [{ id: 8e6 + 1, kind: 'std', value: 5 }];
+  B._test.engage(bout, me, opp, opp.dims.meterRows, col, 3, {});
+  ok(!front.chips.some((ch) => ch.kind === 'debt') && back.chips.some((ch) => ch.kind === 'debt'), 'Debt cannot sit on a closed stack: the fee lands behind it'); }
 // footprints: a big chip claims n×n empty spaces and frees them when it goes
 { for (const x of cells()) { x.cell.chips = []; delete x.cell.link; delete x.cell.anchor; delete x.cell.hole; }
   B.sandboxChip(bout, 0, 1, 1, { made: chip('slab', { foot: 'large' }).model }, 'add');
@@ -34,10 +42,23 @@ const stackOf = (n) => { const x = cells().find((y) => !y.cell.hole && !y.cell.l
   ok(!B.sandboxChip(bout, 0, 0, 0, { made: chip('slab2', { foot: 'huge' }).model }, 'add'), 'a Huge chip needs 5×5 empty spaces');
   anchor.cell.chips = []; drain(B.resolve(bout));
   ok(!cells().some((x) => x.cell.link || x.cell.anchor?.n), 'its spaces are freed when it goes'); }
-// a Sticky chip stops made chips on its stack, unless they are immune to blocking
-{ const x = stackOf(2); const pl = chip('pusher', { triggers: [{ on: 'turn' }], actions: [{ k: 'value', n: 1 }], reach: { to: 'touching', range: 1 } });
-  x.cell.chips.push(pl, { id: 7e6, kind: 'sticky', value: 1 }); const v = x.cell.chips[1].value;
-  drain(B._test.madeWork(bout, me, 'turn', [])); ok(x.cell.chips[1].value === v, 'a glued made chip does nothing');
-  D.MADE_CHIPS.pusher.immune = ['blocks']; drain(B._test.madeWork(bout, me, 'turn', [])); ok(x.cell.chips[1].value === v + 1, 'immune to blocking, it works anyway'); }
+// immune to blocking: a Block chip on the other side stops a made chip's action (and is used up), unless immune
+{ const opp = bout.sides[1], x = me.grid[me.dims.meterRows][0], y = opp.grid[opp.dims.meterRows][0];
+  x.cell = x; y.chips = [{ id: 9e6, kind: 'std', value: 4 }, { id: 9e6 + 1, kind: 'block', value: 0 }];
+  const hit = chip('jab', { actions: [{ k: 'value', n: -1 }] }), M = D.MADE_CHIPS.jab, tg = [{ ch: y.chips[0], x: { side: opp, cell: y, r: opp.dims.meterRows, c: 0 } }];
+  ok(B._test.blockedBy(bout, me, tg[0], M) && !y.chips.some((ch) => ch.kind === 'block'), 'a Block chip stops the action and is used up');
+  y.chips.push({ id: 9e6 + 2, kind: 'block', value: 0 }); M.immune = ['blocks'];
+  ok(!B._test.blockedBy(bout, me, tg[0], M) && y.chips.some((ch) => ch.kind === 'block'), 'immune to blocking: the Block chip is ignored and the action applies'); void hit; }
+// sticky: touching value chips where either is sticky combine into one
+{ const x = stackOf(0); x.cell.chips = [{ id: 6e6, kind: 'std', value: 5 }, { id: 6e6 + 1, kind: 'std', value: 2, sticky: true }, { id: 6e6 + 2, kind: 'std', value: 1 }];
+  B.bind(bout, x.cell); ok(x.cell.chips.length === 1 && x.cell.chips[0].value === 8 && x.cell.chips[0].sticky, `sticky chips bind the chips they touch into one (${x.cell.chips.map((c) => c.value)})`);
+  x.cell.chips = [{ id: 6e6 + 3, kind: 'std', value: 5 }, { id: 6e6 + 5, kind: 'std', value: 1 }, { id: 6e6 + 6, kind: 'std', value: 1 }, { id: 6e6 + 4, kind: 'sticky', value: 3 }];
+  B.bind(bout, x.cell); ok(x.cell.chips.map((c) => c.kind + c.value).join() === 'std7,sticky3', `a Sticky chip makes the chip it touches sticky, and the stack binds into one (${x.cell.chips.map((c) => c.kind + c.value)})`);
+  x.cell.chips = [{ id: 6e6 + 7, kind: 'std', value: 3, wet: 1, frozen: true }, { id: 6e6 + 8, kind: 'std', value: 2 }];
+  B.bind(bout, x.cell); ok(x.cell.chips.length === 1 && x.cell.chips[0].value === 5, 'a wet chip that freezes binds too');
+  x.cell.chips = [{ id: 6e6 + 9, kind: 'std', value: 3, wet: 1 }, { id: 6e6 + 10, kind: 'std', value: 2 }];
+  B.bind(bout, x.cell); ok(x.cell.chips.length === 2, 'wet alone does not bind');
+  const glue = chip('gluey', { sticky: true, value: 2 }); glue.value = 2; x.cell.chips = [{ id: 6e6 + 11, kind: 'std', value: 3 }, glue];
+  B.bind(bout, x.cell); ok(x.cell.chips.length === 1 && x.cell.chips[0].value === 5, 'a made chip with the Sticky term binds'); }
 if (fails.length) { console.log('FAIL ' + fails.join('\nFAIL ')); process.exit(1); }
 console.log('ok, chip terms: height rules, big footprints, no height cap and blocking immunity');

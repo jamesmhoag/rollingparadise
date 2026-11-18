@@ -283,9 +283,9 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
 - **Diamond** needs one each of Sparkling, Glimmering and Swirling in the melt and exactly Orange, Purple and Green
   (two of each primary). It rolls six dice: one per complex material and one per secondary dye. A Diamond die
   cannot be melted or modified.
-- **The mix effects:** Sparkling: the higher rolled face becomes the sum, the lower the difference. Glimmering: the
-  higher becomes 0, the lower 7. Swirling: every face showing the higher roll becomes the difference, every face
-  showing the lower the sum (Orange reversed). Orange: high → high + low, low → high − low. Purple: low → the sum.
+- **The mix effects:** Orange and Sparkling are opposites. Orange: the higher rolled face becomes the sum, the lower
+  the difference. Sparkling: the higher becomes the difference, the lower the sum. Glimmering: the higher becomes 0,
+  the lower 7. Swirling: both rolled faces take one value left over on the die, at random, so it shows three times. Orange: high → high + low, low → high − low. Purple: low → the sum.
   Green: high → the difference.
 - **Doubles roll again.** A two-dice cast or dye that rolls the same value twice rolls again (`MELT.rerollDoubles`).
 - **Dye mixes come from two primaries.** A mix takes one dye slot and costs its two primaries; mixes are not sold.
@@ -295,8 +295,13 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
   fit; anything else, half-height included, must fit under the cap. A stack with an "anything on top" chip in it
   has no height cap. A big chip covers 2×2, 3×3 or 5×5 empty spaces from where it lands (moved back inside the
   position at an edge), holds its ground, and frees them when it goes.
-- **Immune to blocking** (my reading, to confirm): a Sticky chip now glues made chips on its stack so they do
-  nothing, and a "nothing on top" chip closes its stack; a chip immune to blocking is stopped by neither.
+- **Immune to blocking:** a Block or Counter chip on the other side stops one of a made chip's actions there (and
+  is used up); a chip immune to blocking ignores it and the action applies.
+- **Nothing on top** takes nothing at all, Debt included; a fee aimed at it goes on down the lane. Flying chips
+  hover over it: they do not stack.
+- **Sticky is a trait.** Sticky chips bind to the value chips they touch in their stack and their values combine
+  into one. The Sticky chip has the trait (and keeps its timer freeze) and makes the chip it touches sticky, so a
+  stack it lands on fuses. A wet chip that freezes binds too (a conditional binding). Made chips can be Sticky.
 - **Chips come out of the Pit only through tricks and chips**, and they are the real chips (same id, kind and
   value), newest first, whole chips only. Gather and Steal take them back instead of change from the Stage total; a
   made trick can take its chips from your Pit or theirs; a made chip's Pull action takes them onto its stack.
@@ -309,7 +314,7 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
   be seen, and chips come back out of it only through tricks and chips (above).
 
 ### To confirm (built as proposed)
-- **Sparkling and Orange** now do the same thing to a die (one from materials, one from dyes). Intended?
+- Nothing open.
 
 ### Still to build
 - **Resource files (row 17):** the folder, manifest and check exist, but there are no icon, texture or material

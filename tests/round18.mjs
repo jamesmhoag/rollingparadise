@@ -117,9 +117,11 @@ console.log('ok, round 18: dice materials, d12, Dice Shop, Bone dice');
   ok(!pl2.why && pl2.rolled.map((d) => d.mat).join() === 'glass,metal', 'the mix rolls the spare Glass and Metal d6');
   ok(F.castOut('sparkling') === 'sparkling' && F.castOut('glass') === 'glass', 'a mix comes out as its complex material');
   ok(/only melt into a Diamond/.test(F.forgeBlock({ type: 'd6', melt: [die('sparkling'), die('sparkling')], floor: 4 }) || ''), 'complex dice only melt into a Diamond');
-  eq2(F.castFaces(fixed([2, 5]), 'd6', 'sparkling').faces, [1, 3, 3, 4, 7, 6], 'Sparkling: the higher becomes the sum, the lower the difference');
+  eq2(F.castFaces(fixed([2, 5]), 'd6', 'sparkling').faces, [1, 7, 3, 4, 3, 6], 'Sparkling, the opposite of Orange: the higher becomes the difference, the lower the sum');
+  eq2(F.castFaces(fixed([1, 2, 5]), 'd6', 'metal', ['orange']).faces, [7, 3, 3, 4, 7, 6], 'Orange: the higher becomes the sum, the lower the difference');
   eq2(F.castFaces(fixed([2, 5]), 'd6', 'glimmering').faces, [1, 7, 3, 4, 0, 6], 'Glimmering: the higher becomes 0, the lower 7');
-  eq2(F.castFaces(fixed([1, 4]), 'd6', 'swirling').faces, [5, 2, 3, 3, 5, 6], 'Swirling: the face showing the higher roll becomes the difference, the lower the sum');
+  { const fs = F.castFaces(fixed([1, 4, 2]), 'd6', 'swirling').faces, v = fs[0];
+    ok(fs[0] === fs[3] && fs.filter((x) => x === v).length === 3 && ![1, 4].includes(v), `Swirling: both rolled faces take a leftover value, which then shows three times (${fs})`); }
   { let k = 0; const seq = [3, 3, 3, 3, 2, 6]; const res3 = F.castFaces({ int: () => seq[k++] - 1 }, 'd6', 'glimmering');
     ok(res3.log[0].rolls.join() === '2,6' && /rolled again 2 times/.test(res3.log[0].text), 'doubles in a two-dice cast roll again'); }
   const dia = [die('sparkling'), die('glimmering'), die('swirling')], prim = ['red', 'yellow', 'red', 'blue', 'blue', 'yellow'];
