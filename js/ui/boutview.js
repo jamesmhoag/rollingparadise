@@ -38,43 +38,46 @@ export function boutScene(root, bout, ctx, onDone) {
   // ---------- geometry ----------
   const cellPos = (side, r, c) => ({ x: side === 0 ? PX - (r + 1) * cw[0] : OX + r * cw[1], y: TOP + c * CH, w: cw[side] });
   const chipPos = (side, r, c, lvl) => { const p = cellPos(side, r, c); return { x: p.x + p.w / 2 - CHIP / 2, y: p.y + CH - CHIP - 5 - Math.min(lvl, 12) * 4, z: 20 + c * 40 + lvl }; };
-  // The Book and the dice (the Roll and the Pouch) fold away to thin spines when there is nothing to do with them,
-  // and give their whole width to the Run. Click a spine, or press B or D, to peek inside at any time.
-  const bookOpen = () => bout.phase === 'draw';
-  const diceOpen = () => (bout.phase === 'roll' && !me.thrown) || me.tray.length > 0;
-  // The Run (your drawn hand) is centred on the middle of the screen; the dice (the Roll and the Pouch, or their
-  // spine) sit right after its last card, top-aligned with it. A long hand slides left and narrows to fit.
-  const RUN_Y = 466, GAP = 14, MID = 640, RMAX = 1072; // RMAX: the dice end before their Run
-  function runSpan() {
-    const l = bookOpen() ? 248 : 52, d = diceOpen() ? 196 : 28, n = me.run.length;
-    const w = Math.min(122, Math.floor((RMAX - l - GAP - d + 6) / Math.max(1, n)) - 6), W = n ? n * (w + 6) - 6 : 420;
-    const x = Math.max(l, Math.min(MID - W / 2, RMAX - d - GAP - W));
-    return { l: x, r: x + W, w: W, cw: w, dice: x + W + GAP, feedL: l };
+  // Under the table, two mirrored halves: yours on the left (Book · Run · dice), theirs on the right (dice · Run ·
+  // Book), so both Rolls sit side by side in the middle. A Book or dice column folds to a thin spine when there is
+  // nothing to do with it and gives its width to the Run. Click your spine, or press B or D, to peek inside.
+  // Their Book and Pouch stay closed (you only see how many): their Roll, tricks, dice and bids are shown as they land.
+  const sideOf = (si) => bout.sides[si];
+  const bookOpen = (si = 0) => si === 0 && bout.phase === 'draw';
+  const diceOpen = (si = 0) => { const s = sideOf(si); return (bout.phase === 'roll' && !s.thrown) || s.tray.length > 0; };
+  const RUN_Y = 466, TITLE_Y = 454, CARD_H = 242, G = 10, BOOK_W = 180, DICE_W = 196, SPINE = 28;
+  const HALF = [{ l: 14, r: 630 }, { l: 650, r: 1266 }];
+  const ckey = (si, uid) => (si ? 'o' + uid : uid), dkey = (si, id) => (si ? 'o' + id : id); // their ids are counted apart from yours
+  function runSpan(si = 0) {
+    const s = sideOf(si), H = HALF[si], b = bookOpen(si) ? BOOK_W : SPINE, d = diceOpen(si) ? DICE_W : SPINE, n = s.run.length, room = H.r - H.l - b - d - 2 * G;
+    const w = Math.min(122, Math.floor((room + 6) / Math.max(1, n)) - 6), W = n ? n * (w + 6) - 6 : Math.min(room, 320);
+    if (si === 0) { const dice = H.r - d, x = dice - G - W; return { l: x, r: x + W, w: W, cw: w, dice, book: H.l }; } // yours leans on your dice
+    const x = H.l + d + G; return { l: x, r: x + W, w: W, cw: w, dice: H.l, book: H.r - b }; // theirs mirrors it
   }
-  const diceAt = () => { const R = runSpan(); return diceOpen() ? R.dice : ui.peek === 'dice' ? R.dice - 200 : R.dice; }; // where the dice column starts
+  const diceAt = (si = 0) => { const R = runSpan(si); return si === 0 && !diceOpen() && ui.peek === 'dice' ? R.dice - 200 : R.dice; }; // where a dice column starts
   function cardLayout() {
-    const out = new Map(), R = runSpan(), w = R.cw;
-    me.run.forEach((e, i) => out.set(e.uid, { x: R.l + i * (w + 6), y: RUN_Y, w, h: 242, open: true, e }));
-    const peek = ui.peek === 'book', tapT = B.tappedInOrder(me).tricks.map((x) => x.trick), shelf = [...me.book, ...tapT], step = Math.min(34, Math.floor(262 / Math.max(1, shelf.length)));
-    shelf.forEach((t, i) => out.set(t.uid, bookOpen() ? { x: 16, y: 444 + i * step, w: 220, h: Math.min(30, step - 3), open: false, t }
-      : peek ? { x: 50, y: 444 + i * step, w: 220, h: Math.min(30, step - 3), open: false, t, peek: true }
-        : { x: 16, y: 430 + i * 3, w: 26, h: 24, open: false, t, folded: true }));
+    const out = new Map();
+    [0, 1].forEach((si) => { const R = runSpan(si); sideOf(si).run.forEach((e, i) => out.set(ckey(si, e.uid), { si, x: R.l + i * (R.cw + 6), y: RUN_Y, w: R.cw, h: CARD_H, open: true, e })); });
+    const peek = ui.peek === 'book', tapT = B.tappedInOrder(me).tricks.map((x) => x.trick), shelf = [...me.book, ...tapT], step = Math.min(34, Math.floor(CARD_H / Math.max(1, shelf.length)));
+    shelf.forEach((t, i) => out.set(t.uid, bookOpen() ? { si: 0, x: 16, y: RUN_Y + i * step, w: BOOK_W - 4, h: Math.min(30, step - 3), open: false, t }
+      : peek ? { si: 0, x: 50, y: RUN_Y + i * step, w: BOOK_W - 4, h: Math.min(30, step - 3), open: false, t, peek: true }
+        : { si: 0, x: 16, y: RUN_Y + 12 + i * 3, w: 26, h: 24, open: false, t, folded: true }));
     return out;
   }
   const dieSlot = (cl, i) => ({ x: cl.x + 7 + (i % 3) * 36, y: cl.y + 50 + Math.floor(i / 3) * 36 });
-  // the dice column, top-aligned with the Run: the Roll (title, tray), then the Pouch (title, dice)
-  const DY = { roll: RUN_Y, tray: RUN_Y + 18, pouch: RUN_Y + 108, dice: RUN_Y + 128 };
+  // a dice column, top-aligned with the Run: the Roll's tray, then the Pouch (titles sit on the row above)
+  const DY = { tray: RUN_Y, pouch: RUN_Y + 88, dice: RUN_Y + 106 };
   const pouchSlot = (i, n) => { const x0 = diceAt() + 6;
     if (!diceOpen() && ui.peek !== 'dice') return { x: runSpan().dice + 3, y: RUN_Y + 22 + Math.min(i, 30) * 6, folded: true }; // folded into its spine
     if (bout.phase === 'roll' && me.thrown && ui.peek !== 'dice') return { x: x0 + Math.min(i, 30) * Math.min(10, 150 / Math.max(1, n)), y: DY.dice + 4 - (i % 2) * 2 }; // thrown: the rest of the Pouch closes up
     const per = n > 15 ? 6 : 5, st = n > 15 ? 30 : 36; return { x: x0 + (i % per) * st, y: DY.dice + Math.floor(i / per) * st }; };
-  const traySlot = (i) => ({ x: diceAt() + 10 + (i % 5) * 36, y: DY.tray + 6 + Math.floor(i / 5) * 36 }); // the roll: room for two rows of dice
+  const traySlot = (i, si = 0) => ({ x: diceAt(si) + 10 + (i % 5) * 36, y: DY.tray + 8 + Math.floor(i / 5) * 36 }); // the roll: room for two rows of dice
   // the Stage: what each Roller has paid, stacked in front of the House
   // the Pit: each Roller's lost chips, in the order they were lost, filling two stacks on their own side, then rising
   const pitSlot = (si, k, n) => { const per = Math.ceil(n / 2), step = Math.min(4, (PIT.bottom - PIT.top - CHIP) / Math.max(1, per - 1));
     return { x: (si === 0 ? PX + 2 : PX + 72) + (k % 2) * 34, y: PIT.bottom - CHIP - Math.floor(k / 2) * step, z: 30 + k }; };
-  // a bid pile sits on its trick: on your card's BID ring, or on the corner of their small card
-  function bidSpot(el) { const s = el?.querySelector('.bidslot'); return s ? { x: s.offsetLeft + (s.offsetWidth - CHIP) / 2, y: s.offsetTop + (s.offsetHeight - CHIP) / 2 } : { x: 8, y: 80 }; }
+  // a trick's bid pile sits just right of its BID ring: the ring (or the card) adds a bid, the pile gives its top chip back
+  function bidSpot(el) { const s = el?.querySelector('.bidslot'); return s ? { x: s.offsetLeft + s.offsetWidth + 3, y: s.offsetTop + (s.offsetHeight - CHIP) / 2 } : { x: 46, y: 80 }; }
 
   // ---------- static frame ----------
   const worthEl = [h('b', { class: 'num' }), h('b', { class: 'num' })], stageEl = [h('b', { class: 'num' }), h('b', { class: 'num' })];
@@ -211,10 +214,11 @@ export function boutScene(root, bout, ctx, onDone) {
       el.style.width = `${Math.max(30, Math.hypot(dx, dy) - 8)}px`; el.style.transform = `rotate(${a}deg)`; el.classList.add('live'); },
       rest() { let a = rest; while (a - ang > 180) a -= 360; while (a - ang < -180) a += 360; ang = a; el.style.width = '60px'; el.style.transform = `rotate(${a}deg)`; el.classList.remove('live'); }, tap() { pulse(el, 'tap'); } }; });
   let calling = [];
-  const callEl = (st) => (st.uid == null ? null : st.who === 0 ? els.cards.get(st.uid) : [...oppRun.children].find((x) => x._key === st.uid));
+  const callEl = (st) => (st.uid == null ? null : els.cards.get(ckey(st.who, st.uid)));
   function setCalling(parts) { const next = parts.map(callEl).filter(Boolean); for (const el of calling) if (!next.includes(el)) el.classList.remove('calling'); for (const el of next) el.classList.add('calling'); calling = next; }
-  function trickPoint(st) { if (st.uid == null) return null; if (st.who === 0) { const cl = cardLayout().get(st.uid); return cl ? { x: cl.x + cl.w / 2, y: cl.y + 12 } : null; } const el = [...oppRun.children].find((x) => x._key === st.uid); if (!el) return null; const bx = box(el); return { x: bx.x + 8, y: bx.y + bx.h / 2 }; }
+  function trickPoint(st) { if (st.uid == null) return null; const cl = cardLayout().get(ckey(st.who, st.uid)); return cl ? { x: cl.x + cl.w / 2, y: cl.y + 12 } : null; }
   const runEmpty = h('div', { class: 'run-empty', tip: tx('table.run-tricks-you-have'), text: tx('table.your-run-click-a') });
+  const oppEmpty = h('div', { class: 'run-empty', tip: tx('table.s-run-the-tricks', { name: opp.name }), text: tx('table.their-run-empty', { name: opp.name }) });
   const sipBtn = btn(tx('table.sip'), () => { const why = B.canSip(bout, me); if (why) return nope(why, sipBtn); act(() => { B.sip(bout, me); toast(tx('table.you-sip-your-it', { name: me.drink.name })); }); }, () => (me.drink ? tx('table.sip-once-a-round', { drinkTip: drinkTip(me.drink) }) : ''), 'small');
   const undoBtn = btn(tx('table.undo-2'), () => act(() => { B.resetPlan(bout, me); ui.sel.clear(); ui.flips = []; ui.hand = []; ui.handAim.clear(); setMode(null); if (bout.phase === 'aim') aimBest(); }),
     () => tx('table.undo', { v: bout.phase === 'draw' ? tx('table.put-back-the-tricks') : bout.phase === 'roll' ? (me.thrown ? tx('table.take-the-dice-off') : tx('table.clear-the-dice-and')) : tx('table.take-back-the-bids') }), 'small');
@@ -229,19 +233,23 @@ export function boutScene(root, bout, ctx, onDone) {
     dice: h('button', { class: 'spine dice', onclick: () => togglePeek('dice'), tip: () => tx('table.spine-dice', { n: me.pouch.length, list: me.pouch.map((d) => dieName(d)).join(', ') || tx('table.spine-empty') }) },
       h('span', { class: 'sp-t' }), h('span', { class: 'sp-marks' })) };
   const peekPanels = { book: h('div', { class: 'peek-panel book', onclick: () => togglePeek('book') }), dice: h('div', { class: 'peek-panel dice', onclick: () => togglePeek('dice') }) };
-  let ztRoll, ztPouch;
-  const frameEls = [header, stageBox, phasesEl, feedEl, runEmpty,
-    h('div', { class: 'zone-title zt-book', style: { left: '16px', top: '418px' }, tip: tx('table.book-tricks-you-own'), text: tx('table.book') }),
-    (ztRoll = h('div', { class: 'zone-title zt-dice', style: { top: RUN_Y + 'px' }, tip: tx('table.the-roll-everything-you'), text: tx('table.the-roll') })), trayBox, trayCap,
-    (ztPouch = h('div', { class: 'zone-title zt-dice', style: { top: RUN_Y + 108 + 'px' }, tip: tx('table.pouch-your-dice-in'), text: tx('table.pouch') })),
-    peekPanels.book, peekPanels.dice, spines.book, spines.dice,
-    h('div', { class: 'zone-title', style: { left: '1082px', top: '418px' }, tip: tx('table.s-run-the-tricks', { name: opp.name }), text: tx('table.their-run') }),
+  let ztRoll, ztPouch, ztRun;
+  const kitTip = () => tx('table.s-kit-in-their', { name: opp.name, bookN: opp.book.length, pouchN: opp.pouch.length });
+  const them = { tray: h('div', { class: 'tray-box them' }), roll: h('div', { class: 'zone-title zt-dice them', style: { top: TITLE_Y + 'px' }, text: tx('table.their-roll'),
+    tip: () => tx('table.s-roll', { name: opp.name, vc: vc(tx('table.the-dice-they-threw', { join: opp.tray.map((d) => d.value).join(', ') || '—' }), tx('table.their-throw-placed-in')) }) }),
+    pouch: h('div', { class: 'zone-title zt-dice them', style: { top: DY.pouch + 'px' }, tip: kitTip }), run: h('div', { class: 'zone-title', style: { top: TITLE_Y + 'px' }, tip: tx('table.s-run-the-tricks', { name: opp.name }), text: tx('table.their-run') }),
+    dspine: h('div', { class: 'spine dice them', tip: kitTip }, h('span', { class: 'sp-t' })), bspine: h('div', { class: 'spine book them', tip: kitTip }, h('span', { class: 'sp-t' })) };
+  const frameEls = [header, stageBox, phasesEl, feedEl, runEmpty, oppEmpty,
+    h('div', { class: 'zone-title zt-book', style: { left: '16px', top: TITLE_Y + 'px' }, tip: tx('table.book-tricks-you-own'), text: tx('table.book') }),
+    (ztRun = h('div', { class: 'zone-title', style: { top: TITLE_Y + 'px' }, tip: tx('table.run-tricks-you-have'), text: tx('table.your-run') })),
+    (ztRoll = h('div', { class: 'zone-title zt-dice', style: { top: TITLE_Y + 'px' }, tip: tx('table.the-roll-everything-you'), text: tx('table.the-roll') })), trayBox, trayCap,
+    (ztPouch = h('div', { class: 'zone-title zt-dice', style: { top: DY.pouch + 'px' }, tip: tx('table.pouch-your-dice-in'), text: tx('table.pouch') })),
+    peekPanels.book, peekPanels.dice, spines.book, spines.dice, ...Object.values(them),
     h('div', { class: 'controls' }, sipBtn, undoBtn, speedBtn, commitBtn),
     btn(tx('title.library'), () => openLibrary(), tx('table.library-every-chip-trick'), 'small lib-btn')];
-  const oppRun = h('div', { class: 'opp-run' });
   const banner = h('div', { class: 'banner' });
   const fcLayer = h('div', { class: 'fc-layer' }); // fee forecasts and Debt tags over the stacks
-  root.append(...frameEls, oppRun, layer, fcLayer, arms[0].el, arms[1].el, phaseCall, banner);
+  root.append(...frameEls, layer, fcLayer, arms[0].el, arms[1].el, phaseCall, banner);
   if (ctx?.test) root.append(testTools());
   // table-sized weather: a see-through sheet over each position (snow for a Blizzard, light for the Sun or Moon)
   const weatherEls = bout.sides.map((s, si) => { const a = cellPos(si, si === 0 ? s.rows - 1 : 0, 0), w = s.rows * cw[si];
@@ -356,9 +364,11 @@ export function boutScene(root, bout, ctx, onDone) {
       requestAnimationFrame(step); }
     else body.animate([{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(720deg)' }], { duration: dur * 0.84, delay, easing: 'cubic-bezier(.2,.6,.3,1)', fill: 'both' });
   }
-  function mkDie(d) {
-    const el = h('div', { class: `die ${d.chip ? 'flipc' : d.type} ${d.chip ? '' : dieClass(d)}`, style: d.chip ? {} : dieStyle(d), onclick: () => clickDie(d.id) }, h('i', { text: d.type.slice(1) }), d.chip ? null : dieMarks(d), d.chip ? null : dieDyes(d));
+  function mkDie(d, si = 0) {
+    const el = h('div', { class: `die ${d.chip ? 'flipc' : d.type} ${d.chip ? '' : dieClass(d)}`, style: d.chip ? {} : dieStyle(d), onclick: si ? null : () => clickDie(d.id) }, h('i', { text: d.type.slice(1) }), d.chip ? null : dieMarks(d), d.chip ? null : dieDyes(d));
     if (!d.chip) el._die = d;
+    if (si) { el.classList.add('theirs'); tip(el, () => { const on = B.holderOf(opp, d.id), live = on ? on.dice.find((x) => x.id === d.id) : opp.tray.find((x) => x.id === d.id), v = live ? live.value : '?';
+      return d.chip ? tx('table.flipped-chip-landed-on', { value: d.chip.value, v, where: '' }) : dieTip(d, tx('table.rolled', { value: v })); }); layer.append(el); return el; }
     tip(el, () => {
       const on = B.holderOf(me, d.id), live = on ? on.dice.find((x) => x.id === d.id) : me.tray.find((x) => x.id === d.id);
       const tp = me.tapped.dice.find((x) => x.die.id === d.id);
@@ -368,9 +378,9 @@ export function boutScene(root, bout, ctx, onDone) {
       return dieTip(d, `${live ? tx('table.rolled', { value: live.value }) : ''}${where}`); });
     layer.append(el); return el;
   }
-  function mkCard(t) {
+  function mkCard(t, si = 0) {
     const def = D.defOf(t), T = D.TYPES[def.type];
-    const el = h('div', { class: `tcard ${trickLook(t)}`, style: { '--tc': T.color }, onclick: (ev) => clickCard(t.uid, ev), onmouseenter: () => { ui.card = t.uid; marks(); }, onmouseleave: () => { if (ui.card === t.uid) { ui.card = null; marks(); } } },
+    const el = h('div', { class: `tcard ${trickLook(t)}${si ? ' theirs' : ''}`, style: { '--tc': T.color }, ...(si ? {} : { onclick: (ev) => clickCard(t.uid, ev), onmouseenter: () => { ui.card = t.uid; marks(); }, onmouseleave: () => { if (ui.card === t.uid) { ui.card = null; marks(); } } }) },
       h('div', { class: 'c-compact' }, h('b', { text: def.name }), h('span', { class: 'req', text: `${def.count}${def.die}` }), h('span', { class: 'q', html: trickWord(t) })),
       h('div', { class: 'c-open' },
         h('div', { class: 'c-name' }, h('b', { text: def.name }), h('span', { class: 'q', html: trickWord(t) })),
@@ -379,7 +389,11 @@ export function boutScene(root, bout, ctx, onDone) {
         h('div', { class: 'c-bid' }, h('span', { class: 'bidslot', text: tx('table.bid-5'), 'data-act': 'bid' }), h('div', { class: 'c-math' })), // the roll breakdown sits beside the bid pile
         h('div', { class: 'c-text' }, h('p', {}, h('em', { text: tx('table.roll-2') }), def.roll.text), h('p', { class: 'bonus' }, h('em', { text: tx('table.bonus') }), def.bonus.text)),
         h('div', { class: 'c-total' }, h('span', { class: 'state' }), h('b', { class: 'num' }))));
-    tip(el, () => cardTip(t.uid)); layer.append(el); return el;
+    tip(el, () => (si ? oppCardTip(t.uid) : cardTip(t.uid))); layer.append(el); return el;
+  }
+  function oppCardTip(uid) {
+    const e = opp.run.find((x) => x.uid === uid); if (!e) return '';
+    return trickTip(e.trick, opp.cls, `<p class="live">${e.dice.length ? tx('table.dice-roll-total-2', { join: e.dice.map((d) => d.value).join(' + '), previewTotal: B.previewTotal(opp, e) }) : tx('table.no-dice-on-it')}${e.state === 'bid' ? tx('table.bid-on-it-plays') : e.state === 'play' ? tx('table.in-play-2') : tx('table.shown-not-bid')}</p>`);
   }
   const place = (el, x, y, extra = '') => { el.style.transform = `translate(${x}px, ${y}px) ${extra}`; };
   function spawn(el, x, y, extra, delay = 0) { // put an element at a starting state without animating, then release it
@@ -429,13 +443,20 @@ export function boutScene(root, bout, ctx, onDone) {
     swapText(spines.book.children[0], `${tx('table.book')} ${me.book.length}${tapN(me.tapped.tricks.length)}`); swapText(spines.dice.children[0], `${tx('table.pouch')} ${me.pouch.length}${tapN(me.tapped.dice.length)}`);
     syncList(spines.book.children[1], me.book, (t) => t.uid, (t) => h('i', { style: { '--tc': D.TYPES[D.defOf(t).type].color } }), () => {});
     syncList(spines.dice.children[1], me.pouch.slice(0, 12), (d) => `${d.id}:${d.mat || ''}`, (d) => dieEl(d, '', 'mini'), () => {});
-    // the feed spans the table from the Book to the dice's far edge; the Run and the dice move as one, centred
+    // your half: the Run leans on your dice column, by the middle of the screen
     const R = runSpan(), dx = diceAt();
-    feedEl.style.left = R.feedL + 'px'; feedEl.style.width = RMAX - R.feedL + 'px';
-    runEmpty.style.left = R.l + 'px'; runEmpty.style.width = R.w + 'px';
+    runEmpty.style.left = R.l + 'px'; runEmpty.style.width = R.w + 'px'; ztRun.style.left = R.l + 6 + 'px';
     for (const el of [ztRoll, ztPouch]) el.style.left = dx + 6 + 'px';
-    trayBox.style.left = dx + 'px'; trayCap.style.left = dx + 70 + 'px';
+    trayBox.style.left = dx + 'px'; trayCap.style.left = dx + 84 + 'px';
     spines.dice.style.left = R.dice + 'px'; peekPanels.dice.style.left = R.dice - 212 + 'px';
+    // their half, mirrored: dice by the middle, then their Run, their Book (closed) at the far edge
+    const O = runSpan(1), od = diceOpen(1);
+    oppEmpty.style.left = O.l + 'px'; oppEmpty.style.width = O.w + 'px'; oppEmpty.style.opacity = opp.run.length ? 0 : 1; them.run.style.left = O.l + 6 + 'px';
+    for (const el of [them.roll, them.pouch]) el.style.left = O.dice + 6 + 'px';
+    them.tray.style.left = O.dice + 'px'; them.dspine.style.left = O.dice + 'px'; them.bspine.style.left = O.book + 'px';
+    for (const el of [them.roll, them.pouch, them.tray]) el.classList.toggle('away', !od); them.dspine.classList.toggle('away', od);
+    them.tray.classList.toggle('has', opp.tray.length > 0);
+    swapText(them.pouch, `${tx('table.pouch')} ${opp.pouch.length}`); swapText(them.dspine.firstChild, `${tx('table.pouch')} ${opp.pouch.length}`); swapText(them.bspine.firstChild, `${tx('table.book')} ${opp.book.length}`);
   }
   function sync(fx = {}) {
     const plan = B.restorePlan(bout, me); // the live restore preview: follows the board after every action
@@ -444,29 +465,30 @@ export function boutScene(root, bout, ctx, onDone) {
     const cards = cardLayout();
     // trick cards
     for (const [uid, cl] of cards) {
-      const t = cl.e ? cl.e.trick : cl.t; let el = els.cards.get(uid);
-      if (!el) { el = mkCard(t); els.cards.set(uid, el); spawn(el, cl.x, cl.y + 20, ''); el.style.width = cl.w + 'px'; el.style.height = cl.h + 'px'; void el.offsetWidth; }
+      const t = cl.e ? cl.e.trick : cl.t, s = sideOf(cl.si), mine = cl.si === 0; let el = els.cards.get(uid);
+      if (!el) { el = mkCard(t, cl.si); els.cards.set(uid, el); spawn(el, cl.x, cl.y + 20, ''); el.style.width = cl.w + 'px'; el.style.height = cl.h + 'px'; void el.offsetWidth; }
       el.style.opacity = cl.folded ? '0' : '1'; el.style.pointerEvents = cl.folded ? 'none' : ''; place(el, cl.x, cl.y); el.style.width = cl.w + 'px'; el.style.height = cl.h + 'px';
       el.classList.toggle('open', cl.open); el.style.zIndex = cl.peek ? 9 : cl.open ? 3 : 2;
       const e = cl.e; el.classList.toggle('narrow', cl.open && cl.w < 104);
       el.classList.toggle('bid', !!e && e.state === 'bid'); el.classList.toggle('inplay', !!e && e.state === 'play');
-      el.classList.toggle('can', !e ? !ui.locked && !B.canDraw(bout, me, uid) : false);
-      const tapped = !e && !me.book.some((x) => x.uid === uid); el.classList.toggle('tapped', tapped); el.classList.toggle('restoring', tapped && plan.tricks.includes(uid));
-      el.classList.toggle('pick', !!e && (ui.mode === 'die' ? !B.canPlace(bout, me, ui.die, e) : ui.hand.length > 0 && !B.canBidMany(bout, me, e, ui.hand)));
-      el.classList.toggle('active', !!e && ui.entry === e.uid && (ui.mode === 'bid' || ui.mode === 'target'));
+      if (mine) {
+        el.classList.toggle('can', !e ? !ui.locked && !B.canDraw(bout, me, uid) : false);
+        const tapped = !e && !me.book.some((x) => x.uid === uid); el.classList.toggle('tapped', tapped); el.classList.toggle('restoring', tapped && plan.tricks.includes(uid));
+        el.classList.toggle('pick', !!e && (ui.mode === 'die' ? !B.canPlace(bout, me, ui.die, e) : ui.hand.length > 0 && !B.canBidMany(bout, me, e, ui.hand)));
+        el.classList.toggle('active', !!e && ui.entry === e.uid && (ui.mode === 'bid' || ui.mode === 'target'));
+      }
       if (e) {
-        const def = D.TRICKS[t.id], met = B.bonusMet(me, e);
-        el.querySelector('.bonus').classList.toggle('met', met); el.querySelector('.bonus').classList.toggle('na', !!def.cls && def.cls !== me.cls);
-        el.querySelector('.tgt').classList.toggle('on', e.state === 'bid' && B.needsTarget(e));
+        const def = D.TRICKS[t.id], met = B.bonusMet(s, e);
+        el.querySelector('.bonus').classList.toggle('met', met); el.querySelector('.bonus').classList.toggle('na', !!def.cls && def.cls !== s.cls);
+        el.querySelector('.tgt').classList.toggle('on', mine && e.state === 'bid' && B.needsTarget(e));
         const xm = el.querySelector('.xm'), qd = el.querySelector('.qd'), qs = B.qState(e), et = B.effTrick(e); // Upgrade chips and the quality die change the multiplier as it stands
         swapText(xm, ` ${fmtX(B.multOf(et))}`); xm.classList.toggle('up', (et.foil || 0) > 0); xm.classList.toggle('dud', qs === 'dud');
         swapText(qd, e.qroll != null ? `${D.QDIE[t.q].die}:${e.qroll}` : ''); qd.classList.toggle('dud', qs === 'dud'); qd.classList.toggle('hot', qs === 'hot');
         swapText(el.querySelector('.state'), e.state === 'play' ? (e.lingerLeft ? `lingers ${e.lingerLeft}` : 'in play') : e.state === 'bid' ? tx('table.bid', { bidValue: e.bidValue, v: e.bidValue > 1 ? `lingers ${e.bidValue - 1}` : 'plays now' }) : e.dice.length ? 'needs a bid' : 'shown');
-        // bids stack in a pile, like a stack on the table; the BID ring rises with it, sitting on the top chip as a + (each 1¢ more lingers a turn longer)
-        const slot = el.querySelector('.bidslot'), nb = e.bid.length;
-        swapText(slot, nb ? '' : 'BID'); // with chips on it, the ring is drawn over the pile (with the chips) as a +
-        tween(el.querySelector('.c-total .num'), B.previewTotal(me, e), (n) => (e.dice.length ? '= ' + Math.round(n) : ''));
-        const P = B.totalParts(me, e), bits = e.dice.length ? [P.dice.join('+')] : [];
+        // the BID ring stays beside the pile: BID while empty, + once bid (each 1¢ more lingers a turn longer)
+        swapText(el.querySelector('.bidslot'), e.bid.length ? '+' : tx('table.bid-5'));
+        tween(el.querySelector('.c-total .num'), B.previewTotal(s, e), (n) => (e.dice.length ? '= ' + Math.round(n) : ''));
+        const P = B.totalParts(s, e), bits = e.dice.length ? [P.dice.join('+')] : [];
         if (e.dice.length) { if (P.linger) bits.push(tx('table.linger', { linger: P.linger })); if (P.power) bits.push(tx('table.pow', { power: P.power })); if (P.venge) bits.push(tx('table.venge', { venge: P.venge })); if (P.plus) bits.push(tx('table.trait', { plus: P.plus })); if (P.mult !== 1) bits.push(`×${+P.mult.toFixed(2)}`); if (P.heat !== 1) bits.push(tx('table.call', { toFixed: P.heat.toFixed(2) })); if (P.double) bits.push('×2'); }
         swapText(el.querySelector('.c-math'), `${e.state === 'play' && e.paid ? tx('table.bid-2', { join: e.paid.join('+') }) : ''}${bits.join(' ')}`); // in play, the bid it was made with is recalled where its pile stood
         [...el.querySelectorAll('.slot')].forEach((sl, i) => sl.classList.toggle('full', i < e.dice.length));
@@ -480,11 +502,13 @@ export function boutScene(root, bout, ctx, onDone) {
     tapD.forEach((d, i) => wantDice.set(d.id, { ...pouchSlot(me.pouch.length + i, nPD), d, tapped: true, restoring: plan.dice.includes(d.id) }));
     me.tray.forEach((d, i) => wantDice.set(d.id, { ...traySlot(i), d, value: d.value, rolled: true }));
     for (const e of me.run) { const cl = cards.get(e.uid); e.dice.forEach((d, i) => wantDice.set(d.id, { ...dieSlot(cl, i), d, value: d.value, rolled: true, on: true })); }
+    opp.tray.forEach((d, i) => wantDice.set(dkey(1, d.id), { ...traySlot(i, 1), d, value: d.value, rolled: true, si: 1 })); // their roll lands as the Bid opens
+    for (const e of opp.run) { const cl = cards.get(ckey(1, e.uid)); e.dice.forEach((d, i) => wantDice.set(dkey(1, d.id), { ...dieSlot(cl, i), d, value: d.value, rolled: true, on: true, si: 1 })); }
     for (const [id, w] of wantDice) {
-      let el = els.dice.get(id); if (!el) { el = mkDie(w.d); els.dice.set(id, el); const from = (w.d.chip && els.flipFrom?.get(id)) || { x: w.x, y: w.y - 16 }; spawn(el, from.x, from.y, 'scale(.4)'); }
+      let el = els.dice.get(id); if (!el) { el = mkDie(w.d, w.si); els.dice.set(id, el); const from = (w.d.chip && els.flipFrom?.get(id)) || { x: w.x, y: w.y - 16 }; spawn(el, from.x, from.y, 'scale(.4)'); }
       const from = /translate\(([-\d.]+)px, ([-\d.]+)px\)/.exec(el.style.transform);
       el.style.opacity = w.folded ? '0' : '1'; el.style.pointerEvents = w.folded ? 'none' : ''; place(el, w.x, w.y, w.folded ? 'scale(.5)' : ''); el.style.zIndex = w.on ? 6 : ui.peek === 'dice' ? 9 : 4; el.classList.toggle('on', !!w.on); el.classList.toggle('rolled', !!w.rolled); el.classList.toggle('sel', (ui.mode === 'die' && ui.die === id) || !!w.picked);
-      el.classList.toggle('fixed', !!w.on && !B.canMove(bout, me, id)); el.classList.toggle('tapped', !!w.tapped); el.classList.toggle('restoring', !!w.restoring);
+      el.classList.toggle('fixed', !!w.on && (!!w.si || !B.canMove(bout, me, id))); el.classList.toggle('tapped', !!w.tapped); el.classList.toggle('restoring', !!w.restoring);
       const label = el.firstChild, text = w.rolled ? String(w.value) : w.d.type.slice(1);
       if (w.rolled && !el._rolled) { label.textContent = text; toss(el, w.d, w.value, from ? { x: +from[1], y: +from[2] } : { x: w.x, y: w.y + 90 }, { x: w.x, y: w.y }, tossN++); }
       else if (label.textContent !== text && !el.classList.contains('rolling')) label.textContent = text;
@@ -496,25 +520,6 @@ export function boutScene(root, bout, ctx, onDone) {
     swapText(trayBox, bout.phase === 'draw' ? (me.tray.length ? '' : tx('table.draw-then-press-roll')) : bout.phase === 'roll' && !me.thrown && !me.tray.length ? (selCount() ? tx('table.picked-press-bid', { selCount: selCount() }) : tx('table.pick-up-to-dice', { tipOf: B.tipOf(me, 'proficiency') })) : me.tray.length ? '' : bout.phase === 'aim' ? tx('table.all-placed') : tx('table.rolled-for-this-turn'));
     trayCap.textContent = `thrown ${me.used.roll}/${B.tipOf(me, 'proficiency')}${me.tray.length ? tx('table.in-the-roll', { trayN: me.tray.length }) : ''}`;
 
-    // their roll shows as a row on top of their Run from the Bid (both throws land as it opens) until the dice are placed
-    const oppRoll = opp.tray.length ? [{ uid: '__roll', roll: true }] : [];
-    // their Run, a small mirror of yours: each trick as a card with its type, dice, roll total, bid and state; their
-    // roll above (from the Bid until they place it); their Book and Pouch below
-    const oDice = (list) => list.map((d) => dieEl(d.chip ? { type: 'd6', up: [] } : d, d.value, 'mini'));
-    syncList(oppRun, [...oppRoll, ...opp.run, { uid: '__kit', kit: true }], (e) => e.uid, (e) => {
-      if (e.kit) return h('div', { class: 'okit', tip: () => tx('table.s-kit-in-their', { name: opp.name, bookN: opp.book.length, pouchN: opp.pouch.length }) });
-      if (e.roll) return h('div', { class: 'ocard roll', tip: () => tx('table.s-roll', { name: opp.name, vc: vc(tx('table.the-dice-they-threw', { join: opp.tray.map((d) => `${d.value} (${d.chip ? 'a flipped chip' : d.type})`).join(', ') }), tx('table.their-throw-placed-in')) }) }, h('b', { text: tx('table.their-roll') }), h('div', { class: 'odice' }));
-      const def = D.TRICKS[e.trick.id];
-      return h('div', { class: 'ocard', style: { '--tc': D.TYPES[def.type].color }, tip: () => trickTip(e.trick, opp.cls, `<p class="live">${e.dice.length ? tx('table.dice-roll-total-2', { join: e.dice.map((d) => d.value).join(' + '), previewTotal: B.previewTotal(opp, e) }) : tx('table.no-dice-on-it')}${e.state === 'bid' ? tx('table.bid-on-it-plays') : e.state === 'play' ? tx('table.in-play-2') : tx('table.shown-not-bid')}</p>`) },
-        h('div', { class: 'ohead' }, h('b', { text: def.name }), h('span', { class: 'oreq', text: `${def.count}${def.die}` })), h('div', { class: 'odice' }), h('div', { class: 'ofoot' }, h('span', { class: 'ostate' }), h('b', { class: 'ototal' })));
-    }, (el, e) => {
-      if (e.kit) return swapText(el, tx('table.book-pouch', { bookN: opp.book.length, pouchN: opp.pouch.length }));
-      if (e.roll) return el.querySelector('.odice').replaceChildren(...oDice(opp.tray));
-      el.querySelector('.odice').replaceChildren(...oDice(e.dice));
-      swapText(el.querySelector('.ostate'), e.state === 'bid' ? tx('table.bid-4', { bidValue: e.bidValue }) : e.state === 'play' ? (e.lingerLeft ? `lingers ${e.lingerLeft}` : 'in play') : 'shown');
-      swapText(el.querySelector('.ototal'), e.dice.length ? `= ${B.previewTotal(opp, e)}` : '');
-      el.classList.toggle('bid', e.state === 'bid'); el.classList.toggle('inplay', e.state === 'play');
-    });
     // chips
     const want = new Map();
     bout.sides.forEach((s, si) => { for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const cell = s.grid[r][c];
@@ -523,13 +528,9 @@ export function boutScene(root, bout, ctx, onDone) {
         cell.chips.forEach((ch, lvl) => want.set(ch.id, { x: cx - CHIP / 2, y: cy - CHIP / 2 + 10 - Math.min(lvl, 12) * 5, z: 20 + c * 40 + lvl, ch: seenAs(ch, si), side: si, s: ch.big || ch.kind === 'volcano' ? 1.9 : B.footOf(ch) > 1 ? B.footOf(ch) * 0.95 : 0 })); }
       else cell.chips.forEach((ch, lvl) => want.set(ch.id, { ...chipPos(si, r, c, lvl), ch: seenAs(ch, si), side: si })); } });
     // bids pile on their trick's BID ring (click the pile to take its top chip back; click the card to bid more)
-    for (const e of me.run) { const cl = cards.get(e.uid); if (!cl || !e.bid.length) continue; const sp = bidSpot(els.cards.get(e.uid));
-      e.bid.forEach((ch, i) => want.set(ch.id, { x: cl.x + sp.x, y: cl.y + sp.y - i * 3, z: 900 + i, ch, side: 0, unbid: e.uid })); }
+    [0, 1].forEach((si) => { for (const e of sideOf(si).run) { const k = ckey(si, e.uid), cl = cards.get(k); if (!cl || !e.bid.length) continue; const sp = bidSpot(els.cards.get(k));
+      e.bid.forEach((ch, i) => want.set(ch.id, { x: cl.x + sp.x, y: cl.y + sp.y - i * 3, z: 900 + i, ch, side: si, unbid: si ? null : e.uid })); } });
     const flipIds = new Set(ui.flips.map(({ r, c }) => B.bidChip(me, r, c)?.id)), handIds = new Set((B.handChips(me, ui.hand) || []).map((x) => x.ch.id));
-    const orow0 = opp.tray.length ? 1 : 0, ostep = Math.min(48, Math.floor(216 / Math.max(1, opp.run.length + orow0))); oppRun.style.setProperty('--oh', `${ostep - 6}px`); // their roll row sits first
-    // their bids sit small on the corner of their trick's card
-    for (const e of opp.run) { if (!e.bid.length) continue; const el = [...oppRun.children].find((x) => x._key === e.uid); if (!el) continue; const bx = box(el);
-      e.bid.forEach((ch, i) => want.set(ch.id, { x: bx.x + bx.w - CHIP + 2, y: bx.y + bx.h - CHIP - 2 - i * 2, z: 900 + i, ch, side: 1, s: 0.62 })); }
     // the Pit: every chip each Roller has lost, as it was
     [0, 1].forEach((si) => { const list = B.pitOf(bout, si); list.forEach((ch, k) => want.set(ch.id, { ...pitSlot(si, k, list.length), ch, side: si, pit: true })); });
     let n = 0;
@@ -885,7 +886,7 @@ export function boutScene(root, bout, ctx, onDone) {
     else if (phase === 'aim') { const on = placed(opp); text = tx('table.where-they-aim-you', { v: on.length ? tx('table.puts', { name: opp.name, names: names(on) }) : tx('table.places-no-dice', { name: opp.name }) }); }
     else { const bids = opp.run.filter((e) => e.state === 'bid'); text = bids.length ? tx('table.bids', { name: opp.name, names: names(bids.map((e) => tx('table.on-4', { bidValue: e.bidValue, tn: tn(e) }))) }) : tx('table.bids-nothing', { name: opp.name }); }
     feedPush(text, 1, [], phase);
-    for (const el of oppRun.children) if (!el._leaving) pulse(el, 'reveal');
+    for (const e of opp.run) { const el = els.cards.get(ckey(1, e.uid)); if (el) pulse(el, 'reveal'); }
   }
 
   // ---------- resolution ----------
@@ -909,8 +910,8 @@ export function boutScene(root, bout, ctx, onDone) {
       for (const p of parts) if (p.text) feedPush(p.text, p.who, p.cells, p.phase || st.phase || 'house');
       if (st.kind === 'phase') { const bx = box(phaseEls[st.phase]); arms[0].to(bx.x + bx.w / 2 - 14, bx.y + bx.h + 4); arms[1].to(bx.x + bx.w / 2 + 14, bx.y + bx.h + 4); await call(D.TYPES[st.phase].name + 's', D.TYPES[st.phase].color); continue; }
       if (st.kind === 'settle') { arms[0].to(STAGE[0].x + 16, STAGE[0].y + 16); arms[1].to(STAGE[1].x + 16, STAGE[1].y + 16); await call('Settle', '#ffd76a'); continue; }
-      if (st.kind === 'bid') { const myBid = me.run.find((e) => e.bid.length), cl = myBid && cardLayout().get(myBid.uid), ob = [...oppRun.children].find((x) => opp.run.some((e) => e.uid === x._key && e.bid.length)), obx = ob && box(ob);
-        arms[0].to(cl ? cl.x + 24 : 560, cl ? cl.y + 90 : 476); arms[1].to(obx ? obx.x + obx.w - 16 : 1090, obx ? obx.y + obx.h - 16 : 470); await pace(560); sync(st.fx); arms[0].to(HOUSE.x - 30, 70); arms[1].to(HOUSE.x + 60, 70); await pace(820); continue; }
+      if (st.kind === 'bid') { const L = cardLayout(), at = (si) => { const e = sideOf(si).run.find((x) => x.bid.length), cl = e && L.get(ckey(si, e.uid)); return cl ? { x: cl.x + 60, y: cl.y + 90 } : { x: si ? 900 : 380, y: 520 }; };
+        const p0 = at(0), p1 = at(1); arms[0].to(p0.x, p0.y); arms[1].to(p1.x, p1.y); await pace(560); sync(st.fx); arms[0].to(HOUSE.x - 30, 70); arms[1].to(HOUSE.x + 60, 70); await pace(820); continue; }
       const armOf = (p) => arms[p.who ?? p.cells[0]?.side ?? 0];
       const tps = parts.map((p) => (p.kind === 'play' ? trickPoint(p) : null));
       if (tps.some(Boolean)) { parts.forEach((p, i) => tps[i] && armOf(p).to(tps[i].x, tps[i].y)); await pace(600); parts.forEach((p, i) => tps[i] && armOf(p).tap()); await pace(320); }
