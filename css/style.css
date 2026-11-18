@@ -830,3 +830,50 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 .phase-call { font-family: var(--script); font-size: 78px; letter-spacing: .02em !important; text-indent: 0; text-transform: none; color: #fff;
   text-shadow: 0 0 4px #fff, 0 0 12px var(--pc), 0 0 28px var(--pc), 0 0 56px var(--pc); }
 .phase-call.in { animation: neonOn .7s steps(1) both; }
+
+/* ---------- the House's marquee sign, neon names and colours, the two sets of phase signs ----------
+   The House's sign wears a ring of bulbs (boutview.js lights): they twinkle while the Rollers plan, chase in the
+   phase's colour while the House plays, burn red at last call and flash at the big moments. Each Roller's name is
+   a neon sign in their colour (--you, --them; click a name to pick). */
+.scene.bout { --you: #6ef0ff; --them: #ff6edc; }
+.bout-head .mid { padding-top: 12px; }
+.house-sign { position: relative; width: 184px; height: 58px; margin: 0 auto; display: grid; place-content: center; justify-items: center; border-radius: 8px; cursor: help;
+  background: radial-gradient(ellipse at 50% 40%, rgba(255, 215, 106, .12), transparent 70%), #0b0716; box-shadow: inset 0 0 0 1px rgba(255, 215, 106, .35), 0 0 18px rgba(255, 215, 106, .18); }
+.hs-name { font-family: var(--script); font-size: 30px; line-height: 30px; color: #fff4d6; text-shadow: 0 0 3px #fff, 0 0 9px #ffb84d, 0 0 20px #ff9a2e, 0 0 36px #ff7a1a; }
+.house-sign .turn { margin: 0; font-size: 10px; letter-spacing: .14em; color: var(--dim); text-transform: uppercase; } .house-sign .turn .num { font-size: 13px; }
+.marquee { position: absolute; inset: 0; pointer-events: none; --lc: #ffd76a; }
+.marquee i { position: absolute; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #4a3a20; box-shadow: none; }
+.marquee i { animation: var(--anim) var(--dur) var(--del) infinite both; }
+.marquee.idle { --anim: twinkle; --dur: 2.6s; } .marquee.idle i { --del: calc(var(--i) * -0.37s); }
+.marquee.chase { --anim: chase; --dur: 1.1s; } .marquee.chase i { --del: calc(var(--i) / var(--n) * 1.1s); }
+.marquee.flash { --anim: flash; --dur: .22s; } .marquee.flash i { --del: 0s; } .marquee.flash i:nth-child(even) { --del: -.11s; }
+.marquee.hot { --lc: #ff4d6a; } .marquee.hot.idle { --dur: 1.3s; }
+@keyframes twinkle { 0%, 100% { background: var(--lc); box-shadow: 0 0 5px var(--lc), 0 0 10px var(--lc); } 50% { background: color-mix(in srgb, var(--lc) 45%, #2a2010); box-shadow: 0 0 2px var(--lc); } }
+@keyframes chase { 0%, 18% { background: #fff; box-shadow: 0 0 6px #fff, 0 0 12px var(--lc), 0 0 20px var(--lc); } 30%, 100% { background: color-mix(in srgb, var(--lc) 40%, #2a2010); box-shadow: 0 0 2px var(--lc); } }
+@keyframes flash { 0%, 49% { background: #fff; box-shadow: 0 0 8px #fff, 0 0 16px var(--lc); } 50%, 100% { background: var(--lc); box-shadow: 0 0 4px var(--lc); } }
+.stick { height: 4px; } .stick::after { top: -9px; height: 22px; width: 10px; }
+/* the Rollers' seats: name signs in their colours */
+.who.seat { width: 416px; } .who.seat .name { cursor: pointer; }
+.neon-name { font-family: var(--script) !important; font-weight: 400; font-size: 26px !important; line-height: 26px; letter-spacing: .01em; }
+.who.me .neon-name { color: color-mix(in srgb, var(--you) 30%, #fff) !important; text-shadow: 0 0 3px #fff, 0 0 9px var(--you), 0 0 20px var(--you) !important; }
+.who.them .neon-name { color: color-mix(in srgb, var(--them) 30%, #fff) !important; text-shadow: 0 0 3px #fff, 0 0 9px var(--them), 0 0 20px var(--them) !important; }
+.who.seat .name:hover .neon-name { filter: brightness(1.25); }
+.feed .f-c.you { --fc: var(--you); } .feed .f-c.them { --fc: var(--them); } .ledger.s0 { border-top-color: var(--you); } .ledger.s1 { border-top-color: var(--them); }
+.ledger.s0 .num { color: var(--you); } .ledger.s1 .num { color: var(--them); } .stick.arm0 { --ac: var(--you); } .stick.arm1 { --ac: var(--them); } .spine.them { color: var(--them); }
+.neon-pick { position: absolute; left: 16px; top: 404px; z-index: 1300; padding: 10px 12px; border-radius: 12px; background: #0b0720; border: 1px solid var(--line); box-shadow: 0 14px 40px rgba(0, 0, 0, .65); display: grid; gap: 8px; }
+.neon-pick > b { font-family: var(--script); font-size: 20px; font-weight: 400; color: #fff; text-shadow: 0 0 8px var(--you); }
+.np-row { display: flex; align-items: center; gap: 6px; } .np-row em { font-style: normal; font-size: 11px; color: var(--dim); width: 112px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.np-sw { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #0b0720; background: var(--sw); box-shadow: 0 0 8px var(--sw); cursor: pointer; padding: 0; }
+.np-sw.on { outline: 2px solid #fff; outline-offset: 1px; } .np-sw:hover { transform: scale(1.12); }
+/* the phase signs: the Rollers' set, then the House's set flipping in over it, tile by tile */
+.phases { perspective: 400px; } .phases .ph-set { position: absolute; inset: 0; display: flex; }
+.phases .ph-set span { transition: transform .45s var(--ease), opacity .35s, color .4s, text-shadow .4s; transition-delay: calc(var(--i) * 70ms); transform-origin: 50% 50%; }
+.phases .ph-set.ph-house span { transform: rotateX(90deg); opacity: 0; } .phases.house-on .ph-set.ph-house span { transform: none; opacity: 1; }
+.phases.house-on .ph-set.ph-plan span { transform: rotateX(-90deg); opacity: 0; transition-delay: calc(var(--i) * 50ms); }
+.phases .ph-set span + span { border-left: 1px solid rgba(110, 240, 255, .08); }
+/* the dice sit just under the commit button */
+.scene.bout .tray-box { top: 452px; } .scene.bout .tray-cap { top: 438px; } .spine.dice { top: 438px; height: 270px; }
+.music-btn { position: absolute; left: 50%; bottom: 2px; translate: -50% 0; z-index: 1500; padding: 0 7px !important; height: 18px; font-size: 12px; line-height: 16px; }
+.music-btn.off { opacity: .45; text-decoration: line-through; }
+.who.seat .pills.steps .pill { white-space: nowrap; padding: 2px 7px; font-size: 11.5px; } .who.seat .pills.steps { flex-wrap: nowrap; }
+.who.them .name .dim { margin-left: 6px; }

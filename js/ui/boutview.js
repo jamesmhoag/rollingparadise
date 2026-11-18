@@ -13,6 +13,9 @@ import { t as tt } from '../text.js';
 import { facesOf, faceValue, dieName } from '../dice.js';
 import { solidEl } from './solid.js';
 import { t as tx } from '../text.js';
+import { app } from './app.js';
+import { saveMeta } from '../run.js';
+import { NEON } from '../content/assets.js';
 
 // the table: the House's phase track runs along the top edge (y 100-124), the positions below it, and between them
 // the Pit (right under the House's arms), each Roller's pot, and the ledger of bids and tapped pieces
@@ -45,7 +48,7 @@ export function boutScene(root, bout, ctx, onDone) {
   const sideOf = (si) => bout.sides[si];
   const bookOpen = (si = 0) => si === 0 && bout.phase === 'draw';
   const diceOpen = (si = 0) => { const s = sideOf(si); return (bout.phase === 'roll' && !s.thrown) || s.tray.length > 0; };
-  const RUN_Y = 466, TITLE_Y = 454, CARD_H = 242, G = 10, BOOK_W = 180, DICE_W = 196, SPINE = 28;
+  const RUN_Y = 466, TITLE_Y = 454, DICE_Y = 452, CARD_H = 242, G = 10, BOOK_W = 180, DICE_W = 196, SPINE = 28;
   const HALF = [{ l: 14, r: 630 }, { l: 650, r: 1266 }];
   const ckey = (si, uid) => (si ? 'o' + uid : uid), dkey = (si, id) => (si ? 'o' + id : id); // their ids are counted apart from yours
   function runSpan(si = 0) {
@@ -66,9 +69,9 @@ export function boutScene(root, bout, ctx, onDone) {
   }
   const dieSlot = (cl, i) => ({ x: cl.x + 7 + (i % 3) * 36, y: cl.y + 50 + Math.floor(i / 3) * 36 });
   // a dice column, top-aligned with the Run: the Roll's tray, then the Pouch (titles sit on the row above)
-  const DY = { tray: RUN_Y, pouch: RUN_Y + 88, dice: RUN_Y + 106 };
+  const DY = { tray: DICE_Y, pouch: DICE_Y + 86, dice: DICE_Y + 104 }; // just under the commit button; five dice a row
   const pouchSlot = (i, n) => { const x0 = diceAt() + 6;
-    if (!diceOpen() && ui.peek !== 'dice') return { x: runSpan().dice + 3, y: RUN_Y + 22 + Math.min(i, 30) * 6, folded: true }; // folded into its spine
+    if (!diceOpen() && ui.peek !== 'dice') return { x: runSpan().dice + 3, y: DICE_Y + 22 + Math.min(i, 30) * 6, folded: true }; // folded into its spine
     if (bout.phase === 'roll' && me.thrown && ui.peek !== 'dice') return { x: x0 + Math.min(i, 30) * Math.min(10, 150 / Math.max(1, n)), y: DY.dice + 4 - (i % 2) * 2 }; // thrown: the rest of the Pouch closes up
     const per = n > 15 ? 6 : 5, st = n > 15 ? 30 : 36; return { x: x0 + (i % per) * st, y: DY.dice + Math.floor(i / per) * st }; };
   const traySlot = (i, si = 0) => ({ x: diceAt(si) + 10 + (i % 5) * 36, y: DY.tray + 8 + Math.floor(i / 5) * 36 }); // the roll: room for two rows of dice
@@ -107,16 +110,37 @@ export function boutScene(root, bout, ctx, onDone) {
   const statSplit = (P) => `<p class="statsplit">${tx('table.stat-base', { n: P.base })} · ${tx('table.stat-gear', { n: signed(P.gear) })}${P.temp.map((x) => ` · <span class="${x.n > 0 ? 'temp-up' : 'temp-down'}">${x.from} ${signed(x.n)}</span>`).join('')} = <b>${P.total}</b></p>`;
   const cccGate = (s) => (B.occupancy(s).stakeCovered ? `<p class="dim">${tx('table.ccc-on')}</p>` : `<p class="bad-t">${tx('table.ccc-off')}</p>`);
   const tempCls = (el, P) => { el.classList.toggle('temp', P.tempN !== 0 || P.temp.length > 0); el.classList.toggle('temp-up', P.tempN > 0); el.classList.toggle('temp-down', P.tempN < 0); };
-  let oppPills = null;
+  let oppPills = null, houseSign = null;
+  // the House's sign wears a ring of casino bulbs: they twinkle while the Rollers plan, chase while the House plays,
+  // and flash at the big moments (a turn opening, last call, a big loss, the end of the bout)
+  const BULBS = []; { const W = 184, H = 58, step = 11.5;
+    for (let x = 0; x <= W; x += step) BULBS.push([x, 0]); for (let y = step; y <= H; y += step) BULBS.push([W, y]);
+    for (let x = W - step; x >= 0; x -= step) BULBS.push([x, H]); for (let y = H - step; y > 0; y -= step) BULBS.push([0, y]); }
+  const marquee = h('div', { class: 'marquee idle' }, BULBS.map(([x, y], i) => h('i', { style: { left: x + 'px', top: y + 'px', '--i': i, '--n': BULBS.length } })));
+  let lightsBase = 'idle', flashing = false, lightsT = 0;
+  function lights(mode, ms) { clearTimeout(lightsT); flashing = true; marquee.className = `marquee ${mode}`; if (ms) lightsT = setTimeout(() => { flashing = false; marquee.className = `marquee ${lightsBase}`; }, ms); }
+  function lightsAt(base) { lightsBase = base; if (!flashing) marquee.className = `marquee ${base}`; }
+  // neon colours for each Roller: click either name to pick them; kept between bouts
+  const neon = () => ({ you: NEON[0].c, them: NEON[1].c, ...(app.meta?.neon || {}) });
+  const paintNeon = () => { const n = neon(); root.style.setProperty('--you', n.you); root.style.setProperty('--them', n.them); };
+  let palette = null;
+  function togglePalette() {
+    if (palette) { palette.remove(); palette = null; return; }
+    const row = (k, label) => h('div', { class: 'np-row' }, h('em', { text: label }), NEON.map((c) => h('button', { class: `np-sw${neon()[k] === c.c ? ' on' : ''}`, style: { '--sw': c.c }, title: c.name,
+      onclick: (ev) => { ev.stopPropagation(); if (app.meta) { app.meta.neon = { ...neon(), [k]: c.c }; saveMeta(app.meta); } paintNeon(); togglePalette(); togglePalette(); } })));
+    palette = h('div', { class: 'neon-pick', onclick: (ev) => ev.stopPropagation() }, h('b', { text: tx('table.neon-pick') }), row('you', D.heroName(me.cls)), row('them', opp.name),
+      btn(tx('table.neon-done'), () => togglePalette(), null, 'small')); root.append(palette);
+  }
   const header = h('div', { class: 'bout-head' },
-    h('div', { class: 'who me' }, h('div', { class: 'name' }, h('b', { text: tx('end.you') }), h('span', { class: 'dim', text: ` ${D.heroName(me.cls)}` })),
+    h('div', { class: 'who me' }, h('div', { class: 'name', onclick: () => togglePalette(), tip: tx('table.neon-name-tip') }, h('b', { class: 'neon-name', text: D.heroName(me.cls) })),
       h('div', { class: 'worth', tip: worthTip(me) }, 'Worth ', worthEl[0], '¢', owesEl[0]),
       h('div', { class: 'pills steps' }, STEPS.map(([k, name, stat, reward, what], i) => (pillEl[k] = h('span', { class: 'pill step', tip: pillTip(stat, reward, what, k) },
         h('em', { text: String(i + 1) }), ` ${name} `, (pill[k] = h('span'))))))),
-    h('div', { class: 'mid' }, h('div', { class: 'turn', tip: () => tx('table.turn-both-rollers-plan', { turn: bout.turn, LASTCALL: B.LAST_CALL + 1, maxTurns: bout.rules.maxTurns }) }, 'Turn ', h('b', { class: 'num turn-n', text: '1' })),
-      h('div', { class: 'house', tip: tx('table.the-house-every-chip'), text: tx('table.the-house') })),
-    h('div', { class: 'who them' }, h('div', { class: 'name' }, h('b', { text: opp.name }), h('span', { class: 'dim', text: ` ${opp.title || ''} · ${D.CLASSES[opp.cls].name}` })),
-      h('div', { class: 'worth', tip: worthTip(opp) }, 'Worth ', worthEl[1], '¢', owesEl[1]),
+    h('div', { class: 'mid' }, (houseSign = h('div', { class: 'house-sign', tip: tx('table.the-house-every-chip') }, marquee,
+      h('div', { class: 'hs-name', text: tx('table.house-sign') }),
+      h('div', { class: 'turn', tip: () => tx('table.turn-both-rollers-plan', { turn: bout.turn, LASTCALL: B.LAST_CALL + 1, maxTurns: bout.rules.maxTurns }) }, 'Turn ', h('b', { class: 'num turn-n', text: '1' }))))),
+    h('div', { class: 'who them' }, h('div', { class: 'worth', tip: worthTip(opp) }, 'Worth ', worthEl[1], '¢', owesEl[1]),
+      h('div', { class: 'name', onclick: () => togglePalette(), tip: tx('table.neon-name-tip') }, h('b', { class: 'neon-name', text: opp.name }), h('span', { class: 'dim', text: ` ${opp.title || ''} · ${D.CLASSES[opp.cls].name}` })),
       (oppPills = h('div', { class: 'pills' }, ['trickery', 'proficiency', 'ingenuity', 'charisma', 'cunning', 'conviction'].map((k) =>
         h('span', { class: 'pill small', 'data-k': k, tip: () => statTip(k, k in opp.tip ? B.tipOf(opp, k) : B.cOf(opp, k)) + statSplit(B.statParts(opp, k)) + (k in opp.tip ? '' : cccGate(opp)) }, `${D.STATS[k].short} `, h('b', { text: k in opp.tip ? opp.tip[k] : opp.c[k] })))))));
   // the middle of the table: the Pit right under the House's arms, each Roller's pot under it, then a ledger per
@@ -127,7 +151,7 @@ export function boutScene(root, bout, ctx, onDone) {
     h('div', { class: 'pot you', style: { left: PX + 3 + 'px', top: PIT.bottom + 4 + 'px' }, tip: tx('table.the-pit-every-chip') }, h('em', { text: tx('table.yours') }), stageEl[0], '¢'),
     h('div', { class: 'pot them', style: { left: OX - 67 + 'px', top: PIT.bottom + 4 + 'px' }, tip: tx('table.the-pit-every-chip') }, h('em', { text: tx('table.theirs') }), stageEl[1], '¢'),
     ...[0, 1].map((si) => h('div', { class: `ledger s${si}`, style: { left: (si ? OX - 67 : PX + 3) + 'px', top: LEDGER_Y + 'px' }, tip: () => ledgerTip(si) },
-      h('em', { text: si ? tx('table.ledger-them') : tx('table.ledger-you') }),
+      h('em', { text: si ? opp.name : D.CLASSES[me.cls].name }),
       h('div', { class: 'led-row' }, h('span', { class: 'led-k', text: tx('table.ledger-bid') }), ledEl[si].bid, '¢'), ledEl[si].on,
       h('div', { class: 'led-row' }, h('span', { class: 'led-k', text: tx('table.ledger-tapped') })), ledEl[si].tap)));
   function ledgerTip(si) {
@@ -144,8 +168,13 @@ export function boutScene(root, bout, ctx, onDone) {
   // the action feed: always on screen, newest line at the bottom, with the House's phase tracker above it
   const PHASES = [['bids', 'Bids', '#ffd76a'], ...['investment', 'insurance', 'expense', 'correction'].map((k) => [k, D.TYPES[k].name + 's', D.TYPES[k].color]), ['house', 'House', '#ffd76a']];
   const phaseEls = {};
-  const phasesEl = h('div', { class: 'phases', tip: tx('table.phase-track') }, PHASES.map(([k, name, color], i) => (phaseEls[k] = h('span', { style: { '--pc': color }, guide: 'phase:' + k,
-    tip: k === 'bids' ? tx('table.bids-first-the-house') : k === 'house' ? tx('table.house-last-hazards-creatures') : tx('table.both-rollers-play-together', { name, text: D.TYPES[k].text, toLowerCase: name.toLowerCase() }) }, h('em', { text: String(i + 1) }), name))));
+  // Two sets of neon signs on one track: the Rollers' steps (Draw, Roll, Bid, Bluff), each lit as it is played, then
+  // the House's phases, which flip in over them one by one when the House takes over and light up as it plays them
+  const PLAN = [['draw', 'Draw', '#6ef0ff'], ['roll', 'Roll', '#7dff9e'], ['bid', 'Bid', '#ffd76a'], ['aim', 'Bluff', '#ff6edc']], planEls = {};
+  const phasesEl = h('div', { class: 'phases', tip: tx('table.phase-track') },
+    h('div', { class: 'ph-set ph-plan' }, PLAN.map(([k, name, color], i) => (planEls[k] = h('span', { style: { '--pc': color, '--i': i } }, h('em', { text: String(i + 1) }), name)))),
+    h('div', { class: 'ph-set ph-house' }, PHASES.map(([k, name, color], i) => (phaseEls[k] = h('span', { style: { '--pc': color, '--i': i }, guide: 'phase:' + k,
+      tip: k === 'bids' ? tx('table.bids-first-the-house') : k === 'house' ? tx('table.house-last-hazards-creatures') : tx('table.both-rollers-play-together', { name, text: D.TYPES[k].text, toLowerCase: name.toLowerCase() }) }, h('em', { text: String(i + 1) }), name)))));
   // The feed keeps the whole match in one list. Short, it shows the last few rows; History opens the same list to
   // every row of the bout, by turn, scrolled to the latest (Esc or History again closes it).
   const feedLines = h('div', { class: 'feed-lines list' });
@@ -209,10 +238,13 @@ export function boutScene(root, bout, ctx, onDone) {
   // the House's two arms: the left one works your side of the table, the right one your opponent's.
   // Each points at what it is resolving, and both move together when a phase is played.
   const phaseCall = h('div', { class: 'phase-call' });
-  const arms = [0, 1].map((i) => { const el = h('div', { class: `stick arm${i}`, style: { left: `${i ? 668 : 612}px` } }), piv = { x: i ? 668 : 612, y: 62 }, rest = i ? 0 : 180; let ang = rest;
+  let callT = 0;
+  function neonCall(text, color, ms = 1500) { clearTimeout(callT); phaseCall.textContent = text; phaseCall.style.setProperty('--pc', color); phaseCall.classList.remove('in'); void phaseCall.offsetWidth; phaseCall.classList.add('in'); callT = setTimeout(() => phaseCall.classList.remove('in'), ms / ui.speed); }
+  function turnSign() { const last = me.heat > 1; neonCall(tx(last ? 'table.turn-call-last' : 'table.turn-call', { turn: bout.turn }), last ? '#ff4d6a' : '#6ef0ff'); lights('flash', 1300); }
+  const arms = [0, 1].map((i) => { const piv = { x: i ? 726 : 554, y: 74 }, rest = i ? 62 : 118, el = h('div', { class: `stick arm${i}`, style: { left: `${piv.x}px`, top: `${piv.y - 2.5}px`, width: '30px', transform: `rotate(${rest}deg)` } }); let ang = rest; // the arms hang from the sign's lower corners
     return { el, to(x, y) { const dx = x - piv.x, dy = y - piv.y; let a = Math.atan2(dy, dx) * 180 / Math.PI; while (a - ang > 180) a -= 360; while (a - ang < -180) a += 360; ang = a;
       el.style.width = `${Math.max(30, Math.hypot(dx, dy) - 8)}px`; el.style.transform = `rotate(${a}deg)`; el.classList.add('live'); },
-      rest() { let a = rest; while (a - ang > 180) a -= 360; while (a - ang < -180) a += 360; ang = a; el.style.width = '60px'; el.style.transform = `rotate(${a}deg)`; el.classList.remove('live'); }, tap() { pulse(el, 'tap'); } }; });
+      rest() { let a = rest; while (a - ang > 180) a -= 360; while (a - ang < -180) a += 360; ang = a; el.style.width = '30px'; el.style.transform = `rotate(${a}deg)`; el.classList.remove('live'); }, tap() { pulse(el, 'tap'); } }; });
   let calling = [];
   const callEl = (st) => (st.uid == null ? null : els.cards.get(ckey(st.who, st.uid)));
   function setCalling(parts) { const next = parts.map(callEl).filter(Boolean); for (const el of calling) if (!next.includes(el)) el.classList.remove('calling'); for (const el of next) el.classList.add('calling'); calling = next; }
@@ -235,7 +267,7 @@ export function boutScene(root, bout, ctx, onDone) {
   const peekPanels = { book: h('div', { class: 'peek-panel book', onclick: () => togglePeek('book') }), dice: h('div', { class: 'peek-panel dice', onclick: () => togglePeek('dice') }) };
   let ztRoll, ztPouch, ztRun;
   const kitTip = () => tx('table.s-kit-in-their', { name: opp.name, bookN: opp.book.length, pouchN: opp.pouch.length });
-  const them = { tray: h('div', { class: 'tray-box them' }), roll: h('div', { class: 'zone-title zt-dice them', style: { top: TITLE_Y + 'px' }, text: tx('table.their-roll'),
+  const them = { tray: h('div', { class: 'tray-box them' }), roll: h('div', { class: 'zone-title zt-dice them', style: { top: DICE_Y - 14 + 'px' }, text: tx('table.their-roll'),
     tip: () => tx('table.s-roll', { name: opp.name, vc: vc(tx('table.the-dice-they-threw', { join: opp.tray.map((d) => d.value).join(', ') || '—' }), tx('table.their-throw-placed-in')) }) }),
     pouch: h('div', { class: 'zone-title zt-dice them', style: { top: DY.pouch + 'px' }, tip: kitTip }), run: h('div', { class: 'zone-title', style: { top: TITLE_Y + 'px' }, tip: tx('table.s-run-the-tricks', { name: opp.name }), text: tx('table.their-run') }),
     dspine: h('div', { class: 'spine dice them', tip: kitTip }, h('span', { class: 'sp-t' })), bspine: h('div', { class: 'spine book them', tip: kitTip }, h('span', { class: 'sp-t' })) };
@@ -245,7 +277,7 @@ export function boutScene(root, bout, ctx, onDone) {
   const frameEls = [header, ...seats, stageBox, phasesEl, feedEl, runEmpty, oppEmpty,
     h('div', { class: 'zone-title zt-book', style: { left: '16px', top: TITLE_Y + 'px' }, tip: tx('table.book-tricks-you-own'), text: tx('table.book') }),
     (ztRun = h('div', { class: 'zone-title', style: { top: TITLE_Y + 'px' }, tip: tx('table.run-tricks-you-have'), text: tx('table.your-run') })),
-    (ztRoll = h('div', { class: 'zone-title zt-dice', style: { top: TITLE_Y + 'px' }, tip: tx('table.the-roll-everything-you'), text: tx('table.the-roll') })), trayBox, trayCap,
+    (ztRoll = h('div', { class: 'zone-title zt-dice', style: { top: DICE_Y - 14 + 'px' }, tip: tx('table.the-roll-everything-you'), text: tx('table.the-roll') })), trayBox, trayCap,
     (ztPouch = h('div', { class: 'zone-title zt-dice', style: { top: DY.pouch + 'px' }, tip: tx('table.pouch-your-dice-in'), text: tx('table.pouch') })),
     peekPanels.book, peekPanels.dice, spines.book, spines.dice, ...Object.values(them),
     h('div', { class: 'controls' }, sipBtn, undoBtn, commitBtn, speedBtn)];
@@ -602,6 +634,11 @@ export function boutScene(root, bout, ctx, onDone) {
     setOn(commitBtn, !ui.locked); swapText(commitBtn, commitLabel()); commitBtn.classList.toggle('go', commitReady()); commitBtn.classList.toggle('wait', !commitReady());
     const w = !ui.locked && B.rewardOf(me, bout.phase === 'roll' ? 'roll' : bout.phase); // what passing this step keeps
     commitBtn.dataset.kept = w && w.n ? (bout.phase === 'draw' ? tx('table.keeps-steal', { n: w.n }) : bout.phase === 'roll' ? `keeps +${w.n} power` : `keeps +${w.n} opp`) : ''; commitBtn.classList.toggle('allused', !!(w && !w.unused));
+    // the phase signs: the Rollers' step lit while it is played (earlier ones stay warm), the House's set while it plays
+    const housePlays = !!ui.playing || bout.phase === 'resolve' || bout.phase === 'drink', pAt = PLAN.findIndex((x) => x[0] === bout.phase);
+    phasesEl.classList.toggle('house-on', housePlays);
+    PLAN.forEach(([k], i) => { planEls[k].classList.toggle('on', i === pAt); planEls[k].classList.toggle('done', pAt >= 0 && i < pAt); });
+    lightsAt(housePlays ? 'chase' : me.heat > 1 ? 'idle hot' : 'idle');
     for (const ph of ['draw', 'roll', 'bid', 'aim', 'drink', 'resolve']) root.classList.toggle('ph-' + ph, bout.phase === ph); root.classList.toggle('locked', ui.locked); root.classList.toggle('thrown', !!me.thrown);
     marks(); refreshTip();
   }
@@ -897,7 +934,9 @@ export function boutScene(root, bout, ctx, onDone) {
   // at the trick being played, then at where it lands, and only then does the table change.
   async function playTurn() {
     if (ui.locked || bout.over) return;
-    ui.locked = true; setMode(null); prompt = ''; renderFeed(); sync();
+    ui.locked = true; ui.playing = true; setMode(null); prompt = ''; renderFeed(); sync();
+    let worth0 = bout.sides.map((x) => B.worth(x));
+    const bigLoss = () => { const w = bout.sides.map((x) => B.worth(x)), hit = w.some((v, i) => worth0[i] - v >= Math.max(4, worth0[i] * 0.2)); worth0 = w; if (hit) lights('flash', 1100); };
     let n = 0; const pace = (ms) => wait(ms / ui.speed / (n > 40 ? 1.6 : 1));
     const flash = (st) => { for (const x of st.cells) { const el = els.cells[x.side][x.r]?.[x.c]; if (el) pulse(el, st.kind === 'miss' ? 'flash-miss' : st.kind === 'play' ? 'flash-aim' : st.kind === 'debt' ? 'flash-miss' : 'flash-hit'); } };
     const cellPoint = (x) => { const p = cellPos(x.side, x.r, x.c); return { x: p.x + p.w / 2, y: p.y + CH / 2 }; };
@@ -911,10 +950,10 @@ export function boutScene(root, bout, ctx, onDone) {
       const parts = st.kind === 'pair' ? st.parts : [st];
       setCalling(parts);
       for (const p of parts) if (p.text) feedPush(p.text, p.who, p.cells, p.phase || st.phase || 'house');
-      if (st.kind === 'phase') { const bx = box(phaseEls[st.phase]); arms[0].to(bx.x + bx.w / 2 - 14, bx.y + bx.h + 4); arms[1].to(bx.x + bx.w / 2 + 14, bx.y + bx.h + 4); await call(D.TYPES[st.phase].name + 's', D.TYPES[st.phase].color); continue; }
+      if (st.kind === 'phase') { marquee.style.setProperty('--lc', D.TYPES[st.phase].color); const bx = box(phaseEls[st.phase]); arms[0].to(bx.x + bx.w / 2 - 14, bx.y + bx.h + 4); arms[1].to(bx.x + bx.w / 2 + 14, bx.y + bx.h + 4); await call(D.TYPES[st.phase].name + 's', D.TYPES[st.phase].color); continue; }
       if (st.kind === 'settle') { arms[0].to(STAGE[0].x + 16, STAGE[0].y + 16); arms[1].to(STAGE[1].x + 16, STAGE[1].y + 16); await call('Settle', '#ffd76a'); continue; }
       if (st.kind === 'bid') { const L = cardLayout(), at = (si) => { const e = sideOf(si).run.find((x) => x.bid.length), cl = e && L.get(ckey(si, e.uid)); return cl ? { x: cl.x + 60, y: cl.y + 90 } : { x: si ? 900 : 380, y: 520 }; };
-        const p0 = at(0), p1 = at(1); arms[0].to(p0.x, p0.y); arms[1].to(p1.x, p1.y); await pace(560); sync(st.fx); arms[0].to(HOUSE.x - 30, 70); arms[1].to(HOUSE.x + 60, 70); await pace(820); continue; }
+        const p0 = at(0), p1 = at(1); arms[0].to(p0.x, p0.y); arms[1].to(p1.x, p1.y); await pace(560); sync(st.fx); arms[0].to(PX + 36, PIT.bottom - 20); arms[1].to(OX - 36, PIT.bottom - 20); await pace(820); continue; }
       const armOf = (p) => arms[p.who ?? p.cells[0]?.side ?? 0];
       const tps = parts.map((p) => (p.kind === 'play' ? trickPoint(p) : null));
       if (tps.some(Boolean)) { parts.forEach((p, i) => tps[i] && armOf(p).to(tps[i].x, tps[i].y)); await pace(600); parts.forEach((p, i) => tps[i] && armOf(p).tap()); await pace(320); }
@@ -923,19 +962,19 @@ export function boutScene(root, bout, ctx, onDone) {
         if (c0) { const pt = cellPoint(c0); armOf(p).to(pt.x, pt.y); moved = true; }
         else if (!tps[i] && p.who != null) { armOf(p).to(p.who === 0 ? 190 : 1090, 78); moved = true; } });
       if (moved) await pace(560);
-      sync(st.fx); parts.forEach(flash);
+      sync(st.fx); parts.forEach(flash); bigLoss();
       const fees = parts.filter((p) => p.kind === 'fee' && p.cells[0]);
       if (fees.length) { await pace(240); for (const p of fees) armOf(p).to(STAGE[p.cells[0].side].x + 16, STAGE[p.cells[0].side].y + 14); } // rake what was paid to the Stage
       await pace(st.kind === 'over' ? 1000 : parts.some((p) => p.text) ? (parts.length > 1 ? 980 : 780) : 340);
     }
-    setCalling([]); setPhase(null); both((a) => a.rest());
+    setCalling([]); setPhase(null); both((a) => a.rest()); ui.playing = false; marquee.style.removeProperty('--lc');
     if (bout.over) return finish();
     ui.locked = false;
     if (bout.phase === 'drink' && !B.drinkUseful(bout, me)) return closeDrink(); // nothing to sip or eat: straight on
     sync(); hint();
   }
   // The Drink phase: sip once, eat once, then the next turn. Your opponent drinks when you move on.
-  function closeDrink() { drinkPhase(bout, opp); B.nextTurn(bout); setMode(null); spyPhase(); sync(); hint(); autoSkip(); }
+  function closeDrink() { drinkPhase(bout, opp); B.nextTurn(bout); setMode(null); spyPhase(); sync(); hint(); turnSign(); autoSkip(); }
   // a Spy on top of one of your stacks: your opponent makes this phase's plays now, and you see them
   const spyKey = () => `${bout.turn}:${bout.phase}`;
   function spyPhase() {
@@ -968,13 +1007,14 @@ export function boutScene(root, bout, ctx, onDone) {
   }
   async function finish() {
     document.removeEventListener('keydown', onKey);
-    const win = bout.winner === 0; await wait(500);
+    const win = bout.winner === 0; lights('flash'); neonCall(tx(win ? 'table.win-call' : 'table.lose-call'), win ? '#7dff9e' : '#ff4d6a', 2600); await wait(500);
     banner.append(h('div', { class: `banner-card ${win ? 'win' : 'lose'}` }, h('h1', { text: win ? tx('table.the-table-is-yours') : tx('table.broke') }),
       h('p', { text: win ? tx('table.is-out-of-worth', { name: opp.name, turn: bout.turn }) : tx('table.takes-everything-on-the', { name: opp.name }) }),
       btn(tx('title.continue'), () => onDone(), null, 'big go')));
     requestAnimationFrame(() => requestAnimationFrame(() => banner.classList.add('in')));
   }
 
-  requestAnimationFrame(() => { spyPhase(); sync(); hint(); autoSkip(); });
+  paintNeon();
+  requestAnimationFrame(() => { spyPhase(); sync(); hint(); turnSign(); autoSkip(); });
   void ctx; void sum;
 }
