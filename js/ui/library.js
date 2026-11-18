@@ -124,7 +124,11 @@ function diceTab(own) {
   const out = [sec('Dice', tx('library.each-die-is-drawn', { castPerFace: D.MELT.castPerFace, meltPerFace: D.MELT.meltPerFace }))];
   for (const [type, X] of Object.entries(D.DICE)) { const d = { type, up: [] }, n = own.die(type);
     out.push(entry(tipped(dieEl(d), () => dieTip(d)), type, [tx('library.rolls-1', { faces: X.faces }), D.COMPLEXITY.includes(type) ? tx('library.cast-volume-from-floor', { faces: X.faces * D.MELT.castPerFace, chips: cents(X.forge.chips), floor: X.forge.floor }) : tx('library.not-cast-by-the'), dim(tx('library.melts-to-sells-for', { faces: X.faces * D.MELT.meltPerFace, sell: cents(X.sell) }))], { own: n ? tx('library.in-your-pouch', { n }) : null })); }
-  out.push(sec('Materials', Object.values(D.MATERIALS).map((M) => `<b>${M.name}</b>: ${M.text}`).join('<br>')));
+  // each material as dice: its colour and finish are the look every die of it has, whatever its size
+  out.push(sec('Materials', tx('library.materials-look')));
+  for (const [k, M] of Object.entries(D.MATERIALS)) { const n = (own.run?.dice || []).filter((d) => (d.mat || D.DEFAULT_MAT) === k).length;
+    out.push(entry(['d4', 'd6', 'd8'].map((type) => { const d = { type, mat: k, up: [] }; return tipped(dieEl(d), () => dieTip(d)); }), M.name,
+      [M.text, M.complex ? dim(tx('library.mixed-from', { from: M.from.map((m) => D.MATERIALS[m].name).join(' + ') })) : null], { own: n ? tx('library.in-your-pouch', { n }) : null })); }
   out.push(sec('Casts', tx('library.what-melts-together-decides')));
   for (const C of Object.values(D.CASTS)) out.push(entry(h('span', { class: 'dim', text: C.mats.map((m) => D.MATERIALS[m].name).join(' + ') }), C.name, [C.text, dim(tx('library.rolls', { dice: C.mats.length + (C.needs || []).length }))]));
   out.push(sec(tx('build.table.DIAMOND'), D.DIAMOND.map((P) => `<b>${P.name}</b> (${P.when}): ${P.text}`).join('<br>')));
@@ -133,7 +137,7 @@ function diceTab(own) {
   out.push(sec(tx('build.table.BONE'), tx('library.sold-at-the-dice')));
   const d6 = { type: 'd6', up: [] };
   for (const [u, U] of Object.entries(D.DIE_UPGRADES)) {
-    const t = U.target ? suggestFace(d6, u) : 0, d = upgradeFaces({ type: 'd6', up: [] }, u, t, { int: () => 0 });
+    const t = U.target ? suggestFace(d6, u) : 0, d = { ...upgradeFaces({ type: 'd6', up: [] }, u, t, { int: () => 0 }), mat: 'bone' };
     out.push(entry([dieEl(d6), h('span', { class: 'dim', text: '→' }), tipped(dieEl(d), () => dieTip(d))], `<span style="color:${U.color}">${U.mark}</span> ${Object.values(D.BONE).find((B) => B.up === u)?.name || U.name}`,
       [D.upgradeText(u), `<span class="faces">${faceStrip(d6)}</span> → <span class="faces">${faceStrip(d)}</span>${U.target ? dim(` target face ${t + 1}`) : U.roll ? dim(tx('library.faces-unchanged-works-when')) : ''}`])); }
   const held = (own.run?.dice || []).filter((d) => d.up.length || d.cast);

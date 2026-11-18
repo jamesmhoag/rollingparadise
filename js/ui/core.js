@@ -144,6 +144,7 @@ export function initTips() {
     setHoverMode(hover.mode === 'guidance' ? 'context' : 'guidance'); const c = tipContent(T.cur); if (c) show(c);
   }, { passive: false });
   document.addEventListener('mousemove', (ev) => {
+    if (document.body.classList.contains('spinning')) { clearTimeout(T.timer); T.el.classList.remove('show'); T.cur = null; T.on = false; return; } // no hover while a die is spun (spin.js)
     const el = findTip(ev.target);
     if (el !== T.cur) {
       T.cur = el; clearTimeout(T.timer); T.el.classList.remove('show');

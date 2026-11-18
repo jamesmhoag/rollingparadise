@@ -98,22 +98,45 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
   filter: drop-shadow(0 3px 2px rgba(0, 0, 0, .55)) var(--ring, drop-shadow(0 0 0 transparent)) brightness(var(--br, 1)); transition: transform .5s var(--ease), opacity .4s, filter .3s; }
 /* each die is its own solid: a dark body with a faceted top face cut to the die's outline */
 .die::before, .die::after { content: ''; position: absolute; inset: 0; clip-path: var(--sh); }
-.die::before { background: color-mix(in srgb, var(--dc, #f1ead8) 45%, #000); translate: 0 2px; }
-.die::after { background: var(--facet, linear-gradient(135deg, rgba(255, 255, 255, .55), transparent 55%)), var(--dc, #f1ead8); }
-.die i { position: relative; z-index: 1; top: var(--ly, 0); font-style: normal; font-weight: 800; font-size: 13px; text-shadow: 0 1px 0 rgba(255, 255, 255, .45); } .die.static { position: relative; display: inline-grid; flex: none; cursor: default; }
-.die.d4 { --dc: #7fd6a2; --sh: polygon(50% 3%, 99% 92%, 1% 92%); --ly: 5px; --facet: linear-gradient(60deg, rgba(0, 0, 0, .22) 0 37%, transparent 37.5%), linear-gradient(-60deg, rgba(255, 255, 255, .5) 0 37%, transparent 37.5%); } .die.d4 i { font-size: 11px; }
-.die.d6 { --dc: #f1ead8; --sh: polygon(8% 14%, 14% 8%, 86% 8%, 92% 14%, 92% 86%, 86% 92%, 14% 92%, 8% 86%); --facet: linear-gradient(180deg, rgba(255, 255, 255, .7) 0 14%, transparent 15%), linear-gradient(90deg, transparent 0 85%, rgba(0, 0, 0, .16) 86%); }
-.die.d8 { --dc: #8cc0f2; --sh: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); --facet: conic-gradient(from 0deg at 50% 50%, rgba(255, 255, 255, .15) 0 25%, rgba(0, 0, 0, .22) 0 50%, rgba(0, 0, 0, .08) 0 75%, rgba(255, 255, 255, .5) 0); }
-.die.d10 { --dc: #ee9fd8; --sh: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%); --facet: conic-gradient(from 30deg at 50% 50%, rgba(255, 255, 255, .12) 0 16.6%, rgba(0, 0, 0, .2) 0 33.3%, rgba(0, 0, 0, .28) 0 50%, rgba(0, 0, 0, .1) 0 66.6%, rgba(255, 255, 255, .3) 0 83.3%, rgba(255, 255, 255, .55) 0); }
-.die.d20 { --dc: #f2c94c; --sh: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%); --facet: conic-gradient(from 22.5deg at 50% 50%, rgba(255, 255, 255, .2) 0 12.5%, rgba(0, 0, 0, .1) 0 25%, rgba(0, 0, 0, .24) 0 37.5%, rgba(0, 0, 0, .3) 0 50%, rgba(0, 0, 0, .18) 0 62.5%, rgba(0, 0, 0, .05) 0 75%, rgba(255, 255, 255, .35) 0 87.5%, rgba(255, 255, 255, .6) 0); }
-.die.d12 { --dc: #c79bf2; --sh: polygon(50% 0, 88% 14%, 100% 50%, 88% 86%, 50% 100%, 12% 86%, 0 50%, 12% 14%); --facet: conic-gradient(from 18deg at 50% 50%, rgba(255, 255, 255, .25) 0 20%, rgba(0, 0, 0, .12) 0 40%, rgba(0, 0, 0, .26) 0 60%, rgba(0, 0, 0, .08) 0 80%, rgba(255, 255, 255, .5) 0); }
-/* materials (content/dice.js): Plastic is the plain look; Glass is clear, Metal has a sheen, Bone is carved ivory */
-.die.m-glass::after { opacity: .62; background: linear-gradient(125deg, rgba(255, 255, 255, .85) 0 12%, transparent 13% 60%, rgba(255, 255, 255, .35) 61% 66%, transparent 67%), var(--facet, none), var(--dc); }
-.die.m-glass::before { opacity: .55; }
-.die.m-metal::after { background: linear-gradient(160deg, rgba(255, 255, 255, .7) 0 8%, rgba(0, 0, 0, .25) 30%, rgba(255, 255, 255, .45) 52%, rgba(0, 0, 0, .3) 78%, rgba(255, 255, 255, .2)), var(--facet, none), color-mix(in srgb, var(--dc) 45%, #b8c2cf); }
-.die.m-bone { --dc: color-mix(in srgb, var(--bc, #f1ead8) 30%, #efe3c2); }
-.die.m-bone::after { background: radial-gradient(circle at 30% 70%, rgba(120, 90, 40, .25) 0 6%, transparent 7%), radial-gradient(circle at 72% 30%, rgba(120, 90, 40, .2) 0 4%, transparent 5%), var(--facet, none), var(--dc); }
-.die.m-bone i { color: #5a3d1a; }
+.die::before { background: color-mix(in srgb, var(--dc, #e8e2d4) 45%, #000); translate: 0 2px; }
+.die::after { background: var(--facet, linear-gradient(135deg, rgba(255, 255, 255, .55), transparent 55%)), var(--skin, var(--dc, #e8e2d4)); }
+.die i { position: relative; z-index: 1; top: var(--ly, 0); font-style: normal; font-weight: 800; font-size: 13px; color: var(--ink, #20180a); text-shadow: 0 1px 0 var(--inkhi, rgba(255, 255, 255, .45)); } .die.static { position: relative; display: inline-grid; flex: none; cursor: default; }
+.die.d4 { --sh: polygon(50% 3%, 99% 92%, 1% 92%); --ly: 5px; --facet: linear-gradient(60deg, rgba(0, 0, 0, .22) 0 37%, transparent 37.5%), linear-gradient(-60deg, rgba(255, 255, 255, .5) 0 37%, transparent 37.5%); } .die.d4 i { font-size: 11px; }
+.die.d6 { --sh: polygon(8% 14%, 14% 8%, 86% 8%, 92% 14%, 92% 86%, 86% 92%, 14% 92%, 8% 86%); --facet: linear-gradient(180deg, rgba(255, 255, 255, .7) 0 14%, transparent 15%), linear-gradient(90deg, transparent 0 85%, rgba(0, 0, 0, .16) 86%); }
+.die.d8 { --sh: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); --facet: conic-gradient(from 0deg at 50% 50%, rgba(255, 255, 255, .15) 0 25%, rgba(0, 0, 0, .22) 0 50%, rgba(0, 0, 0, .08) 0 75%, rgba(255, 255, 255, .5) 0); }
+.die.d10 { --sh: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%); --facet: conic-gradient(from 30deg at 50% 50%, rgba(255, 255, 255, .12) 0 16.6%, rgba(0, 0, 0, .2) 0 33.3%, rgba(0, 0, 0, .28) 0 50%, rgba(0, 0, 0, .1) 0 66.6%, rgba(255, 255, 255, .3) 0 83.3%, rgba(255, 255, 255, .55) 0); }
+.die.d20 { --sh: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%); --facet: conic-gradient(from 22.5deg at 50% 50%, rgba(255, 255, 255, .2) 0 12.5%, rgba(0, 0, 0, .1) 0 25%, rgba(0, 0, 0, .24) 0 37.5%, rgba(0, 0, 0, .3) 0 50%, rgba(0, 0, 0, .18) 0 62.5%, rgba(0, 0, 0, .05) 0 75%, rgba(255, 255, 255, .35) 0 87.5%, rgba(255, 255, 255, .6) 0); }
+.die.d12 { --sh: polygon(50% 0, 88% 14%, 100% 50%, 88% 86%, 50% 100%, 12% 86%, 0 50%, 12% 14%); --facet: conic-gradient(from 18deg at 50% 50%, rgba(255, 255, 255, .25) 0 20%, rgba(0, 0, 0, .12) 0 40%, rgba(0, 0, 0, .26) 0 60%, rgba(0, 0, 0, .08) 0 80%, rgba(255, 255, 255, .5) 0); }
+/* ---------- materials (MATERIALS in js/content/dice.js) ----------
+   A die's colour is its material's colour (--dc, set from the table by parts.js dieStyle) and its finish is the
+   material's skin below; its shape says its size. The same skins dress the 3D solid you grab and spin (spin.js).
+   --skin: the face · --ink: the numbers · --body: how solid the dark underside shows (clear materials let the felt through) */
+.m-plastic { --skin: linear-gradient(150deg, rgba(255, 255, 255, .3), transparent 45%, rgba(0, 0, 0, .1)), var(--dc); --ink: #2a2010; }
+.m-glass { --skin: linear-gradient(125deg, rgba(255, 255, 255, .85) 0 10%, transparent 11% 58%, rgba(255, 255, 255, .4) 59% 64%, transparent 65%), radial-gradient(circle at 70% 75%, rgba(255, 255, 255, .25), transparent 40%), color-mix(in srgb, var(--dc) 58%, transparent);
+  --ink: #04384b; --inkhi: rgba(200, 245, 255, .9); --body: .4; }
+.m-metal { --skin: repeating-linear-gradient(100deg, rgba(255, 255, 255, .09) 0 1px, transparent 1px 3px), linear-gradient(160deg, rgba(255, 255, 255, .8) 0 8%, rgba(0, 0, 0, .3) 30%, rgba(255, 255, 255, .55) 52%, rgba(0, 0, 0, .35) 78%, rgba(255, 255, 255, .25)), var(--dc);
+  --ink: #12161d; --inkhi: rgba(255, 255, 255, .7); }
+/* Sparkling (Glass + Metal): a gold glass shot through with glitter */
+.m-sparkling { --skin: radial-gradient(circle at 22% 30%, #fff 0 1.1px, transparent 1.7px), radial-gradient(circle at 68% 22%, #fff 0 1.3px, transparent 2px), radial-gradient(circle at 78% 62%, #fff8d0 0 1px, transparent 1.6px), radial-gradient(circle at 40% 72%, #fff 0 1.2px, transparent 1.8px), radial-gradient(circle at 55% 45%, #ffe27a 0 .9px, transparent 1.5px), radial-gradient(circle at 30% 52%, #fff6c8 0 .8px, transparent 1.4px),
+  linear-gradient(160deg, rgba(255, 255, 255, .7) 0 9%, rgba(160, 110, 0, .28) 34%, rgba(255, 255, 255, .45) 55%, rgba(120, 80, 0, .3) 80%), color-mix(in srgb, var(--dc) 80%, transparent);
+  --ink: #4a3300; --inkhi: rgba(255, 250, 220, .9); --body: .7; }
+.die.m-sparkling::after, .solid.m-sparkling .sface { animation: twinkle 2.4s ease-in-out infinite alternate; } @keyframes twinkle { to { filter: brightness(1.18) saturate(1.2); } }
+/* Glimmering (Glass + Plastic): clear and pearly, a soft rainbow sheen */
+.m-glimmering { --skin: linear-gradient(115deg, rgba(255, 255, 255, .8) 0 9%, transparent 10% 70%, rgba(255, 255, 255, .35) 71% 75%, transparent 76%), linear-gradient(135deg, rgba(255, 190, 235, .45), rgba(190, 255, 245, .4) 50%, rgba(255, 245, 190, .45)), color-mix(in srgb, var(--dc) 70%, transparent);
+  --ink: #23466a; --inkhi: rgba(255, 255, 255, .9); --body: .55; }
+/* Swirling (Metal + Plastic): marbled lilac with a metal fleck */
+.m-swirling { --skin: repeating-conic-gradient(from 20deg at 34% 64%, rgba(255, 255, 255, .45) 0 9deg, rgba(110, 70, 190, .3) 16deg 25deg, rgba(255, 255, 255, 0) 31deg 40deg), radial-gradient(ellipse at 72% 28%, rgba(255, 255, 255, .55), transparent 45%), var(--dc);
+  --ink: #2e1858; --inkhi: rgba(255, 255, 255, .7); }
+/* Diamond: clear, faceted fire in every colour */
+.m-diamond { --skin: linear-gradient(140deg, rgba(255, 255, 255, .95) 0 7%, transparent 8% 46%, rgba(255, 255, 255, .7) 47% 50%, transparent 51%), repeating-conic-gradient(from 8deg at 50% 50%, rgba(255, 110, 130, .32) 0 12deg, rgba(255, 235, 110, .32) 12deg 24deg, rgba(110, 255, 170, .32) 24deg 36deg, rgba(110, 175, 255, .38) 36deg 48deg, rgba(215, 130, 255, .32) 48deg 60deg), color-mix(in srgb, var(--dc) 72%, transparent);
+  --ink: #0d3552; --inkhi: #fff; --body: .45; }
+/* Bone: carved ivory, flecked */
+.m-bone { --skin: radial-gradient(circle at 30% 70%, rgba(120, 90, 40, .28) 0 6%, transparent 7%), radial-gradient(circle at 72% 30%, rgba(120, 90, 40, .22) 0 4%, transparent 5%), radial-gradient(circle at 58% 82%, rgba(120, 90, 40, .18) 0 3%, transparent 4%), linear-gradient(170deg, rgba(255, 255, 255, .35), transparent 50%, rgba(110, 80, 30, .18)), var(--dc);
+  --ink: #5a3d1a; --inkhi: rgba(255, 245, 220, .6); }
+.die[class*=' m-']::before { opacity: var(--body, 1); }
+.die .dyes { position: absolute; z-index: 2; left: -4px; bottom: -3px; display: flex; gap: 1px; pointer-events: none; }
+.die .dyes b { width: 7px; height: 7px; border-radius: 50% 50% 50% 0; rotate: -45deg; background: var(--yc); box-shadow: 0 0 0 1px #08121a; }
+.die.static.mini .dyes { display: none; }
 .item.bone { border-color: #efe3c2; }
 .die i::before { content: ''; position: absolute; z-index: -1; left: 50%; top: 50%; width: 17px; height: 17px; translate: -50% -50%; border-radius: 50%; background: radial-gradient(circle, rgba(255, 255, 255, .6), rgba(255, 255, 255, 0) 70%); }
 .die.upg { --ring: drop-shadow(0 0 1.5px var(--amber)) drop-shadow(0 0 1.5px var(--amber)); }
@@ -647,6 +670,21 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .stick { z-index: 1000; } /* the House's arms reach over the Pit's stacks */
 .tcard.inplay { translate: 0 -12px; } /* tricks in play stand forward */
 
+/* ---------- dice as solids (solid.js): grab any die to spin it (spin.js), and thrown dice tumble as them ---------- */
+.die { user-select: none; -webkit-user-drag: none; touch-action: none; }
+.solid { position: relative; perspective: 700px; pointer-events: none; }
+.solid-rot { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-style: preserve-3d; }
+.sface { position: absolute; left: 0; top: 0; transform-origin: 0 0; backface-visibility: hidden; background: var(--facet3, linear-gradient(135deg, rgba(255, 255, 255, .22), transparent 60%)), var(--skin, var(--dc)); }
+.solid.m-glass .sface, .solid.m-glimmering .sface, .solid.m-diamond .sface { backface-visibility: visible; } /* clear dice show their far faces through the near ones */
+.sface b { position: absolute; translate: -50% -50%; font-weight: 800; font-size: var(--fs, 18px); line-height: 1; color: var(--ink, #20180a); text-shadow: 0 1px 0 var(--inkhi, rgba(255, 255, 255, .45)); white-space: nowrap; }
+.sface b.ul { text-decoration: underline 2px; text-underline-offset: 2px; } /* 6 and 9 */
+.spin-view { position: absolute; z-index: 95; display: grid; justify-items: center; gap: 4px; cursor: grab; touch-action: none; animation: spin-in .18s var(--ease) both;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, .6)); } .spin-view:active { cursor: grabbing; }
+.spin-view.out { opacity: 0; scale: .7; transition: opacity .25s, scale .25s; } @keyframes spin-in { from { opacity: 0; scale: .5; } }
+.spin-cap { display: grid; justify-items: center; padding: 3px 9px; border-radius: 8px; background: rgba(9, 6, 24, .86); border: 1px solid var(--line); font-size: 10.5px; white-space: nowrap; pointer-events: none; }
+.spin-cap b { color: var(--gold); font-weight: 700; } .spin-cap span { color: var(--dim); font-size: 9.5px; letter-spacing: .04em; }
+body.spinning, body.spinning * { user-select: none; cursor: grabbing !important; } body.spinning #tooltip { opacity: 0 !important; }
+
 /* ---------- the toss: thrown dice tumble as solids onto the roll ---------- */
 .toss { position: absolute; left: 0; top: 0; width: 32px; height: 32px; perspective: 520px; pointer-events: none; }
 .toss-cube { position: relative; margin: 1px; transform-style: preserve-3d; }
@@ -684,3 +722,26 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 .die.m-diamond::after { background: conic-gradient(from 0deg at 50% 45%, #fff, #bfe9ff, #ffd6f5, #fff7c2, #c8ffe0, #fff), var(--facet, none); opacity: .92; }
 .die.m-diamond { filter: drop-shadow(0 0 6px rgba(200, 240, 255, .8)); }
 
+
+/* ---------- folding the Book and the dice (boutview.js syncFolds) ----------
+   Outside the phases that use them, the Book and the dice fold to thin spines and the Run takes their width.
+   A spine shows what is inside (a bar per trick in its type's colour, a mini die per die); click it, or press B or D,
+   to peek: the column opens on a panel over the Run until you click it again, press Esc or the phase moves on. */
+.feed, .run-empty { transition: left .45s var(--ease), width .45s var(--ease), opacity .5s, height .3s; }
+.scene.bout .zt-book, .scene.bout .zt-dice, .tray-box, .tray-cap { transition: opacity .3s, translate .3s var(--ease); }
+.scene.bout.fold-book:not(.peek-book) .zt-book, .scene.bout.fold-dice:not(.peek-dice) :is(.zt-dice, .tray-box, .tray-cap) { opacity: 0; pointer-events: none; }
+.scene.bout.peek-book .zt-book { z-index: 8; left: 52px !important; }
+.scene.bout.peek-dice :is(.zt-dice, .tray-box, .tray-cap) { z-index: 8; translate: -44px 0; }
+.spine { position: absolute; top: 418px; width: 28px; height: 248px; padding: 8px 0; border-radius: 9px; border: 1px solid var(--line); background: rgba(9, 6, 24, .6); color: var(--gold);
+  display: flex; flex-direction: column; align-items: center; gap: 8px; font: inherit; cursor: pointer; opacity: 0; pointer-events: none; overflow: hidden; z-index: 5; transition: opacity .35s, border-color .25s, background .25s, box-shadow .25s; }
+.spine.book { left: 14px; } .spine.dice { left: 1044px; }
+.scene.bout.fold-book .spine.book, .scene.bout.fold-dice .spine.dice { opacity: 1; pointer-events: auto; }
+.spine:hover, .spine.peeking { border-color: rgba(110, 240, 255, .7); background: rgba(30, 20, 70, .85); box-shadow: 0 0 12px rgba(110, 240, 255, .25); }
+.spine .sp-t { writing-mode: vertical-rl; rotate: 180deg; font-size: 9.5px; letter-spacing: .22em; white-space: nowrap; flex: none; }
+.spine .sp-marks { display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 0; }
+.spine.book .sp-marks i { width: 14px; height: 6px; border-radius: 2px; background: var(--tc); box-shadow: 0 0 5px color-mix(in srgb, var(--tc) 60%, transparent); }
+.spine.dice .sp-marks .die { cursor: grab; } .spine.dice .sp-marks .die .ups { display: none; }
+.peek-panel { position: absolute; top: 410px; height: 300px; border-radius: 12px; border: 1px solid rgba(110, 240, 255, .45); background: #0b0720; box-shadow: 0 14px 40px rgba(0, 0, 0, .65);
+  z-index: 7; opacity: 0; pointer-events: none; transition: opacity .25s; cursor: pointer; }
+.peek-panel.book { left: 44px; width: 234px; } .peek-panel.dice { left: 832px; width: 204px; }
+.scene.bout.peek-book .peek-panel.book, .scene.bout.peek-dice .peek-panel.dice { opacity: 1; pointer-events: auto; }

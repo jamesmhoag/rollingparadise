@@ -228,6 +228,10 @@ export const GUIDE = {
     how: ['Pick a runner; longer odds pay more but win less often.'] },
   'btn:speed': { name: 'Speed', def: 'How fast the bout plays out.',
     how: ['Speed it up once you know what each phase does.'] },
+  'spine:book': { name: 'Book (folded)', def: 'Your Book, folded away so the Run has room. It opens by itself in the Draw step.',
+    how: ['Click it, or press B, to peek at the tricks still in it; click again or press Esc to fold it.', 'Each bar is one trick, in its type\'s colour.'] },
+  'spine:dice': { name: 'Pouch (folded)', def: 'Your dice, folded away so the Run has room. They open by themselves in the Roll step.',
+    how: ['Click it, or press D, to peek at your Pouch; click again or press Esc to fold it.', 'Grab any die, here or anywhere, and drag to spin it and read its faces.'] },
 };
 
 // Elements recognised by their classes, most specific first: [classes joined by '.', entry]
@@ -239,5 +243,5 @@ export const GUIDE_BY_CLASS = [
   ['tilt.challenge', 'tilt:challenge'], ['tilt.cheat', 'tilt:cheat'], ['ocell', 'opp-stack'],
   ['qd', 'quality'], ['tgt', 'aim'], ['c-slots', 'trick-dice'], ['zone-title', 'zone'], ['zone-label', 'position-label'],
   ['worth', 'worth'], ['weather', 'weather'], ['table-felt', 'felt'], ['turn', 'turn'], ['house', 'house'], ['pit', 'pit'],
-  ['stage-strip', 'stage'], ['run-empty', 'run'], ['okit', 'opp-kit'],
+  ['stage-strip', 'stage'], ['run-empty', 'run'], ['okit', 'opp-kit'], ['spine.book', 'spine:book'], ['spine.dice', 'spine:dice'],
 ];
