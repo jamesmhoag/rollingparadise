@@ -4,6 +4,7 @@
 import { CHIP_LIST } from './chiplist.js';
 import { MADE_CHIPS, NEW_CHIP } from './content/chipmaker.js';
 import { SHOP_CHIPS, INSTANCE_SHIELDS, resistsOf } from './data.js';
+import { t as tx } from './text.js';
 
 const SOURCE = { 'Match Prep': 'prep', Spawned: 'chip', 'Chip Conversion': 'chip', 'Stack Conversion': 'chip', 'Space Conversion': 'chip', Encountered: 'encounter' };
 const LASTS = { Resiliant: 'paid', Fragile: 'hits', Temporary: 'turns', Match: 'match', Consuming: 'turns', Delicious: 'hits', Limited: 'turns' };
@@ -34,5 +35,5 @@ export const madeChip = (id) => (MADE_CHIPS[id] ? { ...NEW_CHIP, ...MADE_CHIPS[i
 // a mapped chip as the start of a made one: the terms carry over, the classic behaviour does not
 export function asMade(m) {
   const { id, classic, engine, status, note, category, worthRule, made, ...rest } = m; void id; void classic; void engine; void status; void note; void category; void worthRule; void made;
-  return JSON.parse(JSON.stringify({ ...NEW_CHIP, ...rest, name: `${m.name} (made)` }));
+  return JSON.parse(JSON.stringify({ ...NEW_CHIP, ...rest, name: tx('chipmodel.made', { name: m.name }) }));
 }
