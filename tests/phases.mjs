@@ -38,8 +38,7 @@ for (let seed = 1; seed <= 25; seed++) {
   // the Bluff: put the rolled dice on tricks, then aim
   const e4 = me.run.find((x) => x.uid === e.uid);
   assert(!B.canPlace(bout, me, me.tray[0].id, e4) && B.place(bout, me, me.tray[0].id, e4), 'in the Bluff a rolled die goes on a trick, bid on or not');
-  if (B.trayPlaceable(me)) { assert(B.needOf(bout, me) && !B.advance(bout), 'every rolled die that fits a trick must be used');
-    for (const d of me.tray.slice()) { const x = me.run.find((t) => !B.canPlace(bout, me, d.id, t)); if (x) B.place(bout, me, d.id, x); } }
+  assert(!B.needOf(bout, me), 'one die on a trick is enough: the rest can stay in the roll');
   assert(B.canMove(bout, me, e4.dice[0].id), 'dice rolled this turn can be moved between tricks in the Bluff');
   const left = me.tray.length;
   planPhase(bout, opp); assert(B.advance(bout) && bout.phase === 'resolve', 'the Bluff closes and the House plays');

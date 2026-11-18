@@ -64,7 +64,7 @@ for (const id of D.SHOP_IDS()) assert(!D.makerOf(id), `${D.SHOP_CHIPS[id].name} 
   assert(B.pressure(bout, me).overkill > 0 && B.pressure(bout, me).fill === 1, 'overflow and a full Meter count toward the House\'s pressure');
 }
 
-// ---------- leftover rolled dice stay in the roll and must be used ----------
+// ---------- rolled dice: one must be used each Bluff, the rest stay in the roll for later turns ----------
 {
   const { bout, me } = table(8, 'rascal');
   B.draw(bout, me, me.book[0].uid); B.advance(bout, true);
@@ -72,9 +72,9 @@ for (const id of D.SHOP_IDS()) assert(!D.makerOf(id), `${D.SHOP_CHIPS[id].name} 
   const fits = me.pouch.filter((d) => d.type === D.TRICKS[e.trick.id].die).slice(0, Math.min(B.tipOf(me, 'proficiency'), room + 1));
   B.setPick(bout, me, fits.map((d) => d.id)); B.advance(bout, true); // thrown as the Bid opens
   const spot = B.biddable(me)[0]; B.bid(bout, me, e, spot.r, spot.c); B.advance(bout, true); // the Bluff
-  assert(B.needOf(bout, me), 'rolled dice must be put on tricks before the Bluff can close');
-  for (const d of me.tray.slice()) if (!B.canPlace(bout, me, d.id, e)) B.place(bout, me, d.id, e);
-  assert(!B.needOf(bout, me), 'once nothing in the roll fits a trick, the Bluff can close');
+  assert(B.needOf(bout, me), 'at least one rolled die must go on a trick before the Bluff can close');
+  B.place(bout, me, me.tray.find((d) => !B.canPlace(bout, me, d.id, e)).id, e);
+  assert(!B.needOf(bout, me) || !me.tray.length, 'one die placed is enough, even with more that fit');
   const kept = me.tray.map((d) => d.id + ':' + d.value).join();
   B.advance(bout, true); assert(me.tray.map((d) => d.id + ':' + d.value).join() === kept, 'a die with nowhere to go stays in the roll with its value');
 }

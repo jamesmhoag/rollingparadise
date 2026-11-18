@@ -427,7 +427,7 @@ what you own, carry or wear is marked.
 | Which chips leave the shop | Those whose effect is an Investment, Insurance, Expense or Correction effect over time (they modify a roll or effect, mitigate fees, or correct the table). The electronics, plants, food, weather, Big and Little chips, resists and Uranium stay: they are things, not effects. |
 | An overloaded stack or Bet | Like overkill: the trick plays, what has no room is lost, and a trick that adds chips cannot aim at a full stack. |
 | A phase you cannot act in | Skipped on its own, with a line in the feed; unused actions still pay. |
-| Dice left in the roll | They must be used: every die that fits a shown trick has to go on one before Roll closes. One that fits nowhere stays in the roll with its value until a trick has room. No effect rerolls yet. |
+| Dice left in the roll | Each Bluff at least one die from the roll goes on a trick (when one fits); the rest stay in the roll with their values, turn after turn, to pick from later, like tricks waiting on the Run. No effect rerolls yet. |
 
 ## Not built yet
 
