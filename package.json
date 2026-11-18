@@ -12,5 +12,9 @@
     "audit:singles": "node tests/audit/run.mjs all 150 audit-singles.jsonl && node tests/audit/aggregate.mjs audit-singles.jsonl audit-singles.json",
     "audit:combos": "node tests/audit/combos.mjs audit-singles.json 150 audit-combos",
     "merge-content": "node tools/merge-content.mjs"
+  },
+  "devDependencies": {
+    "acorn": "^8.14.0",
+    "acorn-walk": "^8.3.4"
   }
 }

@@ -6,6 +6,7 @@
 // pouch; the face of the new die showing each rolled value is changed.
 import { DICE, MELT, CASTS, DYES, DIAMOND, BASIC_MATS, COMPLEXITY, MATERIALS } from './data.js';
 import { matOf, canMelt, facesOf, faceValue } from './dice.js';
+import { t as tx } from './text.js';
 
 const facesOfType = (type) => DICE[type].faces;
 export const meltVolume = (dice) => dice.reduce((t, d) => t + facesOfType(d.type) * MELT.meltPerFace, 0);
@@ -44,30 +45,30 @@ export const dyePrice = (primaries = []) => primaries.reduce((t, k) => t + (DYES
 // rolled (pouch dice for each roll, or null where none is spare) }.
 export function forgePlan(o) {
   const out = { why: null, castKey: null, played: [], reqs: [], rolled: [] }, no = (why) => { out.why = out.why || why; return out; };
-  if (!COMPLEXITY.includes(o.type)) return no(`The Diesmith does not cast ${o.type}s.`);
-  if (!o.melt.length) return no('Pick dice to melt.');
-  const bad = o.melt.find((d) => !canMelt(d)); if (bad) return no(`${MATERIALS[matOf(bad)].name} dice cannot be melted.`);
+  if (!COMPLEXITY.includes(o.type)) return no(tx('forge.the-diesmith-does-not', { type: o.type }));
+  if (!o.melt.length) return no(tx('forge.pick-dice-to-melt'));
+  const bad = o.melt.find((d) => !canMelt(d)); if (bad) return no(tx('floor.dice-cannot-be-melted', { name: MATERIALS[matOf(bad)].name }));
   const ck = out.castKey = castFor(o.melt.map(matOf)), C = CASTS[ck];
-  if (!C) return no(o.melt.some((d) => MATERIALS[matOf(d)]?.complex) ? 'Complex dice only melt into a Diamond: one each of Sparkling, Glimmering and Swirling.' : 'Those materials do not mix.');
-  if (!mixOpen(C.unlock, o.floor)) return no(`${C.unlock === 'complex' ? 'Diamond casting' : 'Mixing materials'} opens on floor ${MELT.unlock[C.unlock]}.`);
+  if (!C) return no(o.melt.some((d) => MATERIALS[matOf(d)]?.complex) ? tx('forge.comple-dice-only-melt') : tx('forge.those-materials-do-not'));
+  if (!mixOpen(C.unlock, o.floor)) return no(tx('forge.opens-on-floor', { v: C.unlock === 'complex' ? tx('forge.diamond-casting') : tx('forge.mixing-materials'), unlock: MELT.unlock[C.unlock] }));
   const vol = volumes(o.melt), total = meltVolume(o.melt);
-  if (MELT.evenMix && C.mats.length > 1 && new Set(C.mats.map((m) => vol[m])).size > 1) return no(`A mix needs the same volume of each material: ${C.mats.map((m) => `${MATERIALS[m].name} ${vol[m] || 0}`).join(', ')}.`);
-  if (total < castNeed(o.type)) return no(`A ${o.type} needs ${castNeed(o.type)} volume; that melts to ${total}.`);
+  if (MELT.evenMix && C.mats.length > 1 && new Set(C.mats.map((m) => vol[m])).size > 1) return no(tx('forge.a-mi-needs-the', { join: C.mats.map((m) => `${MATERIALS[m].name} ${vol[m] || 0}`).join(', ') }));
+  if (total < castNeed(o.type)) return no(tx('forge.a-needs-volume-that', { type: o.type, castNeed: castNeed(o.type), total }));
   const dyes = o.dyes || [];
-  if (dyes.some((k) => !DYES[k] || DYES[k].from)) return no('Add primary dyes; two different ones mix.');
+  if (dyes.some((k) => !DYES[k] || DYES[k].from)) return no(tx('forge.add-primary-dyes-two'));
   const played = out.played = mixDyes(dyes, mixOpen('mix', o.floor));
   if (C.needs) {
-    if (C.needs.slice().sort().join() !== played.slice().sort().join()) return no(`A Diamond takes exactly ${C.needs.map((k) => DYES[k].name).join(', ')}: two of each primary.`);
+    if (C.needs.slice().sort().join() !== played.slice().sort().join()) return no(tx('forge.a-diamond-takes-exactly', { join: C.needs.map((k) => DYES[k].name).join(', ') }));
   } else {
-    if (played.some((k) => DYES[k].from) && !mixOpen('mix', o.floor)) return no(`Dye mixing opens on floor ${MELT.unlock.mix}.`);
-    if (played.length > MELT.maxDyes) return no(`At most ${MELT.maxDyes} dyes or dye mixes in one cast.`);
+    if (played.some((k) => DYES[k].from) && !mixOpen('mix', o.floor)) return no(tx('forge.dye-mixing-opens-on', { mix: MELT.unlock.mix }));
+    if (played.length > MELT.maxDyes) return no(tx('forge.at-most-dyes-or', { maxDyes: MELT.maxDyes }));
   }
   // the rolls: one die of each cast material, then the dyes' dice (any material)
   out.reqs = [...C.mats.map((m) => ({ mat: m, for: ck })), ...played.flatMap((k) => Array.from({ length: C.needs ? 1 : DYES[k].dice }, () => ({ mat: null, for: k })))];
   if (MELT.castFromPouch && o.pouch) {
     out.rolled = assignRolls(o.pouch, o.type, o.melt, out.reqs);
     const short = out.reqs.filter((_, i) => !out.rolled[i]);
-    if (short.length) return no(`The cast rolls ${o.type}s from your pouch and you are short: ${short.map((q) => (q.mat ? MATERIALS[q.mat].name : 'any')).join(', ')}.`);
+    if (short.length) return no(tx('forge.the-cast-rolls-s', { type: o.type, join: short.map((q) => (q.mat ? MATERIALS[q.mat].name : 'any')).join(', ') }));
   }
   return out;
 }
@@ -162,13 +163,13 @@ export function castFaces(rng, type, castKey, played = [], rolled = null) {
     const { rolls } = roll(take(C.mats.length + (C.needs || []).length));
     const p = diamondPattern(rolls, n), P = p && DIAMOND.find((x) => x.id === p.id);
     if (p) fs = diamondFaces(p, fs);
-    log.push({ k: castKey, name: C.name, rolls, text: P ? `${P.name} (${P.when}): ${P.text}` : 'No pattern: the faces stay as they are.', missed: !p, after: fs.slice() });
+    log.push({ k: castKey, name: C.name, rolls, text: P ? `${P.name} (${P.when}): ${P.text}` : tx('forge.no-pattern-the-faces'), missed: !p, after: fs.slice() });
     return { faces: fs, log };
   }
   for (const [k, X, dice] of [[castKey, C, C.mats.length], ...played.map((d) => [d, DYES[d], DYES[d].dice])]) {
     const { rolls, again } = roll(take(dice));
-    const r = apply(X.fx, fs, rolls, X.pair), re = again ? ` (rolled again ${again === 1 ? 'once' : again + ' times'} on doubles)` : '';
-    log.push({ k, name: X.name, rolls, text: (r.missed ? `No face shows ${rolls.join(' or ')} any more: nothing changes.` : X.text) + re, missed: !!r.missed, after: fs.slice() });
+    const r = apply(X.fx, fs, rolls, X.pair), re = again ? tx('forge.rolled-again-on-doubles', { v: again === 1 ? 'once' : again + ' times' }) : '';
+    log.push({ k, name: X.name, rolls, text: (r.missed ? tx('forge.no-face-shows-any', { join: rolls.join(' or ') }) : X.text) + re, missed: !!r.missed, after: fs.slice() });
   }
   return { faces: fs, log };
 }
