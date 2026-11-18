@@ -302,6 +302,8 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
   made trick can take its chips from your Pit or theirs; a made chip's Pull action takes them onto its stack.
 - **The Puddle is a chip** with no thickness that always sits at the bottom of its space. Water lays one; a made
   trick can lay them (Puddle chips). Frozen over, it grounds the Frozen chips above it.
+- **All game text is editable data** in `js/text/en.js` (row 14); `tools/extract-text.mjs` moves new text there.
+- **Every hover has Guidance** (row 1): entries in `js/content/guidance.js`, checked by `npm run check:hovers`.
 - **Bar is the Stake and Meter is the Bet** everywhere the player reads them; code names are unchanged so saves load.
 - **The Stage** above each position holds bids and made chips. **The Pit** keeps every lost chip as it was; it can
   be seen, and chips come back out of it only through tricks and chips (above).
@@ -310,9 +312,5 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
 - **Sparkling and Orange** now do the same thing to a die (one from materials, one from dyes). Intended?
 
 ### Still to build
-- **Game text (row 14), parts 2–4:** the floor's shop panels, the bout screen, the Library, and the feed and
-  settlement lines the engine writes. Trick and chip names and rules text are still in the content tables.
-- **Hover guidance (row 1)** covers the table basics, attributes, phases and rooms. Individual tricks, chips, shop
-  items and the bout's buttons have only their Context hover.
 - **Resource files (row 17):** the folder, manifest and check exist, but there are no icon, texture or material
   files yet, and ordinary chips and hazards are not in the manifest. Everything still draws with emoji and CSS.
