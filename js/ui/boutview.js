@@ -1,6 +1,6 @@
 // The table. Every chip, die, trick card and creature is one persistent element that is
 // moved, faded or flipped to follow the bout state, so nothing ever pops between states.
-import { h, tip, wait, tween, swapText, setOn, pulse, syncList, toast, btn, refreshTip, redrawTip, box, vc, detail, paint } from './core.js';
+import { h, tip, wait, tween, swapText, setOn, pulse, syncList, toast, btn, refreshTip, redrawTip, box, vc, detail, paint, guided } from './core.js';
 import { chipSig, chipGlyph, chipName, chipText, chipTip, dieTip, trickTip, trickWord, trickWords, statTip, drinkTip, dieMarks, dieClass, trickLook, feltStyle, seenAs, traitsOf, traitsHtml, dieEl } from './parts.js';
 import { iconKids, iconFill } from './icons.js';
 import { flyerTraits } from '../traits.js';
@@ -173,7 +173,7 @@ export function boutScene(root, bout, ctx, onDone) {
   const sipBtn = btn(tx('table.sip'), () => { const why = B.canSip(bout, me); if (why) return nope(why, sipBtn); act(() => { B.sip(bout, me); toast(tx('table.you-sip-your-it', { name: me.drink.name })); }); }, () => (me.drink ? tx('table.sip-once-a-round', { drinkTip: drinkTip(me.drink) }) : ''), 'small');
   const undoBtn = btn(tx('table.undo-2'), () => act(() => { B.resetPlan(bout, me); ui.sel.clear(); ui.flips = []; ui.hand = []; ui.handAim.clear(); setMode(null); if (bout.phase === 'aim') aimBest(); }),
     () => tx('table.undo', { v: bout.phase === 'draw' ? tx('table.put-back-the-tricks') : bout.phase === 'roll' ? (me.thrown ? tx('table.take-the-dice-off') : tx('table.clear-the-dice-and')) : tx('table.take-back-the-bids') }), 'small');
-  const speedBtn = btn('1×', () => { ui.speed = ui.speed === 1 ? 2 : ui.speed === 2 ? 4 : 1; swapText(speedBtn, `${ui.speed}×`); }, tx('table.speed-how-fast-the'), 'small');
+  const speedBtn = guided(btn('1×', () => { ui.speed = ui.speed === 1 ? 2 : ui.speed === 2 ? 4 : 1; swapText(speedBtn, `${ui.speed}×`); }, tx('table.speed-how-fast-the'), 'small'), 'btn:speed');
   const commitBtn = btn(tx('table.roll'), () => commit(), () => commitTip(), 'big');
   const trayBox = h('div', { class: 'tray-box', text: tx('table.draw-then-press-roll') }), trayCap = h('div', { class: 'tray-cap' });
   const frameEls = [header, stageBox, phasesEl, feedEl, runEmpty,
