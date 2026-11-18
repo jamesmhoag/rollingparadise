@@ -487,9 +487,9 @@ export function startAscent(run) {
 // Dice upgrades are permanent, including faces that change with use (Rig, Enchant, Encase): copy the bout's dice
 // back to the run. Upgrade chip effects were rolled on throwaway copies and never get here.
 function keepDiceState(run, bout) {
-  const s = bout.sides[0], all = [...s.pouch, ...s.tray, ...s.run.flatMap((e) => e.dice)];
+  const s = bout.sides[0], all = [...s.pouch, ...s.tray, ...s.run.flatMap((e) => e.dice), ...(s.tapped?.dice || []).map((x) => x.die)];
   for (const d of run.dice) { const x = all.find((y) => y.id === d.id); if (x?.faces) d.faces = x.faces.map((f) => ({ ...f })); }
-  const tricks = [...s.book, ...s.run.map((e) => e.trick)]; // the wear from this bout's plays
+  const tricks = [...s.book, ...s.run.map((e) => e.trick), ...(s.tapped?.tricks || []).map((x) => x.trick)]; // the wear from this bout's plays
   for (const t of run.tricks) { const x = tricks.find((y) => y.uid === t.uid); if (x && x.wear != null) t.wear = x.wear; }
 }
 export function settle(run, ctx, bout) {

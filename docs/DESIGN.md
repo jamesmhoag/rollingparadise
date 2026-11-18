@@ -86,6 +86,29 @@ the pile. Click the pile to take its top chip back. Dice are not placed yet: the
 - A requirement is waived when it cannot be met: an empty Book, no shown trick with room for a die, no die or
   flippable chip, or no chip you could bid without going broke. A bid can never spend your last chip.
 
+### Tapping, restoring and occupancy
+Words: a space is **occupied** with at least one chip (**filled** means its stack is at full height; no rule checks
+that yet). On the table a **column** is one depth line of the Bet or the Stake (`r` in the engine) and a **row** is a
+lane (`c`). Columns vary with Versatility and Depth; rows are always 5.
+
+- **Tapping.** A trick that finishes playing, and the dice on it, **tap**: they go to the tapped piles instead of the
+  Book and the Pouch, and cannot be drawn or rolled until restored. Flipped chips still come back to the Bet.
+- **Restore at the end of each turn.** One trick per occupied Bet column, one die per occupied Stake column. An empty
+  Bet restores no tricks; an empty Stake no dice. Order: the one tapped longest first (stamped per action, so
+  everything that taps together ties), then for tricks the phase the trick belongs to, worse quality, basic before
+  exotic prints; for dice smaller before larger, plain before fancy; then the one you got first.
+- **Live preview.** `restorePlan` is read after every action: tapped tricks show under the Book and tapped dice after
+  the Pouch, ringed **RESTORES** when the end of the turn would bring them back as the board stands now. The Restore
+  badge counts them.
+- **Charisma, Cunning, Conviction** pay for unused draws, rolls and bids only while every Stake row has a chip
+  (checked live; the Stake rows badge and the step pill hovers say so).
+- **Fully Occupied Bet.** Every Bet space occupied at the end of a turn (a Hole is not counted): the next turn opens
+  by restoring every tapped trick and die and gives +1 Draw, Roll and Bid per Bet column for that turn. It repeats
+  every turn the Bet stays Fully Occupied. The Bet badge shows the meter (occupied of total).
+- **Stat display.** A step pill (and the opponent's pills) shows the stat as it stands this turn, in the
+  temporary-change colour with ▲ or ▼ when food, drink, a Full Bet or a Curse changes it. The hover splits it into
+  class base, gear (jacket, cards, the run) and each temporary change with its source.
+
 ### Overload
 A stack holds `3 + Balance` chips. When it is full:
 - A trick that adds chips to the stack it aims at (Block on the Bet, the maker tricks, Foretell, Conjure, Hand Off)
