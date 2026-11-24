@@ -6,17 +6,17 @@
 // class's own one (`primary`'s reward: Trickery → Charisma, Ingenuity → Cunning, Proficiency → Conviction) earns most.
 export const CLASSES = {
   hustler: {
-    name: 'Hustler', hero: 'Owl', blurb: 'Draws the most tricks and stacks chips tallest. Deploys from the back.',
+    name: 'Hustler', hero: 'Owl',
     tip: { trickery: 3, ingenuity: 2, proficiency: 2 }, bvd: { balance: 3, versatility: 1, depth: 0 }, primary: 'trickery', deploy: 'end',
     dice: { d4: 4, d6: 4 }, tricks: ['charge', 'mug', 'stir', 'block', 'settle'], color: '#e0a23c',
   },
   rascal: {
-    name: 'Rascal', hero: 'Fox', blurb: 'Bids the most and has the deepest Bet. Deploys from the centre.',
+    name: 'Rascal', hero: 'Fox',
     tip: { trickery: 2, ingenuity: 3, proficiency: 2 }, bvd: { balance: 0, versatility: 3, depth: 1 }, primary: 'ingenuity', deploy: 'center',
     dice: { d6: 7 }, tricks: ['charge', 'stir', 'bend', 'block', 'settle'], color: '#c0569b',
   },
   technician: {
-    name: 'Technician', hero: 'Hog', blurb: 'Rolls the most dice and has the deepest Stake. Deploys from the front.',
+    name: 'Technician', hero: 'Hog',
     tip: { trickery: 2, ingenuity: 2, proficiency: 3 }, bvd: { balance: 1, versatility: 0, depth: 3 }, primary: 'proficiency', deploy: 'start',
     dice: { d6: 3, d8: 3 }, tricks: ['charge', 'stir', 'block', 'brace', 'settle'], color: '#4aa3c7',
   },
@@ -25,6 +25,17 @@ export const CLASSES = {
 // the reward stat for a primary action stat
 export const C_OF = { trickery: 'charisma', ingenuity: 'cunning', proficiency: 'conviction' };
 export const primaryC = (cls) => C_OF[CLASSES[cls]?.primary] || 'charisma';
+// what sets a class apart, written from its numbers: the per-turn action it has most of, the position stat it leans on,
+// where it deploys from (its words for the table are its flavour line)
+export function classRule(cls) {
+  const K = CLASSES[cls]; if (!K) return '';
+  const top = (group, k) => Object.values(CLASSES).every((x) => (x[group]?.[k] ?? 0) <= (K[group]?.[k] ?? 0));
+  const most = { trickery: 'draws the most tricks', ingenuity: 'bids the most', proficiency: 'rolls the most dice' }, shape = { balance: 'stacks chips tallest', versatility: 'has the deepest Bet', depth: 'has the deepest Stake' };
+  const a = Object.keys(most).filter((k) => top('tip', k)).map((k) => `${most[k]} (${STATS[k].short} ${K.tip[k]})`), b = Object.keys(shape).filter((k) => top('bvd', k) && K.bvd[k] > 0).map((k) => shape[k]);
+  const from = { start: 'the front', center: 'the centre', end: 'the back' }[K.deploy] || K.deploy;
+  const body = [...a, ...b].join(' and ');
+  return `${body ? body.charAt(0).toUpperCase() + body.slice(1) + '. ' : ''}Deploys from ${from}.`;
+}
 export const heroName = (cls) => (CLASSES[cls].hero ? `${CLASSES[cls].hero} the ${CLASSES[cls].name}` : CLASSES[cls].name);
 export const BASE_DIMS = { cols: 5, stackMax: 3, meterRows: 2, barRows: 3 };
 
@@ -690,8 +701,8 @@ export const CARDS = {
   paradise: { name: 'Paradise Card', text: 'Earned by beating the last High Roller. It opens the Paradise Ascent.' },
   membership: { name: 'Membership Card', text: 'Earned by buying 5 tricks on one floor. Opens the Trick Trader\'s Secret Shelf and takes 10% off everything the Trader sells.' },
   suite: { name: 'Suite Key Card', text: 'Earned by winning a Double Down. Opens a Suite after you beat the High Roller.' },
-  resist_card: { name: 'Resist Card', text: 'Debt resistance. Each bout starts with a Resist chip (r = 2) at the base of one of your front Stake stacks: fees under 2¢ on that stack are deterred.', resist: 2 },
-  resist_card_plus: { name: 'Resist Card: Gold', text: 'Debt resistance. Each bout starts with a Resist chip (r = 3) at the base of one of your front Stake stacks: fees under 3¢ on that stack are deterred.', resist: 3 },
+  resist_card: { name: 'Resist Card', resist: 2 }, // its rule is written from `resist` (cardRule)
+  resist_card_plus: { name: 'Resist Card: Gold', resist: 3 },
   debit: { name: 'Debit Card', text: 'Found by searching the floor. Lets you use the ATM in the Gift Shop, which keeps chips between runs.' },
   punch: { name: 'Punch Card', text: 'One punch per drink bought. Five punches and the next drink is free.' },
   note: { name: 'Note: on bidding', text: '"Every chip you bid adds its worth to the trick. Two of the same trick, stacked, play twice for one bid."' },
@@ -747,6 +758,10 @@ import { ROSTER, BEHAVE, DEFAULT_BEHAVE } from './content/roster.js';
 export { ROSTER, BEHAVE, DEFAULT_BEHAVE };
 import { BOSS_TRAITS } from './content/bosstraits.js';
 export { BOSS_TRAITS };
+import { FLAVOR } from './content/flavor.js';
+export { FLAVOR };
+// a thing's line of flavour (content/flavor.js), by the table it lives in and its id; '' when it has none
+export const flavorOf = (table, id) => FLAVOR[table]?.[id] || '';
 import { TUNING } from './content/tuning.js';
 export { TUNING };
 import { GUIDE } from './content/guidance.js';
@@ -756,7 +771,7 @@ import TEXT from './text/en.js';
 import { MATERIALS as _MAT, DICE_SHOP as _DS, BONE as _BONE, MELT as _MELT, CASTS as _CASTS, DYES as _DYES, DIAMOND as _DIA } from './content/dice.js';
 export const TABLES = { CLASSES, BASE_DIMS, STATS, DICE, MATERIALS: _MAT, DICE_SHOP: _DS, BONE: _BONE, MELT: _MELT, CASTS: _CASTS, DYES: _DYES, DIAMOND: _DIA, DIE_VARS,
   TYPES, TRICKS, CHIPS, SHOP_CHIPS, CHIP_TIERS, CREATURES, ORBITALS, CALAMITIES, TILTS, TILT_PRESSURE, FELTS, FLOORS, BOSSES, OPPONENTS, DRINKS, SPORTS, JACKETS, CARDS, WALLETS,
-  PASSES, CONDITIONS, PACKS, QDIE, PRIZES, GUIDE, TEXT, MADE_CHIPS, ROSTER, BOSS_TRAITS, TUNING, ODDS, DENOMS, WEAR, IMAGES, ICONS, TEXTURES, NEON };
+  PASSES, CONDITIONS, PACKS, QDIE, PRIZES, GUIDE, TEXT, MADE_CHIPS, ROSTER, BOSS_TRAITS, FLAVOR, TUNING, ODDS, DENOMS, WEAR, IMAGES, ICONS, TEXTURES, NEON };
 const isObj = (x) => x && typeof x === 'object';
 // a path's steps: keys are joined by '.', and a '.' inside a key (as in text keys) is written '\\.'
 export const splitPath = (path) => path.split(/(?<!\\)\./).map((k) => k.replace(/\\\./g, '.'));

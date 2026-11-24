@@ -392,6 +392,17 @@ what you own, carry or wear is marked.
 - Wager ×1.5 at tables, ×3 at the High Roller, capped at ×3. Double Down doubles it up to ×6, keeps the last
   bout's Challenge tilts, drops Cheat tilts, and on a win opens the High Roller and grants a Suite Key Card.
 
+### Text: rules from the data, flavour as a default
+Words that state a rule or a number are written from the data, so changing a value changes what the game says about it:
+a class's strengths (`classRule`: the actions it has most of, the position stat it leans on, where it deploys), a
+Resist Card's r, a High Roller's trait, a trick's Bonus badge, wallet capacities. Lists of things are shown as the
+things themselves (trick tags with their own hovers), never as a comma-separated string: the Class maker picks tricks
+from a menu and sets dice by count, opponent hovers and previews show trick tags, the Book spine and ledger hovers too.
+What the data cannot say is the colour: every class, trick type, trick, chip, shop chip, creature, weather, calamity,
+tilt, felt, drink, jacket, wallet, card, pass, die material, die upgrade and opponent starts with a line of flavour in
+`js/content/flavor.js` (table `FLAVOR`, editable in Build mode; the makers have a Flavour field), shown in italics in
+its hover.
+
 ### Neon signs
 Every seat at the table is a neon sign, and so is the House's (`js/ui/sign.js`). A sign has a tube and glow colour for
 its frame, name and class; a frame style (tube, double, dashed, dotted, bulbs, none) and corner rounding; a Unicode
