@@ -6,9 +6,9 @@ for (const [table, keys] of [['CLASSES', Object.keys(D.CLASSES)], ['TRICKS', Obj
   ['FELTS', Object.keys(D.FELTS)], ['JACKETS', Object.keys(D.JACKETS)], ['WALLETS', Object.keys(D.WALLETS)], ['CARDS', Object.keys(D.CARDS)], ['DRINKS', D.DRINKS.map((d) => d.id)],
   ['MATERIALS', Object.keys(D.MATERIALS)], ['ROSTER', Object.keys(D.ROSTER)], ['CALAMITIES', Object.keys(D.CALAMITIES)], ['DIE_UPGRADES', Object.keys(D.DIE_UPGRADES)]])
   for (const k of keys) ok(D.flavorOf(table, k), `${table}.${k} has a line of flavour`);
-ok(!Object.values(D.CLASSES).some((K) => 'blurb' in K) && /Draw 3/.test(D.classRule('hustler')) && /back/.test(D.classRule('hustler')), 'a class is described from its numbers, not a hand-written blurb');
+ok(!Object.values(D.CLASSES).some((K) => 'blurb' in K) && /Trickery 3/.test(D.classRule('hustler')) && /back/.test(D.classRule('hustler')), 'a class is described from its numbers, not a hand-written blurb');
 const was = D.CLASSES.rascal.tip.trickery; D.CLASSES.rascal.tip.trickery = 4;
-ok(/Draws the most tricks \(Draw 4\)/.test(D.classRule('rascal')), 'change the number and the words follow');
+ok(/Draws the most tricks \(Trickery 4\)/.test(D.classRule('rascal')), 'change the number and the words follow');
 D.CLASSES.rascal.tip.trickery = was;
 ok(!/\d/.test(JSON.stringify(Object.values(D.CARDS).filter((c) => c.resist).map((c) => c.text || ''))), 'a Resist Card has no number written into its text');
 if (fails.length) { console.log('FAIL ' + fails.join('\nFAIL ')); process.exit(1); }
