@@ -7,6 +7,25 @@ import * as B from '../build/draft.js';
 import { t } from '../text.js';
 import { NEW_OPPONENT, NEW_BOSS } from '../content/roster.js';
 import { diceSummary } from './app.js';
+import { signEditor } from './neonmaker.js';
+import { dieEl } from './parts.js';
+import { trickTag } from './app.js';
+
+// A list of tricks as the tricks themselves: each a tag (its hover is the trick), ✕ to drop it, and a menu to add one.
+// The ids are kept in the data; the names and colours come from TRICKS, so renaming a trick renames it here.
+function trickPicker(ids, onSet) {
+  return h('div', { class: 'b-tricks' }, ...ids.map((id, i) => h('span', { class: 'row b-trick' }, D.TRICKS[id] ? trickTag({ id, q: 1 }) : h('span', { class: 'bad', text: id }),
+    btn('✕', () => onSet(ids.filter((_, j) => j !== i)), null, 'small'))),
+    h('select', { onchange: (e) => e.target.value && onSet([...ids, e.target.value]) }, h('option', { value: '', text: t('roster.tricks.add') }),
+      ...Object.entries(D.TRICKS).sort((a, b) => a[1].name.localeCompare(b[1].name)).map(([k, v]) => h('option', { value: k, text: `${v.name} · ${D.TYPES[v.type].name}` }))));
+}
+// a thing's line of flavour (content/flavor.js), edited in place
+export function flavorField(table, id, redraw) {
+  const path = D.subPath(D.subPath('FLAVOR', table), id);
+  return h('div', { class: `b-field ${B.changed(path) ? 'ch' : ''}` }, h('label', { text: t('maker.flavor') }),
+    h('textarea', { rows: 2, text: D.flavorOf(table, id), placeholder: t('maker.flavor.ph'), onchange: (e) => { B.setValue(path, e.target.value.trim()); redraw(); } }),
+    path in B.draft.changes ? btn('↺', () => { B.revert(path); redraw(); }, null, 'small b-revert') : h('span'));
+}
 
 const isObj = (x) => x && typeof x === 'object';
 // small form helpers bound to one entry's path
@@ -28,7 +47,8 @@ const ask = (label, def, taken) => { const id = (globalThis.prompt?.(label, def)
   if (taken[id]) { toast(t('build.duplicate.taken', { id }), 'warn'); return null; } return id; };
 
 // ---------- classes ----------
-const GROUPS = [['tip', ['trickery', 'ingenuity', 'proficiency']], ['c', ['charisma', 'cunning', 'conviction']], ['bvd', ['balance', 'versatility', 'depth']]];
+// Charisma, Cunning and Conviction have no class base: they are earned at the table by occupying rows (bout.js occBonus)
+const GROUPS = [['tip', ['trickery', 'ingenuity', 'proficiency']], ['bvd', ['balance', 'versatility', 'depth']]];
 export function newClass(from) {
   const id = ask(t('roster.class.newId'), 'my_class', D.CLASSES); if (!id) return null;
   B.setValue(D.subPath('CLASSES', id), { ...JSON.parse(JSON.stringify(D.CLASSES[from || 'hustler'])), name: 'New class', hero: 'Hero' }); return id;
@@ -39,16 +59,16 @@ export function classMaker(id, redraw) {
   return h('div', { class: 'b-maker' }, h('div', { class: 'b-fields' },
     h('span', { class: 'cap', text: t('roster.part.class') }),
     f.field(t('maker.name'), f.text(['name'], K.name), ['name']), f.field(t('roster.hero'), f.text(['hero'], K.hero), ['hero']),
-    f.field(t('chipmaker.text'), h('textarea', { rows: 2, text: K.blurb, onchange: (e) => f.set(['blurb'], e.target.value) }), ['blurb']),
+    flavorField('CLASSES', id, redraw),
     ...GROUPS.flatMap(([g, ks]) => [h('span', { class: 'cap', text: t(`roster.group.${g}`) }),
       ...ks.map((k) => f.field(`${stat(k).name} (${stat(k).short})`, f.number([g, k], K[g][k], { min: g === 'tip' ? 1 : -3 }), [g, k]))]),
     h('span', { class: 'cap', text: t('roster.part.kit') }),
     f.field(t('roster.primary'), f.select(['primary'], GROUPS[0][1].map((k) => [k, stat(k).name]), K.primary), ['primary']),
     f.field(t('roster.deploy'), f.select(['deploy'], [['start', t('roster.deploy.start')], ['center', t('roster.deploy.center')], ['end', t('roster.deploy.end')]], K.deploy), ['deploy']),
-    f.field(t('roster.tricks'), h('input', { type: 'text', value: (K.tricks || []).join(', '), onchange: (e) => { const ids = e.target.value.split(',').map((x) => x.trim()).filter((x) => D.TRICKS[x]); f.set(['tricks'], ids); } }), ['tricks']),
-    f.field(t('roster.dice'), h('input', { type: 'text', value: Object.entries(K.dice || {}).map(([k, n]) => `${n}${k}`).join(', '), onchange: (e) => {
-      const out = {}; for (const part of e.target.value.split(',')) { const m = /^\s*(\d+)\s*(d\d+)\s*$/.exec(part); if (m && D.DICE[m[2]]) out[m[2]] = (out[m[2]] || 0) + Number(m[1]); } f.set(['dice'], out); } }), ['dice'])),
-  h('div', {}, h('span', { class: 'cap', text: t('maker.preview') }), h('div', { class: 'b-card' }, h('b', { text: `${K.hero} the ${K.name}` }), h('p', { text: K.blurb }),
+    f.field(t('roster.tricks'), trickPicker(K.tricks || [], (ids) => f.set(['tricks'], ids)), ['tricks']),
+    f.field(t('roster.dice'), h('div', { class: 'row wrap b-dice' }, ...Object.keys(D.DICE).map((k) => h('label', { class: 'b-die' }, dieEl({ type: k, up: [] }, '', 'mini'),
+      f.number(null, K.dice?.[k] || 0, { min: 0, w: '52px', on: (v) => { const out = { ...(K.dice || {}) }; if (v > 0) out[k] = v | 0; else delete out[k]; f.set(['dice'], out); } })))), ['dice'])),
+  h('div', {}, h('span', { class: 'cap', text: t('maker.preview') }), h('div', { class: 'b-card' }, h('b', { text: `${K.hero} the ${K.name}` }), h('p', { text: D.classRule(id) }), D.flavorOf('CLASSES', id) ? h('p', { class: 'flavor', text: D.flavorOf('CLASSES', id) }) : null,
     h('p', { class: 'dim', text: GROUPS.map(([g, ks]) => ks.map((k) => `${stat(k).short} ${K[g][k]}`).join(' · ')).join(' / ') })),
   h('p', { class: 'sub', text: t('roster.class.note') })));
 }
@@ -66,7 +86,7 @@ function preview(id) {
     const o = R.genOpponent(run, floor, X.boss ? D.FLOORS[floor].boss : D.FLOORS[floor].worth[(X.tables?.[0]) || 0], { roster: id, name: X.name, ...(X.cls ? { cls: X.cls } : {}), ...(X.boss ? { boss: true } : {}) });
     return h('div', { class: 'b-card' }, h('b', { text: o.name }), h('p', { class: 'dim', text: t('roster.preview.floor', { floor: D.FLOORS[floor].name }) }),
       h('p', { text: `${X.cls ? D.CLASSES[o.cls].name : t('roster.randomClass')} · ${o.worth}¢ · ${o.dims.cols}×${o.dims.barRows} Stake, stacks of ${o.dims.stackMax}` }),
-      h('p', { text: `${diceSummary(o.dice)} · ${o.tricks.map((x) => D.TRICKS[x.id]?.name).join(', ')}` }),
+      h('p', { text: diceSummary(o.dice) }), h('div', { class: 'row wrap tags' }, ...o.tricks.filter((x) => D.TRICKS[x.id]).map((x) => trickTag(x, o.cls))),
       o.drink ? h('p', { text: `${t('roster.drink')}: ${o.drink.name}` }) : null,
       h('p', { class: 'dim', text: Object.entries(o.behave).filter(([k, v]) => v !== D.DEFAULT_BEHAVE[k]).map(([k, v]) => D.BEHAVE[k][v]).join(' · ') || t('roster.balanced') }));
   } catch (err) { return h('p', { class: 'bad', text: String(err.message || err) }); }
@@ -79,8 +99,10 @@ export function rosterMaker(id, redraw) {
   const parts = [
     h('span', { class: 'cap', text: t('roster.part.who') }),
     f.field(t('maker.name'), f.text(['name'], X.name), ['name']),
+    flavorField('ROSTER', id, redraw),
     f.field(t('maker.cls'), f.select(['cls'], opt(D.CLASSES, t('roster.randomClass')), X.cls), ['cls']),
     f.field(t('roster.floors'), f.checks(['floors'], [1, 2, 3, 4].map((n) => [n, D.FLOORS[n].name]), X.floors || [1, 2, 3, 4]), ['floors']),
+    X.boss ? f.field(t('roster.trait'), f.select(['trait'], opt(D.BOSS_TRAITS, t('roster.none')), X.trait), ['trait']) : null,
     X.boss ? null : f.field(t('roster.tables'), f.checks(['tables'], [0, 1, 2].map((n) => [n, t('floor.table.name', { n: n + 1 })]), X.tables || [0, 1, 2]), ['tables']),
     h('span', { class: 'cap', text: t('roster.part.loadout') }),
     f.field(t('roster.purse'), f.number(['purse'], X.purse, { min: 0, ph: t('roster.purse.floor') }), ['purse']),
@@ -96,6 +118,9 @@ export function rosterMaker(id, redraw) {
     f.field(t('roster.layout'), layoutGrid(X, (v) => f.set(['layout'], v), redraw), ['layout']),
     h('span', { class: 'cap', text: t('roster.part.behave') }),
     ...Object.keys(D.BEHAVE).map((k) => f.field(t(`roster.beh.${k}`), f.select(['behave', k], opt(D.BEHAVE[k]), beh[k]), ['behave', k])),
+    // its neon sign at the table: laid over the opponents' shared look (Build mode › Neon)
+    h('span', { class: 'cap', text: t('roster.part.sign') }), h('p', { class: 'sub', text: t('roster.sign.note') }),
+    signEditor(D.subPath(D.subPath('ROSTER', id), 'sign'), 'them', X.sign, redraw, [X.name, X.boss ? t('run.high-roller') : X.cls ? D.CLASSES[X.cls].name : t('roster.randomClass')]),
   ];
   if (X.boss) {
     const phases = X.phases || [];

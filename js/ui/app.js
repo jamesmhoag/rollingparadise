@@ -15,7 +15,7 @@ export function oppTip(o) {
   return `<b>${o.name}</b> <span class="dim">${o.title ? o.title + ' · ' : ''}${D.CLASSES[o.cls].name}</span>
     <p>Worth <b>${cents(o.worth)}</b> on the table. Position ${o.dims.meterRows} Bet + ${o.dims.barRows} Stake rows, stacks ${o.dims.stackMax} high.</p>
     <p>Draw ${o.tip.trickery} · Bid ${o.tip.ingenuity} · Roll ${o.tip.proficiency} per turn.</p>
-    <p><span class="k">Dice</span> ${diceSummary(o.dice)}</p><p><span class="k">Tricks</span> ${o.tricks.map((t) => D.TRICKS[t.id].name).join(', ')}</p>`;
+    <p><span class="k">Dice</span> ${diceSummary(o.dice)}</p><p class="tags"><span class="k">Tricks</span> ${o.tricks.map((t) => `<span class="tag-t" style="--tc:${D.TYPES[D.TRICKS[t.id].type].color}">${D.TRICKS[t.id].name}</span>`).join(' ')}</p>${o.roster && D.flavorOf('ROSTER', o.roster) ? `<p class="flavor">${D.flavorOf('ROSTER', o.roster)}</p>` : ''}`;
 }
 
 // top bar: where you are, your attributes, your gear and your purse

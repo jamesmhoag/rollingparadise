@@ -13,7 +13,7 @@ const drain = (g) => { for (const _ of g); }; // eslint-disable-line no-unused-v
   ok(me.pouch.map((d) => d.type).sort().join() === 'd12,d8,d8,d8,d8', 'and the chosen dice');
   ok(o.name === 'Gold Bar', 'the chosen opponent sits across');
   // chips by hand
-  const m = o.dims.meterRows, x = { r: m, c: 0 }, cell = o.grid[m][0], n0 = cell.chips.length;
+  const m = o.dims.meterRows, x = { r: m, c: 0 }, cell = o.grid[m][0], n0 = cell.chips.filter((ch) => !B.isHazard(ch)).length;
   ok(B.sandboxChip(bout, 1, x.r, x.c, { kind: 'burn' }, 'add') && cell.chips.some((ch) => ch.kind === 'burn'), 'add a hazard');
   ok(B.sandboxChip(bout, 1, x.r, x.c, { kind: 'debt', value: 3 }, 'add') && B.debtOf(cell) === 3, 'add Debt');
   ok(B.sandboxChip(bout, 1, x.r, x.c, { kind: 'block' }, 'change') && cell.chips.filter((ch) => !B.isHazard(ch)).at(-1).kind === 'block', 'change the top chip');

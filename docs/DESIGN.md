@@ -15,21 +15,33 @@ is not built yet. Tab names are in **bold**.
 ### The bout (**Bout**, **Plays**, **Effects**, **Tricks**, **Targeting**, **Game**)
 - Goal: deplete the opponent's Worth before they deplete yours.
 - A turn has four planning phases, then the House plays it (see **The turn** below). Draws, rolls and bids left
-  unused pay **as soon as their phase is passed**, as chips on the Bet at random spaces with room (lost if it is
-  full): unused draws make a **Steal chip** (Charisma) that steals from the Stage in the House phase, unused rolls
-  **Power chips** (Conviction), unused bids **Opportunity chips** (Cunning) (rotated in round 17). All added Power is Power chips on the Bet,
+  unused are **held** when their phase is passed (nothing goes on the table yet), and the House **deploys** them in
+  their own phase at what Charisma, Cunning or Conviction is worth then: unused rolls as **Power chips** with the
+  Investments, unused bids as **Opportunity chips** with the Insurances (chips at random Bet spaces with room, lost if
+  it is full), unused draws as a **Steal** from the Stage with the Expenses. All added Power is Power chips on the Bet,
   one per point (Stir, an Investment trait, a Boost or Press bonus too): the same Power chip Empower makes. Each adds
   +1 to your roll effects for the turn (in the Investment phase, or at once if it arrives during play) and lasts that
   turn; nothing spends it. Both sides' chips appear when the phase closes, so you see your opponent's build up. Each step pill says
   in its hover what passing it gives; once passed it shows ✓ (all used) or what it kept.
-- A trick has a Trait (bid, no dice), a Roll effect (bid plus dice, scaled by the total) and a Bonus (full dice of
-  the right type, condition met, matching class only).
+- A trick has a Roll effect and a Bonus; there are no Traits. It plays once **bid on**: its total is the value of the
+  chips bid on it plus the dice put on it in the Bluff (any number, any size, only on a trick bid on this turn), plus
+  Power and the like, times quality and print. A bid with no dice plays the effect at the bid's value. The Bonus
+  reads the trick's first `count` dice of its own size (a flipped chip counts as any size), its condition met,
+  matching class only; the card shows them as pips in the Bonus line.
 - Effects resolve in the workbook's order: Investments, Insurances, Expenses, Corrections.
-- Bids go to the House. A bid worth more than 1¢ makes the trick linger that many extra turns: the Trait repeats
-  each turn and the Roll effect lands on the last turn, larger for the wait.
+- Bids go to the House. A trick **lingers** only by **stacking copies**: drawing a copy of a trick already shown (same
+  trick and quality; any print or condition) puts it on top (Shift-click draws it apart, to aim elsewhere). One bid
+  plays the stack: the top copy this turn, then a copy a turn with the same roll and target, each with its own print;
+  each copy taps as it plays, and the last taps with the dice.
 - Fees go out as Debt on the target stacks, then the House settles them (see **Debt** below).
-- Both Rollers' tricks in a phase are played together. Every value is read from the table as it stood when the
-  phase was called, so nothing played in a phase changes another trick in the same phase.
+- Both Rollers' tricks in a phase are played together, with one exception: when both Rollers' tricks in a phase reach
+  the same space, the space's **owner** plays there first and that trick resolves before the other one (which may then
+  find its chips gone and fizzle or land elsewhere). Power, Boost and the like are read as they stood when the phase
+  was called.
+- **Creatures are a third hand.** Each creature has a type (`CREATURES[kind].type`: UFO, Mothership, Dragon and Ghost
+  Ship are Expenses, Fairy, Unicorn and Mole Corrections, the Ghost an Insurance) and acts in that House phase after
+  both Rollers have played theirs, so a trick aimed at a creature or its stack lands first. New creatures arrive in
+  the House's last phase and act from the next turn.
 - The Stage is shown as stacks of chips in front of the House. The winner takes the whole Stage.
 - Targeting approaches (front, rear, flank, body, any, meter) and distributions (Hit, Swipe, Poke, Hook, Drop,
   Burst, Wave, Aura, Rain) with the workbook's minimum / increment / maximum space counts.
@@ -74,14 +86,18 @@ the pile. Click the pile to take its top chip back. Dice are not placed yet: the
 - Rolling is **one throw a turn**. Undo in the Roll phase drops the picks; once thrown, the values stand. Undo in the
   Bluff takes dice off tricks and back into the roll (and re-aims), never the throw. Undo in Draw or Bid takes back
   that phase only.
+- **The hand.** What you pick up rides with the pointer and dims where it lies: dice from the Pouch (and top chips to
+  flip: click a viable top chip, no button) up to your Roll, chips to bid, rolled dice to put on a trick. Click the
+  roll to throw the handful (the same as pressing Bid), a trick to bid the chips or put the dice on it. What moves
+  starts from the pointer and settles softly. **Right-click lets go** of everything in the hand (with nothing in hand,
+  right-click still switches verbose and concise hovers).
 - **Click to undo**, until the phase is locked in: click a trick drawn this turn to put it back in the Book, a die on
   a trick to take it back into the roll, a chip bid this turn to take it back to the stack it came from, a picked
   die or chip to drop it from the throw, a stack in your hand to let it go.
 - **A phase you cannot act in is skipped on its own**: nothing to draw (an empty Book, no draws), no room or nothing
   to roll, nothing to bid on or with, nothing to aim. The feed says so. A whole turn can pass this way, and the
   draws, rolls and bids left unused still pay their rewards.
-- The limits are shown where they apply: a trick's dice (`1/2` beside its slots: a trick holds at most its dice
-  count, all of one type), the roll (`thrown 2/3` against Proficiency, and what is left in it), the steps (draws,
+- The limits are shown where they apply: the roll (`thrown 2/3` against Proficiency, and what is left in it), the steps (draws,
   rolls and bids left), and a stack (`4/6 high`, **full** when it is). The Run has no limit.
 - A requirement is waived when it cannot be met: an empty Book, no shown trick with room for a die, no die or
   flippable chip, or no chip you could bid without going broke. A bid can never spend your last chip.
@@ -100,14 +116,17 @@ lane (`c`). Columns vary with Versatility and Depth; rows are always 5.
 - **Live preview.** `restorePlan` is read after every action: tapped tricks show under the Book and tapped dice after
   the Pouch, ringed **RESTORES** when the end of the turn would bring them back as the board stands now. The Restore
   badge counts them.
-- **Charisma, Cunning, Conviction** pay for unused draws, rolls and bids only while every Stake row has a chip
-  (checked live; the Stake rows badge and the step pill hovers say so).
-- **Fully Occupied Bet.** Every Bet space occupied at the end of a turn (a Hole is not counted): the next turn opens
-  by restoring every tapped trick and die and gives +1 Draw, Roll and Bid per Bet column for that turn. It repeats
-  every turn the Bet stays Fully Occupied. The Bet badge shows the meter (occupied of total).
+- **Charisma, Cunning, Conviction are earned by occupying rows.** They have no class base. A chip in every row of
+  the **Stake** earns +1 to the class's own (Hustler Charisma, Rascal Cunning, Technician Conviction); a chip in every
+  row of the **Bet** earns +1 to all three. Both together are the class's old 2 / 1 / 1. If the chips holding the rows
+  all sit in **one column**, that zone earns +2 instead: both lined up is +4 / +2 / +2. Otherwise they are 0, apart
+  from food, a sip or a jacket. Amounts in `TUNING.occupancy`. Read live, and again when the House deploys.
+- There is no Fully Occupied Bet bonus any more: more columns held is still how more tricks and dice restore.
+- **Meters on the position.** Under each zone of each position, by its label: a dot per row (lit when held, with what
+  holding them all earns) and a bar per column (lit when held: each restores a trick on the Bet, a die on the Stake).
 - **Stat display.** A step pill (and the opponent's pills) shows the stat as it stands this turn, in the
-  temporary-change colour with ▲ or ▼ when food, drink, a Full Bet or a Curse changes it. The hover splits it into
-  class base, gear (jacket, cards, the run) and each temporary change with its source.
+  temporary-change colour with ▲ or ▼ when food, drink or a Curse changes it. The hover splits it into
+  class base (for Charisma, Cunning and Conviction: what the rows earn now), gear (jacket, cards, the run) and each temporary change with its source.
 
 ### Chip lifetimes (Gameplay tuner)
 The tuner's **Chip lifetimes** set how long the chips the table makes stay (`TUNING.chipLife`): Opportunity, Bounty,
@@ -230,6 +249,9 @@ the ones that cannot be built yet, what is missing; `docs/CHIP-STATUS.md` is the
   Reducer, Rebound and Transpara, and the old Orange chip to the new one.
 - Creatures (UFO, Fairy, Dragon, Mole, and from the 5¢ and 10¢ floors Unicorn and Mothership), Familiars, Spawners
   and Calamities (Inferno, House Audit, Black Hole, Volcano, Tornado), used by the tilts.
+- **Space size.** A position's columns are at most `SPACE` wide (46, in `js/ui/boutview.js`); a side with more
+  columns shrinks them to fit (13 a side fits without touching the Pit), and its chips shrink with them, keeping the
+  same share of a space.
 - Dice are drawn as their solids (d4 triangle, d6 square, d8 diamond, d10 hexagon, d20 octagon) and chips as discs
   with an edge. A die's shape alone says its size; its colour and finish come from its material (`MATERIALS` in
   `js/content/dice.js` gives the colour, the `.m-*` skins in `css/style.css` the finish): Plastic matte, Glass clear,
@@ -280,12 +302,13 @@ can see it). Tweak an aim by clicking the trick, or its marked target on the tab
 it), then a new space. Aims stay hidden until the House plays them. The button after Bid reads **Bluff**, and in the Bluff it reads **Play**.
 
 ### Reading a trick
-A card shows how its total is made under the number: the dice, `+n linger` from the bid (turns × dice), `+n pow`
-(Power), Vengeance, `+n trait` (a Reprint Expense), `×` quality and foil, `×` last call and `×2` for a doubling bonus.
-A Grand or Royal card shows its quality die (`d10:7`): red when it is a dud, glowing when it is hot. Its hover says the same in words. Once
-the bid is paid to the House, the card keeps `bid 1+1¢` where its pile stood. Tricks still lingering mark the spaces they
-will land on, for both Rollers: blue outlines for yours, red for your opponent's, with the trick's name and turns
-left.
+A trick in the Book shows the chip it makes (or what stands for its effect: Debt for a fee, the hazard an element fee
+leaves, the effect chip a maker places) beside its name, and its Bonus requirement as a gold ★ badge: how many dice of
+which size. Book cards are a little taller for it. A card shows how its total is made under the number: the dice, `+n bid`, `+n pow` (Power), Vengeance, a Misprint's
+changed value, `×` quality and foil, `×` last call and `×2` for a doubling bonus.
+A Grand or Royal card shows its quality die (`d10:7`): red when it is a dud, glowing when it is hot. Its hover says the same in words. A stack
+shows `⧉ ×n` by its name and the copies under it as a shadow. Tricks still lingering mark the spaces they will land
+on, for both Rollers: blue outlines for yours, red for your opponent's, with the trick's name and copies left.
 
 ### Fees on nothing, and overkill
 A fee spreads its overkill as it lands: what a stack cannot pay goes straight on to the stacks behind it in the
@@ -322,6 +345,14 @@ Right-click anywhere to switch every hover and the table prompts between verbose
 before and after, and what one point of it does. Dropping a card says what you lose. Hovering the BET or STAKE label
 of either Roller explains its size: depth (2 or 3 base rows + Versatility or Depth), width (5 lanes for everyone)
 and stack height (3 + Balance), with where each bonus comes from.
+
+### Sound
+Sound effects are synthesized in the browser (`js/ui/sfx.js`, Web Audio, no files): a card slid onto the Run (a
+heavier one when a copy stacks), a chip bid or picked up, a die set down or picked up, a handful thrown, chips landing
+and chips paid to the Stage. Each House play has the voice of its effect: Investments ring upward, Insurances thud,
+Expenses ring the till, Corrections sweep; an element trick sounds like its element (fire crackles, shock zaps, frost
+tinkles, acid fizzes, Boom thumps, poison bubbles, corruption grinds); creatures, hazards, misses and bonuses have
+their own. The 🔊 button beside the music's ♪ turns them off.
 
 ### The Library
 Opens from the title screen, the HUD on the floor and the commitment screen, and the bout table. Tabs for chips,
@@ -361,6 +392,37 @@ what you own, carry or wear is marked.
 - Wager ×1.5 at tables, ×3 at the High Roller, capped at ×3. Double Down doubles it up to ×6, keeps the last
   bout's Challenge tilts, drops Cheat tilts, and on a win opens the High Roller and grants a Suite Key Card.
 
+### Text: rules from the data, flavour as a default
+Words that state a rule or a number are written from the data, so changing a value changes what the game says about it:
+a class's strengths (`classRule`: the actions it has most of, the position stat it leans on, where it deploys), a
+Resist Card's r, a High Roller's trait, a trick's Bonus badge, wallet capacities. Lists of things are shown as the
+things themselves (trick tags with their own hovers), never as a comma-separated string: the Class maker picks tricks
+from a menu and sets dice by count, opponent hovers and previews show trick tags, the Book spine and ledger hovers too.
+What the data cannot say is the colour: every class, trick type, trick, chip, shop chip, creature, weather, calamity,
+tilt, felt, drink, jacket, wallet, card, pass, die material, die upgrade and opponent starts with a line of flavour in
+`js/content/flavor.js` (table `FLAVOR`, editable in Build mode; the makers have a Flavour field), shown in italics in
+its hover.
+
+### Neon signs
+Every seat at the table is a neon sign, and so is the House's (`js/ui/sign.js`). A sign has a tube and glow colour for
+its frame, name and class; a frame style (tube, double, dashed, dotted, bulbs, none) and corner rounding; a Unicode
+symbol at the corners or along the edge; a mount (a backing colour and an image, by URL or from a file); and one part
+that blinks (breathe, pulse, flicker or alternate). Every blink is slow and soft (well under three changes a second,
+never fully dark) and all of them, the House's bulbs included, stop under reduced motion. Build mode › Neon sets
+yours, the opponents' shared look and the House's (`D.NEON.you / them / house`); the Opponent maker gives any
+opponent its own (`ROSTER[id].sign`, laid over the shared look). The House's bulb flash was slowed to stay under three
+flashes a second.
+
+### High Roller traits (business cards)
+Business Cards no longer raise your attributes (old saves drop them; the starter wallet gets the discount cards).
+Instead every High Roller hands you a business card at the table: a **trait** (`BOSS_TRAITS` in
+`js/content/bosstraits.js`, set per High Roller in the Opponent maker) that bends one rule their way. Each has a
+rule `k` with its numbers (`vars`), a title and a line of flavour; the rule's words are written from `k` and `vars`.
+Rules: `pitback` (n of its own chips climb back out of its Pit each turn), `fireproof` (its stacks start Burning;
+fire and acid take nothing from them), `hardened` (front stacks start Hardened for some turns), `wet` (stacks start
+soaked), `interest` (a 1¢ chip on its Bet each turn per so many ¢ of Worth, capped), `resist` (fees n¢ smaller),
+`tempo` (+1 Draw, Roll and Bid every few turns). A High Roller's sign is larger, with the card beside it.
+
 ### Winning, losing, leaving (**Winnings**, **Losings**, **Suite**, **Gift Shop**, **Gear**, **Paradise Ascent**)
 - Win: surviving chips, your fees restored, the opponent's fees, the wager times its multiplier, the multiplier
   on your deployed shop chips (staked at their shop price), the tilt bounty or cut, a chip per Opportunity chip, Gold
@@ -383,10 +445,9 @@ what you own, carry or wear is marked.
   74), the shelf Excellent (99), foil packs Mint (100). Gem Mint comes only out of packs (8% a trick) and is Mint
   until it first plays. A Poor trick plays forever at full strength.
 - **Rarity**: Basic; **Foil** in three tiers that multiply the roll total (Foil ×1.25, Holo ×1.5, Prism ×2;
-  Investments +0.25 a tier); **Misprint**, a changed die (one size up, sometimes down, among d4/d6/d8) or Trait value
-  (+1 to +3, sometimes −1), three in four for the better; **Reprint**, an older rule for its type: an Expense plays
-  its roll effect once per die, each die plus the Trait value; Insurances, Investments and Corrections play their
-  Trait once per die on the trick. An Upgrade chip bid on a trick plays it one foil tier higher.
+  Investments +0.25 a tier); **Misprint**, a changed die (one size up, sometimes down, among d4/d6/d8) or effect
+  value (+1 to +3, sometimes −1), three in four for the better; **Reprint**, an older rule: the roll effect plays
+  once per die, each worth that die (the bid joins the first). An Upgrade chip bid on a trick plays it one foil tier higher.
 - **Quality** (Common, Fine, Grand, Royal) is unlocked by floor and sets the multiplier. Common and Fine roll only
   their own small dice and are reliable. Grand and Royal roll a quality die when drawn (d10, d20): a dud (1; 1–2)
   plays at Common strength that turn; a hot roll (10; 19–20) sets off the Bonus whatever the dice. Drawing a trick

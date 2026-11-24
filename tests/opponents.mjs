@@ -52,5 +52,18 @@ ok(Object.keys(D.ROSTER).length === D.OPPONENTS.length + D.BOSSES.slice(1).flat(
   });
   ok(refundOk, 'a Roller holding bids back bids only once a turn');
 }
+{ // High Roller traits: every boss on the roster carries a business card, and it plays
+  ok(Object.values(D.ROSTER).filter((x) => x.boss).every((x) => D.BOSS_TRAITS[x.trait]), 'every High Roller has a trait');
+  ok(!D.STARTER_CARDS.some((id) => id.startsWith('business_')) && !Object.keys(D.CARDS).some((id) => id.startsWith('business_')), 'Business Cards no longer raise your attributes');
+  const at = (roster) => R.testTable({ cls: 'rascal', floor: 2, purse: 200, roster, rules: false }).bout;
+  { const b = at('exotic_animal'), o = b.sides[1];
+    ok(B.bossTrait(o)?.k === 'fireproof' && o.grid.flat().filter((cell) => cell.chips.some((ch) => ch.kind === 'std')).every((cell) => cell.chips.some((ch) => ch.kind === 'burn')), 'Wildfire: every stack starts Burning');
+    const w0 = B.worth(o); drain(B._test.ticks(b)); ok(B.worth(o) === w0, 'and the fire takes nothing'); }
+  { const b = at('gold_bar'), o = b.sides[1]; ok(o.grid.flat().some((cell) => B.hardOf(cell) > 0), 'Bullion: its front stacks start Hardened'); }
+  { const b = at('atm_machine'), o = b.sides[1]; b.pit[1].push({ id: 8e6, kind: 'std', value: 1, from: 'fee' }); b.stage.paid[1] = 1; const w0 = B.worth(o);
+    b.phase = 'resolve'; for (const s of b.sides) for (const e of s.run) e.state = 'shown'; drain(B.resolve(b));
+    ok(B.worth(o) >= w0 + 1 || b.over, 'Withdrawal: a chip climbs back out of its Pit each turn'); }
+  ok(/1¢ chip on its Bet for every 20¢/.test(B.traitRule(D.BOSS_TRAITS.stacked)), 'the rule is written from the numbers');
+}
 if (fails.length) { console.log('FAIL ' + fails.join('\nFAIL ')); process.exit(1); }
-console.log('ok, opponents: roster, loadouts, layouts, behaviours and High Roller phases');
+console.log('ok, opponents: roster, loadouts, layouts, behaviours, High Roller phases and traits');

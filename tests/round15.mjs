@@ -60,7 +60,7 @@ for (const id of D.SHOP_IDS()) assert(!D.makerOf(id), `${D.SHOP_CHIPS[id].name} 
   assert(left.length >= 3 && me.overflow - o0 === left.length, 'what does not fit on the Meter is lost and counted');
   assert(B.validTargets(bout, me, entry('block', [2, 2], { state: 'bid' })).length === 0, 'a full Meter cannot be aimed at');
   const st = drain(play(bout, me, entry('block', [2, 2])));
-  assert(st.some((x) => /no room/.test(x.text)), 'the trick still plays and says what was lost');
+  assert(st.some((x) => /no room|fizzles/.test(x.text)), 'the trick still plays and says what was lost');
   assert(B.pressure(bout, me).overkill > 0 && B.pressure(bout, me).fill === 1, 'overflow and a full Meter count toward the House\'s pressure');
 }
 

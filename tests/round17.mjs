@@ -39,11 +39,11 @@ const entry = (trick, vals, extra = {}) => ({ uid: 'x' + trick.id, trick, dice: 
   assert(B.trickMult({ id: 'charge', q: 2, foil: 1 }) === 2.5 && B.trickMult({ id: 'charge', q: 2, foil: 2 }) === 3 && B.trickMult({ id: 'charge', q: 2, foil: 3 }) === 4, 'Foil ×1.25, Holo ×1.5, Prism ×2');
   assert(B.trickMult(B.effTrick({ trick: { id: 'charge', q: 1, foil: 1 }, upBoost: 1 })) === 1.5, 'an Upgrade chip bid plays the trick one foil tier higher');
 }
-// ---------- Misprints: a changed die or Trait ----------
+// ---------- Misprints: a changed die or effect value ----------
 {
   const t = { id: 'charge', q: 1, rar: 'misprint', mis: { die: 'd8', trait: 3 } };
   assert(D.defOf(t).die === 'd8' && D.TRICKS.charge.die === 'd6', 'a Misprint prints its own die; the plain print is untouched');
-  assert(B.traitOf(t) === B.traitOf({ id: 'charge', q: 1 }) + 3, 'a Misprint changes the Trait value');
+  assert(B.misPlus(t) === 3 && B.misPlus({ id: 'charge', q: 1 }) === 0, 'a Misprint changes the effect value');
   const { bout, me } = table(5);
   const e = entry(t, [3, 3], { dice: [{ id: 'a', type: 'd6', value: 3 }, { id: 'b', type: 'd6', value: 3 }] }); assert(!B.bonusMet(me, e) && B.bonusMet(me, entry(t, [3, 3])), 'its Bonus asks for its printed die');
   void bout;
@@ -51,13 +51,10 @@ const entry = (trick, vals, extra = {}) => ({ uid: 'x' + trick.id, trick, dice: 
 // ---------- Reprints: older rules ----------
 {
   const { bout, me, opp } = table(6);
-  const plain = { id: 'charge', q: 1 }, re = { ...plain, rar: 'reprint' }, m = B.traitOf(plain);
-  assert(B.previewTotal(me, entry(re, [2, 3])) === B.previewTotal(me, entry(plain, [2, 3])) + 2 * m * (me.heat || 1), 'a Reprint Expense counts the Trait value on each die');
-  const st = drain(B._test.play(bout, me, entry(re, [2, 3])));
-  assert(st.filter((x) => /Charge \(\d \+\d Trait/.test(x.text)).length === 2, 'a Reprint Expense plays once per die, each die plus the Trait value');
-  const blocks = (s) => s.grid.flat().reduce((n, c) => n + c.chips.filter((ch) => ch.kind === 'block').length, 0);
-  const b0 = blocks(me); drain(B._test.play(bout, me, entry({ id: 'block', q: 1, rar: 'reprint' }, [1, 1], { lingerLeft: 1 })));
-  assert(blocks(me) - b0 === 2 * B.traitOf({ id: 'block', q: 1 }) || me.overflow > 0, 'a Reprint Insurance plays its Trait once per die');
+  const plain = { id: 'charge', q: 1 }, re = { ...plain, rar: 'reprint' };
+  const st = drain(B._test.play(bout, me, entry(re, [2, 3], { paid: [1] })));
+  assert(st.filter((x) => /Charge \(/.test(x.text)).length === 2, 'a Reprint plays its roll effect once per die');
+  assert(st.filter((x) => /bid/.test(x.text)).length === 1, 'the bid joins the first instance only');
   void opp;
 }
 // ---------- quality: Grand and Royal roll a quality die when drawn ----------

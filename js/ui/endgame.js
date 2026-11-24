@@ -5,6 +5,7 @@ import { jacketTip, trickTip, trickWords, cardTip, dieTip, dieEl, passEl } from 
 import { planner } from './prep.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
+import { flavorP } from './parts.js';
 import { cents } from '../util.js';
 import { t } from '../text.js';
 
@@ -19,7 +20,7 @@ function jacketList(onPick, forSale) {
   render(); return { el: box, render };
 }
 
-export const walletTip = (id) => { const Wl = D.WALLETS[id]; return t('end.wallet.tip', { name: Wl.name, n: Wl.slots, p: R.passCap(id), keep: Wl.keep }); };
+export const walletTip = (id) => { const Wl = D.WALLETS[id]; return t('end.wallet.tip', { name: Wl.name, n: Wl.slots, p: R.passCap(id), keep: Wl.keep }) + flavorP('WALLETS', id); };
 function walletList(onBuy) {
   const run = app.run, meta = app.meta, box = h('div', { class: 'items list' });
   function render() {

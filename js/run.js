@@ -20,6 +20,7 @@ export const clearRun = () => { try { store()?.removeItem(RUN_KEY); } catch { /*
 function migrate(run) {
   if (run.pass == null) { // the Royal Card became the Casino Pass; a run already on a floor holds that floor's pass, unless the card was dropped
     run.pass = run.cards?.includes('royal') ? Math.max(1, run.floor || 0) : 0; if (run.cards) run.cards = run.cards.filter((c) => c !== 'royal'); }
+  if (run.cards) run.cards = run.cards.filter((c) => !D.RETIRED_CARDS.includes(c)); // Business Cards became High Roller traits
   if (!Array.isArray(run.passes)) run.passes = run.pass ? [run.pass] : []; // a wallet can hold more than one pass
   for (const t of run.tricks || []) { // Trick Trader upgrades are gone: an upgraded trick becomes the foil it played as
     if (t.wear == null) t.wear = D.WEAR.good;
@@ -85,7 +86,7 @@ export function dimsWhy(run, extra = {}) {
 }
 // effective attributes: class + jacket + cards + rest + cheat tilts
 export function rollerStats(run, extra = {}) {
-  const K = D.CLASSES[run.cls], v = { ...K.tip, ...K.c, ...K.bvd };
+  const K = D.CLASSES[run.cls], v = { ...K.tip, charisma: 0, cunning: 0, conviction: 0, ...K.bvd }; // CCC: only what gear adds (the table earns the rest)
   const add = (mods) => { for (const [k, n] of Object.entries(mods || {})) v[k] = (v[k] || 0) + n; };
   add(D.JACKETS[run.jacket]?.mods); for (const id of run.cards) add(D.CARDS[id]?.mods);
   if (run.rest && run.rest.bouts > 0) add({ [K.primary]: run.rest.amt });
@@ -93,7 +94,7 @@ export function rollerStats(run, extra = {}) {
   for (let i = 0; i < (extra.position || 0); i++) v[bvdKeys[i % 3]] += 1;
   const dims = { cols: D.BASE_DIMS.cols, stackMax: Math.max(1, D.BASE_DIMS.stackMax + v.balance), meterRows: Math.max(1, D.BASE_DIMS.meterRows + v.versatility), barRows: Math.max(1, D.BASE_DIMS.barRows + v.depth) };
   return { v, dims, tip: { trickery: Math.max(1, v.trickery), ingenuity: Math.max(1, v.ingenuity), proficiency: Math.max(1, v.proficiency) },
-    c: { charisma: Math.max(0, v.charisma), cunning: Math.max(0, v.cunning), conviction: Math.max(0, v.conviction) } };
+    c: { charisma: v.charisma, cunning: v.cunning, conviction: v.conviction } }; // can be below 0: a jacket's cost comes off what the table earns
 }
 export const maxDenom = (floor) => Math.max(...D.DENOMS.filter((d) => d.floor <= Math.max(1, floor)).map((d) => d.value));
 export const denomsFor = (floor) => D.DENOMS.filter((d) => d.floor <= Math.max(1, floor)).map((d) => d.value);
@@ -105,11 +106,13 @@ export const chipFloor = (run) => (run.phase === 'ascent' ? D.ASCENT_FLOOR : run
 // The roster (content/roster.js): the opponents who can sit at a floor's tables, or at its head table
 export const rosterFor = (floor, table) => Object.entries(D.ROSTER).filter(([, X]) => (table === 'boss' ? X.boss : !X.boss) && (!X.floors || X.floors.includes(floor)) && (table === 'boss' || !X.tables || X.tables.includes(table))).map(([id]) => id);
 // the generation options a roster entry sets
+// a High Roller dealt by name from BOSSES (no roster entry) takes the trait of the roster entry with that name
+const bossTraitByName = (name) => Object.values(D.ROSTER).find((x) => x.boss && x.name === name)?.trait || null;
 function rosterOpts(id, o = {}) { const X = D.ROSTER[id]; if (!X) return o; return { ...o, name: X.name, roster: id, ...(X.cls && D.CLASSES[X.cls] ? { cls: X.cls } : {}) }; }
 export function genOpponent(run, floor, worthTarget, o = {}) {
   const X = o.roster ? D.ROSTER[o.roster] : null; if (X?.purse > 0) worthTarget = X.purse;
   const rng = run.rng, cls = o.cls || rng.pick(Object.keys(D.CLASSES)), K = D.CLASSES[cls], f = clamp(floor, 1, 4);
-  const tip = { ...K.tip }, c = { ...K.c }, bvd = { ...K.bvd };
+  const tip = { ...K.tip }, c = { charisma: 0, cunning: 0, conviction: 0 }, bvd = { ...K.bvd };
   for (const [k, v] of Object.entries(D.JACKETS[X?.jacket]?.mods || {})) { if (k in tip) tip[k] += v; else if (k in c) c[k] += v; else if (k in bvd) bvd[k] += v; } // its jacket
   if (floor >= 2) tip.proficiency++; if (floor >= 3) tip.ingenuity++; if (floor >= 4) tip.trickery++;
   const why = { balance: [[tx('run.class', { name: K.name }), K.bvd.balance]].filter((x) => x[1]), versatility: [[tx('run.class', { name: K.name }), K.bvd.versatility]].filter((x) => x[1]), depth: [[tx('run.class', { name: K.name }), K.bvd.depth]].filter((x) => x[1]) };
@@ -136,10 +139,10 @@ export function genOpponent(run, floor, worthTarget, o = {}) {
   if (o.cols) why.note = tx('run.a-bar-table-only');
   for (const [id, n] of Object.entries(X?.chips || {})) if (n > 0 && D.SHOP_CHIPS[id]) groups.push({ value: 1, count: n, resist: id }); // its own chips
   const drink = X?.drink ? D.DRINKS.find((d) => d.id === X.drink) : null;
-  return { name: o.name || rng.pick(D.OPPONENTS), title: o.title || '', cls, floor, boss: !!o.boss, ai: true, tip, c, dims, why, deploy: K.deploy, dice, tricks,
+  return { name: o.name || rng.pick(D.OPPONENTS), title: o.title || '', cls, floor, ai: true, tip, c, dims, why, deploy: K.deploy, dice, tricks,
     plan: { chips: groups, spacing: X?.deploy?.spacing || 'row', stacking: X?.deploy?.stacking || 'maxed', ...(X?.layout?.length ? { layout: X.layout } : {}) },
     worth: X?.layout?.length ? X.layout.reduce((t, sp) => t + (sp.chips || []).reduce((u, it) => u + (typeof it === 'number' ? it : 1), 0), 0) : nBig * big + petty,
-    roster: o.roster || null, wallet: X?.wallet || null, drink: drink ? { ...drink } : null,
+    roster: o.roster || null, sign: X?.sign || null, trait: X?.boss || o.boss ? X?.trait || bossTraitByName(o.name) : null, boss: !!(o.boss || X?.boss), wallet: X?.wallet || null, drink: drink ? { ...drink } : null,
     behave: { ...D.DEFAULT_BEHAVE, ...(X?.behave || {}) }, phases: X?.phases ? JSON.parse(JSON.stringify(X.phases)) : null };
 }
 

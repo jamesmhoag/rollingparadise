@@ -4,6 +4,7 @@ import { h, btn, toast } from './core.js';
 import * as D from '../data.js';
 import * as B from '../build/draft.js';
 import { trickTip } from './parts.js';
+import { flavorField } from './rostermaker.js';
 import { t } from '../text.js';
 import { CONVERT, PLACE, DEPLOY, BONUS, AIMS, ZONES, CLASSIC, NEW_TRICK } from '../content/trickmaker.js';
 import { isMade, makeName, makeKind, makeChoices, describeRoll, describeBonus, isFxChip, DIST_OF } from '../trickmaker.js';
@@ -42,6 +43,7 @@ export function trickMaker(id, redraw) {
   const parts = [
     h('span', { class: 'cap', text: t('maker.part.card') }),
     field(t('maker.name'), text(['name'], def.name), ['name']),
+    flavorField('TRICKS', id, redraw),
     field(t('maker.type'), select(['type'], opts(D.TYPES, (x) => x.name), def.type), ['type']),
     field(t('maker.cls'), select(['cls'], [[null, t('maker.anyClass')], ...opts(D.CLASSES, (x) => x.name)], def.cls), ['cls']),
     field(t('maker.die'), select(['die'], D.COMPLEXITY.concat(Object.keys(D.DICE).filter((k) => !D.COMPLEXITY.includes(k))).map((k) => [k, k]), def.die), ['die']),

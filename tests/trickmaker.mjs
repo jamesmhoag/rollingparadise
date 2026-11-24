@@ -52,7 +52,8 @@ const fullOf = (s) => { const x = s.grid.flatMap((row, r) => row.map((cell, c) =
   ok(B.worth(opp) < before, 'fees from a made Expense take Worth');
 }
 { // extra chip bonus, and a trick that aims at either side
-  const { bout, me } = table(), x = fullOf(me), b0 = kind(me, 'counter');
+  const { bout, me, opp } = table(), x = fullOf(me), b0 = kind(me, 'counter');
+  const oc = opp.grid.flat().find((cell) => cell.chips.some((ch) => ch.kind === 'std')); oc.chips.splice(oc.chips.findIndex((ch) => ch.kind === 'std'), 1); // room on one of their stacks
   const id = made('t_any', { type: 'insurance', side: 'any', approach: 'any', roll: { chip: 'block', convert: 'lump', deploy: 'hit' }, bonus: { cond: 'match', k: 'extra', chip: 'counter', n: 2 } });
   const e = entry(id, [4, 4], { side: 0, r: x.r, c: x.c });
   ok(B.validTargets(bout, me, e).some((v) => v.side === 0) && B.validTargets(bout, me, e).some((v) => v.side === 1), 'a trick for either side can aim at both positions');

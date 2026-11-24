@@ -12,10 +12,10 @@ for (const [id, cls] of [['long', 'technician'], ['leather', 'hustler'], ['bombe
   }
 }
 assert.ok(R.jacketFits('rascal', 'rain'), 'level 1+ jackets fit everyone');
-// a jacket's drawback lands on a 2, never zeroes a 1
+// a level 0 jacket's drawback lands on its class's own reward stat, the one its Stake earns most of
 for (const id of ['long', 'leather', 'bomber']) {
   const J = D.JACKETS[id], [stat] = Object.entries(J.mods).find(([, n]) => n < 0);
-  assert.equal(D.CLASSES[J.cls].c[stat], 2, `${id} drawback on ${stat}`);
+  assert.equal(D.primaryC(J.cls), stat, `${id} drawback on ${stat}`);
 }
 
 // tilts: a Challenge pays a bounty, a Cheat takes a cut, both as a share of the opponent's worth

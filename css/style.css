@@ -213,7 +213,14 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .c-compact, .c-open { position: absolute; inset: 0; transition: opacity .35s; } .c-compact { display: flex; align-items: center; gap: 8px; padding: 0 9px; font-size: 12.5px; } .c-compact .req { margin-left: auto; font-size: 10.5px; color: #9fb0d8; } .c-compact .q, .c-name .q { color: var(--gold); }
 .c-open { opacity: 0; pointer-events: none; padding: 7px 8px; display: flex; flex-direction: column; gap: 4px; } .tcard.open .c-open { opacity: 1; pointer-events: auto; } .tcard.open .c-compact { opacity: 0; pointer-events: none; }
 .c-name { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; } .c-type { font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--tc); font-weight: 800; }
-.c-slots { display: flex; gap: 6px; height: 34px; flex: none; align-content: flex-start; flex-wrap: wrap; } .slot { width: 30px; height: 30px; border-radius: 7px; border: 1.5px dashed #6f7fb0; font-size: 9px; color: #6f7fb0; display: grid; place-items: center; transition: border-color .3s, color .3s; } .slot.full { border-color: transparent; color: transparent; }
+/* any number of dice go on a bid trick, over the dice row; a stack of copies shows its count in the row's corner */
+.c-dice { position: relative; height: 34px; flex: none; border-radius: 7px; border: 1.5px dashed rgba(111, 127, 176, .35); } .tcard.bid .c-dice { border-color: rgba(255, 110, 220, .55); } .tcard.inplay .c-dice { border-color: transparent; }
+.c-stack { margin-left: auto; margin-right: 6px; font-size: 10px; font-weight: 800; color: var(--gold); cursor: help; }
+.tcard.stacked { box-shadow: calc(var(--stack) * 3px) calc(var(--stack) * -3px) 0 -1px color-mix(in srgb, var(--tc) 55%, #0c0820), 0 5px 14px rgba(0, 0, 0, .4); }
+/* the Bonus asks for its own dice: a pip per die of its size, lit as they go on */
+.c-need { display: inline-flex; gap: 2px; margin-right: 4px; vertical-align: 1px; } .c-need .need { font-style: normal; font-size: 7.5px; font-weight: 800; padding: 0 3px; border-radius: 3px; border: 1px dashed var(--tc); color: var(--tc); line-height: 11px; }
+.c-need .need.full { background: var(--tc); color: #0c0820; border-style: solid; } .bonus.met .c-need .need { background: #fff; color: #2f8f55; border-color: #fff; }
+.die.on.bonusd { box-shadow: 0 0 0 2px var(--gold), 0 0 10px rgba(255, 215, 106, .65); }
 .c-bid { display: flex; gap: 6px; align-items: center; height: 34px; flex: none; } .bidslot { width: 34px; height: 34px; border-radius: 50%; border: 2px dashed #6f7fb0; display: grid; place-items: center; font-size: 8.5px; font-weight: 800; color: #9fb0d8; transition: all .3s; }
 .tcard.open:not(.inplay) .bidslot:hover, .tcard.active .bidslot { border-color: var(--pink); background: rgba(255, 110, 220, .22); color: #fff; box-shadow: 0 0 10px rgba(255, 110, 220, .6); } .tcard.bid .bidslot, .tcard.inplay .bidslot { border-color: transparent; color: transparent; }
 .c-bid .tgt { font-size: 10px; padding: 2px 8px; border-radius: 9px; background: var(--coral); color: #fff; opacity: 0; pointer-events: none; transition: opacity .3s; margin-left: auto; } .c-bid .tgt.on { opacity: 1; pointer-events: auto; }
@@ -846,7 +853,7 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 .marquee i { animation: var(--anim) var(--dur) var(--del) infinite both; }
 .marquee.idle { --anim: twinkle; --dur: 2.6s; } .marquee.idle i { --del: calc(var(--i) * -0.37s); }
 .marquee.chase { --anim: chase; --dur: 1.1s; } .marquee.chase i { --del: calc(var(--i) / var(--n) * 1.1s); }
-.marquee.flash { --anim: flash; --dur: .22s; } .marquee.flash i { --del: 0s; } .marquee.flash i:nth-child(even) { --del: -.11s; }
+.marquee.flash { --anim: flash; --dur: .7s; } .marquee.flash i { --del: 0s; } .marquee.flash i:nth-child(even) { --del: -.35s; } /* under 3 flashes a second, never a strobe */
 .marquee.hot { --lc: #ff4d6a; } .marquee.hot.idle { --dur: 1.3s; }
 @keyframes twinkle { 0%, 100% { background: var(--lc); box-shadow: 0 0 5px var(--lc), 0 0 10px var(--lc); } 50% { background: color-mix(in srgb, var(--lc) 45%, #2a2010); box-shadow: 0 0 2px var(--lc); } }
 @keyframes chase { 0%, 18% { background: #fff; box-shadow: 0 0 6px #fff, 0 0 12px var(--lc), 0 0 20px var(--lc); } 30%, 100% { background: color-mix(in srgb, var(--lc) 40%, #2a2010); box-shadow: 0 0 2px var(--lc); } }
@@ -871,8 +878,7 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 /* ---------- the Rollers' name signs (colours from D.NEON, set in Build mode › Neon) ----------
    The name in script over the class in capitals, each in its own tube and glow colours; your seat wears a neon frame. */
 .who.seat { width: 424px; top: 368px; align-items: center; row-gap: 4px; }
-.who.seat.me { padding: 4px 10px 5px; left: 10px; border-radius: 12px; border: 2px solid var(--you-border1);
-  box-shadow: 0 0 4px var(--you-border1), 0 0 14px var(--you-border2), inset 0 0 8px color-mix(in srgb, var(--you-border1) 35%, transparent), inset 0 0 18px color-mix(in srgb, var(--you-border2) 18%, transparent); }
+.who.seat.me { left: 10px; } /* its frame is its sign's (.neonsign.frame-*) */
 .who .name.nsign { display: inline-grid; justify-items: start; line-height: 1; cursor: help; } .who.them .name.nsign { justify-items: end; }
 .neon-name { font-family: var(--script) !important; font-weight: 400; font-size: 27px !important; line-height: 26px; letter-spacing: .01em; }
 .neon-class { font-family: var(--display); font-size: 9.5px; font-weight: 700; letter-spacing: .32em; text-transform: uppercase; margin-top: 1px; padding-left: 2px; }
@@ -887,18 +893,86 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 .neon-in { display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; } .neon-in input { width: 34px; height: 24px; padding: 0; border: 0; background: none; cursor: pointer; }
 .scene.bout .tcard .c-text { line-height: 1.17; } .scene.bout .tcard .c-open { gap: 3px; }
 
-/* ---------- occupancy meters in each seat: Bet spaces, Stake lanes, Restore columns ---------- */
-.meters { display: flex; gap: 10px; align-items: flex-end; margin: 0 4px; }
-.meter-i { display: grid; justify-items: center; gap: 2px; cursor: help; }
-.meter-i small { font-size: 8px; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); line-height: 1; }
-.meter-i.full small { color: var(--cream); }
-.mi { display: grid; gap: 1px; height: 22px; align-content: center; }
-.mi i { display: block; border-radius: 1px; background: rgba(255, 255, 255, .1); transition: background-color .3s, box-shadow .3s; }
-.mi-bet { grid-template-columns: repeat(var(--gc), 4px); grid-auto-rows: 3.4px; }
-.mi-bet i.on { background: #7dff9e; } .mi-bet i.x { background: transparent; outline: 1px solid rgba(255, 255, 255, .08); }
-.meter-i.bet.full .mi-bet i.on { box-shadow: 0 0 4px #7dff9e; }
-.mi-stake { width: 18px; grid-auto-rows: 3.4px; } .mi-stake i.on { background: #ffc478; } .meter-i.stake.full .mi-stake i { box-shadow: 0 0 4px #ffc478; }
-.mi-restore { grid-auto-flow: column; grid-auto-columns: 3px; height: 22px; align-content: stretch; gap: 2px; }
-.mi-restore i { height: 20px; align-self: center; } .mi-restore b { width: 2px; }
-.mi-restore i.b.on { background: #7dff9e; } .mi-restore i.s.on { background: #ffc478; } .meter-i.restore.full .mi-restore i { box-shadow: 0 0 4px currentColor; }
+/* ---------- occupancy meters under each zone of the position: rows held (CCC), columns held (restore) ---------- */
+.zone-label { gap: 6px; overflow: visible; }
+.zone-label b { cursor: help; }
+.zm-rows, .zm-cols { display: inline-flex; gap: 2px; align-items: center; height: 12px; cursor: help; align-self: center; }
+.zm-rows i { width: 4px; height: 4px; border-radius: 50%; background: rgba(255, 255, 255, .14); transition: background-color .3s, box-shadow .3s; }
+.zm-rows.bet i.on { background: #7dff9e; } .zm-rows.stake i.on { background: #ffc478; }
+.zm-rows.full i { box-shadow: 0 0 4px currentColor; } .zm-rows.bet.full { color: #7dff9e; } .zm-rows.stake.full { color: #ffc478; }
+.zm-bonus { font-style: normal; font-size: 9px; letter-spacing: .04em; color: var(--cream); text-shadow: 0 0 6px rgba(255, 215, 106, .6); min-width: 0; }
+.zm-cols i { width: 3px; height: 10px; border-radius: 1px; background: rgba(255, 255, 255, .1); transition: background-color .3s; }
+.zm-cols.bet i.on { background: #7dff9e; } .zm-cols.stake i.on { background: #ffc478; } .zm-cols i.al { outline: 1px solid var(--cream); }
 .who.seat .badges { min-height: 0; }
+
+/* ---------- High Rollers: a bigger sign, and the business card with their trait ---------- */
+.who.them.boss .neon-name { font-size: 38px !important; line-height: 36px; }
+.who.them.boss .neon-class { font-size: 13px; letter-spacing: .36em; }
+.who.them.boss.seat { padding: 10px 14px; }
+.gcard.bizcard { --gc: #f3ead2; --ink: #2a1c0a; display: inline-grid; align-content: center; justify-items: start; gap: 1px; width: auto; min-width: 96px; height: 40px; padding: 3px 9px;
+  border-radius: 4px; background: linear-gradient(160deg, #fbf5e4, #e3d6b3); color: #2a1c0a; box-shadow: 0 2px 6px rgba(0, 0, 0, .45); cursor: help; transform: rotate(-2deg); align-self: center; }
+.gcard.bizcard em { font-style: normal; font-size: 7.5px; letter-spacing: .22em; text-transform: uppercase; color: #8b6a2c; }
+.gcard.bizcard b { font-family: var(--display); font-size: 14px; line-height: 1.05; }
+p.flavor { font-style: italic; color: var(--dim); }
+
+/* ---------- neon signs (js/ui/sign.js): frames, mounts, edge symbols, soft blinks ---------- */
+.neonsign { border-radius: var(--sign-r, 12px); background-color: var(--mount, transparent); background-image: var(--mount-img, none); background-size: cover; background-position: center; }
+.who.seat.neonsign { padding: 4px 10px 5px; }
+.neonsign.frame-tube { border: 2px solid var(--sf1); box-shadow: 0 0 4px var(--sf1), 0 0 14px var(--sf2), inset 0 0 8px color-mix(in srgb, var(--sf1) 35%, transparent), inset 0 0 18px color-mix(in srgb, var(--sf2) 18%, transparent); }
+.neonsign.frame-double { border: 5px double var(--sf1); box-shadow: 0 0 6px var(--sf1), 0 0 16px var(--sf2); }
+.neonsign.frame-dashed { border: 2px dashed var(--sf1); box-shadow: 0 0 10px color-mix(in srgb, var(--sf2) 60%, transparent); }
+.neonsign.frame-dotted { border: 3px dotted var(--sf1); box-shadow: 0 0 10px color-mix(in srgb, var(--sf2) 60%, transparent); }
+.neonsign.frame-bulbs { border: 5px dotted var(--sf1); filter: drop-shadow(0 0 3px var(--sf1)) drop-shadow(0 0 7px var(--sf2)); }
+.house-sign.neonsign.frame-bulbs { border: 0; filter: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sf1) 35%, transparent), 0 0 18px color-mix(in srgb, var(--sf1) 18%, transparent); }
+.neonsign.frame-none { border: 0; box-shadow: none; }
+.sign-edge { position: absolute; pointer-events: none; color: var(--sf1); text-shadow: 0 0 4px var(--sf1), 0 0 9px var(--sf2); font-size: 11px; line-height: 1; z-index: 1; }
+.sign-edge.corner.tl { left: -6px; top: -7px; } .sign-edge.corner.tr { right: -6px; top: -7px; } .sign-edge.corner.bl { left: -6px; bottom: -7px; } .sign-edge.corner.br { right: -6px; bottom: -7px; }
+.sign-edge.run { left: 10px; right: 10px; white-space: nowrap; overflow: hidden; font-size: 10px; letter-spacing: 1px; text-align: center; } .sign-edge.run.top { top: -7px; } .sign-edge.run.bottom { bottom: -7px; }
+.house-sign .hs-name { color: color-mix(in srgb, var(--house-cls1, #fff4d6) 85%, #fff); text-shadow: 0 0 3px #fff, 0 0 9px var(--house-name1, #ffb84d), 0 0 20px var(--house-name2, #ff9a2e), 0 0 36px var(--house-name2, #ff7a1a); }
+.house-sign .marquee { --lc: var(--house-border1, #ffd76a); }
+/* soft blinks: slow, never fully dark (no strobing); off for reduced motion */
+@keyframes sign-breathe { 0%, 100% { opacity: 1; } 50% { opacity: .62; } }
+@keyframes sign-pulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.4); } }
+@keyframes sign-flicker { 0%, 61%, 64%, 82%, 85%, 100% { opacity: 1; } 62.5% { opacity: .7; } 83.5% { opacity: .78; } }
+@keyframes sign-alt { 0%, 45% { opacity: 1; } 55%, 95% { opacity: .55; } 100% { opacity: 1; } }
+.neonsign { --bk-dur: 3.2s; } .neonsign.blink-pulse { --bk-dur: 2.2s; } .neonsign.blink-flicker { --bk-dur: 4.6s; } .neonsign.blink-alternate { --bk-dur: 3s; }
+.neonsign.blink-breathe { --bk: sign-breathe; } .neonsign.blink-pulse { --bk: sign-pulse; } .neonsign.blink-flicker { --bk: sign-flicker; } .neonsign.blink-alternate { --bk: sign-alt; }
+.neonsign.blink-name .neon-name, .neonsign.blink-name .hs-name, .neonsign.blink-cls .neon-class, .neonsign.blink-cls .turn, .neonsign.blink-edge .sign-edge { animation: var(--bk) var(--bk-dur) ease-in-out infinite; }
+.neonsign.blink-border { animation: var(--bk) var(--bk-dur) ease-in-out infinite; }
+.neonsign.blink-alternate.blink-name .neon-class, .neonsign.blink-alternate.blink-cls .neon-name { animation: var(--bk) var(--bk-dur) ease-in-out calc(var(--bk-dur) / -2) infinite; }
+@media (prefers-reduced-motion: reduce) { .neonsign, .neonsign *, .marquee i { animation: none !important; } }
+.neon-maker .neon-sample { margin-bottom: 8px; } .neon-sample.house-preview { min-width: 180px; justify-content: center; }
+.neon-sample.house-preview .neon-name { color: color-mix(in srgb, var(--house-cls1) 85%, #fff) !important; text-shadow: 0 0 3px #fff, 0 0 9px var(--house-name1), 0 0 20px var(--house-name2) !important; }
+.neon-sample.house-preview .neon-class { color: var(--house-cls1); text-shadow: 0 0 6px var(--house-cls2); }
+.btn.glyph { min-width: 26px; padding: 2px 4px; } .btn.glyph.on { outline: 1px solid var(--gold); }
+.neon-side > .neon-sample { justify-self: start; align-self: start; height: auto !important; min-height: 0; position: relative; inset: auto; }
+.neon-sample.neonsign, .house-sign.neonsign { position: relative; } /* seats stay absolutely placed; their edge symbols hang off them */
+.neon-sample.sign, .house-sign.sign { position: relative; } /* seats stay absolutely placed; their edge symbols hang off them */
+
+/* ---------- trick cards: the chip each makes, and the Bonus requirement as a gold badge ---------- */
+.c-illus { display: inline-grid; flex: none; } .c-illus .chip.mini { width: 20px; height: 20px; } .c-name .c-illus { margin-right: 5px; } .c-name { justify-content: flex-start; } .c-name .q { margin-left: auto; }
+.c-compact { gap: 7px; } .c-compact .q { margin-left: auto; }
+.c-compact .req.bonus-req { margin-left: 4px; display: inline-flex; align-items: center; gap: 3px; padding: 1px 6px 1px 4px; border-radius: 9px; font-size: 11px; font-weight: 800;
+  color: #2a1c0a; background: linear-gradient(180deg, #ffe7a0, #e6b84a); box-shadow: 0 0 6px rgba(255, 215, 106, .45); cursor: help; }
+.bonus-req em { font-style: normal; font-size: 10px; } .bonus-req .die.mini { width: 16px; height: 16px; font-size: 8px; }
+
+/* ---------- the hand: what you picked up rides with the pointer ---------- */
+.hand-cursor { position: absolute; left: 0; top: 0; z-index: 2000; pointer-events: none; display: flex; gap: 0; opacity: 0; transition: opacity .2s; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, .55)); }
+.hand-cursor.on { opacity: 1; }
+.hand-cursor > * { margin-left: -7px; rotate: calc((var(--i) - 1) * 7deg); animation: grab .28s var(--ease) both; } .hand-cursor > *:first-child { margin-left: 0; }
+@keyframes grab { from { scale: .4; opacity: 0; translate: -10px -10px; } }
+.die.inhand, .chip.inhand { opacity: .32 !important; filter: grayscale(.4); }
+/* putting the hand down settles softly rather than snapping */
+.die.landing, .chip.landing { transition: transform .7s cubic-bezier(.2, .9, .25, 1.12), opacity .4s !important; }
+.tray-box.drop { cursor: pointer; border-color: var(--gold); box-shadow: 0 0 0 2px rgba(255, 215, 106, .35), inset 0 0 18px rgba(255, 215, 106, .25); }
+.tray-box.drop:hover { background: rgba(255, 215, 106, .12); box-shadow: 0 0 0 2px var(--gold), 0 0 22px rgba(255, 215, 106, .55), inset 0 0 24px rgba(255, 215, 106, .35); }
+.tray-box.drop:hover::after { content: attr(data-drop); position: absolute; left: 50%; top: 50%; translate: -50% -50%; font-weight: 800; letter-spacing: .2em; color: var(--gold); text-transform: uppercase; font-size: 12px; }
+.tray-box.drop { pointer-events: auto; }
+.hand-cursor .die.static.mini { width: 28px; height: 28px; } .hand-cursor .die.static.mini i { font-size: 12px; } .hand-cursor .chip.mini { width: 28px; height: 28px; } .hand-cursor .chip.mini i { font-size: 11px; }
+.sfx-btn { position: absolute; left: calc(50% + 24px); bottom: 2px; z-index: 1500; padding: 0 6px !important; height: 18px; font-size: 11px; line-height: 16px; } .sfx-btn.muted { opacity: .45; }
+
+/* ---------- flavour lines, and lists of things drawn as tags ---------- */
+.flavor, p.flavor { font-style: italic; color: color-mix(in srgb, var(--cream) 70%, transparent); }
+.tags .tag-t, #tooltip .tag-t { display: inline-block; margin: 1px 2px; }
+.b-tricks { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; } .b-trick { gap: 2px; align-items: center; }
+.b-dice { gap: 8px; } .b-die { display: inline-flex; align-items: center; gap: 4px; }
