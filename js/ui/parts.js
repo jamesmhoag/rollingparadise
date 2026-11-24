@@ -169,7 +169,6 @@ export function jacketTip(id, v) {
 // Each kind of gear has a small drawn piece. The library and the coat check show them.
 const CARD_LOOK = (id) => {
   if (id.startsWith('discount_')) return { c: '#2aa7c4', g: '%', k: 'Discount' };
-  if (id.startsWith('business_')) { const st = Object.keys(D.CARDS[id].mods || {})[0]; return { c: '#ffd76a', g: '+1', k: D.STATS[st]?.short || 'Business' }; }
   if (id.startsWith('note')) return { c: '#f4efe2', g: '✉', k: 'Note', ink: '#3a2c14' };
   const m = { paradise: ['#d4a52a', '✺', 'Paradise'], membership: ['#b08cff', 'M', 'Member'], suite: ['#ff86ea', '⚿', 'Key'], punch: ['#ff9f3a', '●●', 'Punch'], debit: ['#3c7fc4', '$', 'Debit'], trading: ['#7dffb5', '✧', 'Trading'] }[id] || ['#93a3c8', '?', 'Card'];
   return { c: m[0], g: m[1], k: m[2] };

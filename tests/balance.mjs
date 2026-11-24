@@ -16,7 +16,6 @@ for (let seed = 1; seed <= 150; seed++) {
       for (const t of run.tricks) { t.q = Math.max(1, f); t.foil = f > 1 ? 1 : 0; }
       if (f >= 2) run.tricks.push({ uid: run.nextId++, id: 'swipe', q: f }, { uid: run.nextId++, id: 'endure', q: f });
       for (let i = 0; i < (f - 1) * 3; i++) run.dice.push({ id: run.nextId++, type: ['d6', 'd8', 'd10', 'd10'][f - 1], up: [] });
-      if (f >= 2) run.cards.push('business_proficiency'); if (f >= 3) run.cards.push('business_ingenuity');
       R.enterFloor(run, f);
       start = R.startTable(run, R.newPrep(run, kind, 1));
     }

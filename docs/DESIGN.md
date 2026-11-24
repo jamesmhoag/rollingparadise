@@ -374,6 +374,16 @@ what you own, carry or wear is marked.
 - Wager ×1.5 at tables, ×3 at the High Roller, capped at ×3. Double Down doubles it up to ×6, keeps the last
   bout's Challenge tilts, drops Cheat tilts, and on a win opens the High Roller and grants a Suite Key Card.
 
+### High Roller traits (business cards)
+Business Cards no longer raise your attributes (old saves drop them; the starter wallet gets the discount cards).
+Instead every High Roller hands you a business card at the table: a **trait** (`BOSS_TRAITS` in
+`js/content/bosstraits.js`, set per High Roller in the Opponent maker) that bends one rule their way. Each has a
+rule `k` with its numbers (`vars`), a title and a line of flavour; the rule's words are written from `k` and `vars`.
+Rules: `pitback` (n of its own chips climb back out of its Pit each turn), `fireproof` (its stacks start Burning;
+fire and acid take nothing from them), `hardened` (front stacks start Hardened for some turns), `wet` (stacks start
+soaked), `interest` (a 1¢ chip on its Bet each turn per so many ¢ of Worth, capped), `resist` (fees n¢ smaller),
+`tempo` (+1 Draw, Roll and Bid every few turns). A High Roller's sign is larger, with the card beside it.
+
 ### Winning, losing, leaving (**Winnings**, **Losings**, **Suite**, **Gift Shop**, **Gear**, **Paradise Ascent**)
 - Win: surviving chips, your fees restored, the opponent's fees, the wager times its multiplier, the multiplier
   on your deployed shop chips (staked at their shop price), the tilt bounty or cut, a chip per Opportunity chip, Gold

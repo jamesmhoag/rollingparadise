@@ -28,7 +28,8 @@ const ask = (label, def, taken) => { const id = (globalThis.prompt?.(label, def)
   if (taken[id]) { toast(t('build.duplicate.taken', { id }), 'warn'); return null; } return id; };
 
 // ---------- classes ----------
-const GROUPS = [['tip', ['trickery', 'ingenuity', 'proficiency']], ['c', ['charisma', 'cunning', 'conviction']], ['bvd', ['balance', 'versatility', 'depth']]];
+// Charisma, Cunning and Conviction have no class base: they are earned at the table by occupying rows (bout.js occBonus)
+const GROUPS = [['tip', ['trickery', 'ingenuity', 'proficiency']], ['bvd', ['balance', 'versatility', 'depth']]];
 export function newClass(from) {
   const id = ask(t('roster.class.newId'), 'my_class', D.CLASSES); if (!id) return null;
   B.setValue(D.subPath('CLASSES', id), { ...JSON.parse(JSON.stringify(D.CLASSES[from || 'hustler'])), name: 'New class', hero: 'Hero' }); return id;
@@ -81,6 +82,7 @@ export function rosterMaker(id, redraw) {
     f.field(t('maker.name'), f.text(['name'], X.name), ['name']),
     f.field(t('maker.cls'), f.select(['cls'], opt(D.CLASSES, t('roster.randomClass')), X.cls), ['cls']),
     f.field(t('roster.floors'), f.checks(['floors'], [1, 2, 3, 4].map((n) => [n, D.FLOORS[n].name]), X.floors || [1, 2, 3, 4]), ['floors']),
+    X.boss ? f.field(t('roster.trait'), f.select(['trait'], opt(D.BOSS_TRAITS, t('roster.none')), X.trait), ['trait']) : null,
     X.boss ? null : f.field(t('roster.tables'), f.checks(['tables'], [0, 1, 2].map((n) => [n, t('floor.table.name', { n: n + 1 })]), X.tables || [0, 1, 2]), ['tables']),
     h('span', { class: 'cap', text: t('roster.part.loadout') }),
     f.field(t('roster.purse'), f.number(['purse'], X.purse, { min: 0, ph: t('roster.purse.floor') }), ['purse']),
