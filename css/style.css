@@ -887,18 +887,14 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 .neon-in { display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; } .neon-in input { width: 34px; height: 24px; padding: 0; border: 0; background: none; cursor: pointer; }
 .scene.bout .tcard .c-text { line-height: 1.17; } .scene.bout .tcard .c-open { gap: 3px; }
 
-/* ---------- occupancy meters in each seat: Bet spaces, Stake lanes, Restore columns ---------- */
-.meters { display: flex; gap: 10px; align-items: flex-end; margin: 0 4px; }
-.meter-i { display: grid; justify-items: center; gap: 2px; cursor: help; }
-.meter-i small { font-size: 8px; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); line-height: 1; }
-.meter-i.full small { color: var(--cream); }
-.mi { display: grid; gap: 1px; height: 22px; align-content: center; }
-.mi i { display: block; border-radius: 1px; background: rgba(255, 255, 255, .1); transition: background-color .3s, box-shadow .3s; }
-.mi-bet { grid-template-columns: repeat(var(--gc), 4px); grid-auto-rows: 3.4px; }
-.mi-bet i.on { background: #7dff9e; } .mi-bet i.x { background: transparent; outline: 1px solid rgba(255, 255, 255, .08); }
-.meter-i.bet.full .mi-bet i.on { box-shadow: 0 0 4px #7dff9e; }
-.mi-stake { width: 18px; grid-auto-rows: 3.4px; } .mi-stake i.on { background: #ffc478; } .meter-i.stake.full .mi-stake i { box-shadow: 0 0 4px #ffc478; }
-.mi-restore { grid-auto-flow: column; grid-auto-columns: 3px; height: 22px; align-content: stretch; gap: 2px; }
-.mi-restore i { height: 20px; align-self: center; } .mi-restore b { width: 2px; }
-.mi-restore i.b.on { background: #7dff9e; } .mi-restore i.s.on { background: #ffc478; } .meter-i.restore.full .mi-restore i { box-shadow: 0 0 4px currentColor; }
+/* ---------- occupancy meters under each zone of the position: rows held (CCC), columns held (restore) ---------- */
+.zone-label { gap: 6px; overflow: visible; }
+.zone-label b { cursor: help; }
+.zm-rows, .zm-cols { display: inline-flex; gap: 2px; align-items: center; height: 12px; cursor: help; align-self: center; }
+.zm-rows i { width: 4px; height: 4px; border-radius: 50%; background: rgba(255, 255, 255, .14); transition: background-color .3s, box-shadow .3s; }
+.zm-rows.bet i.on { background: #7dff9e; } .zm-rows.stake i.on { background: #ffc478; }
+.zm-rows.full i { box-shadow: 0 0 4px currentColor; } .zm-rows.bet.full { color: #7dff9e; } .zm-rows.stake.full { color: #ffc478; }
+.zm-bonus { font-style: normal; font-size: 9px; letter-spacing: .04em; color: var(--cream); text-shadow: 0 0 6px rgba(255, 215, 106, .6); min-width: 0; }
+.zm-cols i { width: 3px; height: 10px; border-radius: 1px; background: rgba(255, 255, 255, .1); transition: background-color .3s; }
+.zm-cols.bet i.on { background: #7dff9e; } .zm-cols.stake i.on { background: #ffc478; } .zm-cols i.al { outline: 1px solid var(--cream); }
 .who.seat .badges { min-height: 0; }

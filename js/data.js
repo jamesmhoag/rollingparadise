@@ -1,28 +1,30 @@
 // Static game content, taken from the Rolling Paradise design workbook.
 
 // ---------- Rollers ----------
-// TIP = per-turn action limits. C = reward for each action left unused. BVD = position shape.
+// TIP = per-turn action limits. BVD = position shape. The rewards for actions left unused (Charisma, Cunning,
+// Conviction) have no class base: they are earned at the table by occupying rows (see occBonus in bout.js), and a
+// class's own one (`primary`'s reward: Trickery → Charisma, Ingenuity → Cunning, Proficiency → Conviction) earns most.
 export const CLASSES = {
   hustler: {
     name: 'Hustler', hero: 'Owl', blurb: 'Draws the most tricks and stacks chips tallest. Deploys from the back.',
-    tip: { trickery: 3, ingenuity: 2, proficiency: 2 }, c: { charisma: 2, cunning: 1, conviction: 1 },
-    bvd: { balance: 3, versatility: 1, depth: 0 }, primary: 'trickery', deploy: 'end',
+    tip: { trickery: 3, ingenuity: 2, proficiency: 2 }, bvd: { balance: 3, versatility: 1, depth: 0 }, primary: 'trickery', deploy: 'end',
     dice: { d4: 4, d6: 4 }, tricks: ['charge', 'mug', 'stir', 'block', 'settle'], color: '#e0a23c',
   },
   rascal: {
     name: 'Rascal', hero: 'Fox', blurb: 'Bids the most and has the deepest Bet. Deploys from the centre.',
-    tip: { trickery: 2, ingenuity: 3, proficiency: 2 }, c: { charisma: 1, cunning: 2, conviction: 1 },
-    bvd: { balance: 0, versatility: 3, depth: 1 }, primary: 'ingenuity', deploy: 'center',
+    tip: { trickery: 2, ingenuity: 3, proficiency: 2 }, bvd: { balance: 0, versatility: 3, depth: 1 }, primary: 'ingenuity', deploy: 'center',
     dice: { d6: 7 }, tricks: ['charge', 'stir', 'bend', 'block', 'settle'], color: '#c0569b',
   },
   technician: {
     name: 'Technician', hero: 'Hog', blurb: 'Rolls the most dice and has the deepest Stake. Deploys from the front.',
-    tip: { trickery: 2, ingenuity: 2, proficiency: 3 }, c: { charisma: 1, cunning: 1, conviction: 2 },
-    bvd: { balance: 1, versatility: 0, depth: 3 }, primary: 'proficiency', deploy: 'start',
+    tip: { trickery: 2, ingenuity: 2, proficiency: 3 }, bvd: { balance: 1, versatility: 0, depth: 3 }, primary: 'proficiency', deploy: 'start',
     dice: { d6: 3, d8: 3 }, tricks: ['charge', 'stir', 'block', 'brace', 'settle'], color: '#4aa3c7',
   },
 };
 // a Roller's hero and class together: 'Owl the Hustler'
+// the reward stat for a primary action stat
+export const C_OF = { trickery: 'charisma', ingenuity: 'cunning', proficiency: 'conviction' };
+export const primaryC = (cls) => C_OF[CLASSES[cls]?.primary] || 'charisma';
 export const heroName = (cls) => (CLASSES[cls].hero ? `${CLASSES[cls].hero} the ${CLASSES[cls].name}` : CLASSES[cls].name);
 export const BASE_DIMS = { cols: 5, stackMax: 3, meterRows: 2, barRows: 3 };
 
@@ -31,9 +33,9 @@ export const STATS = {
   trickery: { name: 'Trickery', short: 'Draw', text: 'Tricks you may draw from your Book each turn.', per: (n) => `draw ${n} more trick${n === 1 ? '' : 's'} from your Book each turn, so more tricks are on your Run to roll onto and bid on` },
   ingenuity: { name: 'Ingenuity', short: 'Bid', text: 'Chips you may bid on shown tricks each turn.', per: (n) => `bid ${n} more chip${n === 1 ? '' : 's'} each turn, so more tricks play (or linger) each turn` },
   proficiency: { name: 'Proficiency', short: 'Roll', text: 'Dice you may roll each turn. A die shows its value first; you then choose which shown trick it goes on.', per: (n) => `roll ${n} more ${n === 1 ? 'die' : 'dice'} (or flip ${n === 1 ? 'a chip' : 'chips'}) each turn, so bigger totals and more bonuses` },
-  charisma: { name: 'Charisma', short: 'Steal', text: 'For each draw you leave unused, a Steal chip on your Bet steals this many ¢ from the Stage in the House phase.', per: (n) => `steal ${n} more ¢ from the Stage for every draw you leave unused` },
-  cunning: { name: 'Cunning', short: 'Opportunity', text: 'For each bid you leave unused, gain this many Opportunity chips on your Bet.', per: (n) => `gain ${n} more Opportunity chip${n === 1 ? '' : 's'} for every bid you leave unused` },
-  conviction: { name: 'Conviction', short: 'Power', text: 'For each roll you leave unused, gain this many Power chips on your Bet: each adds +1 to your roll effects this turn.', per: (n) => `gain ${n} more Power chip${n === 1 ? '' : 's'} for every roll you leave unused` },
+  charisma: { name: 'Charisma', short: 'Steal', text: 'For each draw you leave unused, the House steals this many ¢ from the Stage for you with the Expenses. Earned at the table: hold a chip in every Bet row (and, for a Hustler, every Stake row).', per: (n) => `steal ${n} more ¢ from the Stage for every draw you leave unused` },
+  cunning: { name: 'Cunning', short: 'Opportunity', text: 'For each bid you leave unused, the House puts this many Opportunity chips on your Bet with the Insurances. Earned at the table: hold a chip in every Bet row (and, for a Rascal, every Stake row).', per: (n) => `gain ${n} more Opportunity chip${n === 1 ? '' : 's'} for every bid you leave unused` },
+  conviction: { name: 'Conviction', short: 'Power', text: 'For each roll you leave unused, the House puts this many Power chips on your Bet with the Investments: each adds +1 to your roll effects this turn. Earned at the table: hold a chip in every Bet row (and, for a Technician, every Stake row).', per: (n) => `gain ${n} more Power chip${n === 1 ? '' : 's'} for every roll you leave unused` },
   balance: { name: 'Balance', short: 'Stack height', text: 'Extra chips each space can hold (base 3).', per: (n) => `every space in your position holds ${n} more chip${n === 1 ? '' : 's'} (taller stacks in the Bet and the Stake)` },
   versatility: { name: 'Versatility', short: 'Bet rows', text: 'Extra Bet rows (base 2). The Bet sits in front and only holds chips gained during the bout.', per: (n) => `${n} more Bet row${n === 1 ? '' : 's'}: more room for Blocks, Opportunity and recovered chips, and more cover in front of your Stake` },
   depth: { name: 'Depth', short: 'Stake rows', text: 'Extra Stake rows (base 3). The Stake holds the chips you commit before the bout.', per: (n) => `${n} more Stake row${n === 1 ? '' : 's'}: room to put more chips on the table before the bout` },
