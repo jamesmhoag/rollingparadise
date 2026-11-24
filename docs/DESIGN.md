@@ -458,6 +458,16 @@ flashes a second.
 - **Business cards**: clearing a High Roller hands you its card (`run.bizCards`). You play by one at a time
   (`run.trait`, the first you win, changed from your inventory on the floor), with the same rule it played against you.
 
+### Build mode lists are linked, not typed
+- No Build-mode field takes a comma-separated list any more. A list of things the game defines (tricks, materials,
+  dyes, chips, weather, immunities, face effects, floors) is edited by picking each item from that table, by name,
+  with ✕ to take one off; an item that no longer exists is marked. Colour lists use colour pickers, number lists
+  number boxes, and free lists (tags) one box per item, offered the values already in use.
+- The test table's dice are a count per die; an opponent's precise Stake layout is painted with a brush, and each
+  space shows its chips by name.
+- The opponent names dealt at the tables and the High Rollers of each floor (`OPPONENTS`, `BOSSES`) are no longer
+  typed lists: they are rebuilt from the roster, so a renamed or new opponent is dealt under its own name.
+
 ### High Roller traits (business cards)
 Business Cards no longer raise your attributes (old saves drop them; the starter wallet gets the discount cards).
 Instead every High Roller hands you a business card at the table: a **trait** (`BOSS_TRAITS` in

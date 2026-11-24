@@ -4,6 +4,7 @@
 import { h, lab, btn, toast } from './core.js';
 import * as D from '../data.js';
 import { t } from '../text.js';
+import { dieEl } from './parts.js';
 import { isMade } from '../trickmaker.js';
 
 const KEY = 'rollingparadise.build.test.v1';
@@ -33,9 +34,9 @@ export function testTable(redraw, sitDown) {
     field(lab('test.roller'), select('cls', Object.entries(D.ROLLERS).map(([k, X]) => [k, D.heroName(X.cls, k)]), D.rollerOf(o.cls))),
     field(lab('test.floor'), select('floor', [1, 2, 3, 4].map((n) => [n, D.FLOORS[n].name]), o.floor)),
     field(lab('test.purse'), h('input', { type: 'number', min: 10, value: o.purse, onchange: (e) => set('purse', Math.max(10, Number(e.target.value) || 10)) })),
-    field(lab('test.dice'), h('input', { type: 'text', value: Object.entries(o.dice).map(([k, n]) => `${n}${k}`).join(', '), onchange: (e) => {
-      const out = {}; for (const part of e.target.value.split(',')) { const m = /^\s*(\d+)\s*(d\d+)\s*$/.exec(part); if (m && D.DICE[m[2]]) out[m[2]] = (out[m[2]] || 0) + Number(m[1]); }
-      if (!Object.keys(out).length) return toast(t('test.dice.bad'), 'warn'); set('dice', out); } })),
+    field(lab('test.dice'), h('div', { class: 'row wrap b-dice' }, ...Object.keys(D.DICE).map((k) => h('label', { class: 'b-die' }, dieEl({ type: k, up: [] }, '', 'mini'),
+      h('input', { type: 'number', min: 0, value: o.dice?.[k] || 0, style: { width: '52px' }, onchange: (e) => { const out = { ...(o.dice || {}) }, n = Math.max(0, Math.floor(Number(e.target.value) || 0)); if (n) out[k] = n; else delete out[k];
+        if (!Object.keys(out).length) { toast(t('test.dice.bad'), 'warn'); return redraw(); } set('dice', out); } }))))),
     field(lab('test.quality'), select('q', [1, 2, 3, 4].map((n) => [n, D.QNAME[n]]), o.q)),
     field(lab('test.tricks'), h('div', {}, h('input', { class: 'b-filter', placeholder: t('build.filter'), oninput: (e) => { find = e.target.value.toLowerCase(); drawTricks(); } }), trickList, count)),
     h('span', { class: 'cap', text: t('test.part.opp') }),

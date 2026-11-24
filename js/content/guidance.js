@@ -11,6 +11,7 @@
 export const GUIDE = {
   // ---------- at the table ----------
   'sign-glyph': { name: 'Edge symbol', def: 'A symbol for the sign\'s edge.', how: ['Click it to use it at the corners or along the edge, or as the whole frame (frame style Symbols).'] },
+  'layout-space': { name: 'Stake space', def: 'One space of this opponent\'s Stake, as it sits down.', how: ['Pick a brush, then click and hold to stack chips, or sweep across spaces.', 'The eraser takes the top chip off.'] },
   'build-option': { name: 'Build option', def: 'One setting of the thing you are building. The hover above says what it is for.',
     how: ['Change it and the draft updates; ↺ beside it puts back what it was.', 'Nothing is kept until you save the draft.'] },
   'bid-space': { name: 'Bid space', def: 'Where a trick\'s bids stack up.',
@@ -268,7 +269,7 @@ export const GUIDE_BY_CLASS = [
   ['gcard.gpass', 'pass'], ['gcard.lanyard', 'lanyard'], ['gcard', 'card'], ['gjacket', 'jacket'],
   ['box.row', 'denom'], ['dye', 'dye'],
   ['tilt.challenge', 'tilt:challenge'], ['tilt.cheat', 'tilt:cheat'], ['ocell', 'opp-stack'],
-  ['music-btn', 'music'], ['bonus-req', 'trick-dice'], ['nsign', 'sign'], ['house-sign', 'house'], ['pot', 'pit'], ['ledger', 'ledger'], ['phases', 'phase-track'], ['orbital', 'weather'], ['sfx-btn', 'sfx'], ['qd', 'quality'], ['tgt', 'aim'], ['bonus', 'trick-dice'], ['c-stack', 'trick-stack'], ['zone-title', 'zone'], ['zone-label', 'position-label'], ['b-lab', 'build-option'], ['glyph', 'sign-glyph'], ['bidslot', 'bid-space'],
+  ['music-btn', 'music'], ['bonus-req', 'trick-dice'], ['nsign', 'sign'], ['house-sign', 'house'], ['pot', 'pit'], ['ledger', 'ledger'], ['phases', 'phase-track'], ['orbital', 'weather'], ['sfx-btn', 'sfx'], ['qd', 'quality'], ['tgt', 'aim'], ['bonus', 'trick-dice'], ['c-stack', 'trick-stack'], ['zone-title', 'zone'], ['zone-label', 'position-label'], ['b-lab', 'build-option'], ['glyph', 'sign-glyph'], ['b-lcell', 'layout-space'], ['bidslot', 'bid-space'],
   ['worth', 'worth'], ['weather', 'weather'], ['table-felt', 'felt'], ['turn', 'turn'], ['house', 'house'], ['pit', 'pit'],
   ['stage-strip', 'stage'], ['run-empty', 'run'], ['okit', 'opp-kit'], ['spine.book', 'spine:book'], ['spine.dice', 'spine:dice'],
 ];

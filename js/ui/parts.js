@@ -75,7 +75,7 @@ export function madeRules(M, ch = {}) {
   if (M.height && M.height !== 'basic') parts.push(`${M.height} (${{ tiny: 'no height', short: 'half height', tall: 'double height' }[M.height]})`);
   if (M.must && M.must !== 'any') parts.push(`must sit ${{ top: 'on top', bottom: 'at the bottom', sandwiched: 'between chips', alone: 'alone', with: 'with others' }[M.must]}`);
   if (M.onTop === 'none') parts.push('nothing can go on it');
-  if (M.immune?.length) parts.push(`immune to ${M.immune.join(', ')}`);
+  if (M.immune?.length) parts.push(`immune to ${M.immune.map((k) => (CM.IMMUNE[k] || k).toLowerCase()).join(', ')}`);
   if (M.move && M.move !== 'still') parts.push(CM.MOVES[M.move].toLowerCase());
   if (M.triggers?.length && M.actions?.length) {
     const when = M.triggers.map((x) => (x.on === 'phase' || x.on === 'effect') && x.type ? `${CM.TRIGGERS[x.on].toLowerCase()} (${D.TYPES[x.type]?.name})` : x.on === 'exposed' && x.what ? `when a ${x.what} is exposed` : CM.TRIGGERS[x.on].toLowerCase()).join(' or ');
