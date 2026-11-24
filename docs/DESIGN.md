@@ -370,13 +370,24 @@ and dominant colour on the way home. Only real instrument patches are used (no v
 player shuffles the set so no kind of jazz follows itself, and shares the tune's key with the sound effects.
 
 ### Sound
-Sound effects are synthesized in the browser (`js/ui/sfx.js`, Web Audio, no files): a card slid onto the Run (a
-heavier one when a copy stacks), a chip bid or picked up, a die set down or picked up, a handful thrown, chips landing
-and chips paid to the Stage. Each House play has the voice of its effect: Investments ring upward, Insurances thud,
-Expenses ring the till, Corrections sweep; an element trick sounds like its element (fire crackles, shock zaps, frost
-tinkles, acid fizzes, Boom thumps, poison bubbles, corruption grinds); creatures, hazards, misses and bonuses have
-their own. The 🔊 button beside the music's ♪ turns them off.
-
+Every step of play is heard (`js/ui/sfx.js`). The musical sounds are real instruments: short samples rendered from
+the FluidR3 soundfont by `tools/sfx/render.py` (`assets/sfx`: piano, Rhodes, nylon and jazz guitar, upright bass,
+muted trumpet, flute, horn, strings, harp, and a jazz kit's brushes, ride, rim, wood blocks, castanets, shaker,
+triangle and more), pitched to the key the band is playing in (`musicKey` from the player) so they sound as harmony
+inside the music. The table itself is clay and wood: chips clack (castanets), dice knock (wood blocks), cards slide.
+- Your actions, stage by stage: a soft touch on anything you can use; the pick-up (a guitar note); each step (a die
+  set on a trick, an aim chosen on the harp); the result: a piano chord when a phase is locked in, a soft low
+  "uh-uh" on the bass when something is refused, a falling guitar pair for undo. A new turn opens on the ride and a
+  brush swish; a phase on a brush; a win on a piano and strings chord, a loss on a falling muted trumpet.
+- The opponent's moves are heard as they are shown, from the right of the stereo field (yours sit left): its draw,
+  its throw, its bids, its dice going down and its aim.
+- The House's plays have the voice of their type: Investments rise on the Rhodes, Insurances thud (bass, kick and
+  brush), Expenses are called on the muted trumpet, Corrections strum across the nylon guitar; misses, bonuses and
+  creatures (a flute trill) have their own, and an element trick adds its texture (fire crackles, a shock buzzes up
+  a half step, frost rings the triangle, Boom thumps, poison bubbles on the hand drums, corruption is a low minor 2nd).
+- The board's own movements: made chips appear with a triangle and land with a clack, chips pushed across the
+  table rustle, chips paid away cascade.
+The 🔊 button beside the music's ♪ turns them off.
 ### The Library
 Opens from the title screen, the HUD on the floor and the commitment screen, and the bout table. Tabs for chips,
 tricks, dice, cards, drinks, wallets, jackets and felts show each piece as it is drawn in the game, with its
