@@ -14,7 +14,7 @@ import { MADE_CHIPS, HEIGHT } from './content/chipmaker.js';
 import { TUNING } from './content/tuning.js';
 import { rollDie, boutCopy, facesOf, upgrade as upgradeFaces } from './dice.js';
 export { rollDie };
-import { CLASSES as CLASS_BASE, DEFAULT_MAT, DIE_UPGRADES, TRICKS, TYPES, QDIE, FOIL, WEAR, defOf, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, CREATURES, ORBITALS, FELTS, TILTS, TILT_PRESSURE, DENOM_VALUES, tiltChance, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS, primaryC } from './data.js';
+import { CLASSES as CLASS_BASE, DEFAULT_MAT, DIE_UPGRADES, TRICKS, TYPES, QDIE, FOIL, WEAR, defOf, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, CREATURES, ORBITALS, FELTS, TILTS, TILT_PRESSURE, DENOM_VALUES, tiltChance, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS, primaryC, BOSS_TRAITS } from './data.js';
 import { t as tx } from './text.js';
 
 // The turn: Draw tricks; Roll (pick the dice; they are thrown as the Bid opens); Bid on tricks, seeing both rolls;
@@ -335,7 +335,7 @@ export const barCapacity = (dims, holes = 0) => (dims.barRows * dims.cols - hole
 function mkSide(b, spec, idx) {
   const d = spec.dims, rows = d.meterRows + d.barRows;
   const s = {
-    idx, name: spec.name, cls: spec.cls, ai: !!spec.ai, title: spec.title || '', deploy: spec.deploy, why: spec.why || null,
+    idx, name: spec.name, cls: spec.cls, ai: !!spec.ai, trait: spec.trait && BOSS_TRAITS[spec.trait] ? spec.trait : null, boss: !!spec.boss, title: spec.title || '', deploy: spec.deploy, why: spec.why || null,
     tip: { ...spec.tip }, c: { ...spec.c }, dims: { ...d }, rows,
     grid: Array.from({ length: rows }, () => Array.from({ length: d.cols }, () => ({ chips: [], hole: false, hard: 0 }))),
     book: spec.tricks.map((t) => ({ ...t })), run: [], pouch: spec.dice.map(boutCopy), tapped: { tricks: [], dice: [] }, turnSrc: [], held: [],
@@ -437,13 +437,13 @@ export function createBout(opts) {
       if (top?.shop === 'seed' && solidCount(cell) >= 2) { top.kind = 'flower'; top.value = 0; top.hits = 1; delete top.resist; }
       mergeSeq(b, cell);
     }
+    traitStart(b, s);
     s.startWorth = worth(s);
     for (let k = 0; k < s.hatsDue; k++) { const st = allCells(s).filter((x) => x.r >= s.dims.meterRows && solidCount(x.cell) && capacityLeft(s, x.cell) > 0 && !x.cell.link && !x.cell.anchor && !x.cell.chips.some((ch) => ch.kind === 'hat'));
       if (st.length) b.rng.pick(st).cell.chips.unshift(mkChip(b, 'hat', 0, { owner: null })); }
     for (let k = 0; k < (spec.shields || 0); k++) addToMeter(b, s, Array.from({ length: s.dims.stackMax }, () => mkChip(b, 'block')));
     for (let k = 0; k < (spec.creatures || 0); k++) b.creatures.push(mkCreature(b, i, b.rng.range(1, 5)));
   });
-  for (const s of b.sides) s.fullBet = occupancy(s).full;
   startTurn(b);
   return b;
 }
@@ -478,6 +478,9 @@ function startTurn(b) {
     s.paidLast = s.paidTurn || 0; s.paidTurn = 0; // fees paid last turn, for Vengeance
     s.status.enfeebleNext = 0; s.absorbUsed = {}; s.forgotUsed = {};
     const curses = allCells(s).reduce((n, x) => n + x.cell.chips.filter((ch) => ch.cursed).length, 0); s.cursed = curses; // a Cursed chip in your pile: Draw, Roll or Bid 1 lower
+    const T = bossTrait(s); // a High Roller's trait, turn by turn
+    if (T?.k === 'tempo' && b.turn % Math.max(2, T.vars.every || 3) === 0) for (const k of ['trickery', 'proficiency', 'ingenuity']) temp(k, 1, T.name);
+    if (T?.k === 'resist') s.status.resist = Math.max(s.status.resist || 0, T.vars.n || 1);
     for (let k = 0; k < curses; k++) { const can = ['trickery', 'proficiency', 'ingenuity'].filter((x) => tipOf(s, x) > 1); if (can.length) temp(b.rng.pick(can), -1, 'Curse'); }
   }
   b.creatures = b.creatures.filter((cr) => !cr.gone);
@@ -1705,6 +1708,26 @@ function* sky(b, s) {
   if (!s.sky.some((o) => o.kind === 'blizzard') && ((b.weather.includes('blizzard') && b.rng.chance(0.2)) || (s.calamities.includes('blizzard') && b.turn % 4 === 3)))
     { s.sky.push({ id: b.nextId++, kind: 'blizzard', r: -1, c: -1, str: str() }); yield step(b, tx('feed.a-blizzard-rolls-in', { name: s.name }), [], 'weather'); }
 }
+// ---------- High Roller traits (content/bosstraits.js) ----------
+export const bossTrait = (s) => (s?.trait && BOSS_TRAITS[s.trait]) || null;
+const fireproof = (s) => bossTrait(s)?.k === 'fireproof';
+// what a trait does, written from its rule and numbers
+export const traitRule = (T) => (T ? tx(`trait.${T.k}`, { ...T.vars }) : '');
+function traitStart(b, s) {
+  const T = bossTrait(s); if (!T) return;
+  if (T.k === 'fireproof') for (const { cell } of allCells(s)) if (solidCount(cell) && !cell.chips.some((ch) => ch.kind === 'burn')) cell.chips.push(mkHazard(b, 'burn', 99));
+  if (T.k === 'wet') for (const { cell } of allCells(s)) for (const ch of cell.chips) if (!isHazard(ch)) ch.wet = 99;
+  if (T.k === 'hardened') for (let c = 0; c < s.dims.cols; c++) { const r = frontRow(s, c); if (r >= 0) setHard(b, s.grid[r][c], T.vars.turns || 3); }
+}
+function* traitTurn(b, s) {
+  const T = bossTrait(s); if (!T || worth(s) <= 0) return;
+  if (T.k === 'pitback') { const back = pullPit(b, s.idx, T.vars.n || 1, { bids: true }), left = addToMeter(b, s, back, null, 'from-pit'); backToPit(b, s.idx, left); // fees or bids, its own
+    const got = sum(back.filter((ch) => !left.includes(ch)), (ch) => ch.value); if (got) yield step(b, tx('feed.trait-pitback', { name: s.name, trait: T.name, n: got }), [], 'bonus'); }
+  if (T.k === 'interest') { const n = Math.min(T.vars.max || 3, Math.floor(worth(s) / Math.max(1, T.vars.per || 20)));
+    const { at } = n ? toMeterAtRandom(b, s, Array.from({ length: n }, () => mkChip(b, 'std', 1))) : { at: [] };
+    if (at.length) yield step(b, tx('feed.trait-interest', { name: s.name, trait: T.name, n: at.length }), at.map((x) => ref(s, x.r, x.c)), 'bonus'); }
+}
+
 // ---------- creatures: a third hand in each House phase ----------
 // A creature acts in the House phase of its type (CREATURES[kind].type: what its action is, an Investment, Insurance,
 // Expense or Correction), after both Rollers have played theirs, so a trick aimed at it or its stack lands first and
@@ -1755,7 +1778,8 @@ function* ticks(b) {
     for (const { r, c, cell } of allCells(s)) for (const h of cell.chips.filter((ch) => HZ.includes(ch.kind))) {
       if (!cell.chips.includes(h)) continue;
       const drop = () => { cell.chips.splice(cell.chips.indexOf(h), 1); b.fx[h.id] = 'void'; };
-      if (hasResist(cell, h.kind)) { drop(); touched.push(ref(s, r, c)); continue; }
+      if (fireproof(s) && (h.kind === 'burn' || h.kind === 'lava')) continue; // it burns, and burns nothing
+      if (hasResist(cell, h.kind) || (fireproof(s) && h.kind === 'acid')) { drop(); touched.push(ref(s, r, c)); continue; }
       if (iced(cell) && h.kind !== 'boom') { drop(); touched.push(ref(s, r, c)); continue; } // a Frozen chip shrugs it off
       touched.push(ref(s, r, c));
       if (h.kind === 'shock') { // 1¢ of Debt on two other stacks (one more next to a Battery, or from a wet stack); Absorption soaks instances
@@ -2156,6 +2180,7 @@ export function* resolve(b) {
   }
   b.ctx = { phase: 'house' };
   yield* restorePhase(b);
+  for (const s of b.sides) { b.ctx = { phase: 'house', who: s.idx }; yield* traitTurn(b, s); }
   b.ctx = { phase: 'house' };
   const w = b.sides.map(worth);
   if (!b.rules.sandbox && (w[0] <= 0 || w[1] <= 0 || b.turn >= b.rules.maxTurns)) { // a sandbox bout (test table) runs until you leave it

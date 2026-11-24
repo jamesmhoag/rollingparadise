@@ -81,6 +81,7 @@ export function rosterMaker(id, redraw) {
     f.field(t('maker.name'), f.text(['name'], X.name), ['name']),
     f.field(t('maker.cls'), f.select(['cls'], opt(D.CLASSES, t('roster.randomClass')), X.cls), ['cls']),
     f.field(t('roster.floors'), f.checks(['floors'], [1, 2, 3, 4].map((n) => [n, D.FLOORS[n].name]), X.floors || [1, 2, 3, 4]), ['floors']),
+    X.boss ? f.field(t('roster.trait'), f.select(['trait'], opt(D.BOSS_TRAITS, t('roster.none')), X.trait), ['trait']) : null,
     X.boss ? null : f.field(t('roster.tables'), f.checks(['tables'], [0, 1, 2].map((n) => [n, t('floor.table.name', { n: n + 1 })]), X.tables || [0, 1, 2]), ['tables']),
     h('span', { class: 'cap', text: t('roster.part.loadout') }),
     f.field(t('roster.purse'), f.number(['purse'], X.purse, { min: 0, ph: t('roster.purse.floor') }), ['purse']),

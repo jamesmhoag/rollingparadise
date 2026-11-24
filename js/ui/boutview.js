@@ -123,6 +123,10 @@ export function boutScene(root, bout, ctx, onDone) {
   function lightsAt(base) { lightsBase = base; if (!flashing) marquee.className = `marquee ${base}`; }
   // each Roller's name as a neon sign: the name in script, their class (or title) in capitals under it. The colours
   // are D.NEON's, set in Build mode: a tube colour and a glow colour for the frame, the name and the class.
+  // a High Roller's business card: the trait that bends one rule of the bout their way
+  const bizCard = (s) => { const T = B.bossTrait(s); if (!T) return null;
+    return h('span', { class: 'gcard bizcard', guide: 'boss-trait', tip: () => tx('trait.card-tip', { name: s.name, title: T.title, trait: T.name, rule: B.traitRule(T), flavor: T.flavor }) },
+      h('em', { text: tx('table.biz-card') }), h('b', { text: T.name })); };
   const nameSign = (name, cls, tipFn) => h('div', { class: 'name nsign', tip: tipFn }, h('b', { class: 'neon-name', text: name }), h('span', { class: 'neon-class', text: cls }));
   function paintNeon() { for (const [who, N] of Object.entries(D.NEON)) for (const [part, pair] of Object.entries(N)) pair.forEach((c, i) => root.style.setProperty(`--${who}-${part}${i + 1}`, c));
     root.style.setProperty('--you', D.NEON.you.name[0]); root.style.setProperty('--them', D.NEON.them.name[0]); }
@@ -134,8 +138,9 @@ export function boutScene(root, bout, ctx, onDone) {
     h('div', { class: 'mid' }, (houseSign = h('div', { class: 'house-sign', tip: tx('table.the-house-every-chip') }, marquee,
       h('div', { class: 'hs-name', text: tx('table.house-sign') }),
       h('div', { class: 'turn', tip: () => tx('table.turn-both-rollers-plan', { turn: bout.turn, LASTCALL: B.LAST_CALL + 1, maxTurns: bout.rules.maxTurns }) }, 'Turn ', h('b', { class: 'num turn-n', text: '1' }))))),
-    h('div', { class: 'who them' }, h('div', { class: 'worth', tip: worthTip(opp) }, 'Worth ', worthEl[1], '¢', owesEl[1]),
+    h('div', { class: `who them${opp.boss ? ' boss' : ''}` }, h('div', { class: 'worth', tip: worthTip(opp) }, 'Worth ', worthEl[1], '¢', owesEl[1]),
       nameSign(opp.name, opp.title || D.CLASSES[opp.cls].name, () => tx('table.sign-tip', { name: opp.title ? `${opp.name} the ${opp.title}` : opp.name, cls: D.CLASSES[opp.cls].name })),
+      bizCard(opp),
       (oppPills = h('div', { class: 'pills' }, ['trickery', 'proficiency', 'ingenuity', 'charisma', 'cunning', 'conviction'].map((k) =>
         h('span', { class: 'pill small', 'data-k': k, tip: () => statTip(k, k in opp.tip ? B.tipOf(opp, k) : B.cOf(opp, k)) + statSplit(B.statParts(opp, k)) + (k in opp.tip ? '' : cccGate(opp)) }, `${D.STATS[k].short} `, h('b', { text: k in opp.tip ? opp.tip[k] : B.cOf(opp, k) })))))));
   // the middle of the table: the Pit right under the House's arms, each Roller's pot under it, then a ledger per

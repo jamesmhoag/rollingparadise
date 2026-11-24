@@ -154,6 +154,8 @@ export const GUIDE = {
     how: ['Click the aim to choose the space it hits, before the Bluff ends.'] },
   'trick-dice': { name: 'Bonus dice', def: 'The dice a trick\'s Bonus reads: a pip for each, lit as they go on.',
     how: ['Put dice of the trick\'s own size on it to light the pips: those are its Bonus dice.', 'Other dice still add their value; they just do not count for the Bonus.'] },
+  'boss-trait': { name: 'High Roller trait', def: 'The business card a High Roller plays by: one rule of the bout bent their way.',
+    how: ['Read it before you lay out your position: some traits punish a plan, others reward pressure.', 'It works every turn, all bout long.'] },
   'trick-stack': { name: 'Stack of copies', def: 'Copies of one trick drawn onto each other.',
     how: ['One bid plays the stack: a copy a turn, with the same roll and target, each with its own print.', 'Draw copies apart instead (Shift-click) to aim them at different targets.'] },
   zone: { name: 'Table area', def: 'A part of the bout screen: your Book, your Run, the roll, your Pouch, or theirs.',

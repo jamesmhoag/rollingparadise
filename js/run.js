@@ -20,6 +20,7 @@ export const clearRun = () => { try { store()?.removeItem(RUN_KEY); } catch { /*
 function migrate(run) {
   if (run.pass == null) { // the Royal Card became the Casino Pass; a run already on a floor holds that floor's pass, unless the card was dropped
     run.pass = run.cards?.includes('royal') ? Math.max(1, run.floor || 0) : 0; if (run.cards) run.cards = run.cards.filter((c) => c !== 'royal'); }
+  if (run.cards) run.cards = run.cards.filter((c) => !D.RETIRED_CARDS.includes(c)); // Business Cards became High Roller traits
   if (!Array.isArray(run.passes)) run.passes = run.pass ? [run.pass] : []; // a wallet can hold more than one pass
   for (const t of run.tricks || []) { // Trick Trader upgrades are gone: an upgraded trick becomes the foil it played as
     if (t.wear == null) t.wear = D.WEAR.good;
@@ -105,6 +106,8 @@ export const chipFloor = (run) => (run.phase === 'ascent' ? D.ASCENT_FLOOR : run
 // The roster (content/roster.js): the opponents who can sit at a floor's tables, or at its head table
 export const rosterFor = (floor, table) => Object.entries(D.ROSTER).filter(([, X]) => (table === 'boss' ? X.boss : !X.boss) && (!X.floors || X.floors.includes(floor)) && (table === 'boss' || !X.tables || X.tables.includes(table))).map(([id]) => id);
 // the generation options a roster entry sets
+// a High Roller dealt by name from BOSSES (no roster entry) takes the trait of the roster entry with that name
+const bossTraitByName = (name) => Object.values(D.ROSTER).find((x) => x.boss && x.name === name)?.trait || null;
 function rosterOpts(id, o = {}) { const X = D.ROSTER[id]; if (!X) return o; return { ...o, name: X.name, roster: id, ...(X.cls && D.CLASSES[X.cls] ? { cls: X.cls } : {}) }; }
 export function genOpponent(run, floor, worthTarget, o = {}) {
   const X = o.roster ? D.ROSTER[o.roster] : null; if (X?.purse > 0) worthTarget = X.purse;
@@ -136,10 +139,10 @@ export function genOpponent(run, floor, worthTarget, o = {}) {
   if (o.cols) why.note = tx('run.a-bar-table-only');
   for (const [id, n] of Object.entries(X?.chips || {})) if (n > 0 && D.SHOP_CHIPS[id]) groups.push({ value: 1, count: n, resist: id }); // its own chips
   const drink = X?.drink ? D.DRINKS.find((d) => d.id === X.drink) : null;
-  return { name: o.name || rng.pick(D.OPPONENTS), title: o.title || '', cls, floor, boss: !!o.boss, ai: true, tip, c, dims, why, deploy: K.deploy, dice, tricks,
+  return { name: o.name || rng.pick(D.OPPONENTS), title: o.title || '', cls, floor, ai: true, tip, c, dims, why, deploy: K.deploy, dice, tricks,
     plan: { chips: groups, spacing: X?.deploy?.spacing || 'row', stacking: X?.deploy?.stacking || 'maxed', ...(X?.layout?.length ? { layout: X.layout } : {}) },
     worth: X?.layout?.length ? X.layout.reduce((t, sp) => t + (sp.chips || []).reduce((u, it) => u + (typeof it === 'number' ? it : 1), 0), 0) : nBig * big + petty,
-    roster: o.roster || null, wallet: X?.wallet || null, drink: drink ? { ...drink } : null,
+    roster: o.roster || null, trait: X?.boss || o.boss ? X?.trait || bossTraitByName(o.name) : null, boss: !!(o.boss || X?.boss), wallet: X?.wallet || null, drink: drink ? { ...drink } : null,
     behave: { ...D.DEFAULT_BEHAVE, ...(X?.behave || {}) }, phases: X?.phases ? JSON.parse(JSON.stringify(X.phases)) : null };
 }
 

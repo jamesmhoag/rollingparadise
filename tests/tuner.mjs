@@ -3,7 +3,7 @@ import * as R from '../js/run.js'; import * as B from '../js/bout.js'; import * 
 import * as Draft from '../js/build/draft.js';
 
 const fails = [], ok = (c, m) => { if (!c) fails.push(m); };
-const run = R.newRun('hustler', 'standard', 3); R.enterFloor(run, 2); run.purse = 1e6;
+const run = R.newRun('hustler', 'standard', 3); R.enterFloor(run, 2); run.purse = 1e6; run.cards = []; // no discount card to start
 const prep = R.newPrep(run, 'table', 0); for (const k of Object.keys(prep.tilts)) prep.tilts[k] = 0;
 const m0 = R.multiplier(run, prep), r0 = R.restockCost(run), p0 = R.packCost(run, 1);
 Draft.setValue('TUNING.wager.base', 2.5); Draft.setValue('TUNING.shops.restock', 300); Draft.setValue('TUNING.shops.packPrice', 400);

@@ -687,12 +687,6 @@ export const CARDS = {
   discount_diesmith: { name: 'Discount Card: Diesmith', text: '10% off at the Diesmith.' },
   discount_trader: { name: 'Discount Card: Trick Trader', text: '10% off at the Trick Trader.' },
   discount_lounge: { name: 'Discount Card: Lounge', text: '10% off drinks at the Lounge.' },
-  business_trickery: { name: 'Business Card: Dealer', text: '+1 Trickery.', mods: { trickery: 1 } },
-  business_ingenuity: { name: 'Business Card: Broker', text: '+1 Ingenuity.', mods: { ingenuity: 1 } },
-  business_proficiency: { name: 'Business Card: Shooter', text: '+1 Proficiency.', mods: { proficiency: 1 } },
-  business_charisma: { name: 'Business Card: Agent', text: '+1 Charisma.', mods: { charisma: 1 } },
-  business_cunning: { name: 'Business Card: Fixer', text: '+1 Cunning.', mods: { cunning: 1 } },
-  business_conviction: { name: 'Business Card: Closer', text: '+1 Conviction.', mods: { conviction: 1 } },
   paradise: { name: 'Paradise Card', text: 'Earned by beating the last High Roller. It opens the Paradise Ascent.' },
   membership: { name: 'Membership Card', text: 'Earned by buying 5 tricks on one floor. Opens the Trick Trader\'s Secret Shelf and takes 10% off everything the Trader sells.' },
   suite: { name: 'Suite Key Card', text: 'Earned by winning a Double Down. Opens a Suite after you beat the High Roller.' },
@@ -737,8 +731,9 @@ export const PASSES = [null,
   { name: 'Rollers Suite Pass', glyph: '3', color: '#ff86ea', text: 'Gets you onto the Rollers Suite, floor 3.' },
   { name: 'Royal Paradise Pass', glyph: '4', color: '#d4a52a', text: 'Gets you onto Royal Paradise, floor 4.' }];
 export const PURSE_LIMIT = 999e12;
-export const STARTER_CARDS = ['discount_diesmith', 'discount_trader', 'discount_lounge', 'business_trickery', 'business_ingenuity', 'business_proficiency',
-  'business_charisma', 'business_cunning', 'business_conviction'];
+export const STARTER_CARDS = ['discount_diesmith', 'discount_trader', 'discount_lounge'];
+// Business Cards no longer raise your attributes: each High Roller carries one, and it is their trait (BOSS_TRAITS).
+export const RETIRED_CARDS = ['business_trickery', 'business_ingenuity', 'business_proficiency', 'business_charisma', 'business_cunning', 'business_conviction'];
 export const FIND_CARDS = ['resist_card', 'resist_card_plus', 'debit', 'note', 'note_dice', 'note_debt', 'note_house', 'note_hold', 'note_flip', 'trading', 'punch'];
 export const WALLET_SLOTS = 4;
 
@@ -750,6 +745,8 @@ import { MADE_CHIPS } from './content/chipmaker.js';
 export { MADE_CHIPS };
 import { ROSTER, BEHAVE, DEFAULT_BEHAVE } from './content/roster.js';
 export { ROSTER, BEHAVE, DEFAULT_BEHAVE };
+import { BOSS_TRAITS } from './content/bosstraits.js';
+export { BOSS_TRAITS };
 import { TUNING } from './content/tuning.js';
 export { TUNING };
 import { GUIDE } from './content/guidance.js';
@@ -759,7 +756,7 @@ import TEXT from './text/en.js';
 import { MATERIALS as _MAT, DICE_SHOP as _DS, BONE as _BONE, MELT as _MELT, CASTS as _CASTS, DYES as _DYES, DIAMOND as _DIA } from './content/dice.js';
 export const TABLES = { CLASSES, BASE_DIMS, STATS, DICE, MATERIALS: _MAT, DICE_SHOP: _DS, BONE: _BONE, MELT: _MELT, CASTS: _CASTS, DYES: _DYES, DIAMOND: _DIA, DIE_VARS,
   TYPES, TRICKS, CHIPS, SHOP_CHIPS, CHIP_TIERS, CREATURES, ORBITALS, CALAMITIES, TILTS, TILT_PRESSURE, FELTS, FLOORS, BOSSES, OPPONENTS, DRINKS, SPORTS, JACKETS, CARDS, WALLETS,
-  PASSES, CONDITIONS, PACKS, QDIE, PRIZES, GUIDE, TEXT, MADE_CHIPS, ROSTER, TUNING, ODDS, DENOMS, WEAR, IMAGES, ICONS, TEXTURES, NEON };
+  PASSES, CONDITIONS, PACKS, QDIE, PRIZES, GUIDE, TEXT, MADE_CHIPS, ROSTER, BOSS_TRAITS, TUNING, ODDS, DENOMS, WEAR, IMAGES, ICONS, TEXTURES, NEON };
 const isObj = (x) => x && typeof x === 'object';
 // a path's steps: keys are joined by '.', and a '.' inside a key (as in text keys) is written '\\.'
 export const splitPath = (path) => path.split(/(?<!\\)\./).map((k) => k.replace(/\\\./g, '.'));
