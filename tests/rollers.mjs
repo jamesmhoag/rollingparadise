@@ -26,4 +26,11 @@ ok(Object.values(D.ROSTER).every((X) => D.CLASSES[X.cls]), 'every opponent and H
   const me = R.startTable(run, R.newPrep(run, 'table', 1)).bout.sides[0];
   ok(B.bossTrait(me)?.name === D.BOSS_TRAITS[card].name, 'and it plays for you at the next table');
   ok(R.carryCard(run, null) && run.trait === null && !R.carryCard(run, 'not_a_card'), 'you can put it away, but only carry cards you won'); }
+{ // a Roller's starting position is the run's first plan; an opponent's is fitted to its own position
+  D.ROLLERS.owl.layout = [{ r: 0, c: 2, chips: [5, 1] }]; const run = R.newRun('owl', 'standard', 9);
+  ok(JSON.stringify(run.plan.layout) === JSON.stringify(D.ROLLERS.owl.layout) && run.plan.layout !== D.ROLLERS.owl.layout, 'a run starts from its Roller\'s position (a copy)');
+  delete D.ROLLERS.owl.layout;
+  const dims = R.posDims({ cls: 'hustler' }), deep = R.posDims({ cls: 'technician' });
+  ok(deep.barRows > dims.barRows && R.posDims({ cls: 'hustler', boss: true }).stackMax === dims.stackMax + 1, 'the position follows the class and rank');
+  ok(R.fitLayout([{ r: deep.barRows - 1, c: 0, chips: [1] }, { r: 0, c: 0, chips: [1] }], dims).length === 1, 'a row the class no longer has is left out'); }
 console.log('ok, rollers: classes are attributes, Rollers and opponents name one, business cards are kept');

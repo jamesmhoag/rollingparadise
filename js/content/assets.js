@@ -13,10 +13,10 @@ export const FONTS = {
 // on (a colour, an image), and one part that blinks, slowly and softly. See js/ui/sign.js. An opponent's own sign
 // (ROSTER[id].sign, Opponent maker) is laid over `them`.
 export const NEON = {
-  you: { border: ["#6ef0ff", "#4d6bff"], name: ["#ff6edc", "#b98bff"], cls: ["#fff36e", "#ffa13d"], frame: "tube", edge: "★", edgeAt: "none", mount: { color: "", image: "" }, blink: { part: "none", pattern: "breathe" } },
-  them: { border: ["#ff4d6a", "#ffa13d"], name: ["#9dff6e", "#2fd0ff"], cls: ["#b98bff", "#ff6edc"], frame: "tube", edge: "★", edgeAt: "none", mount: { color: "", image: "" }, blink: { part: "none", pattern: "breathe" } },
+  you: { border: ["#6ef0ff", "#4d6bff"], name: ["#ff6edc", "#b98bff"], cls: ["#fff36e", "#ffa13d"], frame: "plain", motion: "chase", edge: "star5", edgeAt: "none", mount: { color: "", image: "" }, blinks: {} },
+  them: { border: ["#ff4d6a", "#ffa13d"], name: ["#9dff6e", "#2fd0ff"], cls: ["#b98bff", "#ff6edc"], frame: "plain", motion: "chase", edge: "star5", edgeAt: "none", mount: { color: "", image: "" }, blinks: {} },
   // the House's sign is one of these too: a frame of bulbs (which twinkle, chase and flash as the House plays)
-  house: { border: ["#ffd76a", "#ff9a2e"], name: ["#ffb84d", "#ff7a1a"], cls: ["#fff4d6", "#ffd76a"], frame: "bulbs", edge: "♦", edgeAt: "none", mount: { color: "#0b0716", image: "" }, blink: { part: "none", pattern: "breathe" } },
+  house: { border: ["#ffd76a", "#ff9a2e"], name: ["#ffb84d", "#ff7a1a"], cls: ["#fff4d6", "#ffd76a"], frame: "bulbs", motion: "chase", edge: "suit", edgeAt: "none", mount: { color: "#0b0716", image: "" }, blinks: {} },
 };
 
 // the lounge band's set, played in turn on a loop: original tunes written for Rolling Paradise, one per corner of

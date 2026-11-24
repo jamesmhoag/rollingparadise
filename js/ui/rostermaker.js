@@ -4,7 +4,7 @@
 //   A Roller (ROLLERS) is a name, a Class and a starting inventory: its Book, Pouch, Worth, wallet and jacket, and its sign.
 //   An Opponent (ROSTER) is the same, plus where it sits and how it plays; a High Roller adds a business card and phases.
 // The neon signs live here too: each Roller's and Opponent's own, and the shared looks (yours, the opponents', the House's).
-import { h, lab, btn, toast, paint } from './core.js';
+import { h, lab, btn, toast } from './core.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
 import * as B from '../build/draft.js';
@@ -15,6 +15,7 @@ import { diceSummary } from './app.js';
 import { signEditor } from './neonmaker.js';
 import { dieEl } from './parts.js';
 import { trickTag } from './app.js';
+import { stakeBoard } from './stakeboard.js';
 
 // A list of tricks as the tricks themselves: each a tag (its hover is the trick), ✕ to drop it, and a menu to add one.
 // The ids are kept in the data; the names and colours come from TRICKS, so renaming a trick renames it here.
@@ -106,6 +107,7 @@ export function rollerMaker(id, redraw) {
     f.field(lab('roster.worth'), f.number(['worth'], X.worth ?? 200, { min: 1 }), ['worth']),
     f.field(lab('roster.wallet'), f.select(['wallet'], optsOf(D.WALLETS), X.wallet || 'worn_cloth'), ['wallet']),
     f.field(lab('roster.jacket'), f.select(['jacket'], Object.entries(D.JACKETS).filter(([, J]) => !J.cls || J.cls === X.cls).map(([k, J]) => [k, J.name]), X.jacket || 'standard'), ['jacket']),
+    f.field(lab('roster.rollerLayout'), stakeBoard({ dims: R.posDims(X), layout: X.layout, set: (v) => B.setValue(D.subPath(D.subPath('ROLLERS', id), 'layout'), v), done: redraw, who: 'roller' }), ['layout']),
     h('span', { class: 'cap', text: t('roster.part.sign') }), h('p', { class: 'sub', text: t('roster.sign.you') }),
     signEditor(D.subPath(D.subPath('ROLLERS', id), 'sign'), 'you', X.sign, redraw, [X.name, K?.name || ''])),
   h('div', {}, h('span', { class: 'cap', text: t('maker.preview') }), h('div', { class: 'b-card', style: { '--cc': K?.color } }, h('b', { text: D.heroName(X.cls, id) }), h('p', { text: D.classRule(X.cls) }),
@@ -167,12 +169,12 @@ export function rosterMaker(id, redraw) {
       f.select(null, [[null, t('chipmaker.add')], ...Object.entries(D.SHOP_CHIPS).filter(([k]) => !X.chips?.[k]).map(([k, v]) => [k, v.name])], null, (v) => v && f.set(['chips'], { ...(X.chips || {}), [v]: 1 }))), ['chips']),
     f.field(lab('roster.spacing'), f.select(['deploy', 'spacing'], [['row', t('roster.sp.row')], ['column', t('roster.sp.column')], ['random', t('roster.sp.random')]], X.deploy?.spacing || 'row'), ['deploy']),
     f.field(lab('roster.stacking'), f.select(['deploy', 'stacking'], [['maxed', t('roster.st.maxed')], ['balanced', t('roster.st.balanced')], ['random', t('roster.st.random')]], X.deploy?.stacking || 'maxed'), null),
-    f.field(lab('roster.layout'), layoutGrid(X, (v) => f.set(['layout'], v), redraw), ['layout']),
+    f.field(lab('roster.layout'), stakeBoard({ dims: R.posDims(X), layout: X.layout, set: (v) => B.setValue(D.subPath(D.subPath('ROSTER', id), 'layout'), v), done: redraw, effects: true, who: 'opponent' }), ['layout']),
     h('span', { class: 'cap', text: t('roster.part.behave') }),
     ...Object.keys(D.BEHAVE).map((k) => f.field(lab(`roster.beh.${k}`), f.select(['behave', k], opt(D.BEHAVE[k]), beh[k]), ['behave', k])),
     // its neon sign at the table: laid over the opponents' shared look (the first entry in this list)
     h('span', { class: 'cap', text: t('roster.part.sign') }), h('p', { class: 'sub', text: t('roster.sign.note') }),
-    signEditor(D.subPath(D.subPath('ROSTER', id), 'sign'), 'them', X.sign, redraw, [X.name, X.boss ? t('run.high-roller') : D.CLASSES[X.cls]?.name || '']),
+    signEditor(D.subPath(D.subPath('ROSTER', id), 'sign'), 'them', X.sign, redraw, [X.name, D.CLASSES[X.cls]?.name || ''], X.boss ? Math.min(4, Math.max(1, ...(X.floors?.length ? X.floors : [1]))) : null),
   ];
   if (X.boss) {
     const phases = X.phases || [];
@@ -188,31 +190,6 @@ export function rosterMaker(id, redraw) {
       btn(t('roster.phase.add'), () => f.set(['phases'], [...phases, { below: phases.length ? Math.max(0.05, (phases[phases.length - 1].below || 0.5) / 2) : 0.5, behave: { temper: 'rabid' }, cheat: { dice: 1, tricks: 0 } }]), null, 'small'));
   }
   return h('div', { class: 'b-maker' }, h('div', { class: 'b-fields' }, parts), h('div', {}, h('span', { class: 'cap', text: t('roster.preview') }), preview(id), h('p', { class: 'sub', text: t('roster.preview.note') })));
-}
-// a precise Stake layout: one box per space, painted with a brush (a chip value or an effect chip): click and hold on
-// a space to stack chips at a steady rate, sweep to paint each space you cross; the eraser takes the top chip off.
-// Each space shows its stack by the chips' own names, so a renamed effect chip shows its new name here.
-let layoutBrush = '1';
-const chipLabel = (x) => (typeof x === 'number' ? `${x}¢` : D.SHOP_CHIPS[x]?.name || x);
-function layoutGrid(X, onSet, redraw) {
-  const K = X.cls ? D.CLASSES[X.cls] : null, rows = Math.max(1, D.BASE_DIMS.barRows + (K?.bvd.depth || 0)), cols = D.BASE_DIMS.cols;
-  const cap = Math.max(1, D.BASE_DIMS.stackMax + (K?.bvd.balance || 0));
-  const cur = () => X.layout || [], at = (r, c) => cur().find((x) => x.r === r && x.c === c)?.chips || [];
-  const put = (r, c, chips) => { const rest = cur().filter((x) => !(x.r === r && x.c === c)), next = chips.length ? [...rest, { r, c, chips }].sort((a, b) => a.r - b.r || a.c - b.c) : rest;
-    B.setValue(D.subPath(D.subPath('ROSTER', idOf(X)), 'layout'), next.length ? next : null); };
-  if (!(layoutBrush === 'erase' || /^\d+$/.test(layoutBrush) || D.SHOP_CHIPS[layoutBrush])) layoutBrush = '1';
-  const show = (el, list) => { el.replaceChildren(...(list.length ? list.slice().reverse().map((x) => h('span', { class: `b-lchip ${typeof x === 'number' ? '' : 'fx'}`, text: chipLabel(x) })) : [h('span', { class: 'dim', text: '·' })])); };
-  const grid = h('div', { class: 'b-layout painting', style: { gridTemplateColumns: `repeat(${cols}, 1fr)` } },
-    ...Array.from({ length: rows * cols }, (_, i) => { const r = Math.floor(i / cols), c = i % cols, list = at(r, c);
-      const el = h('div', { class: 'b-lcell', 'data-rc': `${r}:${c}`, tip: () => t('roster.layout.cell', { r: r + 1, c: c + 1, chips: at(r, c).map(chipLabel).join(' · ') || t('roster.layout.empty') }) }); show(el, list); return el; }));
-  paint(grid, (ev) => { const el = ev.target.closest?.('[data-rc]'); if (!el) return null; const [r, c] = el.dataset.rc.split(':').map(Number); return { key: el.dataset.rc, r, c, el }; },
-    (p) => { const list = at(p.r, p.c).slice(); if (layoutBrush === 'erase') list.pop(); else if (list.length < cap) list.push(/^\d+$/.test(layoutBrush) ? Number(layoutBrush) : layoutBrush); else return;
-      put(p.r, p.c, list); show(p.el, list); }, 170, () => redraw());
-  const brushes = h('select', { onchange: (e) => { layoutBrush = e.target.value; redraw(); } },
-    ...[...D.DENOM_VALUES.map((v) => [String(v), `${v}¢`]), ...Object.entries(D.SHOP_CHIPS).map(([k, v]) => [k, v.name]), ['erase', t('roster.brush.erase')]]
-      .map(([v, l]) => h('option', { value: v, ...(v === layoutBrush ? { selected: 'selected' } : {}), text: l })));
-  return h('div', {}, h('div', { class: 'row' }, h('span', { class: 'sub', text: t('roster.brush') }), brushes, cur().length ? btn(t('roster.layout.clear'), () => onSet(null), null, 'small') : null), grid,
-    h('p', { class: 'sub', text: t(cur().length ? 'roster.layout.on' : 'roster.layout.off') }));
 }
 const idOf = (X) => Object.keys(D.ROSTER).find((k) => D.ROSTER[k] === X);
 export const rosterLabel = (id) => { const X = D.ROSTER[id]; return `${X.boss ? '👑 ' : ''}${X.name}`; };

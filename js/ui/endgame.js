@@ -4,6 +4,7 @@ import { app, hud, oppTip, trickTag } from './app.js';
 import { jacketTip, trickTip, trickWords, cardTip, dieTip, dieEl, passEl } from './parts.js';
 import { planner } from './prep.js';
 import * as D from '../data.js';
+import { signOf, dressSign } from './sign.js';
 import * as R from '../run.js';
 import { flavorP } from './parts.js';
 import { cents } from '../util.js';
@@ -39,9 +40,19 @@ export function suiteScene(root, penthouse) {
   }
   render();
   const K = D.CLASSES[run.cls];
+  // the crowns you have claimed from High Rollers: wear one on your sign for the rest of the run (style only)
+  const crowns = h('div', { class: 'col crown-case' });
+  function renderCrowns() {
+    const list = run.crownCase || [];
+    crowns.replaceChildren(h('h2', { text: t('suite.crowns') }), h('p', { class: 'sub', text: t(list.length ? 'suite.crowns.sub' : 'suite.crowns.none') }),
+      ...list.map((c, i) => { const prev = h('div', { class: 'who me neon-sample crown-sample' }, h('div', { class: 'name nsign' }, h('b', { class: 'neon-name', text: D.ROLLERS[run.roller]?.name || K.name }), h('span', { class: 'neon-class', text: t('suite.crown.from', { name: c.from }) })));
+        dressSign(prev, { ...signOf('you', D.ROLLERS[run.roller]?.sign), crown: { level: c.floor, colors: signOf('them', D.ROSTER[c.roster]?.sign).border } }, 'you');
+        return h('div', { class: 'row' }, prev, btn(t(run.wearing === i ? 'suite.crown.off' : 'suite.crown.wear'), () => { R.wearCrown(run, run.wearing === i ? null : i); renderCrowns(); }, null, `small ${run.wearing === i ? 'on' : 'go'}`)); }));
+  }
+  renderCrowns();
   root.append(H.el, h('div', { class: 'page cols3' },
     h('div', { class: 'box col' }, h('h2', { text: t('suite.dresser') }), h('p', { class: 'sub', text: t('suite.dresser.sub') }), dresser),
-    h('div', { class: 'box col scroll' }, h('h2', { text: t('suite.wardrobe') }), h('p', { class: 'sub', text: t('suite.wardrobe.sub') }), J.el),
+    h('div', { class: 'box col scroll' }, h('h2', { text: t('suite.wardrobe') }), h('p', { class: 'sub', text: t('suite.wardrobe.sub') }), J.el, crowns),
     h('div', { class: 'box col' }, h('h2', { text: t(penthouse ? 'suite.bed.nice' : 'suite.bed') }),
       h('p', { class: 'sub', text: t(penthouse ? 'suite.bed.nice.sub' : 'suite.bed.sub', { stat: D.STATS[K.primary].name }) }),
       h('span', { class: 'grow' }), btn(t(penthouse ? 'suite.sleep.ascent' : 'suite.sleep'), () => { R.goToBed(run, penthouse); if (penthouse) { R.buildAscent(run, app.meta); app.nav.ascent(); } else { R.enterFloor(run, run.floor + 1); app.nav.hub(); } }, null, 'big go'))));
