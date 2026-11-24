@@ -174,7 +174,7 @@ export function rosterMaker(id, redraw) {
     ...Object.keys(D.BEHAVE).map((k) => f.field(lab(`roster.beh.${k}`), f.select(['behave', k], opt(D.BEHAVE[k]), beh[k]), ['behave', k])),
     // its neon sign at the table: laid over the opponents' shared look (the first entry in this list)
     h('span', { class: 'cap', text: t('roster.part.sign') }), h('p', { class: 'sub', text: t('roster.sign.note') }),
-    signEditor(D.subPath(D.subPath('ROSTER', id), 'sign'), 'them', X.sign, redraw, [X.name, X.boss ? t('run.high-roller') : D.CLASSES[X.cls]?.name || '']),
+    signEditor(D.subPath(D.subPath('ROSTER', id), 'sign'), 'them', X.sign, redraw, [X.name, D.CLASSES[X.cls]?.name || ''], X.boss ? Math.min(4, Math.max(1, ...(X.floors?.length ? X.floors : [1]))) : null),
   ];
   if (X.boss) {
     const phases = X.phases || [];

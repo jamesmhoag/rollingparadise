@@ -925,11 +925,6 @@ p.flavor { font-style: italic; color: var(--dim); }
 @keyframes sign-pulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.4); } }
 @keyframes sign-flicker { 0%, 61%, 64%, 82%, 85%, 100% { opacity: 1; } 62.5% { opacity: .7; } 83.5% { opacity: .78; } }
 @keyframes sign-alt { 0%, 45% { opacity: 1; } 55%, 95% { opacity: .55; } 100% { opacity: 1; } }
-.neonsign { --bk-dur: 3.2s; } .neonsign.blink-pulse { --bk-dur: 2.2s; } .neonsign.blink-flicker { --bk-dur: 4.6s; } .neonsign.blink-alternate { --bk-dur: 3s; }
-.neonsign.blink-breathe { --bk: sign-breathe; } .neonsign.blink-pulse { --bk: sign-pulse; } .neonsign.blink-flicker { --bk: sign-flicker; } .neonsign.blink-alternate { --bk: sign-alt; }
-.neonsign.blink-name .neon-name, .neonsign.blink-name .hs-name, .neonsign.blink-cls .neon-class, .neonsign.blink-cls .turn, .neonsign.blink-edge .sf-glyph { animation: var(--bk) var(--bk-dur) ease-in-out infinite; }
-.neonsign.blink-border { animation: var(--bk) var(--bk-dur) ease-in-out infinite; }
-.neonsign.blink-alternate.blink-name .neon-class, .neonsign.blink-alternate.blink-cls .neon-name { animation: var(--bk) var(--bk-dur) ease-in-out calc(var(--bk-dur) / -2) infinite; }
 @media (prefers-reduced-motion: reduce) { .neonsign, .neonsign *, .marquee i { animation: none !important; } }
 .neon-maker .neon-sample { margin-bottom: 8px; } .neon-sample.house-preview { min-width: 180px; justify-content: center; }
 .neon-sample.house-preview .neon-name { color: color-mix(in srgb, var(--house-cls1) 85%, #fff) !important; text-shadow: 0 0 3px #fff, 0 0 9px var(--house-name1), 0 0 20px var(--house-name2) !important; }
@@ -975,36 +970,8 @@ p.flavor { font-style: italic; color: var(--dim); }
 .chip.mat i { opacity: .5; }
 .b-lab.has-help { text-decoration: underline dotted rgba(255,255,255,.35); text-underline-offset: 3px; cursor: help; }
 
-/* ---------- neon sign frames (sign.js draws them as an SVG over the sign) ---------- */
-.sign-frame { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 1; }
-.sf-body { filter: drop-shadow(0 0 2px var(--sf1)) drop-shadow(0 0 6px var(--sf2)); }
-.sf-tube { fill: none; stroke: var(--sf1); stroke-width: 2.2; stroke-linejoin: round; }
-.sf-tube.thin { stroke-width: 1.6; } .sf-tube.b { stroke: var(--sf2); }
-.sf-tube.rope { stroke-width: 3; stroke-dasharray: 6 6; } .sf-tube.rope2 { stroke-dashoffset: 6; }
-.sf-tube.grad { stroke-width: 2.6; }
-.sf-glint { fill: none; stroke: color-mix(in srgb, var(--sf1) 35%, #fff); stroke-width: 2.6; stroke-linecap: round; stroke-dasharray: calc(var(--L) * 0.1px) calc(var(--L) * 1px); opacity: 0; }
-.sf-lamps { filter: drop-shadow(0 0 2px var(--sf1)) drop-shadow(0 0 5px var(--sf2)); }
-.sf-lamp { fill: var(--sf1); stroke: var(--sf1); }
-.sf-lamp.dash { stroke-width: 2.4; stroke-linecap: round; } .sf-lamp.dot { stroke: none; } .sf-lamp.bulb { stroke: color-mix(in srgb, var(--sf1) 50%, #fff); stroke-width: 0.8; }
-.sf-glyph { stroke: none; font-size: 11px; font-family: 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols 2', 'Noto Sans Symbols', 'DejaVu Sans', 'DejaVu Sans Mono', 'OpenSymbol', sans-serif; }
-.frame-symbols .sf-glyph { font-size: 10px; }
-/* motions: all slow (under one change a second) and never fully dark; reduced motion stops them (above) */
-.motion-chase .sf-lamp { animation: sf-chase 3s linear infinite; animation-delay: calc(var(--i) / var(--n) * 3s - 3s); }
-.motion-chase .sf-glint { opacity: 0.95; animation: sf-glint 4.5s linear infinite; }
-.motion-breathe .sf-lamp, .motion-breathe .sf-body { animation: sf-breathe 3.6s ease-in-out infinite; }
-.motion-swap .sf-lamp { animation: sf-alt 2.6s ease-in-out infinite; } .motion-swap .sf-lamp.odd { animation-delay: -1.3s; }
-.motion-swap .sf-tube { animation: sf-swap 3.2s ease-in-out infinite; } .motion-swap .sf-tube.b { animation-delay: -1.6s; }
-.motion-twinkle .sf-lamp { animation: sf-twinkle 3.4s ease-in-out infinite; animation-delay: calc(var(--r) * -3.4s); }
-.motion-twinkle .sf-body { animation: sf-shimmer 2.8s ease-in-out infinite; }
-@keyframes sf-chase { 0% { opacity: 1; } 18% { opacity: 0.45; } 100% { opacity: 0.45; } }
-@keyframes sf-glint { from { stroke-dashoffset: 0; } to { stroke-dashoffset: calc(var(--L) * -1px); } }
-@keyframes sf-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
-@keyframes sf-alt { 0%, 100% { fill: var(--sf1); stroke: var(--sf1); opacity: 1; } 50% { fill: var(--sf2); stroke: var(--sf2); opacity: 0.6; } }
-@keyframes sf-swap { 0%, 100% { stroke: var(--sf1); } 50% { stroke: var(--sf2); } }
-@keyframes sf-twinkle { 0%, 100% { opacity: 1; } 45% { opacity: 0.5; } 60% { opacity: 0.9; } }
-@keyframes sf-shimmer { 0%, 100% { opacity: 1; } 30% { opacity: 0.82; } 55% { opacity: 1; } 75% { opacity: 0.88; } }
 .glyph-group { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; } .glyph-group .cap { width: 100%; margin-top: 4px; }
-.small.glyph { min-width: 26px; padding: 2px 4px; font-family: 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols 2', 'DejaVu Sans', 'DejaVu Sans Mono', 'OpenSymbol', sans-serif; } .small.glyph svg { width: 12px; height: 12px; fill: currentColor; vertical-align: middle; }
+.small.glyph { min-width: 26px; padding: 2px 4px; font-family: 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols 2', 'DejaVu Sans', 'DejaVu Sans Mono', 'OpenSymbol', sans-serif; } .small.glyph svg { width: 18px; height: 18px; vertical-align: middle; } .small.glyph { min-width: 30px; padding: 3px; }
 .b-list-edit { gap: 4px; } .b-li { gap: 2px; } .b-li.bad select { border-color: #ff6a6a; }
 .sb-wrap { gap: 8px; } .sb-scroll { overflow-x: auto; padding: 8px 0 4px; }
 .stakeboard { position: relative; flex: none; touch-action: none; cursor: crosshair; user-select: none; border-radius: 10px; padding: 0; }
@@ -1016,3 +983,40 @@ p.flavor { font-style: italic; color: var(--dim); }
 .mboard .mcell:not(.meter) { background: radial-gradient(ellipse at 50% 35%, #a52232, #7c1420 70%); border-color: rgba(255, 210, 160, .14); }
 .mboard .mcell.alt:not(.meter) { background: radial-gradient(ellipse at 50% 35%, #3a0d14, #24070c 70%); }
 .sb-rack { flex-wrap: wrap; max-width: 560px; }
+
+/* ---------- neon signs (sign.js): one light for every tube, lamp, symbol and crown ---------- */
+.sign-frame, .sign-deco { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.sign-frame { z-index: 1; } .sign-deco { z-index: 0; }
+.nsign { position: relative; } .nsign .neon-name, .nsign .neon-class { position: relative; z-index: 1; }
+.nsign.has-symbol .neon-name { padding-right: 1.05em; }
+.lights, .lt, .lamp, .sym { transform-box: fill-box; }
+.spots { opacity: 0; } .swaps { opacity: 0; }
+/* chase: a brighter stretch of the same light runs round, lamps light in turn at the same pace, strips flow */
+.motion-chase .spots { opacity: 1; } .motion-chase .spot path { animation: ns-run 5s linear infinite; }
+.motion-chase .lamp { animation: ns-turn 5s linear infinite; animation-delay: calc(var(--i) / var(--n) * -5s); }
+.motion-chase .flow path { animation: ns-flow 1.8s linear infinite; }
+/* breathe: the whole light dims and lifts */
+.motion-breathe .lights { animation: ns-breathe 4.2s ease-in-out infinite; }
+/* swap: the colours trade, fading across and back; lamps take turns */
+.motion-swap .swaps { animation: ns-swap 4.4s ease-in-out infinite; } .motion-swap .lamp { animation: ns-breathe 4.4s ease-in-out infinite; } .motion-swap .lamp.odd { animation-delay: -2.2s; }
+/* twinkle: lamps flicker one by one; a tube shimmers along its glow */
+.motion-twinkle .lamp { animation: ns-twinkle 3.4s ease-in-out infinite; animation-delay: calc(var(--r) * -3.4s); }
+.motion-twinkle .frame-body .halo, .motion-twinkle .frame-body .hot { animation: ns-shimmer 2.9s ease-in-out infinite; }
+/* the name's symbol has its own motion */
+.name-sym.motion-breathe { animation: ns-breathe 4.2s ease-in-out infinite; }
+.name-sym.motion-chase > .lt { animation: ns-turn 3.2s linear infinite; animation-delay: calc(var(--i) * -0.45s); }
+.name-sym.motion-swap > .lt { animation: ns-breathe 3.6s ease-in-out infinite; } .name-sym.motion-swap > .lt:nth-child(even) { animation-delay: -1.8s; }
+.name-sym.motion-twinkle > .lt { animation: ns-twinkle 3.2s ease-in-out infinite; animation-delay: calc(var(--i) * -0.83s); }
+@keyframes ns-run { from { stroke-dashoffset: var(--s0); } to { stroke-dashoffset: calc(var(--s0) - var(--L)); } }
+@keyframes ns-flow { from { stroke-dashoffset: var(--o); } to { stroke-dashoffset: calc(var(--o) - var(--P)); } }
+@keyframes ns-turn { 0% { opacity: 1; } 16% { opacity: 0.5; } 100% { opacity: 0.5; } }
+@keyframes ns-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+@keyframes ns-swap { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
+@keyframes ns-twinkle { 0%, 100% { opacity: 1; } 45% { opacity: 0.5; } 60% { opacity: 0.92; } }
+@keyframes ns-shimmer { 0%, 100% { opacity: 1; } 30% { opacity: 0.8; } 55% { opacity: 1; } 75% { opacity: 0.86; } }
+/* blinks: each part on its own, in its own pattern */
+.bk.bk-breathe, .neonsign.bk-name-breathe .neon-name, .neonsign.bk-name-breathe .hs-name, .neonsign.bk-cls-breathe .neon-class, .neonsign.bk-cls-breathe .turn { animation: sign-breathe 3.2s ease-in-out infinite; }
+.bk.bk-pulse, .neonsign.bk-name-pulse .neon-name, .neonsign.bk-name-pulse .hs-name, .neonsign.bk-cls-pulse .neon-class, .neonsign.bk-cls-pulse .turn { animation: sign-pulse 2.2s ease-in-out infinite; }
+.bk.bk-flicker, .neonsign.bk-name-flicker .neon-name, .neonsign.bk-name-flicker .hs-name, .neonsign.bk-cls-flicker .neon-class, .neonsign.bk-cls-flicker .turn { animation: sign-flicker 4.6s ease-in-out infinite; }
+.bk.bk-alternate, .neonsign.bk-name-alternate .neon-name, .neonsign.bk-name-alternate .hs-name { animation: sign-alt 3s ease-in-out infinite; } .neonsign.bk-cls-alternate .neon-class, .neonsign.bk-cls-alternate .turn { animation: sign-alt 3s ease-in-out -1.5s infinite; }
+.crown-case .row { align-items: center; gap: 12px; margin-top: 8px; } .crown-sample { position: relative; padding: 4px 12px; }

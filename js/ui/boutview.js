@@ -133,7 +133,9 @@ export function boutScene(root, bout, ctx, onDone) {
       h('em', { text: tx('table.biz-card') }), h('b', { text: T.name })); };
   const nameSign = (name, cls, tipFn) => h('div', { class: 'name nsign', tip: tipFn }, h('b', { class: 'neon-name', text: name }), h('span', { class: 'neon-class', text: cls }));
   // the signs: yours, theirs (their own if their roster entry has one) and the House's, all built the same way (sign.js)
-  const signs = { you: () => signOf('you', me.sign), them: () => signOf('them', opp.sign), house: () => signOf('house') };
+  // a High Roller wears its floor's crown; you wear one you have claimed, in the colours of the sign it came off
+  const crownOf = (c) => (c ? { level: c.floor, colors: signOf('them', D.ROSTER[c.roster]?.sign).border } : null);
+  const signs = { you: () => ({ ...signOf('you', me.sign), crown: crownOf(me.crown) }), them: () => ({ ...signOf('them', opp.sign), crown: opp.boss ? { level: Math.max(1, Math.min(4, opp.floor || 1)) } : null }), house: () => signOf('house') };
   function paintNeon() {
     const S = { you: signs.you(), them: signs.them(), house: signs.house() };
     for (const [who, N] of Object.entries(S)) for (const part of ['border', 'name', 'cls']) N[part].forEach((c, i) => root.style.setProperty(`--${who}-${part}${i + 1}`, c));
@@ -151,7 +153,7 @@ export function boutScene(root, bout, ctx, onDone) {
       h('div', { class: 'hs-name', text: tx('table.house-sign') }),
       h('div', { class: 'turn', tip: () => tx('table.turn-both-rollers-plan', { turn: bout.turn, LASTCALL: B.LAST_CALL + 1, maxTurns: bout.rules.maxTurns }) }, 'Turn ', h('b', { class: 'num turn-n', text: '1' }))))),
     h('div', { class: `who them${opp.boss ? ' boss' : ''}` }, h('div', { class: 'worth', tip: worthTip(opp) }, 'Worth ', worthEl[1], '¢', owesEl[1]),
-      nameSign(opp.name, opp.title || D.CLASSES[opp.cls].name, () => tx('table.sign-tip', { name: opp.title ? `${opp.name} the ${opp.title}` : opp.name, cls: D.CLASSES[opp.cls].name })),
+      nameSign(opp.name, D.CLASSES[opp.cls].name, () => tx('table.sign-tip', { name: opp.title ? `${opp.name}, ${opp.title}` : opp.name, cls: D.CLASSES[opp.cls].name })), // the class line names its class, High Rollers' too
       bizCard(opp),
       (oppPills = h('div', { class: 'pills' }, ['trickery', 'proficiency', 'ingenuity', 'charisma', 'cunning', 'conviction'].map((k) =>
         h('span', { class: 'pill small', 'data-k': k, tip: () => statTip(k, k in opp.tip ? B.tipOf(opp, k) : B.cOf(opp, k)) + statSplit(B.statParts(opp, k)) + (k in opp.tip ? '' : cccGate(opp)) }, `${D.STATS[k].short} `, h('b', { text: k in opp.tip ? opp.tip[k] : B.cOf(opp, k) })))))));
