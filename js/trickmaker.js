@@ -1,6 +1,6 @@
 // Made tricks: the pure rules behind the trick maker (content/trickmaker.js has the vocabulary). No DOM.
 import { CONVERT, PLACE, DEPLOY, MAKES, BONUS, AIMS, ZONES } from './content/trickmaker.js';
-import { SHOP_CHIPS, CONDS, condText } from './data.js';
+import { SHOP_CHIPS, CONDS, condText, TRICKS } from './data.js';
 import { MADE_CHIPS } from './content/chipmaker.js';
 import { t as tx } from './text.js';
 
@@ -57,7 +57,9 @@ export function describeRoll(def) {
   const where = def.approach === 'none' ? '' : tx('trick.of-position', { text: dep.text, toLowerCase: (AIMS[def.approach] || def.approach).toLowerCase(), v: def.side === 'self' ? 'your' : def.side === 'any' ? 'either' : "your opponent's" });
   const place = kind === 'fee' || kind === 'water' ? (kind === 'water' ? tx('trick.at-the-bottom-of') : '') : `, ${PLACE[R.place]?.text || PLACE.over.text}${R.place === 'precise' ? tx('trick.height', { v: R.at | 0 }) : ''}`;
   const life = isFxChip(R.chip) ? tx('trick.for-turns', { v: R.life || 3 }) : '';
-  return `${what}${where}${place}${life}.`;
+  const M = MADE_CHIPS[R.chip], foot = R.foot && R.foot !== 'model' ? R.foot : M?.foot, n = { big: 2, large: 3, huge: 5 }[foot] || 1;
+  const shape = !M ? '' : [n > 1 ? tx('trick.shape-wide', { n }) : '', R.flat || M.height === 'tiny' ? tx('trick.shape-flat') : '', n > 1 && (R.slip || M.slip) ? tx('trick.shape-slip') : ''].filter(Boolean).join(', ');
+  return `${what}${where}${place}${life}${shape ? ` (${shape})` : ''}.${M?.text ? ' ' + M.text : ''}`;
 }
 export function describeBonus(def) {
   const B = BONUS[def.bonus.k]; if (!B) return def.bonus.text || '';
@@ -65,3 +67,10 @@ export function describeBonus(def) {
 }
 // a whole made trick in one line, for lists and the maker's preview
 export const summary = (def) => tx('trick.if', { v: ZONES[def.side] || def.side, name: CONVERT[def.roll.convert]?.name, name2: DEPLOY[def.roll.deploy]?.name, condText: condText(def.bonus.cond), describeBonus: describeBonus(def) });
+
+// Built-in tricks that make chips write their card text from their configuration when they have none of their own.
+export function fillTexts() {
+  for (const def of Object.values(TRICKS)) { if (def.roll?.k !== 'chips') continue;
+    if (!def.roll.text) def.roll.text = describeRoll(def); if (!def.bonus.text) def.bonus.text = describeBonus(def); }
+}
+fillTexts();

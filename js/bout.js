@@ -58,8 +58,8 @@ export const cellWorth = (cell) => sum(cell.chips, (ch) => (isPayable(ch) ? ch.v
 export const debtOf = (cell) => sum(cell.chips, (ch) => (ch.kind === 'debt' ? ch.value : 0));
 export const worth = (s) => sum(s.grid.flat(), cellWorth);
 export const occupied = (cell, payOnly) => cell.chips.some((ch) => isPayable(ch) || (!payOnly && isShield(ch)));
-const tiny = (ch) => ch.kind === 'little' || madeOf(ch)?.height === 'tiny'; // Little chips take no height
-const heightOf = (ch) => HEIGHT[madeOf(ch)?.height]?.h ?? 1; // made chips can be short (½) or tall (2)
+const tiny = (ch) => ch.kind === 'little' || !!ch.flat || madeOf(ch)?.height === 'tiny'; // Little and flat chips take no height
+const heightOf = (ch) => (ch.flat ? 0 : HEIGHT[madeOf(ch)?.height]?.h ?? 1); // made chips can be short (½) or tall (2)
 export const solidCount = (cell) => cell.chips.reduce((t, ch) => (isHazard(ch) || tiny(ch) ? t : t + heightOf(ch)), 0);
 // a made chip that lets nothing on top of it closes its stack while it is the top chip
 // Sticky is a trait: a sticky chip binds to the value chips it touches and their values combine into one chip. A
@@ -139,7 +139,19 @@ function freeBlock(s, rows) { for (const r of rows) for (let c = 0; c + 1 < s.di
 function claimBlock(s, r, c) { s.grid[r][c].anchor = true; for (const [dr, dc] of [[1, 0], [0, 1], [1, 1]]) s.grid[r + dr][c + dc].link = { r, c }; }
 function freeLinks(s, r, c) { delete s.grid[r][c].anchor; for (const { cell } of allCells(s)) if (cell.link && cell.link.r === r && cell.link.c === c) delete cell.link; }
 // a made chip bigger than one space covers n by n spaces from its anchor (FOOTPRINT: big 2, large 3, huge 5)
-export const footOf = (ch) => ({ big: 2, large: 3, huge: 5 })[madeOf(ch)?.foot] || 1;
+// footprint: a chip's own (a trick can make a chip wider: ch.foot), else its model's
+export const FOOT_N = { basic: 1, big: 2, large: 3, huge: 5 };
+export const footOf = (ch) => FOOT_N[ch?.foot || madeOf(ch)?.foot] || 1;
+// A flat chip that slips under: it lies beneath the stacks across its footprint (they keep their spaces and heights)
+// instead of claiming empty spaces. It is kept at the bottom of its first space with mat = { r, c, n }.
+function matBlock(s, r, c, n) {
+  if (n > s.rows || n > s.dims.cols) return null;
+  const r0 = Math.max(0, Math.min(r, s.rows - n)), c0 = Math.max(0, Math.min(c, s.dims.cols - n));
+  for (let dr = 0; dr < n; dr++) for (let dc = 0; dc < n; dc++) { const x = s.grid[r0 + dr][c0 + dc]; if (x.hole || x.link || x.anchor || x.roost || x.black) return null; }
+  for (const { cell } of allCells(s)) if (cell.chips.some((ch) => ch.mat && Math.abs(ch.mat.r - r0) < n && Math.abs(ch.mat.c - c0) < n)) return null; // one mat under a space
+  return { r: r0, c: c0 };
+}
+export const inMat = (ch, r, c) => !!ch.mat && r >= ch.mat.r && r < ch.mat.r + ch.mat.n && c >= ch.mat.c && c < ch.mat.c + ch.mat.n;
 // the n×n block a big made chip would take, aimed at (r, c): moved back inside the position if it hangs off an edge;
 // null if any space in it is a Hole, part of another big chip, or holds chips (other than the aimed space's stack
 // when n is 1)
@@ -202,12 +214,14 @@ const say = (t) => t.replace(/\bYou's\b/g, 'Your').replace(/\bYou (plays|pays|ch
 function step(b, text, cells = [], kind = '') { text = say(text); const st = { text, cells, kind, fx: b.fx, ...(b.ctx || {}) }; b.fx = {}; if (text) b.log.push(text); return st; }
 const ref = (s, r, c) => ({ side: s.idx, r, c });
 
+// Chips an effect puts on the Bet go front to back, left to right, the same for every Roller: a class's deployment
+// shapes only its own starting position, never the outcome of an effect.
 function meterOrder(s) {
-  const rs = order1D(s.dims.meterRows, s.deploy), cs = order1D(s.dims.cols, s.deploy), out = [];
+  const rs = order1D(s.dims.meterRows, 'start'), cs = order1D(s.dims.cols, 'start'), out = [];
   for (const r of rs) for (const c of cs) out.push({ r, c });
   return out;
 }
-// place chips on the Bet, nearest to origin first (or in the class deployment order). Returns chips that did not fit.
+// place chips on the Bet, nearest to origin first (else front to back). Returns chips that did not fit.
 function addToMeter(b, s, chips, origin, from) {
   let cells = meterOrder(s);
   if (origin) cells = cells.slice().sort((x, y) => Math.abs(x.r - origin.r) + Math.abs(x.c - origin.c) - (Math.abs(y.r - origin.r) + Math.abs(y.c - origin.c)));
@@ -1333,16 +1347,24 @@ function slideRows(b, s, mode, cells) {
   }
   return moved + consumeBlack(b, s);
 }
-function organize(b, s) {
-  const m = s.dims.meterRows, chips = [], haz = [];
-  for (let r = m; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) {
-    const cell = s.grid[r][c]; chips.push(...cell.chips.filter((ch) => !isHazard(ch))); haz.push([cell, cell.chips.filter(isHazard)]); cell.chips = [];
-  }
-  chips.sort((x, y) => x.value - y.value);
-  for (let r = m; r < s.rows && chips.length; r++) for (let c = 0; c < s.dims.cols && chips.length; c++) {
-    const cell = s.grid[r][c]; while (capacityLeft(s, cell) > 0 && chips.length) cell.chips.push(chips.shift());
-  }
-  for (const [cell, hs] of haz) for (const h of hs) { if (solidCount(cell)) cell.chips.push(h); else b.fx[h.id] = 'void'; }
+// Settle: in the targeted column of the zone it aims at (the Bet or the Stake), Debt and hazards are cleared up to the
+// total, then that column's chips gather into full stacks starting at the targeted space and filling out from it,
+// nearest first (the biggest chips closest to it). Anchored stacks, Holes and big chips stay where they are.
+function settleColumn(b, s, tgt, total) {
+  const m = s.dims.meterRows, tr = tgt?.r ?? m, c = tgt?.c ?? 0, [r0, r1] = tr < m ? [0, m] : [m, s.rows];
+  const rows = []; for (let r = r0; r < r1; r++) { const cell = s.grid[r][c]; if (!cell.hole && !cell.link && !cell.anchor && !cell.roost && !anchored(cell)) rows.push(r); }
+  let done = 0;
+  for (const r of rows) { const cell = s.grid[r][c];
+    for (const ch of cell.chips.filter((x) => (isHazard(x) && x.kind !== 'debt' && x.kind !== 'hard') || x.kind === 'dynamite' || x.kind === 'doom')) { if (done >= total) break; cell.chips.splice(cell.chips.indexOf(ch), 1); b.fx[ch.id] = 'void'; done++; }
+    const d = debtOf(cell); if (d && done < total) { const take = Math.min(d, total - done); setDebt(b, cell, d - take); done += take; } }
+  const chips = [], haz = [];
+  for (const r of rows) { const cell = s.grid[r][c]; chips.push(...cell.chips.filter((ch) => !isHazard(ch) && !ch.mat)); haz.push([cell, cell.chips.filter((ch) => isHazard(ch) || ch.mat)]); cell.chips = cell.chips.filter((ch) => ch.mat); }
+  chips.sort((x, y) => y.value - x.value);
+  const order = rows.slice().sort((a, b2) => Math.abs(a - tr) - Math.abs(b2 - tr) || a - b2);
+  for (const r of order) { const cell = s.grid[r][c]; while (chips.length && capacityLeft(s, cell) > 0) { const ch = chips.shift(); cell.chips.push(ch); b.fx[ch.id] = 'move'; } }
+  for (const [cell, hs] of haz) for (const h of hs) { if (h.mat || solidCount(cell)) { if (!cell.chips.includes(h)) cell.chips.push(h); } else b.fx[h.id] = 'void'; }
+  if (chips.length) addToMeter(b, s, chips, { r: Math.min(tr, m - 1), c }, 'move'); // what the column cannot hold goes to the Bet
+  return done;
 }
 // ---------- the Pit ----------
 // Every chip a Roller loses, kept as it was (value, order and count), under the House's arms: fees paid (which
@@ -1395,7 +1417,11 @@ function* playChips(b, s, e, def, x) {
       if (kind === 'fee') { fees += engage(b, s, t, sp.r, sp.c, amt, { pierce: x.pierce }).placed; return; }
       if (kind === 'water') { if (cell.puddle) { lost++; return; } water(b, t, { cell, r: sp.r, c: sp.c }); made++; return; } // a Puddle chip goes under the stack
       if (isFxChip(chip)) { if (placeFx(b, t, cell, chip, R.life || 3, e.trick.id)) made++; else lost++; return; }
-      if (MADE_CHIPS[chip]) { const mc = mkMade(b, chip), n = footOf(mc);
+      if (MADE_CHIPS[chip]) { const mc = mkMade(b, chip); mc.power = amt; // the instance it was made with: what a 'share' action hands out
+        if (R.foot && R.foot !== 'model') mc.foot = R.foot; if (R.flat) mc.flat = true; if (R.slip) mc.slip = true; // the trick's own size for it
+        const n = footOf(mc);
+        if (n > 1 && (mc.slip || MADE_CHIPS[chip].slip)) { const at = matBlock(t, sp.r, sp.c, n); if (!at) { lost++; return; } // slips under the stacks there
+          mc.mat = { r: at.r, c: at.c, n }; t.grid[at.r][at.c].chips.unshift(mc); b.fx[mc.id] = 'spawn'; made++; (s.madeNew ||= []).push(mc.id); return; }
         if (n > 1) { const at = footBlock(t, sp.r, sp.c, n); if (!at) { lost++; return; } claimFoot(t, at.r, at.c, n); t.grid[at.r][at.c].chips.push(mc); b.fx[mc.id] = 'spawn'; made++; (s.madeNew ||= []).push(mc.id); return; }
         if (!fits(t, cell, mc) || (MADE_CHIPS[chip].must === 'alone' && solidCount(cell)) || !placeMade(cell, mc, R.place, R.at)) { lost++; return; } b.fx[mc.id] = 'spawn'; made++; (s.madeNew ||= []).push(mc.id); return; }
       if (capacityLeft(t, cell) <= 0) { lost++; return; }
@@ -1546,7 +1572,7 @@ function* play(b, s, e, opt = {}) {
     case 'gild': { let n = 0; for (const { r, c } of cells) { let left = total; const st = s.grid[r][c].chips;
         for (let i = st.length - 1; i >= 0 && left > 0; i--) if (st[i].kind === 'std' && !st[i].gold && !stuckIce(st[i], s.grid[r][c])) { st[i].gold = true; left--; n++; } }
       yield step(b, tx('feed.turned-to-gold', { tag, n }), cells.map((x) => ref(s, x.r, x.c)), 'play'); return; }
-    case 'settle': { const n = cleanse(b, s, total); organize(b, s);
+    case 'settle': { const n = settleColumn(b, s, e.target, total);
       if (bonus === 'blocks') addToMeter(b, s, [mkChip(b, 'block'), mkChip(b, 'block')], null, 'spawn');
       yield step(b, tx('feed.cleansed-stake-organized', { tag, n }), [], 'play'); return; }
     case 'gather': { const n = recoup(b, s, total, bonus === 'both');
@@ -1937,6 +1963,10 @@ function reachOf(b, s, at, M) {
   const R = M.reach || { to: 'touching', range: 1 }, range = Math.max(1, Math.min(5, R.range || 1)), out = [];
   const near = (x) => Math.max(Math.abs(x.r - at.r), Math.abs(x.c - at.c)) < range;
   const sides = R.to === 'all' ? b.sides : R.to === 'theirs' ? [b.sides[1 - s.idx]] : [s];
+  if (R.to === 'inside') { // the chips lying on it, across its footprint
+    for (const x of allCells(s)) if (at.ch.mat ? inMat(at.ch, x.r, x.c) : x.cell === at.cell) for (const ch of x.cell.chips) if (ch !== at.ch && !isHazard(ch)) out.push({ x, ch });
+    return out;
+  }
   if (R.to === 'touching' || R.to === 'touchingValue' || R.to === 'touchingHits') { // above and below in its stack, and the stacks within range
     const cells = range > 1 ? allCells(s).filter(near) : [at];
     for (const x of cells) x.cell.chips.forEach((ch, i) => { if (ch === at.ch || isHazard(ch)) return; if (x.cell === at.cell && range === 1 && Math.abs(i - at.i) !== 1) return;
@@ -1990,6 +2020,10 @@ const lastsOfModel = (M) => M.lasts;
 // one made chip's triggered work: its actions on everything its reach covers
 function fire(b, s, at, M) { let n = 0; const list = reachOf(b, s, at, M);
   for (const A of M.actions || []) { if (A.k === 'pull') { n += pullTo(b, s, at, A); continue; }
+    if (A.n === 'share') { // the amount it was made with, handed out 1 at a time round the chips it reaches that can take it
+      const takers = list.filter((tg) => !blockedBy(b, s, tg, M) && (A.k !== 'value' || isPayable(tg.ch) || tg.ch.kind === 'made'));
+      for (let k = 0; k < (at.ch.power || 0) && takers.length; k++) n += act(b, s, { ...A, n: 1 }, takers[k % takers.length], M);
+      continue; }
     for (const tg of list) { if (blockedBy(b, s, tg, M)) continue; n += act(b, s, A, tg, M); } }
   return { n, refs: [...new Set(list.map((tg) => tg.x))].map((x) => ref(x.side || s, x.r, x.c)) }; }
 // a made chip's Pull action: up to A.n¢ of real chips out of a Pit (A.from: mine, theirs or both), onto the chip's
@@ -2253,4 +2287,4 @@ export function summary(b, idx) {
 }
 
 // internals the tests drive directly
-export const _test = { deployHeld, creaturePhase, blockedBy, madeWork, placeMade, engage, settleAll, feeShares, setDebt, ticks, play, sidePhase, growth, strike, water, freezeTop, newCreature, setHard, arrange, chipPhase, placeFx, addToMeter };
+export const _test = { addToMeter, deployHeld, creaturePhase, blockedBy, madeWork, placeMade, engage, settleAll, feeShares, setDebt, ticks, play, sidePhase, growth, strike, water, freezeTop, newCreature, setHard, arrange, chipPhase, placeFx, addToMeter };
