@@ -4,23 +4,29 @@
 // TIP = per-turn action limits. BVD = position shape. The rewards for actions left unused (Charisma, Cunning,
 // Conviction) have no class base: they are earned at the table by occupying rows (see occBonus in bout.js), and a
 // class's own one (`primary`'s reward: Trickery → Charisma, Ingenuity → Cunning, Proficiency → Conviction) earns most.
+// A Class is a Roller's attributes: what it does each turn (TIP), the shape of its position (BVD), what it starts
+// with in Charisma, Cunning and Conviction before the table adds to them (ccc), the attribute it leans on (primary,
+// which also picks the C its rows reward), where it deploys from, and its colour. Rollers (content/rollers.js),
+// Opponents and High Rollers (content/roster.js) each name a Class.
 export const CLASSES = {
   hustler: {
-    name: 'Hustler', hero: 'Owl',
-    tip: { trickery: 3, ingenuity: 2, proficiency: 2 }, bvd: { balance: 3, versatility: 1, depth: 0 }, primary: 'trickery', deploy: 'end',
-    dice: { d4: 4, d6: 4 }, tricks: ['charge', 'mug', 'stir', 'block', 'settle'], color: '#e0a23c',
+    name: 'Hustler',
+    tip: { trickery: 3, ingenuity: 2, proficiency: 2 }, bvd: { balance: 3, versatility: 1, depth: 0 }, ccc: { charisma: 0, cunning: 0, conviction: 0 }, primary: 'trickery', deploy: 'end', color: '#e0a23c',
   },
   rascal: {
-    name: 'Rascal', hero: 'Fox',
-    tip: { trickery: 2, ingenuity: 3, proficiency: 2 }, bvd: { balance: 0, versatility: 3, depth: 1 }, primary: 'ingenuity', deploy: 'center',
-    dice: { d6: 7 }, tricks: ['charge', 'stir', 'bend', 'block', 'settle'], color: '#c0569b',
+    name: 'Rascal',
+    tip: { trickery: 2, ingenuity: 3, proficiency: 2 }, bvd: { balance: 0, versatility: 3, depth: 1 }, ccc: { charisma: 0, cunning: 0, conviction: 0 }, primary: 'ingenuity', deploy: 'center', color: '#c0569b',
   },
   technician: {
-    name: 'Technician', hero: 'Hog',
-    tip: { trickery: 2, ingenuity: 2, proficiency: 3 }, bvd: { balance: 1, versatility: 0, depth: 3 }, primary: 'proficiency', deploy: 'start',
-    dice: { d6: 3, d8: 3 }, tricks: ['charge', 'stir', 'block', 'brace', 'settle'], color: '#4aa3c7',
+    name: 'Technician',
+    tip: { trickery: 2, ingenuity: 2, proficiency: 3 }, bvd: { balance: 1, versatility: 0, depth: 3 }, ccc: { charisma: 0, cunning: 0, conviction: 0 }, primary: 'proficiency', deploy: 'start', color: '#4aa3c7',
   },
 };
+import { ROLLERS } from './content/rollers.js';
+export { ROLLERS };
+// a Roller id from a Roller id or a class id (the first Roller of that class), so old saves and tests that name a class still work
+export const rollerOf = (id) => (ROLLERS[id] ? id : Object.keys(ROLLERS).find((k) => ROLLERS[k].cls === id) || Object.keys(ROLLERS)[0]);
+export const cccOf = (cls) => ({ charisma: 0, cunning: 0, conviction: 0, ...(CLASSES[cls]?.ccc || {}) });
 // a Roller's hero and class together: 'Owl the Hustler'
 // the reward stat for a primary action stat
 export const C_OF = { trickery: 'charisma', ingenuity: 'cunning', proficiency: 'conviction' };
@@ -36,7 +42,7 @@ export function classRule(cls) {
   const body = [...a, ...b].join(' and ');
   return `${body ? body.charAt(0).toUpperCase() + body.slice(1) + '. ' : ''}Deploys from ${from}.`;
 }
-export const heroName = (cls) => (CLASSES[cls].hero ? `${CLASSES[cls].hero} the ${CLASSES[cls].name}` : CLASSES[cls].name);
+export const heroName = (cls, roller) => { const R0 = ROLLERS[roller] || ROLLERS[rollerOf(cls)]; const K = CLASSES[cls] || CLASSES[R0?.cls]; return R0 ? `${R0.name} the ${K?.name || ''}`.trim() : K?.name || ''; };
 export const BASE_DIMS = { cols: 5, stackMax: 3, meterRows: 2, barRows: 3 };
 
 // `per`: what each point does, for hover text that says what a +1 or −1 actually changes
@@ -780,7 +786,7 @@ import { FONTS, IMAGES, ICONS, TEXTURES, NEON } from './content/assets.js';
 export { FONTS, IMAGES, ICONS, TEXTURES, NEON };
 import TEXT from './text/en.js';
 import { MATERIALS as _MAT, DICE_SHOP as _DS, BONE as _BONE, MELT as _MELT, CASTS as _CASTS, DYES as _DYES, DIAMOND as _DIA } from './content/dice.js';
-export const TABLES = { CLASSES, BASE_DIMS, STATS, DICE, MATERIALS: _MAT, DICE_SHOP: _DS, BONE: _BONE, MELT: _MELT, CASTS: _CASTS, DYES: _DYES, DIAMOND: _DIA, DIE_VARS,
+export const TABLES = { CLASSES, ROLLERS, BASE_DIMS, STATS, DICE, MATERIALS: _MAT, DICE_SHOP: _DS, BONE: _BONE, MELT: _MELT, CASTS: _CASTS, DYES: _DYES, DIAMOND: _DIA, DIE_VARS,
   TYPES, TRICKS, CHIPS, SHOP_CHIPS, CHIP_TIERS, CREATURES, ORBITALS, CALAMITIES, TILTS, TILT_PRESSURE, FELTS, FLOORS, BOSSES, OPPONENTS, DRINKS, SPORTS, JACKETS, CARDS, WALLETS,
   PASSES, CONDITIONS, PACKS, QDIE, PRIZES, GUIDE, TEXT, MADE_CHIPS, ROSTER, BOSS_TRAITS, FLAVOR, TUNING, ODDS, DENOMS, WEAR, IMAGES, ICONS, TEXTURES, NEON };
 const isObj = (x) => x && typeof x === 'object';

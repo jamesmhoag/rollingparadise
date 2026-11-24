@@ -3,16 +3,16 @@ import * as D from '../js/data.js';
 import * as B from '../js/build/draft.js';
 
 const fails = [], ok = (c, m) => { if (!c) fails.push(m); };
-const before = D.TRICKS.charge.count, hero = D.CLASSES.rascal.hero;
+const before = D.TRICKS.charge.count, hero = D.ROLLERS.fox.name;
 B.setValue('TRICKS.charge.count', before + 1);
 ok(D.TRICKS.charge.count === before + 1 && B.count() === 1 && B.changed('TRICKS.charge'), 'a change applies at once and is in the draft');
-B.setValue('CLASSES.rascal.hero', 'Vixen'); ok(D.heroName('rascal') === 'Vixen the Rascal', 'text-like values change too');
+B.setValue('ROLLERS.fox.name', 'Vixen'); ok(D.heroName('rascal') === 'Vixen the Rascal', 'text-like values change too');
 B.setValue('TRICKS.charge_copy', { ...JSON.parse(JSON.stringify(D.TRICKS.charge)), name: 'Charge II' });
 ok(D.TRICK_IDS.includes('charge_copy') && D.TRICKS.charge_copy.name === 'Charge II', 'a new entry joins the derived lists');
 B.setValue('FLOORS.1.name', 'Bargain Basement'); ok(D.FLOORS[1].name === 'Bargain Basement', 'array entries change by index');
 B.setValue(D.subPath('TEXT', 'title.tagline'), 'Roll with it'); ok(D.TABLES.TEXT['title.tagline'] === 'Roll with it' && !D.TABLES.TEXT.title, 'text keys with dots change as one key');
 B.revert(D.subPath('TEXT', 'title.tagline'));
-B.setValue('CLASSES.rascal.hero', hero); ok(!('CLASSES.rascal.hero' in B.draft.changes), 'setting a value back to the original drops the change');
+B.setValue('ROLLERS.fox.name', hero); ok(!('ROLLERS.fox.name' in B.draft.changes), 'setting a value back to the original drops the change');
 // export → import round trip
 const file = B.overridesFile(), parsed = B.parseChanges(file);
 ok(parsed['TRICKS.charge.count'] === before + 1 && parsed['TRICKS.charge_copy'].name === 'Charge II', 'an exported file reads back');

@@ -30,7 +30,7 @@ export function testTable(redraw, sitDown) {
   return h('div', { class: 'b-maker' }, h('div', { class: 'b-fields' },
     h('p', { class: 'sub', text: t('test.about') }),
     h('span', { class: 'cap', text: t('test.part.hero') }),
-    field(lab('maker.cls'), select('cls', Object.entries(D.CLASSES).map(([k, K]) => [k, `${K.hero} the ${K.name}`]), o.cls)),
+    field(lab('test.roller'), select('cls', Object.entries(D.ROLLERS).map(([k, X]) => [k, D.heroName(X.cls, k)]), D.rollerOf(o.cls))),
     field(lab('test.floor'), select('floor', [1, 2, 3, 4].map((n) => [n, D.FLOORS[n].name]), o.floor)),
     field(lab('test.purse'), h('input', { type: 'number', min: 10, value: o.purse, onchange: (e) => set('purse', Math.max(10, Number(e.target.value) || 10)) })),
     field(lab('test.dice'), h('input', { type: 'text', value: Object.entries(o.dice).map(([k, n]) => `${n}${k}`).join(', '), onchange: (e) => {
