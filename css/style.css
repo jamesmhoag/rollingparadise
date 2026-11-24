@@ -969,3 +969,4 @@ p.flavor { font-style: italic; color: var(--dim); }
 .tray-box.drop:hover::after { content: attr(data-drop); position: absolute; left: 50%; top: 50%; translate: -50% -50%; font-weight: 800; letter-spacing: .2em; color: var(--gold); text-transform: uppercase; font-size: 12px; }
 .tray-box.drop { pointer-events: auto; }
 .hand-cursor .die.static.mini { width: 28px; height: 28px; } .hand-cursor .die.static.mini i { font-size: 12px; } .hand-cursor .chip.mini { width: 28px; height: 28px; } .hand-cursor .chip.mini i { font-size: 11px; }
+.sfx-btn { position: absolute; left: calc(50% + 24px); bottom: 2px; z-index: 1500; padding: 0 6px !important; height: 18px; font-size: 11px; line-height: 16px; } .sfx-btn.muted { opacity: .45; }

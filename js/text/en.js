@@ -857,6 +857,8 @@ export default {
   "table.win-call": "Jackpot",
   "table.lose-call": "Busted",
   "music.playing": "<b>Music</b><p>The lounge band plays {title} ({style}). Click to turn the music off.</p>",
+  "sfx.on": "<b>Sound effects on</b><p>Cards, chips and dice at the table, and a sound for each kind of effect the House plays. Click to turn them off.</p>",
+  "sfx.off": "<b>Sound effects off</b><p>Click to turn them on.</p>",
   "music.off": "<b>Music</b><p>Off. Click to bring the lounge band back.</p>",
   "table.the-pit-every-chip": "<b>The Pit</b><p>Every chip lost to a fee or bid to the House lands here, under the House's arms, just as it was: the same value, in the order it was lost. Yours stack on the left, theirs on the right. Win the bout and your fees come back; Gather and Steal take chips back from the top.</p>",
   "table.bids-first-the-house": "<b>Bids</b><p>First the House collects every chip bid this turn.</p>",

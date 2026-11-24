@@ -154,6 +154,8 @@ export const GUIDE = {
     how: ['Click the aim to choose the space it hits, before the Bluff ends.'] },
   'trick-dice': { name: 'Bonus dice', def: 'The dice a trick\'s Bonus reads: a pip for each, lit as they go on.',
     how: ['Put dice of the trick\'s own size on it to light the pips: those are its Bonus dice.', 'Other dice still add their value; they just do not count for the Bonus.'] },
+  music: { name: 'Music', def: 'The lounge band, playing quietly under the game.', how: ['Click to turn it on or off; the hover names the tune.'] },
+  sfx: { name: 'Sound effects', def: 'Sounds for the table and for each kind of effect the House plays.', how: ['Click to turn them on or off.', 'Listen to the House: each type of effect, and each element, has its own sound.'] },
   'boss-trait': { name: 'High Roller trait', def: 'The business card a High Roller plays by: one rule of the bout bent their way.',
     how: ['Read it before you lay out your position: some traits punish a plan, others reward pressure.', 'It works every turn, all bout long.'] },
   'trick-stack': { name: 'Stack of copies', def: 'Copies of one trick drawn onto each other.',
@@ -255,7 +257,7 @@ export const GUIDE_BY_CLASS = [
   ['gcard.gpass', 'pass'], ['gcard.lanyard', 'lanyard'], ['gcard', 'card'], ['gjacket', 'jacket'],
   ['box.row', 'denom'], ['dye', 'dye'],
   ['tilt.challenge', 'tilt:challenge'], ['tilt.cheat', 'tilt:cheat'], ['ocell', 'opp-stack'],
-  ['qd', 'quality'], ['tgt', 'aim'], ['bonus', 'trick-dice'], ['c-stack', 'trick-stack'], ['zone-title', 'zone'], ['zone-label', 'position-label'],
+  ['music-btn', 'music'], ['sfx-btn', 'sfx'], ['qd', 'quality'], ['tgt', 'aim'], ['bonus', 'trick-dice'], ['c-stack', 'trick-stack'], ['zone-title', 'zone'], ['zone-label', 'position-label'],
   ['worth', 'worth'], ['weather', 'weather'], ['table-felt', 'felt'], ['turn', 'turn'], ['house', 'house'], ['pit', 'pit'],
   ['stage-strip', 'stage'], ['run-empty', 'run'], ['okit', 'opp-kit'], ['spine.book', 'spine:book'], ['spine.dice', 'spine:dice'],
 ];

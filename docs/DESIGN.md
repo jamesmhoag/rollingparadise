@@ -346,6 +346,14 @@ before and after, and what one point of it does. Dropping a card says what you l
 of either Roller explains its size: depth (2 or 3 base rows + Versatility or Depth), width (5 lanes for everyone)
 and stack height (3 + Balance), with where each bonus comes from.
 
+### Sound
+Sound effects are synthesized in the browser (`js/ui/sfx.js`, Web Audio, no files): a card slid onto the Run (a
+heavier one when a copy stacks), a chip bid or picked up, a die set down or picked up, a handful thrown, chips landing
+and chips paid to the Stage. Each House play has the voice of its effect: Investments ring upward, Insurances thud,
+Expenses ring the till, Corrections sweep; an element trick sounds like its element (fire crackles, shock zaps, frost
+tinkles, acid fizzes, Boom thumps, poison bubbles, corruption grinds); creatures, hazards, misses and bonuses have
+their own. The 🔊 button beside the music's ♪ turns them off.
+
 ### The Library
 Opens from the title screen, the HUD on the floor and the commitment screen, and the bout table. Tabs for chips,
 tricks, dice, cards, drinks, wallets, jackets and felts show each piece as it is drawn in the game, with its

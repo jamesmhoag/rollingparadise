@@ -9,6 +9,7 @@ import { boutScene } from './ui/boutview.js';
 import { openLibrary } from './ui/library.js';
 import { initSpin } from './ui/spin.js';
 import { initMusic } from './ui/music.js';
+import { initSfx } from './ui/sfx.js';
 import { buildScene } from './ui/build.js';
 import { loadDraft } from './build/draft.js';
 import * as D from './data.js';
@@ -110,7 +111,7 @@ function selectScene(root) {
 
 window.addEventListener('resize', fit);
 loadDraft(); // your build-mode changes, live in this browser
-fit(); initTips(); initSpin(); initMusic(document.getElementById('stage'));
+fit(); initTips(); initSpin(); initMusic(document.getElementById('stage')); initSfx(document.getElementById('stage'));
 app.meta = R.loadMeta();
 nav.title();
 if (new URLSearchParams(location.search).has('debug')) window.RP = { app, R, D, nav };
