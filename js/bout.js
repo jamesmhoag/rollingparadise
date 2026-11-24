@@ -246,6 +246,8 @@ function placeMade(cell, ch, place, at) {
   const i = M.must === 'top' ? cell.chips.length : M.must === 'bottom' ? 0 : M.must === 'sandwiched' ? 1 : placeIndex(place, at, solid);
   cell.chips.splice(i, 0, ch); return true;
 }
+// how long an effect chip a trick makes stays: the chip's own life (SHOP_CHIPS), not the trick's
+export const fxLife = (id) => SHOP_CHIPS[id]?.life || 3;
 function placeFx(b, s, cell, id, life, maker) {
   if (capacityLeft(s, cell) <= 0 || cell.hole || cell.link) { s.overflow = (s.overflow || 0) + 1; return false; }
   const ch = mkChip(b, 'fx', 0, { shop: id, resist: id, life, maker });
@@ -1010,6 +1012,7 @@ export function bonusMet(s, e) {
   if (cond === 'match') return vals.some((v, i) => vals.indexOf(v) !== i);
   if (cond === 'evens') return vals.every((v) => v % 2 === 0);
   if (cond === 'odds') return vals.every((v) => v % 2 === 1);
+  if (cond === 'run') { const u = [...new Set(vals)].sort((x, y) => x - y); return vals.length > 1 && u.length === vals.length && u[u.length - 1] - u[0] === u.length - 1; } // a straight: 2-3-4
   if (cond.startsWith('over:')) return total >= +cond.slice(5);
   if (cond.startsWith('under:')) return total <= +cond.slice(6);
   return false;
@@ -1404,8 +1407,7 @@ function recoup(b, s, n, both) {
 // opt.again: a Repeater or Mimic plays the roll effect once more (no trait) · opt.forgotten: a Forgetter negates it
 // A made trick (trick maker, roll.k 'chips'): the roll becomes instances (lump sum, precise change or petty cash),
 // each dealt to the next space of the deployment pattern from the target and placed over, under or at a height
-// in that stack. A fee instance charges Debt there instead. Bonuses: linger (plays again with this roll for a few
-// turns), multiply (more instances), bid multiplier (in the total), extra chip (more of another chip).
+// in that stack. A fee instance charges Debt there instead. Bonuses: multiply (more instances), bid multiplier (in the total), extra chip (more of another chip).
 function* playChips(b, s, e, def, x) {
   const R = def.roll, t = x.t, origin = x.origin || { r: 0, c: 0 };
   let inst = instances(R.convert, x.vals, x.total);
@@ -1416,7 +1418,7 @@ function* playChips(b, s, e, def, x) {
       const kind = makeKind(chip);
       if (kind === 'fee') { fees += engage(b, s, t, sp.r, sp.c, amt, { pierce: x.pierce }).placed; return; }
       if (kind === 'water') { if (cell.puddle) { lost++; return; } water(b, t, { cell, r: sp.r, c: sp.c }); made++; return; } // a Puddle chip goes under the stack
-      if (isFxChip(chip)) { if (placeFx(b, t, cell, chip, R.life || 3, e.trick.id)) made++; else lost++; return; }
+      if (isFxChip(chip)) { if (placeFx(b, t, cell, chip, fxLife(chip), e.trick.id)) made++; else lost++; return; }
       if (MADE_CHIPS[chip]) { const mc = mkMade(b, chip); mc.power = amt; // the instance it was made with: what a 'share' action hands out
         if (R.foot && R.foot !== 'model') mc.foot = R.foot; if (R.flat) mc.flat = true; if (R.slip) mc.slip = true; // the trick's own size for it
         const n = footOf(mc);
@@ -1437,7 +1439,6 @@ function* playChips(b, s, e, def, x) {
     return { made, fees: 0, lost, cells: [...hit.values()], pulled: sum(got, (ch) => ch.value) - 0 }; };
   const main = makeKind(R.chip) === 'pit' ? fromPit(R.chip) : make(R.chip, inst);
   let extra = null; if (x.bonus === 'extra') extra = make(def.bonus.chip || 'block', Array.from({ length: def.bonus.n || 1 }, () => 1));
-  if (x.bonus === 'linger' && !x.again && x.total > 0) s.echoes.push({ from: b.turn, e: { ...e, dice: e.dice.map((d) => ({ ...d })), lingerLeft: 0 }, left: def.bonus.turns || 2, phase: phaseOf(e.trick.id) });
   const kind = makeKind(R.chip), refs = [...main.cells, ...(extra?.cells || [])].map((p) => ref(t, p.r, p.c));
   const said = kind === 'pit' ? tx('feed.back-out-of-the', { made: main.made }) : kind === 'fee' ? tx('feed.of-debt-on', { fees: main.fees, cellN: main.cells.length }) : tx('feed.made', { made: main.made });
   yield step(b, `${x.tag}: ${inst.length ? said : 'nothing to make'}${extra ? tx('feed.and-extra', { made: extra.made }) : ''}${main.lost ? tx('feed.had-no-room', { lost: main.lost }) : ''}${x.bonus === 'linger' && !x.again ? tx('feed.it-will-play-again', { v: def.bonus.turns || 2 }) : ''}.`, refs, main.made || main.fees || extra?.made ? 'play' : 'miss');

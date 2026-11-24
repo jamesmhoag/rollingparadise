@@ -1,7 +1,7 @@
 // The trick maker: made tricks (roll.k 'chips') convert, place, deploy and take their Bonus as configured.
 import * as R from '../js/run.js'; import * as B from '../js/bout.js'; import * as D from '../js/data.js';
 import * as M from '../js/trickmaker.js';
-import { NEW_TRICK } from '../js/content/trickmaker.js';
+import { NEW_TRICK, BONUS } from '../js/content/trickmaker.js';
 
 const fails = [], ok = (c, m) => { if (!c) fails.push(m); };
 const drain = (g) => { for (const _ of g); }; // eslint-disable-line no-unused-vars
@@ -59,14 +59,11 @@ const fullOf = (s) => { const x = s.grid.flatMap((row, r) => row.map((cell, c) =
   ok(B.validTargets(bout, me, e).some((v) => v.side === 0) && B.validTargets(bout, me, e).some((v) => v.side === 1), 'a trick for either side can aim at both positions');
   playIt(bout, me, e); ok(kind(me, 'counter') - b0 === 2, 'the Extra chip bonus makes the second chip');
 }
-{ // lingering: plays again with the same roll on later turns
-  const { bout, me } = table(), x = fullOf(me);
-  const id = made('t_linger', { type: 'investment', side: 'self', approach: 'any', roll: { chip: 'std', convert: 'lump', deploy: 'hit' }, bonus: { cond: 'match', k: 'linger', turns: 2 } });
-  playIt(bout, me, entry(id, [2, 2], { side: 0, r: x.r, c: x.c }));
-  ok(me.echoes.length === 1 && me.echoes[0].left === 2, 'a Lingering bonus sets up two replays');
-  bout.turn++; const n0 = total(me), cx = { phase: 'investment', who: 0, uid: null }; me.fz = { ...me.mods }; me.run = me.run.filter((y) => y.trick.id !== id);
-  drain(B._test.sidePhase(bout, me, 'investment', cx));
-  ok(total(me) > n0 && me.echoes[0].left === 1, 'the trick plays again next turn with its roll');
+{ // a Runs Bonus: the dice in sequence; no Lingering bonus any more (stack copies to linger)
+  const id = made('t_run', { type: 'investment', side: 'self', approach: 'any', roll: { chip: 'std', convert: 'lump', deploy: 'hit' }, bonus: { cond: 'run', k: 'double' } });
+  const { me } = table(), at = (vals) => B.bonusMet(me, { trick: { id, q: 1 }, dice: vals.map((v) => ({ value: v, type: 'd6' })), state: 'play' });
+  ok(at([2, 3]) && at([4, 3]) && !at([2, 4]) && !at([3, 3]), 'a run is dice in sequence, in any order; a gap or a pair is not');
+  ok(!('linger' in BONUS), 'there is no Lingering bonus');
 }
 { // bid multiplier
   const { bout, me } = table(), x = fullOf(me);

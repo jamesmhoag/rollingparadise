@@ -1,6 +1,6 @@
 // Build mode: the chip maker. Made chips are edited term by term; every chip from before the maker is shown in the
 // same terms (mapped from the workbook) and can be copied into a made chip. Edits go into the build draft.
-import { h, btn, toast } from './core.js';
+import { h, lab, btn, toast } from './core.js';
 import * as D from '../data.js';
 import * as B from '../build/draft.js';
 import { chipEl, madeRules } from './parts.js';
@@ -40,33 +40,33 @@ export function chipMaker(id, classic, redraw, onCopy) {
 
   const parts = [
     h('span', { class: 'cap', text: t('chipmaker.part.chip') }),
-    field(t('maker.name'), text(['name'], m.name), ['name']),
-    field(t('chipmaker.text'), text(['text'], m.text, true), ['text']),
-    field(t('chipmaker.color'), h('input', { type: 'color', value: m.color, onchange: (e) => set(['color'], e.target.value) }), ['color']),
-    field(t('chipmaker.value'), number(['value'], m.value), ['value']),
-    field(t('chipmaker.hits'), number(['hits'], m.hits, 0), ['hits']),
-    field(t('chipmaker.source'), select(['source'], opts(SOURCES), m.source), ['source']),
+    field(lab('maker.name'), text(['name'], m.name), ['name']),
+    field(lab('chipmaker.text'), text(['text'], m.text, true), ['text']),
+    field(lab('chipmaker.color'), h('input', { type: 'color', value: m.color, onchange: (e) => set(['color'], e.target.value) }), ['color']),
+    field(lab('chipmaker.value'), number(['value'], m.value), ['value']),
+    field(lab('chipmaker.hits'), number(['hits'], m.hits, 0), ['hits']),
+    field(lab('chipmaker.source'), select(['source'], opts(SOURCES), m.source), ['source']),
     h('span', { class: 'cap', text: t('chipmaker.part.lasts') }),
-    field(t('chipmaker.lasts'), select(['lasts'], opts(LASTS), m.lasts), ['lasts']),
-    m.lasts === 'turns' ? field(t('maker.turns'), number(['turns'], m.turns, 1), ['turns']) : null,
+    field(lab('chipmaker.lasts'), select(['lasts'], opts(LASTS), m.lasts), ['lasts']),
+    m.lasts === 'turns' ? field(lab('maker.turns'), number(['turns'], m.turns, 1), ['turns']) : null,
     h('span', { class: 'cap', text: t('chipmaker.part.size') }),
-    field(t('chipmaker.height'), select(['height'], opts(HEIGHT), m.height), ['height']),
-    field(t('chipmaker.foot'), select(['foot'], opts(FOOTPRINT), m.foot), ['foot']),
-    field(t('chipmaker.must'), select(['must'], opts(MUST), m.must), ['must']),
-    field(t('chipmaker.onTop'), select(['onTop'], opts(ON_TOP), m.onTop), ['onTop']),
-    field(t('chipmaker.sticky'), h('select', { onchange: (e) => set(['sticky'], e.target.value === 'yes' || undefined) }, Object.entries(STICKY).map(([k, v]) => h('option', { value: k, text: v, ...((m.sticky ? 'yes' : 'no') === k ? { selected: 'selected' } : {}) }))), ['sticky']),
+    field(lab('chipmaker.height'), select(['height'], opts(HEIGHT), m.height), ['height']),
+    field(lab('chipmaker.foot'), select(['foot'], opts(FOOTPRINT), m.foot), ['foot']),
+    field(lab('chipmaker.must'), select(['must'], opts(MUST), m.must), ['must']),
+    field(lab('chipmaker.onTop'), select(['onTop'], opts(ON_TOP), m.onTop), ['onTop']),
+    field(lab('chipmaker.sticky'), h('select', { onchange: (e) => set(['sticky'], e.target.value === 'yes' || undefined) }, Object.entries(STICKY).map(([k, v]) => h('option', { value: k, text: v, ...((m.sticky ? 'yes' : 'no') === k ? { selected: 'selected' } : {}) }))), ['sticky']),
     h('span', { class: 'cap', text: t('chipmaker.part.immune') }),
-    field(t('chipmaker.immune'), checks(['immune'], IMMUNE, m.immune || []), ['immune']),
+    field(lab('chipmaker.immune'), checks(['immune'], IMMUNE, m.immune || []), ['immune']),
     h('span', { class: 'cap', text: t('chipmaker.part.behaviour') }),
-    field(t('chipmaker.move'), select(['move'], opts(MOVES), m.move), ['move']),
+    field(lab('chipmaker.move'), select(['move'], opts(MOVES), m.move), ['move']),
     h('span', { class: 'cap', text: t('chipmaker.part.effect') }),
-    field(t('chipmaker.reach'), h('div', { class: 'row' }, select(['reach', 'to'], opts(REACH), m.reach?.to || 'touching'),
+    field(lab('chipmaker.reach'), h('div', { class: 'row' }, select(['reach', 'to'], opts(REACH), m.reach?.to || 'touching'),
       m.reach?.to === 'named' ? h('input', { type: 'text', placeholder: t('chipmaker.reach.name'), value: m.reach?.name || '', onchange: (e) => set(['reach', 'name'], e.target.value) }) : null,
       m.reach?.to === 'typed' ? select(['reach', 'kind'], kinds(), m.reach?.kind || 'std') : null,
       h('input', { type: 'number', min: 1, max: 5, value: m.reach?.range ?? 1, style: { width: '64px' }, title: t('chipmaker.range'), onchange: (e) => set(['reach', 'range'], Math.max(1, Math.min(5, Math.round(Number(e.target.value) || 1)))) })), ['reach']),
-    field(t('chipmaker.triggers'), listEditor(m.triggers || [], 'triggers', TRIGGERS, 'on', (x, upd) => (x.on === 'phase' || x.on === 'effect' ? smallSelect([['', t('chipmaker.anyPhase')], ...Object.entries(D.TYPES).map(([k, v]) => [k, v.name])], x.type || '', (v) => upd({ ...x, type: v || undefined }))
+    field(lab('chipmaker.triggers'), listEditor(m.triggers || [], 'triggers', TRIGGERS, 'on', (x, upd) => (x.on === 'phase' || x.on === 'effect' ? smallSelect([['', t('chipmaker.anyPhase')], ...Object.entries(D.TYPES).map(([k, v]) => [k, v.name])], x.type || '', (v) => upd({ ...x, type: v || undefined }))
       : x.on === 'exposed' ? h('input', { type: 'text', placeholder: t('chipmaker.exposed.what'), value: x.what || '', onchange: (e) => upd({ ...x, what: e.target.value || undefined }) }) : null)), ['triggers']),
-    field(t('chipmaker.actions'), listEditor(m.actions || [], 'actions', ACTIONS, 'k', (x, upd) => (x.k === 'move' ? smallSelect(['left', 'right', 'up', 'down'].map((d) => [d, t(`chipmaker.dir.${d}`)]), x.dir || 'right', (v) => upd({ ...x, dir: v }))
+    field(lab('chipmaker.actions'), listEditor(m.actions || [], 'actions', ACTIONS, 'k', (x, upd) => (x.k === 'move' ? smallSelect(['left', 'right', 'up', 'down'].map((d) => [d, t(`chipmaker.dir.${d}`)]), x.dir || 'right', (v) => upd({ ...x, dir: v }))
       : x.k === 'become' ? smallSelect(kinds(), x.chip || 'std', (v) => upd({ ...x, chip: v }))
       : x.k === 'pull' ? h('span', { class: 'row' }, smallSelect(Object.entries(PULL_FROM), x.from || 'mine', (v) => upd({ ...x, from: v })), h('input', { type: 'number', min: 1, step: 1, value: x.n ?? 5, style: { width: '70px' }, title: t('chipmaker.pull.amount'), onchange: (e) => upd({ ...x, n: Math.max(1, Math.round(Number(e.target.value) || 1)) }) }), h('label', { class: 'b-check' }, h('input', { type: 'checkbox', ...(x.bids ? { checked: 'checked' } : {}), onchange: (e) => upd({ ...x, bids: e.target.checked || undefined }) }), t('chipmaker.pull.bids')))
         : h('input', { type: 'number', step: 1, value: x.n ?? 1, style: { width: '70px' }, title: t('chipmaker.amount'), onchange: (e) => upd({ ...x, n: Math.round(Number(e.target.value) || 0) }) }))), ['actions']),

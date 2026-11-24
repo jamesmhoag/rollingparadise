@@ -54,7 +54,6 @@ export const AIMS = { front: 'Front', rear: 'Back', flank: 'Sides', body: 'Stake
 export const ZONES = { opp: 'Opponent', self: 'Self', any: 'Either side' };
 // the Bonus: a dice requirement (cond, as CONDS in data.js) and what it does
 export const BONUS = {
-  linger: { name: 'Lingering', text: (b) => `the trick plays again with the same roll for ${b.turns || 2} more turn${(b.turns || 2) > 1 ? 's' : ''}` },
   multiply: { name: 'Multiplied', text: (b) => `×${b.x || 2} instances` },
   bidmult: { name: 'Bid multiplier', text: () => 'the total is multiplied by the chips bid on it' },
   extra: { name: 'Extra chip', text: (b, name) => `also makes ${b.n || 1} ${(b.n || 1) === 1 ? name(b.chip).replace(/s$/, '') : name(b.chip)}` },

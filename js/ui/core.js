@@ -2,7 +2,7 @@
 // transitions, keyed list syncing with enter/leave/move animation, number tweens.
 import { STATS } from '../data.js';
 import { GUIDE, GUIDE_BY_CLASS } from '../content/guidance.js';
-import { t as tx } from '../text.js';
+import { t as tx, hasText } from '../text.js';
 
 export const W = 1280, H = 720;
 export const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -246,3 +246,9 @@ export function syncList(box_, items, keyOf, create, update) {
 export const btn = (label, onclick, tipText, cls = '') => h('button', { class: `btn ${cls}`, onclick, tip: tipText }, label);
 export const row = (...kids) => h('div', { class: 'row' }, ...kids);
 export const col = (...kids) => h('div', { class: 'col' }, ...kids);
+
+// A Build-mode field's label: its text, and (when help.<key> is written) a hover tip saying what the option is for.
+export function lab(key, vars) {
+  const help = `help.${key}`, has = hasText(help);
+  return h('span', { class: `b-lab ${has ? 'has-help' : ''}`, text: tx(key, vars), ...(has ? { tip: tx(`help.${key}`) } : {}) });
+}
