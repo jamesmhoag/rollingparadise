@@ -335,7 +335,7 @@ export const barCapacity = (dims, holes = 0) => (dims.barRows * dims.cols - hole
 function mkSide(b, spec, idx) {
   const d = spec.dims, rows = d.meterRows + d.barRows;
   const s = {
-    idx, name: spec.name, cls: spec.cls, ai: !!spec.ai, trait: spec.trait && BOSS_TRAITS[spec.trait] ? spec.trait : null, boss: !!spec.boss, title: spec.title || '', deploy: spec.deploy, why: spec.why || null,
+    idx, name: spec.name, cls: spec.cls, ai: !!spec.ai, trait: spec.trait && BOSS_TRAITS[spec.trait] ? spec.trait : null, boss: !!spec.boss, sign: spec.sign || null, title: spec.title || '', deploy: spec.deploy, why: spec.why || null,
     tip: { ...spec.tip }, c: { ...spec.c }, dims: { ...d }, rows,
     grid: Array.from({ length: rows }, () => Array.from({ length: d.cols }, () => ({ chips: [], hole: false, hard: 0 }))),
     book: spec.tricks.map((t) => ({ ...t })), run: [], pouch: spec.dice.map(boutCopy), tapped: { tricks: [], dice: [] }, turnSrc: [], held: [],
