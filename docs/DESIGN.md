@@ -109,6 +109,12 @@ lane (`c`). Columns vary with Versatility and Depth; rows are always 5.
   temporary-change colour with ▲ or ▼ when food, drink, a Full Bet or a Curse changes it. The hover splits it into
   class base, gear (jacket, cards, the run) and each temporary change with its source.
 
+### Chip lifetimes (Gameplay tuner)
+The tuner's **Chip lifetimes** set how long the chips the table makes stay (`TUNING.chipLife`): Opportunity, Bounty,
+Block and Counter chips last **until paid away** (as before), **this turn** (gone at its end), or **the whole match**
+(fees pass them by and they cannot be bid). Chips from the chip maker keep their own `lasts`. Whatever the lifetime,
+every chip with a value counts toward Worth and is counted back when the match ends (made chips with a value included).
+
 ### Overload
 A stack holds `3 + Balance` chips. When it is full:
 - A trick that adds chips to the stack it aims at (Block on the Bet, the maker tricks, Foretell, Conjure, Hand Off)
@@ -394,7 +400,10 @@ what you own, carry or wear is marked.
   upgrade → Foil, two → Holo, the same strength).
 
 ### Passes (round 17)
-- Passes are not cards. Every wallet holds **one pass** in its own slot. The **Casino Pass** is won from the Doorman
+- Passes are not cards. Every wallet holds **its own number of passes** (`passes` on each wallet in `WALLETS`, tuned
+  in Build mode's tables; 1 to start), each in a pass slot that cards never use. A full wallet gives up its lowest
+  pass for a new one, so a one-pass wallet behaves as before. Kept passes come into the next run together, and the
+  elevator offers each of their floors. The **Casino Pass** is won from the Doorman
   (it replaces the Royal Card); reaching a floor puts that floor's pass in the slot in place of the last.
 - Once you are in, a pass is not needed again unless you leave: continuing a saved run from the title needs the pass
   for your floor or a higher one. Without it **the Bouncer** stops you: a bout at the door with nothing staked;

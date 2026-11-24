@@ -221,8 +221,9 @@ export function resultScene(root, ctx, res) {
     if (ctx.kind === 'intro') { if (!win) return app.nav.intro(); const f = R.startFloor(run); if (f <= 1) { R.enterFloor(run, 1); return app.nav.hub(); }
       // a pass kept from the last run takes you past the floor checks: up to its floor, or start at the bottom anyway
       const go = (to) => { closePanel(true); R.enterFloor(run, to); app.nav.hub(); };
-      return openPanel(h('div', { class: 'col' }, h('h2', { text: t('result.pass', { name: D.PASSES[f].name }) }), h('p', { class: 'sub', text: t('result.pass.sub', { floor: D.FLOORS[f].name }) }),
-        h('div', { class: 'row' }, btn(t('result.pass.up', { floor: D.FLOORS[f].name }), () => go(f), null, 'go'), btn(t('result.pass.bottom', { floor: D.FLOORS[1].name }), () => go(1)))), { modal: true }); }
+      const ups = R.passesOf(run).filter((x) => x > 1); // each pass held is a floor the elevator can take you to
+      return openPanel(h('div', { class: 'col' }, h('h2', { text: t('result.pass', { name: ups.map((x) => D.PASSES[x].name).join(', ') }) }), h('p', { class: 'sub', text: t('result.pass.sub', { n: ups.length, floor: D.FLOORS[f].name }) }),
+        h('div', { class: 'row wrap' }, ...ups.map((x, i) => btn(t('result.pass.up', { floor: D.FLOORS[x].name }), () => go(x), null, i ? '' : 'go')), btn(t('result.pass.bottom', { floor: D.FLOORS[1].name }), () => go(1)))), { modal: true }); }
     if (ctx.kind === 'bouncer') { if (!win) return app.nav.bouncer(); R.enterFloor(run, 1); return app.nav.hub(); }
     if (ctx.kind === 'lounge') return app.nav.hub();
     if (ctx.kind === 'ascent') return run.phase === 'ascent' ? app.nav.ascent() : app.nav.summary();

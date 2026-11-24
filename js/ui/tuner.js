@@ -5,11 +5,16 @@ import { h, btn } from './core.js';
 import * as D from '../data.js';
 import * as B from '../build/draft.js';
 import { t } from '../text.js';
+import { LASTS } from '../content/chipmaker.js';
+
+// fields that pick one of a few words: the choices for each section
+const CHOICES = { chipLife: ['paid', 'turn', 'match'] };
+const choiceName = (section, v) => (section === 'chipLife' ? LASTS[v]?.name : null) || v;
 
 // the tables each section also depends on, opened in the table editor
 const RELATED = {
   wager: ['TILTS', 'FLOORS'], penalty: [], shops: ['CHIP_TIERS', 'SHOP_CHIPS', 'DICE_SHOP', 'MELT', 'CASTS', 'DYES', 'PACKS', 'DRINKS'],
-  rooms: [], tables: ['BASE_DIMS', 'FLOORS'], drinks: ['DRINKS'], book: ['SPORTS', 'ODDS'], gear: ['WALLETS', 'JACKETS', 'PASSES', 'CARDS'],
+  rooms: [], tables: ['BASE_DIMS', 'FLOORS'], chipLife: ['SHOP_CHIPS', 'CHIPS'], drinks: ['DRINKS'], book: ['SPORTS', 'ODDS'], gear: ['WALLETS', 'JACKETS', 'PASSES', 'CARDS'],
 };
 export const TUNER_SECTIONS = [...Object.keys(D.TUNING), 'gear'];
 
@@ -22,6 +27,7 @@ export function tuner(section, redraw, openTable) {
     if (typeof v === 'boolean') return h('input', { type: 'checkbox', ...(v ? { checked: 'checked' } : {}), onchange: (e) => set(k, e.target.checked) });
     if (Array.isArray(v)) return h('div', { class: 'b-checks' }, [1, 2, 3, 4].map((n) => h('label', { class: 'b-check' },
       h('input', { type: 'checkbox', ...(v.includes(n) ? { checked: 'checked' } : {}), onchange: (e) => set(k, e.target.checked ? [...v, n].sort() : v.filter((x) => x !== n)) }), D.FLOORS[n].name)));
+    if (typeof v === 'string') return h('select', { onchange: (e) => set(k, e.target.value) }, (CHOICES[section] || [v]).map((o) => h('option', { value: o, text: choiceName(section, o), ...(o === v ? { selected: 'selected' } : {}) })));
     return h('input', { type: 'number', step: 'any', value: v, onchange: (e) => { const n = Number(e.target.value); if (Number.isFinite(n)) set(k, n); } });
   };
   const fields = section === 'gear' ? [h('p', { class: 'sub', text: t('tuner.gear.note') })] : Object.entries(T).map(([k, v]) => row(k, input(k, v)));

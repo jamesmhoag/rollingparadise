@@ -36,12 +36,14 @@ export const qState = (e) => { const Q = QDIE[e.trick.q]; if (!Q || e.qroll == n
 export const effTrick = (e) => { let t = e.trick; if (e.upBoost) t = { ...t, foil: (t.foil || 0) + e.upBoost }; if (qState(e) === 'dud') t = { ...t, q: 1 }; return t; };
 // a chip made in the chip maker (kind 'made'): its rules are its MADE_CHIPS entry
 export const madeOf = (ch) => (ch?.kind === 'made' ? MADE_CHIPS[ch.model] || null : null);
-const lastsOf = (ch) => madeOf(ch)?.lasts;
-export const isPayable = (ch) => ch.kind === 'std' || ch.kind === 'opp' || ch.kind === 'bounty' || (ch.kind === 'made' && ch.value > 0 && lastsOf(ch) !== 'match');
+// How long a chip stays: a made chip's own `lasts`; chips the table makes (Opportunity, Bounty, Block, Counter) follow
+// the tuner's chip lifetimes (TUNING.chipLife): until paid away, the end of the turn, or the end of the match.
+export const lastsOf = (ch) => (ch?.kind === 'made' ? madeOf(ch)?.lasts : TUNING.chipLife?.[ch?.kind]);
+export const isPayable = (ch) => ch.kind === 'std' || ((ch.kind === 'opp' || ch.kind === 'bounty') && lastsOf(ch) !== 'match') || (ch.kind === 'made' && ch.value > 0 && lastsOf(ch) !== 'match');
 // takes a whole fee per hit (fee instance defence): Petals, Clay and the like, and made chips that last until broken
 export const isInstance = (ch) => INSTANCE_SHIELDS.includes(ch.kind) || (ch.kind === 'made' && lastsOf(ch) === 'hits' && (ch.hits || 0) > 0);
 // fees pass a made chip by when it lasts the match or is immune to Debt; a match chip cannot be destroyed either
-const passedBy = (ch) => ch.kind === 'made' && (lastsOf(ch) === 'match' || !!madeOf(ch)?.immune?.includes('debt'));
+const passedBy = (ch) => lastsOf(ch) === 'match' || (ch.kind === 'made' && !!madeOf(ch)?.immune?.includes('debt'));
 const immuneTo = (ch, what) => lastsOf(ch) === 'match' || !!madeOf(ch)?.immune?.includes(what);
 export const isHazard = (ch) => HAZARD_KINDS.includes(ch.kind);
 // an effect chip a maker trick placed: it takes height and does its work in its phase, but has no worth
@@ -50,7 +52,8 @@ export const isShield = (ch) => ch.kind === 'block' || ch.kind === 'counter' || 
 const SPREAD = { scorch: 'drop' };
 
 // ---------- position helpers ----------
-export const cellWorth = (cell) => sum(cell.chips, (ch) => (isPayable(ch) ? ch.value : ch.kind === 'debt' ? -ch.value : ch.kind === 'made' ? ch.value || 0 : 0));
+// every chip with a value counts toward Worth, whether or not a fee can take it (a chip that lasts the match too)
+export const cellWorth = (cell) => sum(cell.chips, (ch) => (isPayable(ch) ? ch.value : ch.kind === 'debt' ? -ch.value : ch.kind === 'made' || lastsOf(ch) === 'match' ? ch.value || 0 : 0));
 export const debtOf = (cell) => sum(cell.chips, (ch) => (ch.kind === 'debt' ? ch.value : 0));
 export const worth = (s) => sum(s.grid.flat(), cellWorth);
 export const occupied = (cell, payOnly) => cell.chips.some((ch) => isPayable(ch) || (!payOnly && isShield(ch)));
@@ -2107,7 +2110,7 @@ export function* resolve(b) {
     const st = s.status; st.resist = st.resistNext; st.resistNext = 0; st.evade = st.evadeNext; st.evadeNext = null; st.reflect = 0; st.reflectAll = false;
     for (const { cell } of allCells(s)) {
       if (!stuck(cell, 'hard')) for (const h0 of cell.chips.filter((ch) => ch.kind === 'hard')) if (--h0.life <= 0) { cell.chips.splice(cell.chips.indexOf(h0), 1); b.fx[h0.id] = 'void'; }
-      for (const m0 of cell.chips.filter((ch) => ch.kind === 'made' && (lastsOf(ch) === 'turn' || lastsOf(ch) === 'turns'))) if (lastsOf(m0) === 'turn' || --m0.life <= 0) { cell.chips.splice(cell.chips.indexOf(m0), 1); b.fx[m0.id] = 'void'; } // made chips run out
+      for (const m0 of cell.chips.filter((ch) => lastsOf(ch) === 'turn' || (ch.kind === 'made' && lastsOf(ch) === 'turns'))) if (lastsOf(m0) === 'turn' || --m0.life <= 0) { cell.chips.splice(cell.chips.indexOf(m0), 1); b.fx[m0.id] = 'void'; } // made chips run out
       for (const f0 of cell.chips.filter((ch) => isFx(ch) && ch.life < 99)) if (--f0.life <= 0) { cell.chips.splice(cell.chips.indexOf(f0), 1); b.fx[f0.id] = 'void'; } // effect chips wear off
       emptyOut(b, cell);
       for (const ch of cell.chips) { if (ch.feather > 0 && !stuck(cell, 'feather')) ch.feather--; if (ch.regen > 0 && !stuck(cell, 'regen') && --ch.regen <= 0) delete ch.regen; }
@@ -2174,6 +2177,7 @@ export function summary(b, idx) {
     seq: sum(std.filter((ch) => ch.n > 1), (ch) => Math.max(0, ch.value - ch.n)),
     nest: chips.filter((ch) => ch.resist === 'nest' && (ch.kind === 'std' || isFx(ch))).length * (shopVars('nest').payout || 0),
     opportunity: chips.filter((ch) => ch.kind === 'opp').length,
+    made: sum(chips.filter((ch) => ch.kind === 'made' && ch.value > 0), (ch) => ch.value), // every chip with a value counts back to your worth
     bounties: chips.filter((ch) => ch.kind === 'bounty').map((ch) => ({ creature: ch.creature, value: ch.value })),
     ownFees: b.stage.paid[idx], oppFees: b.stage.paid[1 - idx], bids: s.bidsPaid,
     pendingBids: sum(s.run.filter((e) => e.state === 'play'), (e) => e.bidValue) + sum(s.run.filter((e) => e.state === 'bid'), (e) => e.bidValue),

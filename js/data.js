@@ -708,19 +708,20 @@ export const CARDS = {
   note_flip: { name: 'Note: on flips', text: '"Out of dice? Flip a chip. It lands on nothing or its worth, fits any trick, and comes back to your Bet afterwards."' },
   trading: { name: "Trading Card: Children of Ae'a", text: 'From a super popular card game. Does not seem to do anything here.' },
 };
-// Wallets hold the cards that grant benefits. `keep` is the total two of your dice must reach in the alley to retain them.
+// Wallets hold the cards that grant benefits. `slots`: cards it holds. `passes`: passes it holds, each in its own pass
+// slot (cards never use them). `keep` is the total two of your dice must reach in the alley to retain them.
 export const WALLETS = {
-  worn_cloth: { name: 'Worn Cloth', color: '#8d8478', slots: 2, keep: 14, price: 0, level: 0 },
-  duct_tape: { name: 'Duct Tape', color: '#b5b8bd', slots: 1, keep: 10, price: 0, level: 0 },
-  silver_clip: { name: 'Silver Clip', color: '#d6dde6', slots: 4, keep: 14, price: 1000, level: 0 },
-  chained_snap: { name: 'Chained Snap', color: '#5a5f6b', slots: 2, keep: 7, price: 1000, level: 0 },
-  neon_zip: { name: 'Neon Zip', color: '#ff86ea', slots: 1, keep: 6, price: 1000, level: 0 },
-  worn_leather: { name: 'Worn Leather', color: '#7a4b2a', slots: 3, keep: 10, price: 1000, level: 0 },
-  diamond_clip: { name: 'Diamond Clip', color: '#bff3ff', slots: 3, keep: 7, price: 100000, level: 2 },
-  magnetic_snap: { name: 'Magnetic Snap', color: '#3c4a6b', slots: 1, keep: 4, price: 100000, level: 2 },
-  velvet_zip: { name: 'Velvet Zip', color: '#8a2d5a', slots: 2, keep: 6, price: 100000, level: 2 },
-  fine_leather: { name: 'Fine Leather', color: '#4a2412', slots: 4, keep: 12, price: 100000, level: 2 },
-  royal_luxury: { name: 'Royal Luxury', color: '#ffd76a', slots: 4, keep: 7, price: 10000000, level: 4, crown: true },
+  worn_cloth: { name: 'Worn Cloth', color: '#8d8478', slots: 2, keep: 14, passes: 1, price: 0, level: 0 },
+  duct_tape: { name: 'Duct Tape', color: '#b5b8bd', slots: 1, keep: 10, passes: 1, price: 0, level: 0 },
+  silver_clip: { name: 'Silver Clip', color: '#d6dde6', slots: 4, keep: 14, passes: 1, price: 1000, level: 0 },
+  chained_snap: { name: 'Chained Snap', color: '#5a5f6b', slots: 2, keep: 7, passes: 1, price: 1000, level: 0 },
+  neon_zip: { name: 'Neon Zip', color: '#ff86ea', slots: 1, keep: 6, passes: 1, price: 1000, level: 0 },
+  worn_leather: { name: 'Worn Leather', color: '#7a4b2a', slots: 3, keep: 10, passes: 1, price: 1000, level: 0 },
+  diamond_clip: { name: 'Diamond Clip', color: '#bff3ff', slots: 3, keep: 7, passes: 1, price: 100000, level: 2 },
+  magnetic_snap: { name: 'Magnetic Snap', color: '#3c4a6b', slots: 1, keep: 4, passes: 1, price: 100000, level: 2 },
+  velvet_zip: { name: 'Velvet Zip', color: '#8a2d5a', slots: 2, keep: 6, passes: 1, price: 100000, level: 2 },
+  fine_leather: { name: 'Fine Leather', color: '#4a2412', slots: 4, keep: 12, passes: 1, price: 100000, level: 2 },
+  royal_luxury: { name: 'Royal Luxury', color: '#ffd76a', slots: 4, keep: 7, passes: 1, price: 10000000, level: 4, crown: true },
 };
 // these cards are clipped to your lanyard and do not take a wallet slot
 export const LANYARD_CARDS = ['membership', 'suite', 'punch', 'paradise'];

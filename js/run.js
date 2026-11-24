@@ -20,6 +20,7 @@ export const clearRun = () => { try { store()?.removeItem(RUN_KEY); } catch { /*
 function migrate(run) {
   if (run.pass == null) { // the Royal Card became the Casino Pass; a run already on a floor holds that floor's pass, unless the card was dropped
     run.pass = run.cards?.includes('royal') ? Math.max(1, run.floor || 0) : 0; if (run.cards) run.cards = run.cards.filter((c) => c !== 'royal'); }
+  if (!Array.isArray(run.passes)) run.passes = run.pass ? [run.pass] : []; // a wallet can hold more than one pass
   for (const t of run.tricks || []) { // Trick Trader upgrades are gone: an upgraded trick becomes the foil it played as
     if (t.wear == null) t.wear = D.WEAR.good;
     if (t.up) { t.foil = Math.max(t.foil || 0, t.up); t.rar = 'foil'; } delete t.up; if (!t.rar) t.rar = t.foil ? 'foil' : 'basic'; }
@@ -58,10 +59,12 @@ function spend(run, amt, label) { if (run.purse < amt) return false; run.purse -
 
 export function newRun(cls, jacketReq = 'standard', seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0, gear = {}) {
   const jacket = jacketFits(cls, jacketReq) ? jacketReq : 'standard'; // a level 0 jacket only fits the class it was cut for
-  const run = { v: 1, rng: new RNG(seed), seed, cls, jacket, wallet: gear.wallet || 'worn_cloth', pass: gear.pass || 0, pendingCard: null, floor: 0, purse: 0, nextId: 1, dice: [], tricks: [], chips: {},
+  const kept = [].concat(gear.passes ?? gear.pass ?? []).filter((f) => f > 0);
+  const run = { v: 1, rng: new RNG(seed), seed, cls, jacket, wallet: gear.wallet || 'worn_cloth', pass: 0, passes: [], pendingCard: null, floor: 0, purse: 0, nextId: 1, dice: [], tricks: [], chips: {},
     drink: null, cards: [], punches: 0, rest: null, suiteKey: false, phase: 'intro', fs: null, bets: [], news: [], ledger: [], ascent: null,
     plan: { spacing: 'row', stacking: 'maxed', counts: null, resist: {} },
     stats: { bouts: 0, wins: 0, losses: 0, spent: 0, won: 0, turns: 0, dd: 0 } };
+  for (const f of kept) addPass(run, f);
   const K = D.CLASSES[cls];
   for (const [type, n] of Object.entries(K.dice)) for (let i = 0; i < n; i++) run.dice.push(mkDie(run, type));
   run.tricks = K.tricks.map((id) => mkTrick(run, id));
@@ -156,7 +159,7 @@ export function enterFloor(run, floor) {
   };
   run.fs.shop = genShelf(run);
   run.news = [tx('run.floor', { floor, name: F.name, line: F.line })];
-  run.pass = Math.max(run.pass || 0, floor); // each floor's pass takes the wallet's pass slot
+  addPass(run, floor); // each floor's pass goes in the wallet (taking the lowest one's slot when the wallet is full)
   return run.fs;
 }
 // The floor is a short path: table 1 first, then a choice between tables 2 and 3 (beating one closes the
@@ -441,6 +444,15 @@ const committed = (bout) => sum(bout.sides[0].grid.flat().flatMap((c) => c.chips
 // ---------- passes ----------
 // the floor a pass in the wallet takes you to; coming back to a saved run without one, the Bouncer stops you
 export const passFloor = (run) => run.pass || 0;
+// A wallet holds up to its `passes` (WALLETS, tuned in Build mode's tables), each in a pass slot that cards never use.
+// Reaching a floor adds its pass; a full wallet gives up its lowest pass for it. run.pass is the highest one held.
+export const passCap = (id) => Math.max(1, Math.round(D.WALLETS[id]?.passes ?? 1));
+export const passesOf = (run) => { const top = run.pass || 0, list = (run.passes || []).filter((f) => f > 0 && f <= top);
+  if (top && !list.includes(top)) list.push(top); return list.sort((a, b) => b - a); };
+export function addPass(run, f) {
+  if (!(f > 0)) return; const list = passesOf(run); if (!list.includes(f)) list.push(f);
+  list.sort((a, b) => b - a); run.passes = list.slice(0, passCap(run.wallet)); run.pass = run.passes[0] || 0;
+}
 export const needsBouncer = (run) => run.phase === 'floor' && run.floor >= 1 && passFloor(run) < run.floor;
 // after the Doorman, a pass kept from the last run skips the floor checks up to its floor
 export const startFloor = (run) => Math.max(1, Math.min(4, passFloor(run)));
@@ -498,12 +510,12 @@ export function settle(run, ctx, bout) {
   run.stats.bouts++; run.stats.turns += sm.turns; if (sm.win) run.stats.wins++; else run.stats.losses++;
   if (run.drink) { run.drink.sips = bout.sides[0].drink ? bout.sides[0].drink.sips : run.drink.sips; if (run.drink.sips <= 0) run.drink = null; }
   if (ctx.kind === 'intro') {
-    if (sm.win) { run.purse = 200 + sm.oppFees; run.pass = Math.max(passFloor(run), 1); lines.push([tx('run.welcome-stake-from-the'), 200], [tx('run.fees-your-opponent-paid'), sm.oppFees], [run.pass > 1 ? tx('run.your-gets-you-past', { name: D.PASSES[run.pass].name }) : tx('run.the-doorman-hands-you'), 0]); ledger(run, tx('run.intro-bout'), run.purse); }
+    if (sm.win) { run.purse = 200 + sm.oppFees; addPass(run, 1); lines.push([tx('run.welcome-stake-from-the'), 200], [tx('run.fees-your-opponent-paid'), sm.oppFees], [run.pass > 1 ? tx('run.your-gets-you-past', { name: D.PASSES[run.pass].name }) : tx('run.the-doorman-hands-you'), 0]); ledger(run, tx('run.intro-bout'), run.purse); }
     else lines.push([tx('run.the-doorman-shrugs-try'), 0]);
     res.total = run.purse; return res;
   }
   if (ctx.kind === 'bouncer') { // no stake either way: only the way back in
-    if (sm.win) { run.pass = Math.max(passFloor(run), 1); lines.push([tx('run.the-bouncer-steps-aside'), 0]); }
+    if (sm.win) { addPass(run, 1); lines.push([tx('run.the-bouncer-steps-aside'), 0]); }
     else lines.push([tx('run.the-bouncer-will-not'), 0]);
     res.total = run.purse; return res;
   }
@@ -518,8 +530,8 @@ export function settle(run, ctx, bout) {
   const start = run.purse;
   if (ctx.kind === 'ascent') {
     const safe = run.purse - ctx.committed;
-    if (sm.win) { run.purse = safe + sm.survivors + sm.gold + sm.ownFees + sm.pendingBids + sm.oppFees + sm.opportunity + sm.nest + sm.seq;
-      lines.push([tx('run.chips-kept-off-the'), safe], [tx('run.chips-left-in-your'), sm.survivors], [tx('run.your-fees-restored'), sm.ownFees + sm.pendingBids], [tx('run.s-fees', { name: ctx.opp.name }), sm.oppFees], [tx('run.gold-opportunity-and-nest'), sm.gold + sm.opportunity + sm.nest + sm.seq], [tx('run.bids-lost-to-the'), -sm.bids + sm.pendingBids]);
+    if (sm.win) { run.purse = safe + sm.survivors + sm.gold + sm.ownFees + sm.pendingBids + sm.oppFees + sm.opportunity + sm.nest + sm.seq + (sm.made || 0);
+      lines.push([tx('run.chips-kept-off-the'), safe], [tx('run.chips-left-in-your'), sm.survivors], [tx('run.your-fees-restored'), sm.ownFees + sm.pendingBids], [tx('run.s-fees', { name: ctx.opp.name }), sm.oppFees], [tx('run.gold-opportunity-and-nest'), sm.gold + sm.opportunity + sm.nest + sm.seq + (sm.made || 0)], [tx('run.bids-lost-to-the'), -sm.bids + sm.pendingBids]);
       run.ascent.step++; if (run.ascent.step >= run.ascent.ladder.length) run.phase = 'paradise';
     } else { run.purse = safe; lines.push([tx('run.chips-kept-off-the'), safe], [tx('run.position-lost'), -ctx.committed]); run.phase = 'fallen'; }
     res.total = run.purse; ledger(run, sm.win ? tx('run.ascent-beat', { name: ctx.opp.name }) : tx('run.ascent-lost-to', { name: ctx.opp.name }), run.purse - start); return res;
@@ -531,7 +543,7 @@ export function settle(run, ctx, bout) {
   const entry = ctx.kind === 'boss' ? run.fs.boss : run.fs.tables[ctx.idx];
   const wager = sm.intervened ? Math.floor(ctx.wager * (1 - D.TUNING.penalty.interventionShare)) : ctx.wager;
   if (sm.win) {
-    const base = sm.survivors + sm.gold + sm.ownFees + sm.pendingBids + sm.opportunity + sm.nest + sm.seq + bounty + wager;
+    const base = sm.survivors + sm.gold + sm.ownFees + sm.pendingBids + sm.opportunity + sm.nest + sm.seq + (sm.made || 0) + bounty + wager;
     const tilt = tiltPay(ctx), chipsWon = chipStakePay(ctx);
     const winnings = Math.max(0, sm.oppFees + Math.round(wager * (ctx.mult - 1)) + tilt + chipsWon);
     lines.push([tx('run.chips-left-in-your'), sm.survivors], [tx('run.your-fees-restored-from'), sm.ownFees + sm.pendingBids]);
@@ -539,6 +551,7 @@ export function settle(run, ctx, bout) {
     if (sm.opportunity) lines.push([tx('run.a-chip-for-every'), sm.opportunity]);
     if (sm.nest) lines.push([tx('run.nest-egg-chips-hatch'), sm.nest]);
     if (sm.seq) lines.push([tx('run.fibonacci-and-prime-chips'), sm.seq]);
+    if (sm.made) lines.push([tx('run.made-chips-count-back'), sm.made]);
     if (bounty) lines.push([tx('run.bounty-chips-cashed-in'), bounty]);
     lines.push([tx('run.wager-returned'), wager]);
     if (sm.intervened) lines.push([`Intervention took ${Math.round(D.TUNING.penalty.interventionShare * 100)}% of your wager`, -(ctx.wager - wager)]);
@@ -627,11 +640,11 @@ export function buyWallet(run, meta, id) {
 export function alleyRoll(run) {
   const dice = run.dice.slice().sort((a, b) => D.DICE[b.type].faces - D.DICE[a.type].faces).slice(0, 2).map((d) => ({ type: d.type, up: d.up, faces: d.faces, value: rollDie(run.rng, boutCopy(d)) }));
   const total = dice.reduce((n, d) => n + d.value, 0), need = walletOf(run).keep, cards = walletCards(run);
-  const pass = passFloor(run); return { dice, total, need, kept: total >= need && (cards.length > 0 || pass > 0), cards, pass };
+  const passes = passesOf(run), pass = passes[0] || 0; return { dice, total, need, kept: total >= need && (cards.length > 0 || pass > 0), cards, pass, passes };
 }
 // leaving through the alley ends the run
 export function endRun(run, meta, name = 'You', kept = [], keptPass = 0) {
-  meta.kept = kept; meta.keptPass = keptPass; // a wallet held on to in the alley keeps its pass
+  meta.kept = kept; meta.keptPass = keptPass; // a wallet held on to in the alley keeps its passes (a floor, or a list of them)
   if (hasCard(run, 'debit')) meta.debit = true;
   meta.runs++; meta.best = Math.max(meta.best, run.floor);
   const reached = run.phase === 'paradise' || run.phase === 'fallen' || run.phase === 'ascent';
