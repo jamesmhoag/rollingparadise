@@ -430,8 +430,12 @@ its hover.
 
 ### Neon signs
 Every seat at the table is a neon sign, and so is the House's (`js/ui/sign.js`). A sign has a tube and glow colour for
-its frame, name and class; a frame style (tube, double, dashed, dotted, bulbs, none) and corner rounding; a Unicode
-symbol at the corners or along the edge; a mount (a backing colour and an image, by URL or from a file); and one part
+its frame, name and class; a frame drawn as an SVG over the sign (tubes: tube, double, triple, rope, zigzag, wave,
+gradient; lamps: dashes, dots, bulbs, or *symbols*, the edge symbol all the way round; or none) and corner rounding;
+a frame **motion** (chase, breathe, swap, twinkle, still: lamps do it one by one, tubes along their length, with a
+glint running round a chasing tube); a symbol at the corners or along the top and bottom, which replaces the frame
+under it (no `$`; signs, stars of four to eight points and stars in or round shapes, shapes, card suits, dice, a
+drawn skull and the skull and crossbones, all shown as text rather than emoji); a mount (a backing colour and an image, by URL or from a file); and one part
 that blinks (breathe, pulse, flicker or alternate). Every blink is slow and soft (well under three changes a second,
 never fully dark) and all of them, the House's bulbs included, stop under reduced motion. There is no separate Neon
 tool: the Roller maker lists *Every Roller's sign* (`D.NEON.you`) above the Rollers and gives each its own
