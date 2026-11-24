@@ -45,10 +45,10 @@ def room(path, rt_low=.85, rt_high=.35, seed=7):
         w.writeframes((np.clip(ir * .5, -1, 1) * 32767).astype('<i2').tobytes())
 
 
-def synth(mid, wav):
+def synth(mid, wav, chorus=0.4, reverb=0.12):
     subprocess.run(['fluidsynth', '-ni', '-q', '-g', '0.5', '-r', str(SR), '-F', wav,
-                    '-o', 'synth.reverb.room-size=0.3', '-o', 'synth.reverb.level=0.12', '-o', 'synth.reverb.width=0.6',
-                    '-o', 'synth.chorus.level=0.4', SF2, mid], check=True)
+                    '-o', 'synth.reverb.room-size=0.3', '-o', f'synth.reverb.level={reverb}', '-o', 'synth.reverb.width=0.6', '-o', f'synth.reverb.active={int(reverb > 0)}',
+                    '-o', f'synth.chorus.level={chorus}', '-o', f'synth.chorus.active={int(chorus > 0)}', SF2, mid], check=True)
 
 
 def render(job):

@@ -120,6 +120,7 @@ class Band:
     def __init__(self, title, bpm, swing, rng):
         self.title, self.bpm, self.swing, self.rng = title, bpm, swing, rng
         self.notes, self.ccs, self.chans, self.tempos = [], [], {}, [(0, bpm)]
+        self.period = None  # a loop's length in beats: its timing feel then repeats with it
         self.lean, self.progs = {}, {}  # per channel: ticks behind (+) or ahead of (-) the beat; GM program
         self.chart = Chart()
 
@@ -416,27 +417,31 @@ class Band:
         return t
 
     # ---- write
-    def write(self, path, keep=None):
+    def write(self, path, keep=None, remap=None):
         mid = mido.MidiFile(ticks_per_beat=PPQ); tr = mido.MidiTrack(); mid.tracks.append(tr)
         ev = []; rng = random.Random(zlib.crc32(self.title.encode()))
         # how a player sits on the time: a steady lean (self.lean, in ticks, + is behind the beat) and a slow drift
         waves = {ch: (rng.uniform(0, 6.3), rng.uniform(0, 6.3), rng.uniform(5, 9), rng.uniform(2.5, 4)) for ch in range(16)}
+        remap = remap or {}; drum = {9} | {c for c, d in remap.items() if d == 9}
         def feel(ch, t):
-            a, b, p1, p2 = waves[ch]; amp = 0 if ch == 9 else 1
+            if self.period: t = t % self.period  # a loop's feel repeats exactly with it
+            a, b, p1, p2 = waves[ch]; amp = 0 if ch in drum else 1
             return self.lean.get(ch, 0) + amp * (5 * math.sin(2 * math.pi * t / p1 + a) + 3 * math.sin(2 * math.pi * t / p2 + b))
         for (t, bpm) in self.tempos: ev.append((max(0, round(t * PPQ)), 0, mido.MetaMessage('set_tempo', tempo=mido.bpm2tempo(bpm))))
         for ch, t, kind, v in self.ccs:
             if keep is not None and ch not in keep: continue
             tick = max(0, round(self.sw(max(t, 0), False) * PPQ + (feel(ch, t) if t >= 0 else 0))) if t >= 0 else 0
-            if kind == 'cc': ev.append((tick, 1, mido.Message('control_change', channel=ch, control=v[0], value=v[1])))
-            elif kind == 'prog': ev.append((tick, 1, mido.Message('program_change', channel=ch, program=v)))
-            elif kind == 'bend': ev.append((tick, 2, mido.Message('pitchwheel', channel=ch, pitch=v)))
+            out = remap.get(ch, ch)
+            if kind == 'cc': ev.append((tick, 1, mido.Message('control_change', channel=out, control=v[0], value=v[1])))
+            elif kind == 'prog': ev.append((tick, 1, mido.Message('program_change', channel=out, program=v)))
+            elif kind == 'bend': ev.append((tick, 2, mido.Message('pitchwheel', channel=out, pitch=v)))
         for ch, t, dur, p, vel, noswing in self.notes:
             if keep is not None and ch not in keep: continue
-            j = round(feel(ch, t)) + self.rng.randint(-2, 2)
+            j = round(feel(ch, t)) + (0 if self.period else self.rng.randint(-2, 2))
             a = max(0, round(self.sw(t, noswing) * PPQ) + j); b = max(a + 20, round(self.sw(t + dur, noswing) * PPQ) + j)
-            ev.append((a, 4, mido.Message('note_on', channel=ch, note=p, velocity=vel)))
-            ev.append((b, 3, mido.Message('note_off', channel=ch, note=p, velocity=0)))
+            out = remap.get(ch, ch)
+            ev.append((a, 4, mido.Message('note_on', channel=out, note=p, velocity=vel)))
+            ev.append((b, 3, mido.Message('note_off', channel=out, note=p, velocity=0)))
         ev.sort(key=lambda e: (e[0], e[1]))
         tr.append(mido.MetaMessage('track_name', name=self.title))
         last = 0

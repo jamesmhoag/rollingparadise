@@ -8,7 +8,7 @@ import { suiteScene, giftScene, ascentScene, summaryScene, alleyScene, walletTip
 import { boutScene } from './ui/boutview.js';
 import { openLibrary } from './ui/library.js';
 import { initSpin } from './ui/spin.js';
-import { initMusic } from './ui/music.js';
+import { initMusic, boutMusic, endBoutMusic } from './ui/music.js';
 import { initSfx } from './ui/sfx.js';
 import { buildScene } from './ui/build.js';
 import { loadDraft } from './build/draft.js';
@@ -23,10 +23,18 @@ nav.title = () => go(titleScene);
 nav.select = () => go(selectScene);
 nav.build = (o) => go((root) => buildScene(root, o));
 // the test table: a throwaway bout from Build mode, back to Build when you leave; nothing touches your run
-nav.test = (o) => { const { bout, ctx } = R.testTable(o); if (window.RP) window.RP.bout = bout; go((root) => boutScene(root, bout, ctx, () => nav.build({ tool: 'test' }))); };
+nav.test = (o) => { const { bout, ctx } = R.testTable(o); if (window.RP) window.RP.bout = bout; boutMusic(bout, musicAt(ctx)); go((root) => boutScene(root, bout, ctx, () => { endBoutMusic(); nav.build({ tool: 'test' }); })); };
 nav.hub = () => go(hubScene);
 nav.prep = (kind, idx) => go((root) => prepScene(root, kind, idx));
-nav.bout = ({ bout, ctx }) => go((root) => { if (window.RP) window.RP.bout = bout; boutScene(root, bout, ctx, () => { const res = R.settle(app.run, ctx, bout); go((r) => resultScene(r, ctx, res)); }); });
+// the bout music: the floor's table loop, or its High Roller's (the Ascent is floor 5, its last climb the boss);
+// a drink in the lounge keeps the lounge band
+function musicAt(ctx) {
+  const run = app.run, asc = ctx.kind === 'ascent', floor = asc ? D.ASCENT_FLOOR : Math.min(4, Math.max(1, run?.floor || 1));
+  const boss = ctx.kind === 'boss' || (asc && run?.ascent && run.ascent.step >= run.ascent.ladder.length - 1);
+  const place = asc ? t('music.ascent') : D.FLOORS[floor].name;
+  return { floor, boss, where: boss ? t('music.highRoller', { place }) : place };
+}
+nav.bout = ({ bout, ctx }) => go((root) => { if (window.RP) window.RP.bout = bout; if (ctx.kind !== 'lounge') boutMusic(bout, musicAt(ctx)); boutScene(root, bout, ctx, () => { endBoutMusic(); const res = R.settle(app.run, ctx, bout); go((r) => resultScene(r, ctx, res)); }); });
 nav.intro = () => nav.bout(R.startIntro(app.run));
 nav.bouncer = () => nav.bout(R.startBouncer(app.run));
 nav.lounge = (drinkId) => nav.bout(R.startLounge(app.run, drinkId));
