@@ -11,7 +11,7 @@
 #   - solos: phrased improvisation (call and response, chord tones on the beat, chromatic approaches, a held note
 #     to end each phrase)
 #   - horns get scoops into long notes and late vibrato; big-band brass harmonise the lead in close position
-import math, random
+import math, random, zlib
 import mido
 
 PPQ = 480
@@ -120,13 +120,14 @@ class Band:
     def __init__(self, title, bpm, swing, rng):
         self.title, self.bpm, self.swing, self.rng = title, bpm, swing, rng
         self.notes, self.ccs, self.chans, self.tempos = [], [], {}, [(0, bpm)]
+        self.lean, self.progs = {}, {}  # per channel: ticks behind (+) or ahead of (-) the beat; GM program
         self.chart = Chart()
 
     # ---- setup
     def chan(self, name, ch, prog, vol=100, pan=64, rev=40, cho=0, bank=0):
         self.chans[name] = ch
         for cc, v in ((0, bank), (7, vol), (10, pan), (91, rev), (93, cho), (11, 127)): self.ccs.append((ch, -0.01, 'cc', (cc, v)))
-        self.ccs.append((ch, -0.005, 'prog', prog))
+        self.ccs.append((ch, -0.005, 'prog', prog)); self.progs[ch] = prog
 
     def note(self, name, t, dur, p, vel, tri=False, swing=True):
         self.notes.append((self.chans[name], t, dur, int(p), max(1, min(127, int(vel))), tri or not swing))
@@ -328,13 +329,10 @@ class Band:
             prev = p
         return prev
 
-    def play(self, name, t, dur, p, vel, horn=True, harm=None):
+    def play(self, name, t, dur, p, vel, horn=True, harm=None, fall=False):
         rng, ch = self.rng, self.chans[name]
         self.note(name, t, dur * (.92 if dur < 1 else .97), p, vel + rng.randint(-5, 5))
-        if horn and dur >= 1 and rng.random() < .45:  # scoop up into a long note
-            self.ccs.append((ch, t, 'bend', -1400)); self.ccs.append((ch, t + .12, 'bend', -400)); self.ccs.append((ch, t + .22, 'bend', 0))
-        if horn and dur >= 1.5:  # late vibrato
-            self.ccs.append((ch, t, 'cc', (1, 0))); self.ccs.append((ch, t + dur * .45, 'cc', (1, 40))); self.ccs.append((ch, t + dur * .8, 'cc', (1, 70))); self.ccs.append((ch, t + dur, 'cc', (1, 0)))
+        if horn: self.breathe(ch, t, dur, vel, fall)
         if harm:  # a section under the lead: close position chord tones below it
             pcs = tones(self.chart.at(t), (1, 3, 5, 7, 9)); x = p
             for i, (hname, n_voices, drop) in enumerate(harm):
@@ -342,6 +340,37 @@ class Band:
                     x -= 1
                     while x % 12 not in pcs: x -= 1
                     self.note(hname, t, dur * .9, x - drop, vel - 10 + rng.randint(-4, 4))
+
+    # ---- a wind player's note: the breath (expression) swells in and eases off, a long note may be scooped,
+    # vibrato comes in late at a rate and depth that drift, and a phrase may end with a fall-off
+    def breathe(self, ch, t, dur, vel, fall=False):
+        rng, cc = self.rng, self.ccs
+        top = max(70, min(127, 60 + vel // 2 + rng.randint(-4, 4)))
+        end = t + dur * (.92 if dur < 1 else .97) - .02
+        cc.append((ch, t - .004, 'bend', 0))
+        if dur < .75:  # a short note: a quick breath accent
+            cc += [(ch, t - .003, 'cc', (11, top - 18)), (ch, t + min(.08, dur * .3), 'cc', (11, top))]
+            return
+        rise = min(.35, dur * .22) * rng.uniform(.7, 1.3)
+        cc += [(ch, t - .003, 'cc', (11, int(top * .62))), (ch, t + rise * .5, 'cc', (11, int(top * .88))), (ch, t + rise, 'cc', (11, top))]
+        if dur >= 1.5: cc += [(ch, t + dur * .55, 'cc', (11, int(top * .93))), (ch, end - .05, 'cc', (11, int(top * .8)))]
+        if rng.random() < .3:  # a scoop up into the note
+            cc += [(ch, t, 'bend', -900), (ch, t + .1, 'bend', -300), (ch, t + .18, 'bend', 0)]
+        if fall and rng.random() < .5:  # a fall-off: the pitch drops away as the breath goes
+            f0 = t + dur * .62
+            for k in range(1, 7):
+                cc.append((ch, f0 + (end - f0) * k / 6, 'bend', -int(8000 * (k / 6) ** 1.6)))
+                cc.append((ch, f0 + (end - f0) * k / 6, 'cc', (11, int(top * (1 - .7 * k / 6)))))
+            cc.append((ch, end + .02, 'bend', 0))
+            return
+        if dur >= 1.2:  # vibrato: pitch bend, coming in late, its rate and depth wandering a little
+            secs = 60 / self.bpm; hz = rng.uniform(4.6, 5.8); step = 1 / (hz * secs) / 8
+            v0 = t + dur * rng.uniform(.3, .45); x = v0; ph = 0
+            while x < end - .03:
+                k = (x - v0) / max(.1, end - v0); depth = 520 * min(1, k * 1.6) * rng.uniform(.85, 1.15)
+                cc.append((ch, x, 'bend', int(depth * math.sin(ph))))
+                x += step; ph += math.pi / 4
+            cc.append((ch, end, 'bend', 0))
 
     # ---- solos: phrased improvisation over the changes
     def solo(self, name, b0, b1, lo, hi, vel, density=.6, horn=True, mode=None, key=0, tri_rate=.08, harm=None):
@@ -376,7 +405,7 @@ class Band:
                     tgt = nearest(tones(self.chart.at(t + rhythm[i + 1][0]), (3, 5)), p + d * 2, lo, hi, d); p = tgt - d
                 else: p = step(p, d, pcs, lo, hi)
                 p = max(lo, min(hi, p))
-                self.play(name, tt, dur, p, vel + (6 if (u % 1) else 0) - (8 if last else 0) + rng.randint(-4, 4), horn and (dur >= 1), harm)
+                self.play(name, tt, dur, p, vel + (6 if (u % 1) else 0) - (8 if last else 0) + rng.randint(-4, 4), horn, harm, fall=last and dur >= 1)
             t += length + rng.choice([.5, 1, 1, 1.5, 2])
             t = math.floor(t * 2) / 2
 
@@ -387,17 +416,24 @@ class Band:
         return t
 
     # ---- write
-    def write(self, path):
+    def write(self, path, keep=None):
         mid = mido.MidiFile(ticks_per_beat=PPQ); tr = mido.MidiTrack(); mid.tracks.append(tr)
-        ev = []
+        ev = []; rng = random.Random(zlib.crc32(self.title.encode()))
+        # how a player sits on the time: a steady lean (self.lean, in ticks, + is behind the beat) and a slow drift
+        waves = {ch: (rng.uniform(0, 6.3), rng.uniform(0, 6.3), rng.uniform(5, 9), rng.uniform(2.5, 4)) for ch in range(16)}
+        def feel(ch, t):
+            a, b, p1, p2 = waves[ch]; amp = 0 if ch == 9 else 1
+            return self.lean.get(ch, 0) + amp * (5 * math.sin(2 * math.pi * t / p1 + a) + 3 * math.sin(2 * math.pi * t / p2 + b))
         for (t, bpm) in self.tempos: ev.append((max(0, round(t * PPQ)), 0, mido.MetaMessage('set_tempo', tempo=mido.bpm2tempo(bpm))))
         for ch, t, kind, v in self.ccs:
-            tick = max(0, round(self.sw(max(t, 0), False) * PPQ)) if t >= 0 else 0
+            if keep is not None and ch not in keep: continue
+            tick = max(0, round(self.sw(max(t, 0), False) * PPQ + (feel(ch, t) if t >= 0 else 0))) if t >= 0 else 0
             if kind == 'cc': ev.append((tick, 1, mido.Message('control_change', channel=ch, control=v[0], value=v[1])))
             elif kind == 'prog': ev.append((tick, 1, mido.Message('program_change', channel=ch, program=v)))
             elif kind == 'bend': ev.append((tick, 2, mido.Message('pitchwheel', channel=ch, pitch=v)))
         for ch, t, dur, p, vel, noswing in self.notes:
-            j = self.rng.randint(-6, 6) if ch != 9 else self.rng.randint(-3, 3)
+            if keep is not None and ch not in keep: continue
+            j = round(feel(ch, t)) + self.rng.randint(-2, 2)
             a = max(0, round(self.sw(t, noswing) * PPQ) + j); b = max(a + 20, round(self.sw(t + dur, noswing) * PPQ) + j)
             ev.append((a, 4, mido.Message('note_on', channel=ch, note=p, velocity=vel)))
             ev.append((b, 3, mido.Message('note_off', channel=ch, note=p, velocity=0)))

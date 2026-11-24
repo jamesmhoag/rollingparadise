@@ -155,12 +155,16 @@ class Story:
             if d <= .55 and d2 >= .9 and 1 <= abs(p2 - p) <= 4 and abs(t + d - t2) < .3 and rng.random() < self.chrom:
                 q = p2 - 1 if p < p2 or rng.random() < .3 else p2 + 1
                 if lo <= q <= hi and q != out[i - 1][2]: out[i] = (t, d, q, v - 4)
-        for t, dur, p, v in out:
+        # phrase dynamics: the in-between eighths ghosted, the phrase's peak leaned on
+        if out:
+            peak = max(o[2] for o in out)
+            out = [(t, d, p, v - (7 if (t % 1) > .01 and d <= .55 else 0) + (5 if p == peak else 0)) for t, d, p, v in out]
+        for j, (t, dur, p, v) in enumerate(out):
             if self.bend.get(voice) and self.feel == 'blues' and p % 12 == (self.key + 4) % 12 and dur >= .5 and rng.random() < .55:
                 # a blue note: start a half step flat and bend up into the major 3rd
                 b.play(voice, t, dur, p, v + rng.randint(-3, 3), horn=False); ch_ = b.chans[voice]
                 b.ccs += [(ch_, t - .01, 'bend', -4096), (ch_, t + .18, 'bend', -1800), (ch_, t + .34, 'bend', 0)]
-            else: b.play(voice, t, dur, p, v + rng.randint(-3, 3), horn=self.horn.get(voice, True))
+            else: b.play(voice, t, dur, p, v + rng.randint(-3, 3), horn=self.horn.get(voice, True), fall=j == len(out) - 1 and not cadence and dur >= 1)
             self.mel.append((t, dur, p))
             if harm: self.harmony(harm, t, dur, p, v - 10)
         return prev

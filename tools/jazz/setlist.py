@@ -6,8 +6,8 @@ import random
 from engine import Band
 from story import Story, transpose
 
-# General MIDI programs (FluidR3): real instrument patches only; no vibraphone or xylophone leads
-PIANO, EPIANO, DXPIANO, ORGAN, PERC_ORGAN = 0, 4, 5, 16, 17
+# General MIDI programs
+PIANO, EPIANO, DXPIANO, VIBES, ORGAN, PERC_ORGAN = 0, 4, 5, 11, 16, 17
 NYLON, JAZZ_GTR, CLEAN_GTR, MUTED_GTR = 24, 26, 27, 28
 UPRIGHT, FINGER, FRETLESS = 32, 33, 35
 STRINGS, SLOW_STRINGS, WARM_PAD = 48, 49, 89
@@ -83,6 +83,26 @@ BUTTON = {'bigband', 'funk', 'jump'}
 # how busy an improvised chorus is, by style
 SOLO = {'swing': .62, 'bossa': .45, 'bigband': .6, 'ballad': .32, 'funk': .5, 'jump': .58, 'smooth': .42, 'organ': .58}
 
+# Who carries each tune. Struck and plucked instruments (piano, vibraphone, guitar, Rhodes) sound real from samples,
+# so they take the melodies and the improvised choruses; horns and reeds, which a soundfont can only imitate, answer
+# from further back in the room, and the organ only comps.
+VIB, PNO, GTR = (VIBES, 'vibraphone', 57, 84), (PIANO, 'piano', 60, 86), (JAZZ_GTR, 'jazz guitar', 55, 79)
+CGTR, RHO, DX = (CLEAN_GTR, 'guitar', 57, 81), (EPIANO, 'Rhodes', 57, 84), (DXPIANO, 'electric piano', 60, 86)
+MTPT, CLAR, TEN, FLU = (MUTED_TPT, 'muted trumpet', 58, 79), (CLARINET, 'clarinet', 55, 76), (TENOR, 'tenor sax', 50, 70), (FLUTE, 'flute', 67, 86)
+ALT, SOP, TPT = (ALTO, 'alto sax', 58, 78), (SOPRANO, 'soprano sax', 62, 82), (TRUMPET, 'trumpet', 58, 78)
+VOICES = {
+    'neon-strip': (VIB, GTR), 'loose-change': (GTR, CLAR), 'side-bet': (PNO, MTPT),
+    'velvet-rope': (PNO, FLU), 'pool-light': (VIB, TEN), 'desert-moon': (RHO, VIB),
+    'high-roller': (PNO, (TRUMPET, 'trumpets', 60, 80)), 'marquee': (VIB, (ALTO, 'saxes', 58, 78)), 'double-down': (GTR, (TROMBONE, 'trombones', 46, 66)),
+    'last-call': (PNO, TEN), 'house-lights': (VIB, CLAR), 'two-a-m': (GTR, MTPT),
+    'velour': (CGTR, ALT), 'fresh-felt': (VIB, FLU), 'pit-boss': (RHO, TEN),
+    'lucky-streak': (PNO, TEN), 'comp-ticket': (GTR, ALT), 'cash-out': (VIB, TPT),
+    'satin-dice': (CGTR, SOP), 'valet': (DX, ALT), 'chrome': (VIB, CGTR),
+    'hammond-hour': (GTR, TEN), 'back-room': (VIB, GTR), 'after-hours': (PNO, GTR),
+}
+# where the soloists sit on the time, in ticks (480 to the beat): + lays back behind the beat, - pushes ahead
+LEAN = {'ballad': 26, 'swing': 9, 'bigband': 5, 'bossa': 6, 'smooth': 7, 'funk': 1, 'jump': -5, 'organ': 11}
+
 # (slug, title, genre, chart, key, tempo, lead, answer)
 SET = [
     ('neon-strip', 'Neon Strip', 'swing', 0, 5, 132, 0, 0), ('loose-change', 'Loose Change', 'swing', 1, 10, 144, 1, 2), ('side-bet', 'Side Bet', 'swing', 2, 3, 124, 2, 1),
@@ -102,21 +122,26 @@ def arrange(slug, title, genre, ci, key, bpm, li, ai, rng):
     g = G[genre]; chart = g['charts'][ci]; b = Band(title, bpm, g['swing'], rng)
     fam = lambda prog: prog // 8  # GM family: pianos, organs, guitars, ...
     cname, cprog, cstyle = g['comp']
-    lead = g['leads'][li]
-    if fam(lead[0]) == fam(cprog): cname, cprog, cstyle = 'gtr', JAZZ_GTR, 'swing'  # an organ lead: a guitar comps, not a second organ
-    answer = g['answers'][ai]
-    for k in range(1, len(g['answers']) + 1):  # the answer is a different sound from the lead and from the comping
-        if answer[0] != lead[0] and fam(answer[0]) != fam(cprog): break
-        answer = g['answers'][(ai + k) % len(g['answers'])]
-    b.chan('lead', 0, lead[0], 104, 76, 50); b.chan('answer', 3, answer[0], 98, 46, 50)
-    b.chan(cname, 1, cprog, 82, 56, 40, 70 if fam(cprog) == 2 else 20)
+    wind = lambda prog: 56 <= prog <= 79
+    if slug in VOICES: lead, answer = VOICES[slug]
+    else:
+        lead, answer = g['leads'][li], g['answers'][ai]
+        for k in range(1, len(g['answers']) + 1):  # the answer is a different sound from the lead and from the comping
+            if answer[0] != lead[0] and fam(answer[0]) != fam(cprog): break
+            answer = g['answers'][(ai + k) % len(g['answers'])]
+    if fam(lead[0]) == fam(cprog) and fam(lead[0]) != 0: cname, cprog, cstyle = 'gtr', JAZZ_GTR, 'swing'  # an organ lead: a guitar comps
+    b.chan('lead', 0, lead[0], 96 if wind(lead[0]) else 102, 74, 40)
+    b.chan('answer', 3, answer[0], 92 if wind(answer[0]) else 90, 48, 55)  # horns answer from further back
+    b.chan(cname, 1, cprog, 72 if fam(cprog) == 2 else 82, 56, 40, 70 if fam(cprog) == 2 else 20)
     b.chan('bass', 2, {'funk': FINGER, 'smooth': FRETLESS}.get(g['bass'], UPRIGHT), 110, 62, 25)
     dstyle, dkit, _ = g['drums']; b.chan('drums', 9, dkit, 92, 64, 35)
     if g.get('comp2'): b.chan(g['comp2'][0], 4, g['comp2'][1], 66, 92, 30)
     if g.get('pad'): b.chan('pad', 5, g['pad'][0], 52, 64, 80)
-    if g.get('section'):
-        b.chan('lead2', 6, lead[0], 84, 88, 50); b.chan('answer2', 7, answer[0], 84, 36, 50)
-        b.chan('lead3', 10, lead[0], 78, 98, 50); b.chan('answer3', 11, answer[0], 78, 26, 50)
+    if g.get('section'):  # a horn line is voiced for its section; a piano, vibes or guitar line plays alone
+        if wind(lead[0]): b.chan('lead2', 6, lead[0], 84, 88, 50); b.chan('lead3', 10, lead[0], 78, 98, 50)
+        if wind(answer[0]): b.chan('answer2', 7, answer[0], 84, 36, 55); b.chan('answer3', 11, answer[0], 78, 26, 55)
+    lean = LEAN[genre]
+    b.lean = {0: lean, 3: lean + 4, 6: lean + 4, 7: lean + 6, 10: lean + 4, 11: lean + 6, 1: lean // 3, 4: 0, 5: lean // 2, 2: -3 if g['bass'] == 'walk' else 0}
     first = chord(chart['A'].split('|')[0].split()[0])
     minor = first[0] == 0 and first[1] in ('m7', 'm6', 'm7b5')
     end = chart.get('Z') or (ENDING_MINOR if minor else ENDING.get(genre, ENDING_MAJ))
@@ -147,7 +172,7 @@ def arrange(slug, title, genre, ci, key, bpm, li, ai, rng):
     st = Story(b, g['feel'], key, rng)
     zc = b.chart.at((n - 1) * 4); st.home = tones(zc, (1, 3, 5))
     voices = ('lead', 'answer'); lo_hi = {'lead': lead[2:], 'answer': answer[2:]}
-    st.horn = {'lead': 56 <= lead[0] <= 79, 'answer': 56 <= answer[0] <= 79}
+    st.horn = {'lead': wind(lead[0]), 'answer': wind(answer[0])}
     st.bend = {'lead': 24 <= lead[0] <= 31 or 56 <= lead[0] <= 79, 'answer': 24 <= answer[0] <= 31 or 56 <= answer[0] <= 79}
     st.rng_lo = {'lead': lead[2] - 7, 'answer': answer[2] - 7}
     vel = {'lead': 92, 'answer': 84}
@@ -160,7 +185,8 @@ def arrange(slug, title, genre, ci, key, bpm, li, ai, rng):
     st.converse(voices, out, lo_hi, vel, 'out')
     st.coda(voices, n - 2, lo_hi, vel, slow=not button)
     if g.get('section'):  # big band: each line voiced for its section, three parts in close harmony under the lead
-        for (ch, t, dur, p, v, ns) in [x for x in b.notes if x[0] in (b.chans['lead'], b.chans['answer'])]:
+        voiced = [c for c, two in ((b.chans['lead'], 'lead2'), (b.chans['answer'], 'answer2')) if two in b.chans]
+        for (ch, t, dur, p, v, ns) in [x for x in b.notes if x[0] in voiced]:
             two, three = ('lead2', 'lead3') if ch == b.chans['lead'] else ('answer2', 'answer3')
             good = strong_pcs(b.chart.at(t)) | tones(b.chart.at(t))
             x1 = next((p - gap for gap in (3, 4, 8, 9, 5) if (p - gap) % 12 in good), None)
