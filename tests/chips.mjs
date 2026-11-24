@@ -284,7 +284,7 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
   const { bout, me } = table({});
   me.paidLast = 7;
   const e = { uid: 2, trick: { id: 'vengeance', q: 1 }, dice: [{ value: 2, type: 'd6' }, { value: 3, type: 'd6' }], bid: [], bidValue: 1, state: 'shown' };
-  assert(B.previewTotal(me, e) === 5 + 7, 'Vengeance adds the fees you paid last turn');
+  assert(B.previewTotal(me, e) === 5 + 1 + 7, 'Vengeance adds the fees you paid last turn (to the dice and the 1¢ bid)');
   const { opp } = table({}); void opp;
 }
 {
@@ -451,7 +451,7 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
   for (const x of B.powerChips(me)) x.cell.chips.splice(x.cell.chips.indexOf(x.ch), 1); B.addPower(bout, me, 2);
   const e = { uid: 7, trick: { id: 'charge', q: 1 }, dice: [{ value: 5, type: 'd6' }, { value: 2, type: 'd6' }], bid: [], bidValue: 2, state: 'bid' };
   const t = B.totalParts(me, e);
-  assert(t.diceSum === 7 && t.linger === 2 && t.power === 2 && t.total === 11, 'a total of 11 is shown as 5 + 2, +2 linger, +2 Power');
+  assert(t.diceSum === 7 && t.bid === 2 && t.power === 2 && t.total === 11, 'a total of 11 is shown as 5 + 2, +2 bid, +2 Power');
 }
 {
   const { bout, me, opp } = table({});

@@ -23,11 +23,16 @@ is not built yet. Tab names are in **bold**.
   +1 to your roll effects for the turn (in the Investment phase, or at once if it arrives during play) and lasts that
   turn; nothing spends it. Both sides' chips appear when the phase closes, so you see your opponent's build up. Each step pill says
   in its hover what passing it gives; once passed it shows ✓ (all used) or what it kept.
-- A trick has a Trait (bid, no dice), a Roll effect (bid plus dice, scaled by the total) and a Bonus (full dice of
-  the right type, condition met, matching class only).
+- A trick has a Roll effect and a Bonus; there are no Traits. It plays once **bid on**: its total is the value of the
+  chips bid on it plus the dice put on it in the Bluff (any number, any size, only on a trick bid on this turn), plus
+  Power and the like, times quality and print. A bid with no dice plays the effect at the bid's value. The Bonus
+  reads the trick's first `count` dice of its own size (a flipped chip counts as any size), its condition met,
+  matching class only; the card shows them as pips in the Bonus line.
 - Effects resolve in the workbook's order: Investments, Insurances, Expenses, Corrections.
-- Bids go to the House. A bid worth more than 1¢ makes the trick linger that many extra turns: the Trait repeats
-  each turn and the Roll effect lands on the last turn, larger for the wait.
+- Bids go to the House. A trick **lingers** only by **stacking copies**: drawing a copy of a trick already shown (same
+  trick and quality; any print or condition) puts it on top (Shift-click draws it apart, to aim elsewhere). One bid
+  plays the stack: the top copy this turn, then a copy a turn with the same roll and target, each with its own print;
+  each copy taps as it plays, and the last taps with the dice.
 - Fees go out as Debt on the target stacks, then the House settles them (see **Debt** below).
 - Both Rollers' tricks in a phase are played together. Every value is read from the table as it stood when the
   phase was called, so nothing played in a phase changes another trick in the same phase.
@@ -81,8 +86,7 @@ the pile. Click the pile to take its top chip back. Dice are not placed yet: the
 - **A phase you cannot act in is skipped on its own**: nothing to draw (an empty Book, no draws), no room or nothing
   to roll, nothing to bid on or with, nothing to aim. The feed says so. A whole turn can pass this way, and the
   draws, rolls and bids left unused still pay their rewards.
-- The limits are shown where they apply: a trick's dice (`1/2` beside its slots: a trick holds at most its dice
-  count, all of one type), the roll (`thrown 2/3` against Proficiency, and what is left in it), the steps (draws,
+- The limits are shown where they apply: the roll (`thrown 2/3` against Proficiency, and what is left in it), the steps (draws,
   rolls and bids left), and a stack (`4/6 high`, **full** when it is). The Run has no limit.
 - A requirement is waived when it cannot be met: an empty Book, no shown trick with room for a die, no die or
   flippable chip, or no chip you could bid without going broke. A bid can never spend your last chip.
@@ -284,12 +288,11 @@ can see it). Tweak an aim by clicking the trick, or its marked target on the tab
 it), then a new space. Aims stay hidden until the House plays them. The button after Bid reads **Bluff**, and in the Bluff it reads **Play**.
 
 ### Reading a trick
-A card shows how its total is made under the number: the dice, `+n linger` from the bid (turns × dice), `+n pow`
-(Power), Vengeance, `+n trait` (a Reprint Expense), `×` quality and foil, `×` last call and `×2` for a doubling bonus.
-A Grand or Royal card shows its quality die (`d10:7`): red when it is a dud, glowing when it is hot. Its hover says the same in words. Once
-the bid is paid to the House, the card keeps `bid 1+1¢` where its pile stood. Tricks still lingering mark the spaces they
-will land on, for both Rollers: blue outlines for yours, red for your opponent's, with the trick's name and turns
-left.
+A card shows how its total is made under the number: the dice, `+n bid`, `+n pow` (Power), Vengeance, a Misprint's
+changed value, `×` quality and foil, `×` last call and `×2` for a doubling bonus.
+A Grand or Royal card shows its quality die (`d10:7`): red when it is a dud, glowing when it is hot. Its hover says the same in words. A stack
+shows `⧉ ×n` by its name and the copies under it as a shadow. Tricks still lingering mark the spaces they will land
+on, for both Rollers: blue outlines for yours, red for your opponent's, with the trick's name and copies left.
 
 ### Fees on nothing, and overkill
 A fee spreads its overkill as it lands: what a stack cannot pay goes straight on to the stacks behind it in the
@@ -387,10 +390,9 @@ what you own, carry or wear is marked.
   74), the shelf Excellent (99), foil packs Mint (100). Gem Mint comes only out of packs (8% a trick) and is Mint
   until it first plays. A Poor trick plays forever at full strength.
 - **Rarity**: Basic; **Foil** in three tiers that multiply the roll total (Foil ×1.25, Holo ×1.5, Prism ×2;
-  Investments +0.25 a tier); **Misprint**, a changed die (one size up, sometimes down, among d4/d6/d8) or Trait value
-  (+1 to +3, sometimes −1), three in four for the better; **Reprint**, an older rule for its type: an Expense plays
-  its roll effect once per die, each die plus the Trait value; Insurances, Investments and Corrections play their
-  Trait once per die on the trick. An Upgrade chip bid on a trick plays it one foil tier higher.
+  Investments +0.25 a tier); **Misprint**, a changed die (one size up, sometimes down, among d4/d6/d8) or effect
+  value (+1 to +3, sometimes −1), three in four for the better; **Reprint**, an older rule: the roll effect plays
+  once per die, each worth that die (the bid joins the first). An Upgrade chip bid on a trick plays it one foil tier higher.
 - **Quality** (Common, Fine, Grand, Royal) is unlocked by floor and sets the multiplier. Common and Fine roll only
   their own small dice and are reliable. Grand and Royal roll a quality die when drawn (d10, d20): a dud (1; 1–2)
   plays at Common strength that turn; a hot roll (10; 19–20) sets off the Bonus whatever the dice. Drawing a trick

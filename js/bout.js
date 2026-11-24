@@ -29,7 +29,8 @@ export const trickMult = (t) => QMULT[t.q] * (FOIL[foilTier(t)]?.mult || 1);
 const investMult = (t) => 1 + (t.q - 1) * 0.5 + 0.25 * foilTier(t);
 // the multiplier a trick applies to its roll total, and the size of its Trait
 export const multOf = (t) => (TRICKS[t.id].type === 'investment' ? investMult(t) : trickMult(t));
-export const traitOf = (t) => Math.max(1, Math.round(trickMult(t)) + (t.mis?.trait || 0)); // a Misprint's Trait differs
+// a Misprint printed with a changed effect value adds (or takes) this much from every roll effect it plays
+export const misPlus = (t) => t?.mis?.trait || 0;
 // a Grand or Royal trick's quality die, rolled when it is drawn: 'dud', 'hot' or null
 export const qState = (e) => { const Q = QDIE[e.trick.q]; if (!Q || e.qroll == null) return null; return e.qroll <= Q.dud ? 'dud' : e.qroll >= Q.hot ? 'hot' : null; };
 // a trick as it plays: one foil tier higher for each Upgrade chip bid on it; Common strength on a dud quality die
@@ -489,15 +490,16 @@ function openPhase(b) { for (const s of b.sides) { snapshot(s); s.pub = clone({ 
 
 // ---------- phases ----------
 const loose = (e) => e.state !== 'play'; // shown or bid this turn: can still take dice (shown) or bids
-const realTypeOf = (e) => e.dice.find((d) => !d.chip)?.type;
-const roomOn = (e) => e.state !== 'play' && e.dice.length < TRICKS[e.trick.id].count; // shown or bid this turn
-const fitsOn = (d, e) => roomOn(e) && (d.chip || !realTypeOf(e) || realTypeOf(e) === d.type);
+// Dice go only on a trick bid on this turn, any number and any size; the first `count` dice of the trick's own die
+// size (flipped chips count as any size) are its Bonus dice (bonusDice).
+const roomOn = (e) => e.state !== 'play'; // shown or bid this turn: could still be bid, then take dice
+const fitsOn = (d, e) => e.state === 'bid';
 const spare = (s, ch) => worth(s) - ch.value > 0; // spending this chip does not leave you broke
 export function flippable(s) { const out = []; for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const ch = bidChip(s, r, c); if (ch?.kind === 'std' && spare(s, ch)) out.push({ r, c, ch }); } return out; }
 export function biddable(s) { const out = []; for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const ch = bidChip(s, r, c); if (ch && spare(s, ch)) out.push({ r, c, ch }); } return out; }
 // Is the phase's one required action possible at all? If not, the phase can be closed without it.
 export function canAct(b, s, phase = b.phase) {
-  if (phase === 'aim') return trayPlaceable(s) || s.tray.length > 0 && s.run.some(roomOn) || s.run.some((e) => e.state === 'bid' && (needsTarget(e) || TRICKS[e.trick.id].approach !== 'none') && validTargets(b, s, e).length > 1);
+  if (phase === 'aim') return trayPlaceable(s) || s.run.some((e) => e.state === 'bid' && (needsTarget(e) || TRICKS[e.trick.id].approach !== 'none') && validTargets(b, s, e).length > 1);
   if (phase === 'draw') return s.book.length > 0 && tipOf(s, 'trickery') > 0;
   if (phase === 'roll') return canThrowAny(s);
   if (phase === 'bid') return s.run.some(loose) && biddable(s).length > 0;
@@ -507,9 +509,11 @@ export const placedThisTurn = (b, s) => s.run.some((e) => e.dice.some((d) => d.t
 // Dice in the roll are kept: each Bluff you put at least one on a trick (when one fits), and the rest stay in the
 // roll, keeping their values, turn after turn, to pick from later, like tricks waiting on your Run (never rerolled).
 export const trayPlaceable = (s) => s.tray.some((d) => s.run.some((e) => fitsOn(d, e)));
-export const canThrowAny = (s) => !s.thrown && tipOf(s, 'proficiency') > 0 && s.run.some(roomOn) && (flippable(s).length > 0 || s.pouch.some((d) => s.run.some((e) => fitsOn(d, e))));
-// The most a trick holds: its dice count. Room left on it now.
-export const diceRoom = (e) => Math.max(0, TRICKS[e.trick.id].count - e.dice.length);
+export const canThrowAny = (s) => !s.thrown && tipOf(s, 'proficiency') > 0 && s.run.some(roomOn) && (flippable(s).length > 0 || s.pouch.length > 0);
+// The dice a trick's Bonus reads: the first `count` on it of its own die size (a flipped chip counts as any size).
+export function bonusDice(e) { const def = defOf(e.trick), out = []; for (const d of e.dice) if (out.length < def.count && (d.chip || d.type === def.die)) out.push(d); return out; }
+// Bonus dice still wanted on a trick
+export const bonusRoom = (e) => Math.max(0, defOf(e.trick).count - bonusDice(e).length);
 // What still stops this Roller closing the current phase, or null.
 export function needOf(b, s) {
   if (b.phase === 'draw') return s.used.draw > 0 || !canAct(b, s) ? null : tx('feed.draw-at-least-one');
@@ -720,10 +724,17 @@ export function canDraw(b, s, uid) {
   if (!s.book.some((t) => t.uid === uid)) return tx('feed.that-trick-is-in');
   return null;
 }
-export function draw(b, s, uid) {
+// Copies of one trick (the same trick at the same quality; any print or condition) can be drawn onto each other on
+// the Run. A stack plays with one bid: the top copy this turn, the next one the turn after with the same roll and
+// target, and so on, each copy playing with its own print. That is how a trick lingers.
+export const canStackOn = (s, t, e) => !!e && !!t && e.state === 'shown' && !e.dice.length && e.trick.id === t.id && (e.trick.q || 1) === (t.q || 1);
+export function draw(b, s, uid, ontoUid = null) {
   if (canDraw(b, s, uid)) return null;
+  const onto = ontoUid != null ? s.run.find((x) => x.uid === ontoUid) : null, t0 = s.book.find((t) => t.uid === uid);
+  if (ontoUid != null && !canStackOn(s, t0, onto)) return null;
   const i = s.book.findIndex((t) => t.uid === uid), trick = s.book.splice(i, 1)[0];
-  const e = { uid, trick, dice: [], bid: [], bidValue: 0, target: null, state: 'shown', lingerLeft: 0, lingerTotal: 0, drawn: b.turn, bookAt: i };
+  if (onto) { (onto.stack ||= []).unshift(onto.trick); (onto.layers ||= [{ drawn: onto.drawn, bookAt: onto.bookAt }]).unshift({ drawn: b.turn, bookAt: i }); onto.trick = trick; s.used.draw++; return onto; }
+  const e = { uid, trick, dice: [], bid: [], bidValue: 0, target: null, state: 'shown', stack: [], lingerLeft: 0, drawn: b.turn, bookAt: i };
   const Q = QDIE[trick.q]; if (Q) e.qroll = s.rolled['q' + uid] ?? (s.rolled['q' + uid] = 1 + b.rng.int(Q.faces)); // the same roll if drawn again this turn
   s.run.push(e); s.used.draw++;
   return e;
@@ -732,12 +743,14 @@ export function draw(b, s, uid) {
 export function canUndraw(b, s, uid) {
   if (b.phase !== 'draw') return tx('feed.tricks-go-back-to');
   const e = s.run.find((x) => x.uid === uid);
-  if (!e || e.drawn !== b.turn) return 'Only a trick drawn this turn can go back to the Book.';
+  if (!e || (e.layers?.[0]?.drawn ?? e.drawn) !== b.turn) return 'Only a trick drawn this turn can go back to the Book.';
   if (e.dice.length || e.state !== 'shown') return tx('feed.that-trick-has-dice');
   return null;
 }
 export function undraw(b, s, uid) {
   if (canUndraw(b, s, uid)) return null;
+  const top = s.run.find((x) => x.uid === uid);
+  if (top.stack?.length) { const L = top.layers.shift(); s.book.splice(Math.min(L.bookAt ?? s.book.length, s.book.length), 0, top.trick); top.trick = top.stack.shift(); s.used.draw--; return top; } // the top copy goes back
   const e = s.run.splice(s.run.findIndex((x) => x.uid === uid), 1)[0];
   s.book.splice(Math.min(e.bookAt ?? s.book.length, s.book.length), 0, e.trick); s.used.draw--;
   return e;
@@ -817,7 +830,6 @@ export function flip(b, s, r, c) {
   s.tray.push(d); s.used.roll++;
   return d;
 }
-const realType = realTypeOf;
 export const holderOf = (s, dieId) => s.run.find((e) => e.dice.some((d) => d.id === dieId)) || null;
 // a die on a trick can still be moved while the Roll phase is open, if it was rolled this turn
 // Dice rolled this turn are put on tricks, and can be moved between them, in the Bluff.
@@ -828,9 +840,8 @@ export function canPlace(b, s, dieId, e) {
   const def = TRICKS[e.trick.id], d = s.tray.find((x) => x.id === dieId) || (canMove(b, s, dieId) ? holderOf(s, dieId).dice.find((x) => x.id === dieId) : null);
   if (!d) return s.pouch.some((x) => x.id === dieId) ? tx('feed.roll-the-die-first') : tx('feed.that-die-is-committed');
   if (e.state === 'play') return tx('table.that-trick-is-already');
+  if (e.state !== 'bid') return tx('feed.bid-before-dice', { name: def.name });
   if (e.dice.some((x) => x.id === dieId)) return tx('feed.that-die-is-already');
-  if (e.dice.length >= def.count) return tx('feed.holds-at-most-dice', { name: def.name, count: def.count });
-  if (!d.chip && realType(e) && realType(e) !== d.type) return tx('feed.all-dice-on-a');
   return null;
 }
 function takeLoose(s, dieId) {
@@ -840,7 +851,7 @@ function takeLoose(s, dieId) {
 export function place(b, s, dieId, e) {
   if (canPlace(b, s, dieId, e)) return null;
   const d = takeLoose(s, dieId); e.dice.push(d); d.t = b.turn;
-  const type = realType(e) || defOf(e.trick).die; for (const x of e.dice) if (x.chip) x.type = type; // a flipped chip takes the type of the dice it joins
+  if (d.chip) d.type = defOf(e.trick).die; // a flipped chip counts as the trick's own die size
   return d;
 }
 export function unplace(b, s, dieId) { if (!canMove(b, s, dieId)) return null; const d = takeLoose(s, dieId); s.tray.push(d); return d; }
@@ -849,7 +860,7 @@ export function bidChip(s, r, c) {
   const top = lifted(cell) ? cell.chips.find((ch) => !isHazard(ch)) : cell.chips[cell.chips.length - 1]; // a lifted stack bids from the bottom
   return top && isPayable(top) && !top.gold && !stuckIce(top, cell) ? top : null;
 }
-// A trick can take any number of bids this turn (one chip per bid); each 1¢ over the first adds a turn of linger.
+// A trick can take any number of bids this turn (one chip per bid); their value adds to its effect.
 export function canBid(b, s, e, r, c) {
   const gate = phaseGate(b, 'bid'); if (gate) return gate;
   if (e.state === 'play') return tx('table.that-trick-is-already');
@@ -911,7 +922,7 @@ export function resetPlan(b, s) {
   const snap = clone(s.snap);
   s.grid = snap.grid; s.run = snap.run; s.book = snap.book; s.pouch = snap.pouch; s.tray = snap.tray; s.used = snap.used; s.thrown = snap.thrown; s.pick = snap.pick || { dice: [], flips: [] }; s.turnBonus = snap.turnBonus; s.food = snap.food;
 }
-export const needsTarget = (e) => TRICKS[e.trick.id].approach !== 'none' && e.dice.length > 0;
+export const needsTarget = (e) => TRICKS[e.trick.id].approach !== 'none' && (e.dice.length > 0 || e.state !== 'shown');
 export function targetSide(b, s, def) { return def.side === 'opp' ? b.sides[1 - s.idx] : def.side === 'self' ? s : null; }
 // the sides a trick can aim at: its own zone, or both for a trick that plays on either side
 const aimSides = (b, s, def) => (def.side === 'any' ? [b.sides[1 - s.idx], s] : [targetSide(b, s, def)].filter(Boolean));
@@ -973,8 +984,8 @@ export function bonusMet(s, e) {
   const def = defOf(e.trick); if (!e.dice.length) return false;
   if (def.cls && def.cls !== s.cls) return false;
   if (qState(e) === 'hot') return true; // a hot quality die sets off the Bonus whatever the dice
-  if (e.dice.length !== def.count || !e.dice.some((d) => d.type === def.die) || !e.dice.every((d) => d.type === def.die)) return false;
-  const vals = e.dice.map((d) => d.value), total = sum(vals), cond = def.bonus.cond;
+  const bd = bonusDice(e); if (bd.length < def.count || !bd.some((d) => !d.chip)) return false;
+  const vals = bd.map((d) => d.value), total = sum(vals), cond = def.bonus.cond;
   if (cond === 'match') return vals.some((v, i) => vals.indexOf(v) !== i);
   if (cond === 'evens') return vals.every((v) => v % 2 === 0);
   if (cond === 'odds') return vals.every((v) => v % 2 === 1);
@@ -982,22 +993,21 @@ export function bonusMet(s, e) {
   if (cond.startsWith('under:')) return total <= +cond.slice(6);
   return false;
 }
-// What a trick's total is made of: dice, linger from the bid, Power, Vengeance, the multiplier, Last call, a
-// doubling bonus. Boost and Enfeeble join when the trick plays, so the card shows them as they stand now.
+// What a trick's total is made of: the dice, the value of the chips bid on it, Power, Vengeance, a Misprint's
+// changed value, the multiplier (quality and print), Last call, a doubling bonus. Boost and Enfeeble join when the
+// trick plays, so the card shows them as they stand now.
+const bidOf = (e) => (e.state === 'play' ? sum(e.paid || []) : e.bidValue) || 0;
 export function totalParts(s, e) {
   const def = TRICKS[e.trick.id], inv = def.type === 'investment';
-  const dice = sum(e.dice, (d) => d.value), turns = e.state === 'play' ? e.lingerTotal : clamp(e.bidValue - 1, 0, 20);
-  const linger = turns * e.dice.length, power = inv ? 0 : powerAhead(s), venge = def.vengeance ? s.paidLast || 0 : 0;
+  const dice = sum(e.dice, (d) => d.value), bid = bidOf(e), power = inv ? 0 : powerAhead(s), venge = def.vengeance ? s.paidLast || 0 : 0;
   const mult = inv ? investMult(effTrick(e)) : trickMult(effTrick(e)), heatX = def.type === 'expense' ? s.heat || 1 : 1, double = bonusMet(s, e) && def.bonus.k === 'double';
-  return { dice: e.dice.map((d) => d.value), diceSum: dice, turns, linger, power, venge, plus: reprintPlus(e), mult, heat: heatX, double, total: previewTotal(s, e) };
+  return { dice: e.dice.map((d) => d.value), diceSum: dice, bid, power, venge, plus: misPlus(e.trick), mult, heat: heatX, double, total: previewTotal(s, e),
+    turns: (e.stack || []).length, stack: 1 + (e.stack || []).length };
 }
-// what a Reprint Expense adds: the Trait value on each die's instance
-const reprintPlus = (e) => (e.trick.rar === 'reprint' && TRICKS[e.trick.id].type === 'expense' ? traitOf(effTrick(e)) * e.dice.length : 0);
-// what a shown trick would do right now (for previews and the AI)
+// what a shown trick would do right now (for previews and the AI): nothing until it is bid on
 export function previewTotal(s, e) {
-  const def = TRICKS[e.trick.id]; if (!e.dice.length) return 0;
-  const linger = e.state === 'play' ? e.lingerTotal : clamp(e.bidValue - 1, 0, 20);
-  const raw = sum(e.dice, (d) => d.value) + linger * e.dice.length + (def.type === 'investment' ? 0 : powerAhead(s)) + (def.vengeance ? s.paidLast || 0 : 0) + reprintPlus(e);
+  const def = TRICKS[e.trick.id]; if (!e.dice.length && !bidOf(e)) return 0;
+  const raw = sum(e.dice, (d) => d.value) + bidOf(e) + (def.type === 'investment' ? 0 : powerAhead(s)) + (def.vengeance ? s.paidLast || 0 : 0) + misPlus(e.trick);
   const m = def.type === 'investment' ? investMult(effTrick(e)) : trickMult(effTrick(e));
   return Math.max(0, Math.round(raw * m * (def.type === 'expense' ? s.heat || 1 : 1))) * (bonusMet(s, e) && def.bonus.k === 'double' ? 2 : 1);
 }
@@ -1394,49 +1404,35 @@ function* playChips(b, s, e, def, x) {
     return { made, fees: 0, lost, cells: [...hit.values()], pulled: sum(got, (ch) => ch.value) - 0 }; };
   const main = makeKind(R.chip) === 'pit' ? fromPit(R.chip) : make(R.chip, inst);
   let extra = null; if (x.bonus === 'extra') extra = make(def.bonus.chip || 'block', Array.from({ length: def.bonus.n || 1 }, () => 1));
-  if (x.bonus === 'linger' && !x.again && x.total > 0) s.echoes.push({ from: b.turn, e: { ...e, dice: e.dice.map((d) => ({ ...d })), lingerLeft: 0, lingerTotal: 0 }, left: def.bonus.turns || 2, phase: phaseOf(e.trick.id) });
+  if (x.bonus === 'linger' && !x.again && x.total > 0) s.echoes.push({ from: b.turn, e: { ...e, dice: e.dice.map((d) => ({ ...d })), lingerLeft: 0 }, left: def.bonus.turns || 2, phase: phaseOf(e.trick.id) });
   const kind = makeKind(R.chip), refs = [...main.cells, ...(extra?.cells || [])].map((p) => ref(t, p.r, p.c));
   const said = kind === 'pit' ? tx('feed.back-out-of-the', { made: main.made }) : kind === 'fee' ? tx('feed.of-debt-on', { fees: main.fees, cellN: main.cells.length }) : tx('feed.made', { made: main.made });
   yield step(b, `${x.tag}: ${inst.length ? said : 'nothing to make'}${extra ? tx('feed.and-extra', { made: extra.made }) : ''}${main.lost ? tx('feed.had-no-room', { lost: main.lost }) : ''}${x.bonus === 'linger' && !x.again ? tx('feed.it-will-play-again', { v: def.bonus.turns || 2 }) : ''}.`, refs, main.made || main.fees || extra?.made ? 'play' : 'miss');
 }
+// A trick plays its roll effect: the dice plus the value bid on it, and whatever adds to them. A Reprint plays its
+// older rule: the roll effect once for each die, each worth that die (the bid's value joins the first).
 function* play(b, s, e, opt = {}) {
   const def = TRICKS[e.trick.id], o = b.sides[1 - s.idx], inv = def.type === 'investment', reprint = e.trick.rar === 'reprint';
-  // a Reprint's older rule: an Expense plays its roll effect once per die (each die plus the Trait value); the
-  // other types play the Trait once per die on the trick
-  const m = traitOf(effTrick(e)) * (reprint && def.type !== 'expense' ? Math.max(1, e.dice.length) : 1);
-  // Trait effect: every turn the trick is in play
-  if (opt.again || opt.instance) { /* the roll effect only */ } else if (def.type === 'expense') {
-    const cols = [...Array(o.dims.cols).keys()].filter((c) => frontRow(o, c) >= 0);
-    if (cols.length) { const c = b.rng.pick(cols), r = frontRow(o, c), g = engage(b, s, o, r, c, m, {});
-      yield step(b, tx('feed.plays', { name: s.name, name2: def.name, v: g.placed ? tx('feed.of-debt-on-a', { placed: g.placed }) : tx('feed.the-trait-fee-is', { m, v: g.notes.join(', ') || 'lost' }) }), [ref(o, r, c)], 'play'); }
-  } else if (def.type === 'insurance') {
-    const left = addToMeter(b, s, Array.from({ length: m }, () => mkChip(b, 'block')), null, 'spawn');
-    yield step(b, tx('feed.plays-block-to-the', { name: s.name, name2: def.name, m, overText: overText(left) }), [], 'play');
-  } else if (inv) {
-    const n = addPower(b, s, m); yield step(b, tx('feed.plays-power-on-the', { name: s.name, name2: def.name, n, v: n < m ? tx('feed.had-no-room-and-2', { m: m - n }) : '' }), [], 'play');
-  } else {
-    const n = cleanse(b, s, m); yield step(b, tx('feed.plays-2', { name: s.name, name2: def.name, v: n ? tx('feed.debt-or-hazard-cleansed', { n }) : '' }), [], 'play');
-  }
-  if (e.lingerLeft > 0 || !e.dice.length) return;
-  if (opt.forgotten) { yield step(b, tx('feed.s-is-forgotten-s', { name: s.name, name2: def.name, join: e.dice.map((d) => d.value).join('+'), name3: o.name }), [], 'miss'); return; }
-  if (reprint && def.type === 'expense' && !opt.instance && e.dice.length > 1) {
-    const bonus = bonusMet(s, e) ? def.bonus.k : null, plus = traitOf(effTrick(e));
-    for (const d of e.dice) yield* play(b, s, { ...e, dice: [d] }, { ...opt, instance: true, plus, bonus });
+  if (!e.dice.length && !bidOf(e) && !opt.instance) return;
+  if (opt.forgotten) { yield step(b, tx('feed.s-is-forgotten-s', { name: s.name, name2: def.name, join: e.dice.map((d) => d.value).join('+') || '0', name3: o.name }), [], 'miss'); return; }
+  if (reprint && !opt.instance && e.dice.length > 1) {
+    const bonus = bonusMet(s, e) ? def.bonus.k : null;
+    for (const [i, d] of e.dice.entries()) yield* play(b, s, { ...e, dice: [d] }, { ...opt, instance: true, bonus, bid: i === 0 ? bidOf(e) : 0 });
     return;
   }
 
-  // Roll effect: on the last turn of the linger
+  // Roll effect
   const own = def.roll.k === 'bend' || def.roll.k === 'parlay';
   const fz = s.fz || s.mods; // mods as they stood when the phase was called
   const vals = e.dice.map((d) => (!own && fz.bend != null ? fz.bend : d.value));
   const bonus = opt.bonus !== undefined ? opt.bonus : bonusMet(s, e) ? def.bonus.k : null;
-  let total = sum(vals) + e.lingerTotal * e.dice.length + (opt.plus || (reprint && def.type === 'expense' ? traitOf(effTrick(e)) : 0));
+  const bidV = opt.bid ?? bidOf(e);
+  let total = sum(vals) + bidV + misPlus(e.trick);
   if (!inv) { total += fz.boost - fz.enfeeble + 0 + (def.type === 'expense' ? fz.press : 0) + (def.vengeance ? s.paidLast || 0 : 0); }
   total = Math.max(0, Math.round(total * (inv ? investMult(effTrick(e)) : trickMult(effTrick(e)) * fz.mul) * (def.type === 'expense' ? heat(b.turn) : 1)));
   if (bonus === 'double') total *= 2;
   if (bonus === 'bidmult') total *= Math.max(1, sum(e.paid || []) || e.bidValue || 1);
-  const plusT = opt.plus || (reprint && def.type === 'expense' ? traitOf(effTrick(e)) : 0);
-  const tag = `${opt.again ? `${opt.again}: ` : ''}${s.name}'s ${def.name} (${vals.join('+')}${plusT ? tx('feed.trait', { plusT }) : ''}${bonus ? tx('feed.bonus') : ''})`;
+  const tag = `${opt.again ? `${opt.again}: ` : ''}${s.name}'s ${def.name} (${[...vals, ...(bidV ? [tx('feed.bid-part', { n: bidV })] : [])].join('+') || '0'}${bonus ? tx('feed.bonus') : ''})`;
   if (total >= 10 && !opt.again) for (const { cell } of allCells(s)) if (cell.roost) for (const egg of cell.chips.filter((ch) => ch.kind === 'egg')) { // a big trick hatches the eggs on your Roost
     cell.chips.splice(cell.chips.indexOf(egg), 1); b.fx[egg.id] = 'void'; b.creatures.push(newCreature(b, 'dragon', o.idx, b.turn + 1));
     yield step(b, tx('feed.hatches-an-egg-on', { tag, name: s.name, name2: o.name }), [], 'bonus'); }
@@ -1501,11 +1497,11 @@ function* play(b, s, e, opt = {}) {
       yield step(b, tx('feed.other-roll-effects-gain', { tag, total }), [], 'play'); return;
     case 'enfeeble': o.mods.enfeeble += total; if (bonus === 'extend') o.status.enfeebleNext = Math.floor(total / 2);
       yield step(b, tx('feed.s-roll-effects-lose', { tag, name: o.name, total }), [], 'play'); return;
-    case 'bend': { const v = e.dice[0].value; if (bonus === 'bendopp') o.mods.bend = v; else s.mods.bend = v;
+    case 'bend': { const v = e.dice[0]?.value ?? total; // no die on it: the total stands in if (bonus === 'bendopp') o.mods.bend = v; else s.mods.bend = v;
       yield step(b, tx('feed.every-die-in-play', { tag, v: bonus === 'bendopp' ? o.name + ' has' : 'they have', v2: v }), [], 'play'); return; }
     case 'press': s.mods.press += total; s.mods.pierce = true; if (bonus === 'extend') addPower(b, s, Math.floor(total / 2));
       yield step(b, tx('feed.expenses-gain-and-pierce', { tag, total }), [], 'play'); return;
-    case 'parlay': { const even = e.dice[0].value % 2 === 0; s.mods.mul *= even ? 2 : 0.5;
+    case 'parlay': { const even = (e.dice[0]?.value ?? total) % 2 === 0; s.mods.mul *= even ? 2 : 0.5;
       yield step(b, `${tag}: ${even ? tx('feed.even-effects-doubled') : tx('feed.odd-effects-halved')}.`, [], 'play'); return; }
     case 'freeze': { let n = 0;
       for (const { r, c } of cells) { const st = s.grid[r][c].chips, take = [];
@@ -1887,7 +1883,7 @@ function* bossPhase(b, s) {
   const got = [];
   if (P.cheat?.dice > 0 && s.pouch.length) { const best = s.pouch.slice().sort((x, y) => DICE[y.type].faces - DICE[x.type].faces)[0];
     for (let n = 0; n < P.cheat.dice; n++) s.pouch.push({ ...boutCopy(best), id: 9e6 + b.nextId++ }); got.push(tx('feed.extra', { dice: P.cheat.dice, type: best.type })); }
-  if (P.cheat?.tricks > 0) { let n = 0; for (; n < P.cheat.tricks && s.book.length; n++) { const t = s.book.shift(); s.run.push({ uid: t.uid, trick: t, dice: [], bid: [], bidValue: 0, target: null, state: 'shown', lingerLeft: 0, lingerTotal: 0, drawn: b.turn, bookAt: 0, cheat: true }); got.push(TRICKS[t.id].name); } }
+  if (P.cheat?.tricks > 0) { let n = 0; for (; n < P.cheat.tricks && s.book.length; n++) { const t = s.book.shift(); s.run.push({ uid: t.uid, trick: t, dice: [], bid: [], bidValue: 0, target: null, state: 'shown', stack: [], lingerLeft: 0, drawn: b.turn, bookAt: 0, cheat: true }); got.push(TRICKS[t.id].name); } }
   yield step(b, tx('feed.changes-tactics', { name: s.name, v: got.length ? tx('feed.and-cheats-revealed', { join: got.join(', ') }) : '' }), [], 'tilt');
 }
 
@@ -2060,7 +2056,7 @@ export const phaseOf = (id) => TRICKS[id].early || TRICKS[id].type;
 function* sidePhase(b, s, type, cx) {
   const o = b.sides[1 - s.idx], done = [];
   for (const e of s.run.filter((x) => x.state === 'play' && phaseOf(x.trick.id) === type)) {
-    cx.uid = e.uid; const roll = e.lingerLeft <= 0 && e.dice.length ? sum(e.dice, (d) => d.value) : null;
+    cx.uid = e.uid; const roll = e.dice.length ? sum(e.dice, (d) => d.value) : null;
     const fg = roll != null && tops(o, 'forgetter').find((x) => x.n === roll && (o.forgotUsed[x.ch.id] || 0) < 1 + x.charge);
     if (fg) o.forgotUsed[fg.ch.id] = (o.forgotUsed[fg.ch.id] || 0) + 1;
     yield* play(b, s, e, { forgotten: !!fg });
@@ -2074,10 +2070,10 @@ function* sidePhase(b, s, type, cx) {
 }
 export function* resolve(b) {
   b.phase = 'resolve';
-  // bids go to the House; a bid above 1¢ makes the trick linger
+  // bids go to the House; a stack of copies of a trick plays one copy a turn, so it lingers a turn per copy under the top
   let any = false;
   for (const s of b.sides) for (const e of s.run) if (e.state === 'bid') {
-    e.lingerTotal = clamp(e.bidValue - 1, 0, 20); e.lingerLeft = e.lingerTotal; e.state = 'play';
+    e.lingerLeft = (e.stack || []).length; e.state = 'play';
     e.trick.wear = Math.max(0, (e.trick.wear ?? WEAR.good) - 1); // each play wears the trick (its condition, not its power)
     for (const ch of e.bid) { b.fx[ch.id] = 'house'; delete ch.from; toPit(b, s.idx, ch, 'bid'); } e.paid = e.bid.map((ch) => ch.value); s.bidsPaid += e.bidValue; e.bid = []; any = true;
   }
@@ -2102,8 +2098,9 @@ export function* resolve(b) {
   // finished tricks and their dice tap: they wait in the tapped piles until restored (flipped chips still come home)
   let done = 0; const at = b.tapClock = (b.tapClock || 0) + 1; // one stamp for everything tapped in this action
   for (const { s, e } of plays) {
-    if (e.lingerLeft > 0) { e.lingerLeft--; continue; }
-    s.run.splice(s.run.indexOf(e), 1); s.tapped.tricks.push({ trick: e.trick, at }); done++;
+    s.tapped.tricks.push({ trick: e.trick, at }); done++; // the copy that played taps
+    if (e.stack?.length) { e.trick = e.stack.shift(); e.lingerLeft = e.stack.length; continue; } // the next copy plays next turn, with the same roll and target
+    s.run.splice(s.run.indexOf(e), 1);
     for (const d of e.dice) homeDie(b, s, d, at);
   }
   if (done) yield step(b, '', [], 'return');
