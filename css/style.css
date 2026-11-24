@@ -916,15 +916,15 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 p.flavor { font-style: italic; color: var(--dim); }
 
 /* ---------- neon signs (js/ui/sign.js): frames, mounts, edge symbols, soft blinks ---------- */
-.sign { border-radius: var(--sign-r, 12px); background-color: var(--mount, transparent); background-image: var(--mount-img, none); background-size: cover; background-position: center; }
-.who.seat.sign { padding: 4px 10px 5px; }
-.sign.frame-tube { border: 2px solid var(--sf1); box-shadow: 0 0 4px var(--sf1), 0 0 14px var(--sf2), inset 0 0 8px color-mix(in srgb, var(--sf1) 35%, transparent), inset 0 0 18px color-mix(in srgb, var(--sf2) 18%, transparent); }
-.sign.frame-double { border: 5px double var(--sf1); box-shadow: 0 0 6px var(--sf1), 0 0 16px var(--sf2); }
-.sign.frame-dashed { border: 2px dashed var(--sf1); box-shadow: 0 0 10px color-mix(in srgb, var(--sf2) 60%, transparent); }
-.sign.frame-dotted { border: 3px dotted var(--sf1); box-shadow: 0 0 10px color-mix(in srgb, var(--sf2) 60%, transparent); }
-.sign.frame-bulbs { border: 5px dotted var(--sf1); filter: drop-shadow(0 0 3px var(--sf1)) drop-shadow(0 0 7px var(--sf2)); }
-.house-sign.sign.frame-bulbs { border: 0; filter: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sf1) 35%, transparent), 0 0 18px color-mix(in srgb, var(--sf1) 18%, transparent); }
-.sign.frame-none { border: 0; box-shadow: none; }
+.neonsign { border-radius: var(--sign-r, 12px); background-color: var(--mount, transparent); background-image: var(--mount-img, none); background-size: cover; background-position: center; }
+.who.seat.neonsign { padding: 4px 10px 5px; }
+.neonsign.frame-tube { border: 2px solid var(--sf1); box-shadow: 0 0 4px var(--sf1), 0 0 14px var(--sf2), inset 0 0 8px color-mix(in srgb, var(--sf1) 35%, transparent), inset 0 0 18px color-mix(in srgb, var(--sf2) 18%, transparent); }
+.neonsign.frame-double { border: 5px double var(--sf1); box-shadow: 0 0 6px var(--sf1), 0 0 16px var(--sf2); }
+.neonsign.frame-dashed { border: 2px dashed var(--sf1); box-shadow: 0 0 10px color-mix(in srgb, var(--sf2) 60%, transparent); }
+.neonsign.frame-dotted { border: 3px dotted var(--sf1); box-shadow: 0 0 10px color-mix(in srgb, var(--sf2) 60%, transparent); }
+.neonsign.frame-bulbs { border: 5px dotted var(--sf1); filter: drop-shadow(0 0 3px var(--sf1)) drop-shadow(0 0 7px var(--sf2)); }
+.house-sign.neonsign.frame-bulbs { border: 0; filter: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sf1) 35%, transparent), 0 0 18px color-mix(in srgb, var(--sf1) 18%, transparent); }
+.neonsign.frame-none { border: 0; box-shadow: none; }
 .sign-edge { position: absolute; pointer-events: none; color: var(--sf1); text-shadow: 0 0 4px var(--sf1), 0 0 9px var(--sf2); font-size: 11px; line-height: 1; z-index: 1; }
 .sign-edge.corner.tl { left: -6px; top: -7px; } .sign-edge.corner.tr { right: -6px; top: -7px; } .sign-edge.corner.bl { left: -6px; bottom: -7px; } .sign-edge.corner.br { right: -6px; bottom: -7px; }
 .sign-edge.run { left: 10px; right: 10px; white-space: nowrap; overflow: hidden; font-size: 10px; letter-spacing: 1px; text-align: center; } .sign-edge.run.top { top: -7px; } .sign-edge.run.bottom { bottom: -7px; }
@@ -935,15 +935,15 @@ p.flavor { font-style: italic; color: var(--dim); }
 @keyframes sign-pulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.4); } }
 @keyframes sign-flicker { 0%, 61%, 64%, 82%, 85%, 100% { opacity: 1; } 62.5% { opacity: .7; } 83.5% { opacity: .78; } }
 @keyframes sign-alt { 0%, 45% { opacity: 1; } 55%, 95% { opacity: .55; } 100% { opacity: 1; } }
-.sign { --bk-dur: 3.2s; } .sign.blink-pulse { --bk-dur: 2.2s; } .sign.blink-flicker { --bk-dur: 4.6s; } .sign.blink-alternate { --bk-dur: 3s; }
-.sign.blink-breathe { --bk: sign-breathe; } .sign.blink-pulse { --bk: sign-pulse; } .sign.blink-flicker { --bk: sign-flicker; } .sign.blink-alternate { --bk: sign-alt; }
-.sign.blink-name .neon-name, .sign.blink-name .hs-name, .sign.blink-cls .neon-class, .sign.blink-cls .turn, .sign.blink-edge .sign-edge { animation: var(--bk) var(--bk-dur) ease-in-out infinite; }
-.sign.blink-border { animation: var(--bk) var(--bk-dur) ease-in-out infinite; }
-.sign.blink-alternate.blink-name .neon-class, .sign.blink-alternate.blink-cls .neon-name { animation: var(--bk) var(--bk-dur) ease-in-out calc(var(--bk-dur) / -2) infinite; }
-@media (prefers-reduced-motion: reduce) { .sign, .sign *, .marquee i { animation: none !important; } }
+.neonsign { --bk-dur: 3.2s; } .neonsign.blink-pulse { --bk-dur: 2.2s; } .neonsign.blink-flicker { --bk-dur: 4.6s; } .neonsign.blink-alternate { --bk-dur: 3s; }
+.neonsign.blink-breathe { --bk: sign-breathe; } .neonsign.blink-pulse { --bk: sign-pulse; } .neonsign.blink-flicker { --bk: sign-flicker; } .neonsign.blink-alternate { --bk: sign-alt; }
+.neonsign.blink-name .neon-name, .neonsign.blink-name .hs-name, .neonsign.blink-cls .neon-class, .neonsign.blink-cls .turn, .neonsign.blink-edge .sign-edge { animation: var(--bk) var(--bk-dur) ease-in-out infinite; }
+.neonsign.blink-border { animation: var(--bk) var(--bk-dur) ease-in-out infinite; }
+.neonsign.blink-alternate.blink-name .neon-class, .neonsign.blink-alternate.blink-cls .neon-name { animation: var(--bk) var(--bk-dur) ease-in-out calc(var(--bk-dur) / -2) infinite; }
+@media (prefers-reduced-motion: reduce) { .neonsign, .neonsign *, .marquee i { animation: none !important; } }
 .neon-maker .neon-sample { margin-bottom: 8px; } .neon-sample.house-preview { min-width: 180px; justify-content: center; }
 .neon-sample.house-preview .neon-name { color: color-mix(in srgb, var(--house-cls1) 85%, #fff) !important; text-shadow: 0 0 3px #fff, 0 0 9px var(--house-name1), 0 0 20px var(--house-name2) !important; }
 .neon-sample.house-preview .neon-class { color: var(--house-cls1); text-shadow: 0 0 6px var(--house-cls2); }
 .btn.glyph { min-width: 26px; padding: 2px 4px; } .btn.glyph.on { outline: 1px solid var(--gold); }
 .neon-side > .neon-sample { justify-self: start; align-self: start; height: auto !important; min-height: 0; position: relative; inset: auto; }
-.neon-sample.sign, .house-sign.sign { position: relative; } /* seats stay absolutely placed; their edge symbols hang off them */
+.neon-sample.neonsign, .house-sign.neonsign { position: relative; } /* seats stay absolutely placed; their edge symbols hang off them */

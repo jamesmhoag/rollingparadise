@@ -37,7 +37,7 @@ export function dressSign(el, spec, who) {
   el.style.setProperty('--sign-r', `${Math.max(0, +spec.radius || 0)}px`);
   el.style.setProperty('--mount', spec.mount.color || 'transparent'); el.style.setProperty('--mount-img', safeUrl(spec.mount.image) || 'none');
   el.classList.remove(...[...el.classList].filter((c) => c.startsWith('frame-') || c.startsWith('blink-')));
-  el.classList.add('sign', `frame-${FRAMES.includes(spec.frame) ? spec.frame : 'tube'}`);
+  el.classList.add('neonsign', `frame-${FRAMES.includes(spec.frame) ? spec.frame : 'tube'}`);
   if (spec.blink.part !== 'none') el.classList.add(`blink-${spec.blink.part}`, `blink-${BLINKS.includes(spec.blink.pattern) ? spec.blink.pattern : 'breathe'}`);
   for (const old of el.querySelectorAll(':scope > .sign-edge')) old.remove();
   if (spec.edge && spec.edgeAt !== 'none') {
