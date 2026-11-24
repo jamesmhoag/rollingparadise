@@ -4,33 +4,32 @@
 // TIP = per-turn action limits. BVD = position shape. The rewards for actions left unused (Charisma, Cunning,
 // Conviction) have no class base: they are earned at the table by occupying rows (see occBonus in bout.js), and a
 // class's own one (`primary`'s reward: Trickery → Charisma, Ingenuity → Cunning, Proficiency → Conviction) earns most.
-// A Class is a Roller's attributes: what it does each turn (TIP), the shape of its position (BVD), what it starts
-// with in Charisma, Cunning and Conviction before the table adds to them (ccc), the attribute it leans on (primary,
-// which also picks the C its rows reward), where it deploys from, and its colour. Rollers (content/rollers.js),
+// A Class is a Roller's attributes: what it does each turn (TIP), the shape of its position (BVD), the attribute it
+// leans on (primary), its primary C (rewards: what holding every row of its Stake earns; every Roller starts a turn at
+// 0 / 0 / 0 Charisma, Cunning and Conviction), where it deploys from, and its colour. Rollers (content/rollers.js),
 // Opponents and High Rollers (content/roster.js) each name a Class.
 export const CLASSES = {
   hustler: {
     name: 'Hustler',
-    tip: { trickery: 3, ingenuity: 2, proficiency: 2 }, bvd: { balance: 3, versatility: 1, depth: 0 }, ccc: { charisma: 0, cunning: 0, conviction: 0 }, primary: 'trickery', deploy: 'end', color: '#e0a23c',
+    tip: { trickery: 3, ingenuity: 2, proficiency: 2 }, bvd: { balance: 3, versatility: 1, depth: 0 }, primary: 'trickery', rewards: 'charisma', deploy: 'end', color: '#e0a23c',
   },
   rascal: {
     name: 'Rascal',
-    tip: { trickery: 2, ingenuity: 3, proficiency: 2 }, bvd: { balance: 0, versatility: 3, depth: 1 }, ccc: { charisma: 0, cunning: 0, conviction: 0 }, primary: 'ingenuity', deploy: 'center', color: '#c0569b',
+    tip: { trickery: 2, ingenuity: 3, proficiency: 2 }, bvd: { balance: 0, versatility: 3, depth: 1 }, primary: 'ingenuity', rewards: 'cunning', deploy: 'center', color: '#c0569b',
   },
   technician: {
     name: 'Technician',
-    tip: { trickery: 2, ingenuity: 2, proficiency: 3 }, bvd: { balance: 1, versatility: 0, depth: 3 }, ccc: { charisma: 0, cunning: 0, conviction: 0 }, primary: 'proficiency', deploy: 'start', color: '#4aa3c7',
+    tip: { trickery: 2, ingenuity: 2, proficiency: 3 }, bvd: { balance: 1, versatility: 0, depth: 3 }, primary: 'proficiency', rewards: 'conviction', deploy: 'start', color: '#4aa3c7',
   },
 };
 import { ROLLERS } from './content/rollers.js';
 export { ROLLERS };
 // a Roller id from a Roller id or a class id (the first Roller of that class), so old saves and tests that name a class still work
 export const rollerOf = (id) => (ROLLERS[id] ? id : Object.keys(ROLLERS).find((k) => ROLLERS[k].cls === id) || Object.keys(ROLLERS)[0]);
-export const cccOf = (cls) => ({ charisma: 0, cunning: 0, conviction: 0, ...(CLASSES[cls]?.ccc || {}) });
 // a Roller's hero and class together: 'Owl the Hustler'
 // the reward stat for a primary action stat
 export const C_OF = { trickery: 'charisma', ingenuity: 'cunning', proficiency: 'conviction' };
-export const primaryC = (cls) => C_OF[CLASSES[cls]?.primary] || 'charisma';
+export const primaryC = (cls) => (['charisma', 'cunning', 'conviction'].includes(CLASSES[cls]?.rewards) ? CLASSES[cls].rewards : C_OF[CLASSES[cls]?.primary] || 'charisma'); // the class's primary C
 // what sets a class apart, written from its numbers: the per-turn action it has most of, the position stat it leans on,
 // where it deploys from (its words for the table are its flavour line)
 export function classRule(cls) {

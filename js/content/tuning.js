@@ -48,7 +48,7 @@ export const TUNING = {
   // Charisma, Cunning and Conviction are earned by occupying rows (lanes). Every row of the Stake holding a chip: +covered
   // to your class's own reward stat; every row of the Bet holding a chip: +covered to all three. When those chips all
   // line up in one column, +aligned instead of +covered.
-  occupancy: { covered: 1, aligned: 2 },
+  occupancy: { covered: 1, focus: 1 }, // a zone's rows all held: +1 (Stake: the primary C; Bet: all three); focus in both: +1 primary and +1 all more
   // the Sports Book
   book: {
     houseEdge: 0.95, // odds pay this share of the fair price

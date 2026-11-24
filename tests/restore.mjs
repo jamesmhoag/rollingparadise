@@ -69,14 +69,17 @@ for (let seed = 1; seed <= 12; seed++) {
   for (let c = 0; c < C; c++) occupy(bout, s, c % m, c);
   assert(B.cOf(s, 'charisma') === 2 && B.cOf(s, 'cunning') === 1 && B.cOf(s, 'conviction') === 1, 'and every Bet row: +1 to all three (the class\'s usual 2 / 1 / 1)');
   clearBoard(s); for (let c = 0; c < C; c++) { occupy(bout, s, m, c); occupy(bout, s, 0, c); }
-  assert(B.cOf(s, 'charisma') === 4 && B.cOf(s, 'cunning') === 2 && B.cOf(s, 'conviction') === 2, 'lined up in one column each: +2 instead, for +4 / +2 / +2');
+  assert(B.cOf(s, 'charisma') === 4 && B.cOf(s, 'cunning') === 2 && B.cOf(s, 'conviction') === 2, 'focus in both zones (each lined up in one column): +1 primary and +1 all more, for +4 / +2 / +2');
   const on = B.rewardOf(s, 'draw'); assert(on.n === 4 * on.unused, 'unused draws pay at that rate');
   s.grid[m][2].chips = [];
-  assert(B.cOf(s, 'charisma') === 2 && B.cOf(s, 'cunning') === 2, 'a Stake row left empty loses the Stake\'s part only');
-  const P = B.statParts(s, 'charisma'); assert(P.base === 2 && P.total === 2, 'the hover splits it: earned at the table, then gear and food');
+  assert(B.cOf(s, 'charisma') === 1 && B.cOf(s, 'cunning') === 1, 'a Stake row left empty loses the Stake\'s part and the focus: the Bet still pays +1 to all');
+  const P = B.statParts(s, 'charisma'); assert(P.base === 1 && P.total === 1, 'the hover splits it: earned at the table, then gear and food');
+  for (let c = 0; c < C; c++) s.grid[0][c].chips = []; s.grid[m][2].chips = [{ id: 9e6, kind: 'std', value: 1 }];
+  assert(B.cOf(s, 'charisma') === 1 && B.cOf(s, 'cunning') === 0, 'one zone lined up on its own earns no focus: just its +1');
+  s.c = { charisma: 1, cunning: 0, conviction: 2 }; assert(B.cOf(s, 'charisma') === 2 && B.cOf(s, 'conviction') === 2, 'a jacket\'s or a sip\'s amounts add on top'); s.c = { charisma: 0, cunning: 0, conviction: 0 };
   const fox = R.newRun('rascal', 'standard', 78), fb = R.startIntro(fox).bout.sides[0]; clearBoard(fb); fb.c = { charisma: 0, cunning: 0, conviction: 0 };
   for (let c = 0; c < C; c++) occupy(bout, fb, fb.dims.meterRows, c);
-  assert(B.cOf(fb, 'cunning') === 2 && B.cOf(fb, 'charisma') === 0, 'a Rascal\'s Stake earns Cunning');
+  assert(B.cOf(fb, 'cunning') === 1 && B.cOf(fb, 'charisma') === 0, 'a Rascal\'s Stake earns Cunning');
 }
 
 // no Fully Occupied Bet bonus any more: a full Bet restores by column like any other

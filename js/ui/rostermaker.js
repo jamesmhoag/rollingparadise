@@ -62,27 +62,28 @@ const usersOf = (cls) => [...Object.values(D.ROLLERS).filter((x) => x.cls === cl
 
 // ---------- classes ----------
 // TIP and BVD are each Roller's own every bout; CCC is a base the table's rows add to (bout.js occBonus)
-const GROUPS = [['tip', ['trickery', 'ingenuity', 'proficiency']], ['bvd', ['balance', 'versatility', 'depth']], ['ccc', ['charisma', 'cunning', 'conviction']]];
+const GROUPS = [['tip', ['trickery', 'ingenuity', 'proficiency']], ['bvd', ['balance', 'versatility', 'depth']]];
 export function newClass(from) {
   const id = ask(t('roster.class.newId'), 'my_class', D.CLASSES); if (!id) return null;
   B.setValue(D.subPath('CLASSES', id), { ...JSON.parse(JSON.stringify(D.CLASSES[from] || D.CLASSES.hustler)), name: 'New class' }); return id;
 }
 export function classMaker(id, redraw) {
   const K = D.CLASSES[id]; if (!K) return h('p', { class: 'sub', text: t('maker.none') });
-  const f = form(D.subPath('CLASSES', id), redraw), stat = (k) => D.STATS[k], ccc = D.cccOf(id), users = usersOf(id);
-  const val = (g, k) => (g === 'ccc' ? ccc[k] : K[g]?.[k] ?? 0);
+  const f = form(D.subPath('CLASSES', id), redraw), stat = (k) => D.STATS[k], users = usersOf(id);
+  const val = (g, k) => K[g]?.[k] ?? 0;
   return h('div', { class: 'b-maker' }, h('div', { class: 'b-fields' },
     h('span', { class: 'cap', text: t('roster.part.class') }),
     f.field(lab('maker.name'), f.text(['name'], K.name), ['name']),
     flavorField('CLASSES', id, redraw),
     f.field(lab('roster.color'), h('input', { type: 'color', value: K.color || '#888888', onchange: (e) => f.set(['color'], e.target.value) }), ['color']),
     ...GROUPS.flatMap(([g, ks]) => [h('span', { class: 'cap', text: t(`roster.group.${g}`) }),
-      ...ks.map((k) => f.field(h('span', { class: 'b-lab has-help', text: `${stat(k).name} (${stat(k).short})`, tip: stat(k).text }), f.number([g, k], val(g, k), { min: g === 'tip' ? 1 : -3 }), [g, k]))]),
+      ...ks.map((k) => f.field(h('span', { class: 'b-lab has-help', text: stat(k).name, tip: stat(k).text }), f.number([g, k], val(g, k), { min: g === 'tip' ? 1 : -3 }), [g, k]))]),
     h('span', { class: 'cap', text: t('roster.part.lean') }),
-    f.field(lab('roster.primary'), f.select(['primary'], GROUPS[0][1].map((k) => [k, t('roster.primary.opt', { stat: stat(k).name, reward: stat(D.C_OF[k]).name })]), K.primary), ['primary']),
+    f.field(lab('roster.primary'), f.select(['primary'], GROUPS[0][1].map((k) => [k, stat(k).name]), K.primary), ['primary']),
+    f.field(lab('roster.rewards'), f.select(['rewards'], ['charisma', 'cunning', 'conviction'].map((k) => [k, stat(k).name]), D.primaryC(id)), ['rewards']),
     f.field(lab('roster.deploy'), f.select(['deploy'], [['start', t('roster.deploy.start')], ['center', t('roster.deploy.center')], ['end', t('roster.deploy.end')]], K.deploy), ['deploy'])),
   h('div', {}, h('span', { class: 'cap', text: t('maker.preview') }), h('div', { class: 'b-card', style: { '--cc': K.color } }, h('b', { text: K.name }), h('p', { text: D.classRule(id) }), D.flavorOf('CLASSES', id) ? h('p', { class: 'flavor', text: D.flavorOf('CLASSES', id) }) : null,
-    h('p', { class: 'dim', text: GROUPS.map(([g, ks]) => ks.map((k) => `${stat(k).short} ${val(g, k)}`).join(' · ')).join(' / ') }),
+    h('p', { class: 'dim', text: GROUPS.map(([g, ks]) => ks.map((k) => `${stat(k).name} ${val(g, k)}`).join(' · ')).join(' / ') }),
     h('p', { class: 'dim', text: t('roster.class.rewards', { stat: stat(D.primaryC(id)).name }) })),
   h('span', { class: 'cap', text: t('roster.class.users') }), h('p', { class: 'sub', text: users.length ? users.join(' · ') : t('roster.class.unused') }),
   h('p', { class: 'sub', text: t('roster.class.note') })));

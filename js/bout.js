@@ -643,14 +643,17 @@ export function occupancy(s) {
     stakeCovered: stakeRows.every((x) => x.n > 0), betCovered: betRows.every((x) => x.n > 0), stakeAligned: aligned(stakeCols), betAligned: aligned(betCols),
     full: betTotal > 0 && betSpaces >= betTotal };
 }
-// What occupying rows earns. Every row (lane) of the Stake holding a chip: +1 to your class's own reward stat; every
-// row of the Bet holding a chip: +1 to Charisma, Cunning and Conviction. If one column holds all of them, +2 instead.
-// Both, lined up: +4 / +2 / +2. Otherwise they are 0, apart from food, a sip and a jacket. Amounts: TUNING.occupancy.
+// What occupying rows earns (a Roller has no Charisma, Cunning or Conviction of its own: 0 / 0 / 0, plus what a jacket,
+// food or a sip adds for as long as it lasts). A chip in every row (lane) of the Stake: +1 to the class's primary C.
+// A chip in every row of the Bet: +1 to all three. A zone counts on its own: its rows can't be split between the Stake
+// and the Bet. Both: +2 primary / +1 / +1. And focus in both zones (each zone's rows all held by one column of it):
+// +1 more to the primary and +1 more to all three, +4 / +2 / +2. Amounts: TUNING.occupancy.
 export const CCC = ['charisma', 'cunning', 'conviction'];
 export function occBonus(s, o = occupancy(s)) {
-  const T = TUNING.occupancy || { covered: 1, aligned: 2 }, out = { charisma: 0, cunning: 0, conviction: 0, parts: [] };
-  if (o.stakeCovered) { const n = o.stakeAligned >= 0 ? T.aligned : T.covered, k = primaryC(s.cls); out[k] += n; out.parts.push({ zone: 'stake', n, aligned: o.stakeAligned >= 0, keys: [k] }); }
-  if (o.betCovered) { const n = o.betAligned >= 0 ? T.aligned : T.covered; for (const k of CCC) out[k] += n; out.parts.push({ zone: 'bet', n, aligned: o.betAligned >= 0, keys: CCC }); }
+  const T = { covered: 1, focus: 1, ...(TUNING.occupancy || {}) }, out = { charisma: 0, cunning: 0, conviction: 0, parts: [] }, k = primaryC(s.cls);
+  if (o.stakeCovered) { out[k] += T.covered; out.parts.push({ zone: 'stake', n: T.covered, keys: [k] }); }
+  if (o.betCovered) { for (const x of CCC) out[x] += T.covered; out.parts.push({ zone: 'bet', n: T.covered, keys: CCC }); }
+  if (o.stakeCovered && o.betCovered && o.stakeAligned >= 0 && o.betAligned >= 0) { out[k] += T.focus; for (const x of CCC) out[x] += T.focus; out.parts.push({ zone: 'focus', n: T.focus, keys: [k], all: true }); }
   return out;
 }
 // Restore order: tapped longest first. Ties: tricks by the phase they belong to, worse quality, basic before exotic

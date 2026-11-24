@@ -122,9 +122,10 @@ lane (`c`). Columns vary with Versatility and Depth; rows are always 5.
   badge counts them.
 - **Charisma, Cunning, Conviction are earned by occupying rows.** They have no class base. A chip in every row of
   the **Stake** earns +1 to the class's own (Hustler Charisma, Rascal Cunning, Technician Conviction); a chip in every
-  row of the **Bet** earns +1 to all three. Both together are the class's old 2 / 1 / 1. If the chips holding the rows
-  all sit in **one column**, that zone earns +2 instead: both lined up is +4 / +2 / +2. Otherwise they are 0, apart
-  from food, a sip or a jacket. Amounts in `TUNING.occupancy`. Read live, and again when the House deploys.
+  row of the **Bet** earns +1 to all three. A zone counts on its own (its five rows can't be split between the Stake
+  and the Bet). Both together: 2 / 1 / 1, the 2 on the class's primary C. **Focus** in both zones (each zone's rows all
+  held by one of its columns) adds +1 more to the primary and +1 more to all three: 4 / 2 / 2. Focus in one zone alone
+  earns nothing extra. Otherwise they are 0, plus whatever a jacket, food or a sip adds for as long as it lasts. Amounts in `TUNING.occupancy`. Read live, and again when the House deploys.
 - There is no Fully Occupied Bet bonus any more: more columns held is still how more tricks and dice restore.
 - **Meters on the position.** Under each zone of each position, by its label: a dot per row (lit when held, with what
   holding them all earns) and a bar per column (lit when held: each restores a trick on the Bet, a die on the Stake).
@@ -485,9 +486,9 @@ Every seat at the table is a neon sign, and so is the House's (`js/ui/sign.js`, 
 Each sign is edited in Build mode's Roller and Opponent makers. Everything moves slowly and softly, and nothing moves
 for players who ask their system for reduced motion.
 ### Classes, Rollers and Opponents
-- A **Class** (`CLASSES`) is attributes only: Draw, Bid, Roll (TIP), Stack height, Bet rows, Stake rows (BVD), a
-  starting Charisma, Cunning and Conviction (`ccc`, which the table's rows then add to), the attribute it leans on
-  (`primary`, which picks the C its Stake rows reward), where it deploys from, and a colour. Build mode's Class maker.
+- A **Class** (`CLASSES`) is attributes: Trickery, Ingenuity, Proficiency (TIP), Balance, Versatility, Depth (BVD),
+  the attribute it leans on (`primary`), its **primary C** (`rewards`: what holding every Stake row earns; no class
+  has Charisma, Cunning or Conviction of its own), where it deploys from, and a colour. Build mode's Class maker.
 - A **Roller** (`ROLLERS`, `js/content/rollers.js`) is a name, a Class and a starting inventory: its Book, its Pouch,
   its Worth (the ¢ it is staked with after the Doorman's bout), the wallet and jacket it walks in with (when you own
   them), and its own neon sign. The pick screen lists Rollers. `newRun` takes a Roller id (a class id still works:

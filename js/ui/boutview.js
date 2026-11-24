@@ -113,7 +113,7 @@ export function boutScene(root, bout, ctx, onDone) {
   // where a stat's value comes from: the class base, gear (jacket, cards, the run), and each temporary change
   const signed = (n) => `${n >= 0 ? '+' : '−'}${Math.abs(n)}`;
   const statSplit = (P) => `<p class="statsplit">${tx('table.stat-base', { n: P.base })} · ${tx('table.stat-gear', { n: signed(P.gear) })}${P.temp.map((x) => ` · <span class="${x.n > 0 ? 'temp-up' : 'temp-down'}">${x.from} ${signed(x.n)}</span>`).join('')} = <b>${P.total}</b></p>`;
-  const cccGate = (s) => { const P = B.occBonus(s).parts; return P.length ? `<p class="dim">${P.map((x) => tx(x.zone === 'bet' ? 'table.ccc-bet' : 'table.ccc-stake', { n: x.n, aligned: x.aligned ? tx('table.ccc-aligned') : '', stat: x.keys.map((k) => D.STATS[k].name).join(', ') })).join(' ')}</p>` : `<p class="bad-t">${tx('table.ccc-off')}</p>`; };
+  const cccGate = (s) => { const P = B.occBonus(s).parts; return P.length ? `<p class="dim">${P.map((x) => tx(x.zone === 'focus' ? 'table.ccc-focus' : x.zone === 'bet' ? 'table.ccc-bet' : 'table.ccc-stake', { n: x.n, stat: x.keys.map((k) => D.STATS[k].name).join(', ') })).join(' ')}</p>` : `<p class="bad-t">${tx('table.ccc-off')}</p>`; };
   const tempCls = (el, P) => { el.classList.toggle('temp', P.tempN !== 0 || P.temp.length > 0); el.classList.toggle('temp-up', P.tempN > 0); el.classList.toggle('temp-down', P.tempN < 0); };
   let oppPills = null, houseSign = null;
   // the House's sign wears a ring of casino bulbs: they twinkle while the Rollers plan, chase while the House plays,
@@ -720,9 +720,9 @@ export function boutScene(root, bout, ctx, onDone) {
   // die on the Stake). Columns run as they do on the table, so yours mirror theirs.
   function rowsTip(s, k) {
     const o = B.occupancy(s), bet = k === 'bet', rows = bet ? o.betRows : o.stakeRows, held = rows.filter((x) => x.n > 0).length, al = bet ? o.betAligned : o.stakeAligned;
-    const T = D.TUNING.occupancy, part = B.occBonus(s, o).parts.find((x) => x.zone === k), keys = bet ? B.CCC : [D.primaryC(s.cls)];
-    return tx(bet ? 'table.rows-bet-tip' : 'table.rows-stake-tip', { n: held, of: rows.length, covered: T.covered, aligned: T.aligned, stat: keys.map((x) => D.STATS[x].name).join(', '),
-      now: part ? tx(part.aligned ? 'table.rows-now-aligned' : 'table.rows-now', { n: part.n, stat: keys.map((x) => D.STATS[x].name).join(', ') }) : tx('table.rows-now-none') }) + (al < 0 && part ? `<p class="dim">${tx('table.rows-align-hint', { aligned: T.aligned })}</p>` : '');
+    const T = { covered: 1, focus: 1, ...D.TUNING.occupancy }, P = B.occBonus(s, o).parts, part = P.find((x) => x.zone === k), focus = P.find((x) => x.zone === 'focus'), keys = bet ? B.CCC : [D.primaryC(s.cls)];
+    return tx(bet ? 'table.rows-bet-tip' : 'table.rows-stake-tip', { n: held, of: rows.length, covered: T.covered, focus: T.focus, stat: keys.map((x) => D.STATS[x].name).join(', '),
+      now: part ? tx(focus ? 'table.rows-now-aligned' : 'table.rows-now', { n: part.n + (focus ? focus.n : 0), stat: keys.map((x) => D.STATS[x].name).join(', ') }) : tx('table.rows-now-none') }) + (!focus && part ? `<p class="dim">${tx('table.rows-align-hint', { focus: T.focus })}</p>` : '');
   }
   function restoreTip(s, k) {
     const p = B.restorePlan(bout, s), o = p.o, bet = k === 'bet';
@@ -732,9 +732,9 @@ export function boutScene(root, bout, ctx, onDone) {
     bout.sides.forEach((s, si) => { const Z = zoneMeters[si], o = B.occupancy(s), ob = B.occBonus(s, o);
       const order = (rs) => (si === 0 ? rs.slice().reverse() : rs); // your columns run outward to the left, theirs to the right
       for (const k of ['bet', 'stake']) { const M = Z[k]; if (!M) continue;
-        const rows = k === 'bet' ? o.betRows : o.stakeRows, cols = k === 'bet' ? o.betCols : o.stakeCols, al = k === 'bet' ? o.betAligned : o.stakeAligned, part = ob.parts.find((x) => x.zone === k);
+        const rows = k === 'bet' ? o.betRows : o.stakeRows, cols = k === 'bet' ? o.betCols : o.stakeCols, al = k === 'bet' ? o.betAligned : o.stakeAligned, part = ob.parts.find((x) => x.zone === k), focus = ob.parts.find((x) => x.zone === 'focus');
         M.rows.replaceChildren(...rows.map((x) => h('i', { class: x.n > 0 ? 'on' : '' }))); M.rows.classList.toggle('full', !!part); M.rows.classList.toggle('aligned', al >= 0);
-        swapText(M.bonus, part ? `+${part.n} ${part.keys.length > 1 ? tx('table.zm-all') : D.STATS[part.keys[0]].short}` : '');
+        swapText(M.bonus, part ? `+${part.n + (focus ? focus.n : 0)} ${part.keys.length > 1 ? tx('table.zm-all') : D.STATS[part.keys[0]].name}` : '');
         M.cols.replaceChildren(...order(cols).map((x) => h('i', { class: `${x.n > 0 ? 'on' : ''}${x.r === al ? ' al' : ''}` })));
       } });
   }
