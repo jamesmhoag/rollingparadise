@@ -1,0 +1,28 @@
+// The lounge band's set list, written by tools/jazz/render.py (edit setlist.py and render, not this file).
+// key: the tune's key (0 = C ... 11 = B), so the table's sounds can play in it.
+export const MUSIC = [
+  {"title": "Neon Strip", "by": "1950s lounge swing: muted trumpet and tenor sax", "genre": "swing", "key": 5, "src": "assets/music/neon-strip.mp3"},
+  {"title": "Loose Change", "by": "1950s lounge swing: clarinet and jazz guitar", "genre": "swing", "key": 10, "src": "assets/music/loose-change.mp3"},
+  {"title": "Side Bet", "by": "1950s lounge swing: tenor sax and trombone", "genre": "swing", "key": 3, "src": "assets/music/side-bet.mp3"},
+  {"title": "Velvet Rope", "by": "1960s bossa nova: flute and tenor sax", "genre": "bossa", "key": 7, "src": "assets/music/velvet-rope.mp3"},
+  {"title": "Pool Light", "by": "1960s bossa nova: tenor sax and nylon guitar", "genre": "bossa", "key": 2, "src": "assets/music/pool-light.mp3"},
+  {"title": "Desert Moon", "by": "1960s bossa nova: clarinet and flute", "genre": "bossa", "key": 9, "src": "assets/music/desert-moon.mp3"},
+  {"title": "High Roller", "by": "1960s showroom big band: trumpets and trombones", "genre": "bigband", "key": 10, "src": "assets/music/high-roller.mp3"},
+  {"title": "Marquee", "by": "1960s showroom big band: saxes and tenor saxes", "genre": "bigband", "key": 3, "src": "assets/music/marquee.mp3"},
+  {"title": "Double Down", "by": "1960s showroom big band: trumpets and horns", "genre": "bigband", "key": 8, "src": "assets/music/double-down.mp3"},
+  {"title": "Last Call", "by": "late-1950s ballad: tenor sax and piano", "genre": "ballad", "key": 3, "src": "assets/music/last-call.mp3"},
+  {"title": "House Lights", "by": "late-1950s ballad: alto sax and clarinet", "genre": "ballad", "key": 8, "src": "assets/music/house-lights.mp3"},
+  {"title": "2 A.M.", "by": "late-1950s ballad: trumpet and guitar", "genre": "ballad", "key": 5, "src": "assets/music/two-a-m.mp3"},
+  {"title": "Velour", "by": "1970s jazz-funk: alto sax and trumpet", "genre": "funk", "key": 7, "src": "assets/music/velour.mp3"},
+  {"title": "Fresh Felt", "by": "1970s jazz-funk: flute and guitar", "genre": "funk", "key": 0, "src": "assets/music/fresh-felt.mp3"},
+  {"title": "Pit Boss", "by": "1970s jazz-funk: tenor sax and Rhodes", "genre": "funk", "key": 2, "src": "assets/music/pit-boss.mp3"},
+  {"title": "Lucky Streak", "by": "1940s jump blues: tenor sax and trumpet", "genre": "jump", "key": 10, "src": "assets/music/lucky-streak.mp3"},
+  {"title": "Comp Ticket", "by": "1940s jump blues: alto sax and trombone", "genre": "jump", "key": 7, "src": "assets/music/comp-ticket.mp3"},
+  {"title": "Cash Out", "by": "1940s jump blues: trumpet and jazz guitar", "genre": "jump", "key": 0, "src": "assets/music/cash-out.mp3"},
+  {"title": "Satin Dice", "by": "1980s smooth jazz: soprano sax and guitar", "genre": "smooth", "key": 5, "src": "assets/music/satin-dice.mp3"},
+  {"title": "Valet", "by": "1980s smooth jazz: alto sax and flute", "genre": "smooth", "key": 2, "src": "assets/music/valet.mp3"},
+  {"title": "Chrome", "by": "1980s smooth jazz: guitar and soprano sax", "genre": "smooth", "key": 10, "src": "assets/music/chrome.mp3"},
+  {"title": "Hammond Hour", "by": "1960s soul-jazz organ: jazz guitar and tenor sax", "genre": "organ", "key": 5, "src": "assets/music/hammond-hour.mp3"},
+  {"title": "Back Room", "by": "1960s soul-jazz organ: tenor sax and jazz guitar", "genre": "organ", "key": 0, "src": "assets/music/back-room.mp3"},
+  {"title": "After Hours", "by": "1960s soul-jazz organ: organ and trumpet", "genre": "organ", "key": 7, "src": "assets/music/after-hours.mp3"},
+];

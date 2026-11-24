@@ -350,6 +350,25 @@ before and after, and what one point of it does. Dropping a card says what you l
 of either Roller explains its size: depth (2 or 3 base rows + Versatility or Depth), width (5 lanes for everyone)
 and stack height (3 + Balance), with where each bonus comes from.
 
+### Music
+The lounge band (`tools/jazz`, rendered with FluidSynth and the FluidR3 General MIDI soundfont to `assets/music`,
+listed in `js/content/music.js`) plays 24 original tunes: eight kinds of Vegas jazz (lounge swing, bossa nova,
+showroom big band, ballad, jazz-funk, jump blues, smooth jazz, soul-jazz organ), three tunes each. `setlist.py` gives
+each kind its charts, feel, rhythm section and the voices that may lead and answer; `story.py` composes each tune
+as a conversation between two voices built from one 2-bar motif:
+- the head: the lead states the motif, the second voice answers it (inverted, in its own register, from where the
+  lead stopped), the lead sequences it up a step, and both close the phrase together in harmony; the answer has the
+  last word, leading back to the top. The bridge develops a fragment of the motif, traded between the voices.
+- the middle chorus is the conversation: the voices trade phrases, each picking up the tail of the last and carrying
+  on in the motif's rhythm, building (busier, higher, louder) to a peak about two thirds through, then settling.
+- the out-head is played in harmony, and the coda lets the motif out slowly over the tonic, with a ritard.
+Consonance is a rule, not luck: strong-beat notes are chord tones (no 4th over a major or dominant chord), passing
+notes are scale steps leading to the next chord tone, a harmony voice sits a 3rd or 6th under the lead, the comping
+drops any voice a half step under the melody or above it, and the walking bass steps off a half-step rub with a
+held melody note. The dissonance left is chosen: suspensions held over a chord change that resolve down a step,
+and dominant colour on the way home. Only real instrument patches are used (no vibraphone or xylophone leads). The
+player shuffles the set so no kind of jazz follows itself, and shares the tune's key with the sound effects.
+
 ### Sound
 Sound effects are synthesized in the browser (`js/ui/sfx.js`, Web Audio, no files): a card slid onto the Run (a
 heavier one when a copy stacks), a chip bid or picked up, a die set down or picked up, a handful thrown, chips landing
