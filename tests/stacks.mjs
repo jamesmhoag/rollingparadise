@@ -50,3 +50,18 @@ const die = (id, type, value) => ({ id, type, value, up: [], t: 1 });
     assert(!me.run.includes(e) && me.tapped.tricks.some((x) => x.trick.uid === a.uid), 'the last copy plays, then it and its dice tap'); }
 }
 console.log('ok, stacks: bid before dice, any dice, Bonus dice, no Trait, bids add value, stacked tricks linger');
+
+// ---------- the owner of a contested space plays on it first; creatures act after both Rollers ----------
+{
+  const { bout, me, opp } = table(21);
+  const tgt = { side: 0, r: me.dims.meterRows, c: 1 };
+  const mine = { uid: 'm', trick: { id: 'cushion', q: 1 }, dice: [die('m1', 'd6', 3)], bid: [], bidValue: 1, paid: [1], state: 'play', stack: [], target: { ...tgt, side: 0 } };
+  const theirs = { uid: 't', trick: { id: 'charge', q: 1 }, dice: [die('t1', 'd6', 3)], bid: [], bidValue: 1, paid: [1], state: 'play', stack: [], target: { side: 0, r: tgt.r, c: tgt.c } };
+  const first = B.ownerFirst(bout, [{ s: me, e: mine }, { s: opp, e: theirs }]);
+  assert(first.has(mine) && !first.has(theirs), 'two tricks reach one of your spaces: yours plays on it first');
+  const far = { ...theirs, target: { side: 0, r: tgt.r, c: (tgt.c + 2) % me.dims.cols } };
+  assert(!B.ownerFirst(bout, [{ s: me, e: mine }, { s: opp, e: far }]).size, 'no shared space: both play together');
+  assert(['ufo', 'dragon', 'mothership'].every((k) => B.creatureType(k) === 'expense') && B.creatureType('fairy') === 'correction', 'each creature acts in the House phase of its type');
+  void opp;
+}
+console.log('ok, resolution order: the owner first on a contested space; creatures after both Rollers');

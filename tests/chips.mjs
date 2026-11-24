@@ -402,7 +402,7 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
     if (me.calamities.includes('wormhole')) { const w = me.grid.flat().find((cell) => cell.worm); if (w) { w.chips.push({ id: 9e5, kind: 'std', value: 5 }); const before = B.worth(bout.sides[1]); drain(ticks(bout)); assert(!w.chips.length && B.worth(bout.sides[1]) >= before, 'a Worm Hole pulls chips through to the other side'); found.worm++; } }
     const roost = me.grid.flat().find((cell) => cell.roost);
     if (roost) { bout.turn = 3; drain(ticks(bout)); const dr = bout.creatures.find((x) => x.roost === roost.roost.id); assert(dr && dr.kind === 'dragon', 'a Roost calls a Dragon');
-      let egg = null; for (let t = 0; t < 3 && !egg; t++) { drain(ticks(bout)); egg = roost.chips.find((ch) => ch.kind === 'egg'); } assert(egg && egg.hits === 5, 'the Dragon lays a 5-hit egg chip on its Roost');
+      let egg = null; for (let t = 0; t < 3 && !egg; t++) { for (const cr of bout.creatures) delete cr.acted; drain(B._test.creaturePhase(bout, 'expense')); drain(ticks(bout)); egg = roost.chips.find((ch) => ch.kind === 'egg'); } assert(egg && egg.hits === 5, 'the Dragon lays a 5-hit egg chip on its Roost');
       const n0 = bout.creatures.length; let t = 0; for (; t < 4 && roost.chips.includes(egg); t++) drain(ticks(bout));
       assert(!roost.chips.includes(egg) && t <= 3 && bout.creatures.slice(n0).some((x) => x.kind === 'dragon'), 'on the Roost the egg hatches within 3 turns (2 hatch steps a turn, 3 by heat)'); found.roost++; }
   }

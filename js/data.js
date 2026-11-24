@@ -531,15 +531,17 @@ export const SHOP_RENAMES = { bumper: 'reducer', mirror: 'rebound', fog: 'transp
 // down; then it drops a Bounty chip worth `bounty` (BOUNTY_PER_HIT a hit). `layer`: 'flying' or 'ground'.
 // `life`: turns it stays. A creature with no hits (the Ghost) cannot be damaged.
 export const BOUNTY_PER_HIT = 5;
+// `type`: the House phase the creature acts in, after both Rollers (what its action is: an Expense takes or burns
+// chips, a Correction changes them, an Insurance guards a row)
 export const CREATURES = {
-  ufo: { name: 'UFO', glyph: '🛸', hits: 1, life: 1, layer: 'flying', text: 'Flying. Abducts the top chip of a random stack, stays the turn, then flies home. Chips taken are lost.' },
-  fairy: { name: 'Fairy', glyph: '🧚', hits: 1, life: 2, layer: 'flying', text: 'Flying. Converts the top chip of a random stack into a random chip. Chaos reigns!' },
-  dragon: { name: 'Dragon', glyph: '🐉', hits: 50, life: 2, layer: 'flying', text: 'Flying. Breathes a Burning chip onto a random stack each turn.' },
-  mole: { name: 'Mole', glyph: '🐭', hits: 1, life: 2, layer: 'ground', text: 'Digs up a random empty space and leaves a Hole, then sits in it.' },
-  unicorn: { name: 'Unicorn', glyph: '🦄', hits: 1, life: 1, layer: 'ground', text: 'Converts every chip in a random stack into random chips. Chaos reigns!' },
-  mothership: { name: 'Mothership', glyph: '👾', hits: 10, life: 5, layer: 'flying', text: 'Flying. Hovers over one stack and beams up a chip every turn until the stack is gone. Chips taken are lost.' },
-  ghost: { name: 'Ghost', glyph: '👻', hits: 0, life: 3, layer: 'flying', text: 'Very spooky. Fear: no trick can aim at its row, only spreads reach it. It cannot be damaged, and no overkill passes into or through its row.' },
-  ghostship: { name: 'Ghost Ship', glyph: '🏴‍☠️', hits: 100, life: 6, layer: 'flying', text: 'A vehicle that sails across empty spaces to a stack with a Gold chip on top and steals it. Takes 100 fee instances to sink; sunk, it drops a Treasure chip with everything it stole.' },
+  ufo: { name: 'UFO', glyph: '🛸', type: 'expense', hits: 1, life: 1, layer: 'flying', text: 'Flying. Abducts the top chip of a random stack, stays the turn, then flies home. Chips taken are lost.' },
+  fairy: { name: 'Fairy', glyph: '🧚', type: 'correction', hits: 1, life: 2, layer: 'flying', text: 'Flying. Converts the top chip of a random stack into a random chip. Chaos reigns!' },
+  dragon: { name: 'Dragon', glyph: '🐉', type: 'expense', hits: 50, life: 2, layer: 'flying', text: 'Flying. Breathes a Burning chip onto a random stack each turn.' },
+  mole: { name: 'Mole', glyph: '🐭', type: 'correction', hits: 1, life: 2, layer: 'ground', text: 'Digs up a random empty space and leaves a Hole, then sits in it.' },
+  unicorn: { name: 'Unicorn', glyph: '🦄', type: 'correction', hits: 1, life: 1, layer: 'ground', text: 'Converts every chip in a random stack into random chips. Chaos reigns!' },
+  mothership: { name: 'Mothership', glyph: '👾', type: 'expense', hits: 10, life: 5, layer: 'flying', text: 'Flying. Hovers over one stack and beams up a chip every turn until the stack is gone. Chips taken are lost.' },
+  ghost: { name: 'Ghost', glyph: '👻', type: 'insurance', hits: 0, life: 3, layer: 'flying', text: 'Very spooky. Fear: no trick can aim at its row, only spreads reach it. It cannot be damaged, and no overkill passes into or through its row.' },
+  ghostship: { name: 'Ghost Ship', glyph: '🏴‍☠️', type: 'expense', hits: 100, life: 6, layer: 'flying', text: 'A vehicle that sails across empty spaces to a stack with a Gold chip on top and steals it. Takes 100 fee instances to sink; sunk, it drops a Treasure chip with everything it stole.' },
 };
 for (const C of Object.values(CREATURES)) C.bounty = C.hits * BOUNTY_PER_HIT;
 CREATURES.ghostship.bounty = 0; // it drops Treasure instead

@@ -34,8 +34,14 @@ is not built yet. Tab names are in **bold**.
   plays the stack: the top copy this turn, then a copy a turn with the same roll and target, each with its own print;
   each copy taps as it plays, and the last taps with the dice.
 - Fees go out as Debt on the target stacks, then the House settles them (see **Debt** below).
-- Both Rollers' tricks in a phase are played together. Every value is read from the table as it stood when the
-  phase was called, so nothing played in a phase changes another trick in the same phase.
+- Both Rollers' tricks in a phase are played together, with one exception: when both Rollers' tricks in a phase reach
+  the same space, the space's **owner** plays there first and that trick resolves before the other one (which may then
+  find its chips gone and fizzle or land elsewhere). Power, Boost and the like are read as they stood when the phase
+  was called.
+- **Creatures are a third hand.** Each creature has a type (`CREATURES[kind].type`: UFO, Mothership, Dragon and Ghost
+  Ship are Expenses, Fairy, Unicorn and Mole Corrections, the Ghost an Insurance) and acts in that House phase after
+  both Rollers have played theirs, so a trick aimed at a creature or its stack lands first. New creatures arrive in
+  the House's last phase and act from the next turn.
 - The Stage is shown as stacks of chips in front of the House. The winner takes the whole Stage.
 - Targeting approaches (front, rear, flank, body, any, meter) and distributions (Hit, Swipe, Poke, Hook, Drop,
   Burst, Wave, Aura, Rain) with the workbook's minimum / increment / maximum space counts.
