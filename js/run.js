@@ -63,7 +63,7 @@ export function newRun(who, jacketReq = 'standard', seed = (Date.now() ^ (Math.r
   const roller = D.rollerOf(who), Rl = D.ROLLERS[roller], cls = Rl.cls;
   const jacket = jacketFits(cls, jacketReq) ? jacketReq : 'standard'; // a level 0 jacket only fits the class it was cut for
   const kept = [].concat(gear.passes ?? gear.pass ?? []).filter((f) => f > 0);
-  const run = { v: 1, rng: new RNG(seed), seed, cls, roller, worth0: Rl.worth ?? 200, bizCards: [], trait: null, jacket, wallet: gear.wallet || 'worn_cloth', pass: 0, passes: [], pendingCard: null, floor: 0, purse: 0, nextId: 1, dice: [], tricks: [], chips: {},
+  const run = { v: 1, rng: new RNG(seed), seed, cls, roller, worth0: Rl.worth ?? 200, bizCards: [], trait: null, crownCase: [], wearing: null, jacket, wallet: gear.wallet || 'worn_cloth', pass: 0, passes: [], pendingCard: null, floor: 0, purse: 0, nextId: 1, dice: [], tricks: [], chips: {},
     drink: null, cards: [], punches: 0, rest: null, suiteKey: false, phase: 'intro', fs: null, bets: [], news: [], ledger: [], ascent: null,
     plan: { spacing: 'row', stacking: 'maxed', counts: null, resist: {}, layout: Rl.layout?.length ? JSON.parse(JSON.stringify(Rl.layout)) : null }, // your Roller's own position, to change before each bout
     stats: { bouts: 0, wins: 0, losses: 0, spent: 0, won: 0, turns: 0, dd: 0 } };
@@ -468,7 +468,7 @@ function planGroups(run, counts, resist) {
 // ---------- bouts ----------
 function playerSpec(run, counts, extra = {}, dimsOverride) {
   const st = rollerStats(run, extra), K = D.CLASSES[run.cls];
-  return { name: 'You', title: K.name, cls: run.cls, roller: run.roller || D.rollerOf(run.cls), trait: run.trait || null, sign: D.ROLLERS[run.roller]?.sign || null, tip: st.tip, c: st.c, dims: dimsOverride || st.dims, why: dimsOverride ? { note: tx('run.a-bar-table-one') } : dimsWhy(run, extra), deploy: K.deploy, tricks: run.tricks, dice: run.dice,
+  return { name: 'You', title: K.name, cls: run.cls, roller: run.roller || D.rollerOf(run.cls), trait: run.trait || null, crown: crownWorn(run), sign: D.ROLLERS[run.roller]?.sign || null, tip: st.tip, c: st.c, dims: dimsOverride || st.dims, why: dimsOverride ? { note: tx('run.a-bar-table-one') } : dimsWhy(run, extra), deploy: K.deploy, tricks: run.tricks, dice: run.dice,
     plan: { chips: planGroups(run, counts, extra.resist), spacing: run.plan.spacing, stacking: run.plan.stacking, ...(validLayout(run, dimsOverride || st.dims) ? { layout: validLayout(run, dimsOverride || st.dims) } : {}), resistChips: run.cards.map((id) => D.CARDS[id]?.resist).filter(Boolean) }, drink: run.drink && run.drink.sips > 0 ? run.drink : null, ...extra.side };
 }
 const committed = (bout) => sum(bout.sides[0].grid.flat().flatMap((c) => c.chips).filter((ch) => ch.kind === 'std' && !ch.resist), (ch) => ch.value);
@@ -603,6 +603,9 @@ export function settle(run, ctx, bout) {
       if (!tablesLeft(run) && !run.fs.bossOpen) { run.fs.bossOpen = true; res.news.push(tx('run.the-high-roller-is')); }
     } else { res.news.push(tx('run.is-dethroned-the-stairs', { name: ctx.opp.name }));
       // a High Roller's business card: yours to keep, and to play by (one at a time, picked on the floor)
+      // and their crown: yours to keep, and to wear from your suite (style only)
+      run.crownCase = run.crownCase || []; run.crownCase.push({ floor: ctx.opp.floor || run.floor, from: ctx.opp.name, roster: ctx.opp.roster || null });
+      res.news.push(tx('run.crown-claimed', { name: ctx.opp.name }));
       const card = ctx.opp.trait; if (card && D.BOSS_TRAITS[card]) { run.bizCards = run.bizCards || []; if (!run.bizCards.includes(card)) run.bizCards.push(card); if (!run.trait) run.trait = card;
         res.news.push(tx('run.biz-card-kept', { name: ctx.opp.name, trait: D.BOSS_TRAITS[card].name })); } }
   } else {
@@ -656,6 +659,9 @@ export function buildAscent(run, meta) {
   return run.ascent;
 }
 // the business card you play by: one of the High Rollers' cards you have won (null: none)
+// wear one of the crowns you have claimed (index into run.crownCase), or none (null): it shows on your sign
+export function wearCrown(run, i) { if (i != null && !run.crownCase?.[i]) return false; run.wearing = i ?? null; return true; }
+export const crownWorn = (run) => (run.wearing != null ? run.crownCase?.[run.wearing] || null : null);
 export function carryCard(run, id) { if (id && !(run.bizCards || []).includes(id)) return false; run.trait = id || null; return true; }
 export const jacketFits = (cls, id) => !D.JACKETS[id].cls || D.JACKETS[id].cls === cls;
 export const jacketAvailable = (run, id) => D.JACKETS[id].level <= Math.max(0, run.floor - 1);

@@ -1,142 +1,285 @@
-// Neon signs. Each Roller's seat at the table, and the House's sign, is a neon sign built from a sign spec:
+// Neon signs. Each Roller's seat at the table, and the House's sign, is a neon sign built from a sign spec.
 //
-//   border, name, cls  [tube colour, glow colour] for the frame, the script name and the class under it
-//   frame              how the frame is drawn: FRAMES. Tubes are one continuous line (a tube, two or three, a rope of
-//                      both colours, a zigzag, a wave, a gradient); lights are a row of separate lamps (dashes, dots,
-//                      bulbs, or the edge symbol itself all the way round)
-//   motion             how the frame moves: MOTIONS. Lamps chase, breathe, alternate or twinkle one by one; a tube does
-//                      the same along its length (a glint runs round it, it breathes, its colours trade, it shimmers)
-//   edge, edgeAt       a symbol (EDGE_GLYPHS, or any character) at the corners or along the top and bottom. Where a
-//                      symbol sits, it replaces the frame under it
-//   mount              what the sign hangs on: a backing colour and an optional image (any URL or data: URL)
-//   blink              one part of the sign that blinks, and how: BLINKS
+// One light for everything. Every tube, lamp, symbol and crown on a sign is lit the same way: a soft halo in its glow
+// colour (blurred along the tube's own path, so a wavy tube glows wavy), the tube in its colour, and a hot white-ish
+// core down its middle. Every motion moves that same light: a chase is a brighter stretch of the same tube running
+// round it (and round again, without a seam), a breath dims and lifts all of it, a swap trades its colours, a
+// twinkle flickers it lamp by lamp.
 //
-// Every motion and blink is slow and soft (well under three changes a second, never fully dark) so none of them can
-// trigger a photosensitive reaction, and all of them stop for players who ask their system for reduced motion.
+//   border, more     the frame's colour pairs ([tube, glow]): the border, then up to two more. Plain, wavy and
+//                    zigzag frames run one tube per pair, nested; a gradient runs every colour round one tube;
+//                    stripes, checks and lamps take turns in them; a twist braids one strand per pair
+//   frame            FRAMES: tubes (plain, wave, zigzag, gradient), strips (striped, checkered, twist) or lamps
+//                    (dashed, dotted, bulbs, or symbols: the edge symbol all the way round), or none
+//   motion           MOTIONS: chase, breathe, swap, twinkle or still
+//   edge, edgeAt     a symbol (symbols.js, or any character) at the corners or along the top and bottom. Where one
+//                    sits the frame stops short of it, its tube ending round before it and starting again after
+//   symbol           { on, id, motion }: a large symbol at the end of the name, the name's last letter just over it
+//   crown            { level 1-4 } (set by the table, not stored): a High Roller's crown, tilted off the first letter,
+//                    grander floor by floor; also the crown you wear once you have claimed one
+//   name, cls        [tube, glow] for the script name and the class under it
+//   blinks           { part: { on, pattern } } for the name, class, border, edge, symbol and crown: each part can
+//                    blink on its own, in its own pattern (BLINKS)
+//   mount            what the sign hangs on: a backing colour and an optional image (any URL or data: URL)
 //
-// The frame is drawn as an SVG laid over the sign and redrawn when the sign changes size. The player's sign is
-// D.NEON.you (under the Roller's own ROLLERS[id].sign), the House's D.NEON.house, and every opponent's is D.NEON.them
-// unless its roster entry has its own `sign`.
+// Where a crown or a symbol meets the letters, its tube stops short of them with a rounded end, as a real sign's tube
+// does where it passes behind another, and picks up again on the far side. Every motion is slow and soft (well under
+// three changes a second, never fully dark) and all of them stop for players who ask their system for reduced motion.
 import * as D from '../data.js';
+import { SYMBOLS, symbolOf, CROWNS } from './symbols.js';
 
-export const TUBES = ['tube', 'double', 'triple', 'rope', 'zigzag', 'wave', 'gradient'];
-export const LIGHTS = ['dashed', 'dotted', 'bulbs', 'symbols'];
-export const FRAMES = [...TUBES, ...LIGHTS, 'none'];
+export const TUBES = ['plain', 'wave', 'zigzag', 'gradient'];
+export const STRIPS = ['striped', 'checkered', 'twist'];
+export const LAMPS = ['dashed', 'dotted', 'bulbs', 'symbols'];
+export const FRAMES = [...TUBES, ...STRIPS, ...LAMPS, 'none'];
 export const MOTIONS = ['chase', 'breathe', 'swap', 'twinkle', 'still'];
 export const EDGE_AT = ['none', 'corners', 'edge'];
-export const BLINK_PARTS = ['none', 'name', 'cls', 'border', 'edge'];
+export const BLINK_PARTS = ['name', 'cls', 'border', 'edge', 'symbol', 'crown'];
 export const BLINKS = ['breathe', 'pulse', 'flicker', 'alternate'];
-// symbols for the edge, by kind. None of them is an emoji (the ones a system might draw as one are shown as text);
-// the ones that start with ':' are drawn shapes, for symbols Unicode only has as emoji.
-export const GLYPH_GROUPS = {
-  math: ['×', '+', '−', '÷', '=', '±', '∞'],
-  stars: ['✦', '✧', '★', '☆', '✩', '✪', '✫', '✬', '✭', '✮', '✯', '⍟', '✶', '✡', '✷', '✸', '✹', '✺', '✴', '✵', '❂', '✱', '✳', '❋', '⁂'],
-  shapes: ['◆', '◇', '◈', '●', '○', '◉', '◎', '⊕', '⊗', '⊙', '▣', '❖', '⌘', '✚', '✠', '☩'],
-  cards: ['♠', '♥', '♦', '♣', '♤', '♡', '♢', '♧', '♛', '♚', '♞', '♜'],
-  dice: ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'],
-  more: [':skull', '☠', '☾', '☽', '⚡', '✿', '❀', '❁', '⚜', '♪', '♫', '¢', '§'],
-};
-export const EDGE_GLYPHS = Object.values(GLYPH_GROUPS).flat();
-// drawn shapes, in a 12 by 12 box
-export const SHAPES = {
-  skull: 'M6 1C3.2 1 1.5 3 1.5 5.4c0 1.5.7 2.6 1.7 3.2v1.9h1.3v-.9h.9v.9h1.2v-.9h.9v.9h1.3V8.6c1-.6 1.7-1.7 1.7-3.2C10.5 3 8.8 1 6 1ZM4.1 4.6a1.1 1.1 0 1 0 0 2.2a1.1 1.1 0 1 0 0-2.2ZM7.9 4.6a1.1 1.1 0 1 0 0 2.2a1.1 1.1 0 1 0 0-2.2ZM6 7l-.6 1h1.2Z',
-};
+export const MAX_PAIRS = 3;
 const PARTS = ['border', 'name', 'cls'];
-export const BASE_SIGN = { frame: 'tube', motion: 'chase', radius: 12, edge: '★', edgeAt: 'none', mount: { color: '', image: '' }, blink: { part: 'none', pattern: 'breathe' } };
-const TEXT_STYLE = '︎'; // asks for the text (not emoji) form of a symbol
+export const BASE_SIGN = { frame: 'plain', motion: 'chase', radius: 12, more: [], edge: 'star5', edgeAt: 'none', symbol: { on: false, id: 'star5', motion: 'breathe' }, mount: { color: '', image: '' }, blinks: {} };
+const OLD_FRAMES = { tube: ['plain', 0], double: ['plain', 1], triple: ['plain', 2], rope: ['twist', 1] };
 
 // the sign a Roller (or the House) shows: the base, then the shared look for its side, then its own
 export function signOf(who, own) {
   const side = D.NEON[who] || D.NEON.them, out = { ...BASE_SIGN, ...side, ...(own || {}) };
-  out.mount = { ...BASE_SIGN.mount, ...(side.mount || {}), ...(own?.mount || {}) }; out.blink = { ...BASE_SIGN.blink, ...(side.blink || {}), ...(own?.blink || {}) };
+  out.mount = { ...BASE_SIGN.mount, ...(side.mount || {}), ...(own?.mount || {}) };
+  out.symbol = { ...BASE_SIGN.symbol, ...(side.symbol || {}), ...(own?.symbol || {}) };
   for (const p of PARTS) out[p] = (own?.[p] || side[p] || D.NEON.them[p]).slice(0, 2);
-  if (!FRAMES.includes(out.frame)) out.frame = 'tube'; if (!MOTIONS.includes(out.motion)) out.motion = 'chase';
+  // signs saved before: double and triple tubes are more tube pairs now, a rope is a twist, one blinking part is a toggle
+  if (OLD_FRAMES[out.frame]) { const [f, extra] = OLD_FRAMES[out.frame]; out.frame = f; if (!(own?.more || side.more)?.length) out.more = Array.from({ length: extra }, (_, i) => (i % 2 ? out.border : [out.border[1], out.border[0]])); }
+  if (!FRAMES.includes(out.frame)) out.frame = 'plain'; if (!MOTIONS.includes(out.motion)) out.motion = 'chase';
+  out.more = (out.more || []).filter((p) => Array.isArray(p) && p.length === 2).slice(0, MAX_PAIRS - 1);
+  out.blinks = { ...(side.blinks || {}), ...(own?.blinks || {}) };
+  const old = own?.blink || side.blink; if (old?.part && old.part !== 'none' && !Object.keys(out.blinks).length) out.blinks = { [old.part]: { on: true, pattern: old.pattern || 'breathe' } };
+  out.edge = symbolOf(out.edge) || [...(out.edge || '')][0] || 'star5';
+  out.symbol.id = symbolOf(out.symbol.id) || 'star5'; if (!MOTIONS.includes(out.symbol.motion)) out.symbol.motion = 'breathe';
   return out;
 }
+export const pairsOf = (spec) => [spec.border, ...(spec.more || [])].slice(0, MAX_PAIRS);
 const safeUrl = (u) => (/^(https?:|data:image\/|assets\/)/.test(u || '') ? `url("${String(u).replace(/"/g, '%22')}")` : '');
-export const glyphOf = (g) => (typeof g === 'string' && g.startsWith(':') ? (SHAPES[g.slice(1)] ? g : '★') : [...(g || '')][0] || '★');
 
-// ---------- the frame's geometry: a rounded rectangle, walked by distance ----------
-// at(s): the point s along the outline (clockwise from the top-left corner's end) and the direction it runs there
-function outline(w, h, r) {
-  r = Math.max(0, Math.min(r, w / 2, h / 2)); const a = Math.PI * r / 2, segs = [
-    ['line', r, 0, w - r, 0], ['arc', w - r, r, -Math.PI / 2], ['line', w, r, w, h - r], ['arc', w - r, h - r, 0],
-    ['line', w - r, h, r, h], ['arc', r, h - r, Math.PI / 2], ['line', 0, h - r, 0, r], ['arc', r, r, Math.PI]];
-  const lens = segs.map((sg) => (sg[0] === 'line' ? Math.hypot(sg[3] - sg[1], sg[4] - sg[2]) : a)), L = lens.reduce((x, y) => x + y, 0);
-  const at = (s) => { s = ((s % L) + L) % L; for (let i = 0; i < segs.length; i++) { if (s <= lens[i] || i === segs.length - 1) { const sg = segs[i], f = lens[i] ? Math.min(1, s / lens[i]) : 0;
-    if (sg[0] === 'line') return { x: sg[1] + (sg[3] - sg[1]) * f, y: sg[2] + (sg[4] - sg[2]) * f, a: Math.atan2(sg[4] - sg[2], sg[3] - sg[1]), side: i / 2 };
-    const t0 = sg[3] + f * Math.PI / 2; return { x: sg[1] + r * Math.cos(t0), y: sg[2] + r * Math.sin(t0), a: t0 + Math.PI / 2, side: -1 }; } s -= lens[i]; } };
-  const d = `M${r},0H${w - r}A${r},${r} 0 0 1 ${w},${r}V${h - r}A${r},${r} 0 0 1 ${w - r},${h}H${r}A${r},${r} 0 0 1 0,${h - r}V${r}A${r},${r} 0 0 1 ${r},0Z`;
-  return { L, at, d, mids: [1, 3, 5, 7].map((i) => lens.slice(0, i).reduce((x, y) => x + y, 0) + lens[i] / 2) };
-}
-// a line that wanders off the outline: a zigzag or a wave of amplitude amp
-function wander(o, amp, step, wave) {
-  const n = Math.max(8, Math.round(o.L / step)), pts = [];
-  for (let i = 0; i <= n * (wave ? 3 : 1); i++) { const s = (i / (n * (wave ? 3 : 1))) * o.L, p = o.at(s), off = wave ? Math.sin((s / o.L) * n * Math.PI * 2) * amp : (i % 2 ? amp : -amp);
-    pts.push(`${(p.x + Math.cos(p.a - Math.PI / 2) * off).toFixed(1)},${(p.y + Math.sin(p.a - Math.PI / 2) * off).toFixed(1)}`); }
-  return `M${pts.join('L')}Z`;
-}
+// ---------- colour ----------
+const hex = (c) => { const m = /^#?([0-9a-f]{6})$/i.exec(c || ''); return m ? [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16)) : [255, 255, 255]; };
+const mix = (a, b, t) => { const x = hex(a), y = hex(b); return `#${x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, '0')).join('')}`; };
+const hot = (c) => mix(c, '#ffffff', 0.55);
+
+// ---------- SVG ----------
 const NS = 'http://www.w3.org/2000/svg';
 const mk = (tag, attrs = {}, kids = []) => { const el = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) if (v != null) el.setAttribute(k, v); for (const c of kids) el.append(c); return el; };
 let uid = 0;
-
-// draw the frame (and its symbols) for an element of size w by h
-function drawFrame(svg, spec, w, h, who) {
-  svg.replaceChildren(); if (w < 4 || h < 4) return;
-  const pad = 2, W = w - pad * 2, H = h - pad * 2, o = outline(W, H, Math.max(0, +spec.radius || 0)), id = `sf${++uid}`;
-  svg.setAttribute('viewBox', `${-pad} ${-pad} ${w} ${h}`); svg.style.setProperty('--L', o.L.toFixed(1));
-  const g = glyphOf(spec.edge), frame = spec.frame, glyphs = [];
-  // where symbols sit: the corners, along the top and bottom, or (for a frame of symbols) all the way round
-  if (frame === 'symbols') { const n = Math.max(6, Math.round(o.L / 15)); for (let i = 0; i < n; i++) glyphs.push(o.at((i / n) * o.L)); }
-  else if (frame !== 'none' && spec.edge && spec.edgeAt === 'corners') for (const m of o.mids) glyphs.push(o.at(m));
-  else if (frame !== 'none' && spec.edge && spec.edgeAt === 'edge') { const n = Math.max(2, Math.floor((W - 2 * (+spec.radius || 0)) / 16)); for (const y of [0, H]) for (let i = 0; i < n; i++) glyphs.push({ x: (+spec.radius || 0) + ((W - 2 * (+spec.radius || 0)) * (i + 0.5)) / n, y, a: 0 }); }
-  // a symbol replaces the frame under it: the frame is masked out round each one
-  const mask = mk('mask', { id, maskUnits: 'userSpaceOnUse', x: -pad - 20, y: -pad - 20, width: w + 40, height: h + 40 },
-    [mk('rect', { x: -pad - 20, y: -pad - 20, width: w + 40, height: h + 40, fill: '#fff' }), ...(frame === 'symbols' ? [] : glyphs.map((p) => mk('circle', { cx: p.x, cy: p.y, r: 7.5, fill: '#000' })))]);
-  const defs = mk('defs', {}, [mask]); svg.append(defs);
-  const body = mk('g', { class: 'sf-body', mask: glyphs.length && frame !== 'symbols' ? `url(#${id})` : null }); svg.append(body);
-  const tube = (d, cls, extra = {}) => body.append(mk('path', { d, class: `sf-tube ${cls || ''}`, ...extra }));
-  if (frame === 'tube') tube(o.d, 'a');
-  else if (frame === 'double' || frame === 'triple') { const ins = frame === 'triple' ? [-3, 0, 3] : [-2, 2]; ins.forEach((k, i) => tube(outline(W - k * 2, H - k * 2, Math.max(0, (+spec.radius || 0) - k)).d, `thin ${i % 2 ? 'b' : 'a'}`, { transform: `translate(${k},${k})` })); }
-  else if (frame === 'rope') { tube(o.d, 'a rope'); tube(o.d, 'b rope rope2'); }
-  else if (frame === 'zigzag') tube(wander(o, 2.4, 9, false), 'a thin');
-  else if (frame === 'wave') tube(wander(o, 2.2, 16, true), 'a thin');
-  else if (frame === 'gradient') { const gid = `${id}g`; defs.append(mk('linearGradient', { id: gid, gradientUnits: 'userSpaceOnUse', x1: 0, y1: 0, x2: W, y2: H }, [mk('stop', { offset: '0', 'stop-color': spec.border[0] }), mk('stop', { offset: '0.5', 'stop-color': spec.border[1] }), mk('stop', { offset: '1', 'stop-color': spec.border[0] }),
-    mk('animateTransform', { attributeName: 'gradientTransform', type: 'rotate', from: `0 ${W / 2} ${H / 2}`, to: `360 ${W / 2} ${H / 2}`, dur: '9s', repeatCount: 'indefinite' })])); tube(o.d, 'grad', { stroke: `url(#${gid})` }); }
-  // tubes: a glint that runs round them (shown for the chase)
-  if (TUBES.includes(frame) && frame !== 'gradient') body.append(mk('path', { d: o.d, class: 'sf-glint' }));
-  // lights: separate lamps, each with its place in the run (--i of --n) for the chase, the alternation and the twinkle
-  const lamps = [];
-  if (frame === 'dashed') { const n = Math.max(8, Math.round(o.L / 12)); for (let i = 0; i < n; i++) { const p = o.at((i / n) * o.L), dx = Math.cos(p.a) * 3.2, dy = Math.sin(p.a) * 3.2; lamps.push(mk('line', { x1: p.x - dx, y1: p.y - dy, x2: p.x + dx, y2: p.y + dy, class: 'sf-lamp dash' })); } }
-  if (frame === 'dotted') { const n = Math.max(10, Math.round(o.L / 8)); for (let i = 0; i < n; i++) { const p = o.at((i / n) * o.L); lamps.push(mk('circle', { cx: p.x, cy: p.y, r: 1.7, class: 'sf-lamp dot' })); } }
-  if (frame === 'bulbs' && who !== 'house') { const n = Math.max(8, Math.round(o.L / 11)); for (let i = 0; i < n; i++) { const p = o.at((i / n) * o.L); lamps.push(mk('circle', { cx: p.x, cy: p.y, r: 2.6, class: 'sf-lamp bulb' })); } }
-  // symbols: drawn as text (or as a shape), lamps like the rest
-  for (const p of glyphs) {
-    const el = g.startsWith(':') ? mk('path', { d: SHAPES[g.slice(1)], class: 'sf-lamp sf-glyph shape', transform: `translate(${(p.x - 5.5).toFixed(1)},${(p.y - 5.5).toFixed(1)}) scale(0.92)` })
-      : mk('text', { x: p.x.toFixed(1), y: p.y.toFixed(1), class: 'sf-lamp sf-glyph', 'text-anchor': 'middle', 'dominant-baseline': 'central' });
-    if (!g.startsWith(':')) el.textContent = g + TEXT_STYLE; lamps.push(el);
+const still = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches; // no motion asked for
+function defsFor(svg) { const id = `ns${++uid}`, blur = mk('filter', { id: `${id}b`, x: '-50%', y: '-50%', width: '200%', height: '200%' }, [mk('feGaussianBlur', { stdDeviation: '2.6' })]);
+  const defs = mk('defs', {}, [blur]); svg.append(defs); return { id, defs, blur: `url(#${id}b)` }; }
+// one light: halo, tube, hot core, all along the same path. kind 'stroke' for a tube, 'fill' for a lamp (a dot).
+function light(parent, ctx, d, core, glow, o = {}) {
+  const w = o.w ?? 2.4, g = mk('g', { class: `lt ${o.cls || ''}` });
+  if (o.fill) {
+    g.append(mk('path', { d, fill: glow, opacity: 0.75, filter: ctx.blur, class: 'halo' }), mk('path', { d, fill: core, class: 'tube' }), ...(o.hotD ? [mk('path', { d: o.hotD, fill: hot(core), class: 'hot' })] : []));
+  } else {
+    const base = { d, fill: 'none', 'stroke-linecap': o.cap || 'round', 'stroke-linejoin': 'round', ...(o.dash ? { 'stroke-dasharray': o.dash } : {}), ...(o.offset != null ? { 'stroke-dashoffset': o.offset } : {}) };
+    g.append(mk('path', { ...base, stroke: glow, 'stroke-width': w + 5, opacity: o.dim ? 0.3 : 0.6, filter: ctx.blur, class: 'halo' }));
+    if (!o.haloOnly) g.append(mk('path', { ...base, stroke: core, 'stroke-width': w, opacity: o.dim ? 0.45 : 1, class: 'tube' }),
+      mk('path', { ...base, stroke: hot(core), 'stroke-width': Math.max(0.7, w * 0.36), opacity: o.dim ? 0.3 : 0.9, class: 'hot' }));
   }
-  const lampG = mk('g', { class: 'sf-lamps' }); svg.append(lampG);
-  lamps.forEach((el, i) => { el.style.setProperty('--i', i); el.style.setProperty('--n', lamps.length); el.style.setProperty('--r', ((i * 7919) % 13) / 13); if (i % 2) el.classList.add('odd'); lampG.append(el); });
+  if (o.style) for (const [k, v] of Object.entries(o.style)) g.style.setProperty(k, v);
+  parent.append(g); return g;
+}
+const dotD = (x, y, r) => `M${(x - r).toFixed(2)} ${y.toFixed(2)}a${r} ${r} 0 1 0 ${(2 * r).toFixed(2)} 0a${r} ${r} 0 1 0 ${(-2 * r).toFixed(2)} 0Z`;
+
+// ---------- the frame's geometry: a rounded rectangle, walked by distance ----------
+function outline(w, h, r) {
+  r = Math.max(0, Math.min(r, w / 2 - 1, h / 2 - 1)); const a = Math.PI * r / 2;
+  const segs = [['line', r, 0, w - r, 0], ['arc', w - r, r, -Math.PI / 2], ['line', w, r, w, h - r], ['arc', w - r, h - r, 0], ['line', w - r, h, r, h], ['arc', r, h - r, Math.PI / 2], ['line', 0, h - r, 0, r], ['arc', r, r, Math.PI]];
+  const lens = segs.map((sg) => (sg[0] === 'line' ? Math.hypot(sg[3] - sg[1], sg[4] - sg[2]) : a)), L = lens.reduce((x, y) => x + y, 0);
+  const starts = lens.map((_, i) => lens.slice(0, i).reduce((x, y) => x + y, 0));
+  const at = (s) => { s = ((s % L) + L) % L; for (let i = 0; i < segs.length; i++) { if (s <= lens[i] + 1e-9 || i === segs.length - 1) { const sg = segs[i], f = lens[i] ? Math.min(1, s / lens[i]) : 0;
+    if (sg[0] === 'line') return { x: sg[1] + (sg[3] - sg[1]) * f, y: sg[2] + (sg[4] - sg[2]) * f, a: Math.atan2(sg[4] - sg[2], sg[3] - sg[1]) };
+    const t0 = sg[3] + f * Math.PI / 2; return { x: sg[1] + r * Math.cos(t0), y: sg[2] + r * Math.sin(t0), a: t0 + Math.PI / 2 }; } s -= lens[i]; } };
+  return { L, at, r, starts, lens, mids: [1, 3, 5, 7].map((i) => starts[i] + lens[i] / 2) };
+}
+// a point s along the outline, pushed off it by `off` (outward positive)
+const off = (o, s, k) => { const p = o.at(s); return { x: p.x + Math.sin(p.a) * k, y: p.y - Math.cos(p.a) * k, a: p.a }; };
+// a stretch of the outline [s0, s1], pushed off by f(s), as a path
+function trace(o, s0, s1, f, step = 1.5, closed = false) {
+  const n = Math.max(2, Math.ceil((s1 - s0) / step)), pts = [];
+  for (let i = 0; i <= n; i++) { const s = s0 + ((s1 - s0) * i) / n, p = off(o, s, f(s)); pts.push(`${p.x.toFixed(2)} ${p.y.toFixed(2)}`); }
+  return `M${pts.join('L')}${closed ? 'Z' : ''}`;
+}
+// the stretches of the loop the frame is drawn along: all of it, or what is left between the symbols on it
+function runsOf(L, gaps) {
+  if (!gaps.length) return [[0, L, true]];
+  const g = gaps.map(([a, b]) => [((a % L) + L) % L, ((a % L) + L) % L + (b - a)]).sort((x, y) => x[0] - y[0]), out = [];
+  for (let i = 0; i < g.length; i++) { const end = g[i][1], next = i + 1 < g.length ? g[i + 1][0] : g[0][0] + L; if (next - end > 3) out.push([end, next, false]); }
+  return out;
+}
+const tri = (s, p) => { const x = s / p; return 4 * Math.abs(x - Math.floor(x + 0.5)) - 1; }; // -1..1, sharp
+
+// ---------- a symbol, lit: a path in a 24 (or crown 28 x 24) box placed at x, y, sized k, turned deg, and cut short
+// (with rounded ends) where it would cross any of `avoid` (boxes the tube passes behind)
+function sampleSub(svg, d) { const p = mk('path', { d }); svg.append(p); let L = 0; try { L = p.getTotalLength(); } catch { L = 0; } const pts = []; for (let s = 0; s <= L; s += 0.6) { const q = p.getPointAtLength(s); pts.push([q.x, q.y]); } p.remove(); return pts; }
+export function litSymbol(parent, ctx, sym, place, core, glow, o = {}) {
+  const S = typeof sym === 'string' ? SYMBOLS[sym] : sym, g = mk('g', { class: `sym ${o.cls || ''}` }); parent.append(g); if (!S) return g;
+  const M = new DOMMatrix().translate(place.x, place.y).rotate(place.deg || 0).scale(place.k).translate(-(place.cx ?? 12), -(place.cy ?? 12));
+  const avoid = o.avoid || [], inside = (x, y) => avoid.some((b) => x > b.l && x < b.r && y > b.t && y < b.b), w = o.w ?? 2.2, trim = w / 2 + 1.2;
+  const runs = [];
+  for (const sub of S.d.split(/(?=M)/).filter(Boolean)) {
+    const pts = sampleSub(ctx.svg, sub).map(([x, y]) => { const q = M.transformPoint(new DOMPoint(x, y)); return [q.x, q.y]; });
+    if (!avoid.length) { runs.push({ pts, closed: /Z\s*$/i.test(sub) }); continue; }
+    let cur = []; for (const p of pts) { if (inside(p[0], p[1])) { if (cur.length) runs.push({ pts: cur, cut: true }); cur = []; } else cur.push(p); } if (cur.length) runs.push({ pts: cur, cut: true });
+  }
+  for (const run of runs) {
+    let pts = run.pts;
+    if (run.cut) { const len = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]); let k = 0, acc = 0; while (k < pts.length - 1 && acc < trim) { acc += len(pts[k], pts[k + 1]); k++; } let j = pts.length - 1; acc = 0; while (j > k && acc < trim) { acc += len(pts[j], pts[j - 1]); j--; } pts = pts.slice(k, j + 1); }
+    if (pts.length < 3) continue;
+    light(g, ctx, `M${pts.map((p) => `${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join('L')}${run.closed ? 'Z' : ''}`, core, glow, { w, style: { '--i': g.childElementCount } });
+  }
+  for (const [x, y] of S.dots || []) { const q = M.transformPoint(new DOMPoint(x, y)); if (inside(q.x, q.y)) continue; const r = Math.max(1.1, 1.3 * place.k); light(g, ctx, dotD(q.x, q.y, r), core, glow, { fill: true, hotD: dotD(q.x, q.y, r * 0.45) }); }
+  return g;
+}
+// a character that is not one of the drawn symbols: set as text, lit the same way
+function litChar(parent, ctx, ch, x, y, size, core, glow) {
+  const g = mk('g', { class: 'sym' }); parent.append(g);
+  const t = (attrs) => { const e = mk('text', { x, y, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': size, ...attrs }); e.textContent = `${ch}︎`; return e; };
+  g.append(t({ fill: glow, opacity: 0.7, filter: ctx.blur, class: 'halo' }), t({ fill: core, class: 'tube' }), t({ fill: 'none', stroke: hot(core), 'stroke-width': 0.5, class: 'hot' })); return g;
+}
+const glyph = (parent, ctx, g, p, size, core, glow) => (SYMBOLS[g] ? litSymbol(parent, ctx, g, { x: p.x, y: p.y, k: size / 24 }, core, glow, { w: 1.8 }) : litChar(parent, ctx, g, p.x, p.y, size, core, glow));
+
+// ---------- the frame ----------
+function drawFrame(svg, spec, w, h, who) {
+  svg.replaceChildren(); if (w < 8 || h < 8) return;
+  const ctx = defsFor(svg); ctx.svg = svg;
+  const pad = 3, W = w - pad * 2, H = h - pad * 2, o = outline(W, H, Math.max(0, +spec.radius || 0)), frame = spec.frame, pairs = pairsOf(spec), N = pairs.length;
+  svg.setAttribute('viewBox', `${-pad} ${-pad} ${w} ${h}`);
+  const lights = mk('g', { class: 'lights' }); svg.append(lights);
+  // the symbols on the edge, and the gaps the frame leaves for them
+  const marks = [], G = 7.5; // a symbol's half-width on the edge
+  if (frame === 'symbols') { const n = Math.max(6, Math.round(o.L / 17)); for (let i = 0; i < n; i++) marks.push((i / n) * o.L); }
+  else if (frame !== 'none' && spec.edgeAt === 'corners') marks.push(...o.mids);
+  else if (frame !== 'none' && spec.edgeAt === 'edge') { for (const seg of [0, 4]) { const n = Math.max(2, Math.floor(o.lens[seg] / 18)); for (let i = 0; i < n; i++) marks.push(o.starts[seg] + (o.lens[seg] * (i + 0.5)) / n); } }
+  const runs = frame === 'symbols' ? [] : runsOf(o.L, marks.map((s) => [s - G, s + G]));
+  const body = mk('g', { class: 'frame-body' }); lights.append(body);
+  const spots = []; // paths a chase runs along: [d, core, glow, total length of its loop, where this stretch starts in it]
+  const runLen = (r) => r[1] - r[0];
+  // tubes: one per colour pair, nested a little inside each other
+  if (frame === 'plain' || frame === 'wave' || frame === 'zigzag') pairs.forEach(([core, glow], i) => {
+    const k = -i * 3.8, f = frame === 'wave' ? (s) => k + 2.2 * Math.sin((2 * Math.PI * s) / 15) : frame === 'zigzag' ? (s) => k + 2.4 * tri(s, 10) : () => k;
+    for (const r of runs) { const d = trace(o, r[0], r[1], f, frame === 'zigzag' ? 2.5 : 1.5, r[2]); light(body, ctx, d, core, glow, { cls: `tube-${i}` }); spots.push([d, core, glow, i]); }
+  });
+  if (frame === 'gradient') { // every colour round one tube, turning slowly
+    const gid = `${ctx.id}g`, hid = `${ctx.id}h`, cores = pairs.map((p) => p[0]), glows = pairs.map((p) => p[1]);
+    const grad = (id, cs) => mk('linearGradient', { id, gradientUnits: 'userSpaceOnUse', x1: 0, y1: 0, x2: W, y2: H }, [...[...cs, ...cs.slice(0, 1)].map((c, i, all) => mk('stop', { offset: (i / (all.length - 1)).toFixed(3), 'stop-color': c })),
+      ...(still() ? [] : [mk('animateTransform', { attributeName: 'gradientTransform', type: 'rotate', from: `0 ${W / 2} ${H / 2}`, to: `360 ${W / 2} ${H / 2}`, dur: '12s', repeatCount: 'indefinite' })])]);
+    const two = cores.length > 1 ? cores : [cores[0], glows[0]], twoG = glows.length > 1 ? glows : [glows[0], cores[0]];
+    ctx.defs.append(grad(gid, two), grad(hid, twoG));
+    for (const r of runs) { const d = trace(o, r[0], r[1], () => 0, 1.5, r[2]); light(body, ctx, d, `url(#${gid})`, `url(#${hid})`, { w: 2.8 }); spots.push([d, '#ffffff', twoG[0], 0]); }
+  }
+  if (frame === 'striped' || frame === 'checkered') { // a strip: bands (or checks) of the colours, flowing along it when it chases
+    const cols = N > 1 ? pairs.map((p) => p[0]) : [pairs[0][0], pairs[0][1]], wS = 5, P = wS * cols.length;
+    for (const r of runs) { const d = trace(o, r[0], r[1], () => 0, 1.5, r[2]);
+      light(body, ctx, d, cols[cols.length - 1], pairs[0][1], { w: 4.6 });
+      if (frame === 'striped') cols.slice(0, -1).forEach((c, j) => light(body, ctx, d, c, pairs[0][1], { w: 4.6, cap: 'butt', dash: `${wS} ${P - wS}`, cls: 'flow', style: { '--o': `${-j * wS}px`, '--P': `${P}px` }, offset: -j * wS }));
+      else [-1.2, 1.2].forEach((k, lane) => { const dl = trace(o, r[0], r[1], () => k, 1.5, r[2]); light(body, ctx, dl, cols[0], pairs[0][1], { w: 2.3, cap: 'butt', dash: '4 4', cls: 'flow', style: { '--o': `${lane * 4}px`, '--P': '8px' }, offset: lane * 4 }); });
+      spots.push([d, cols[0], pairs[0][1], 0]); }
+  }
+  if (frame === 'twist') { // a braid: one strand per colour pair (one strand wraps a faint rod), passing over and under
+    const n = N, A = 2.7, lam = 13, back = mk('g', { class: 'twist-back' }), front = mk('g', { class: 'twist-front' }); body.append(back, front);
+    for (const r of runs) {
+      if (n === 1) light(back, ctx, trace(o, r[0], r[1], () => 0, 1.5, r[2]), pairs[0][1], pairs[0][1], { w: 1.6, dim: true });
+      pairs.forEach(([core, glow], i) => {
+        const ph = (2 * Math.PI * i) / Math.max(2, n), th = (s) => (2 * Math.PI * s) / lam + ph, step = 0.9;
+        let seg = [], isFront = null; const flush = () => { if (seg.length > 1) { const d = `M${seg.join('L')}`; if (isFront) { front.append(mk('path', { d, fill: 'none', stroke: spec.mount.color || '#07040f', 'stroke-width': 5.4, 'stroke-linecap': 'round', class: 'sep' })); light(front, ctx, d, core, glow, { w: 2.2 }); } else light(back, ctx, d, core, glow, { w: 2, dim: true }); } };
+        for (let s = r[0]; s <= r[1] + 1e-6; s += step) { const f = Math.cos(th(s)) > 0, p = off(o, s, A * Math.sin(th(s))), pt = `${p.x.toFixed(2)} ${p.y.toFixed(2)}`;
+          if (isFront !== null && f !== isFront) { seg.push(pt); flush(); seg = [pt]; } else seg.push(pt); isFront = f; }
+        flush();
+      });
+      spots.push([trace(o, r[0], r[1], () => 0, 1.5, r[2]), pairs[0][0], pairs[0][1], 0, true]); // a braid's chase is a glow passing along it
+    }
+  }
+  // lamps: separate lights round the edge, taking turns in the colour pairs
+  const lamps = [];
+  if (frame === 'dashed' || frame === 'dotted' || (frame === 'bulbs' && who !== 'house')) {
+    const gap = frame === 'dashed' ? 11 : frame === 'dotted' ? 7.5 : 11;
+    for (const r of runs) { const n = Math.max(1, Math.round(runLen(r) / gap)); for (let i = 0; i < n; i++) { const s = r[0] + (runLen(r) * (i + (r[2] ? 0 : 0.5))) / n, p = o.at(s);
+      lamps.push({ p, s, d: frame === 'dashed' ? `M${(p.x - Math.cos(p.a) * 3.4).toFixed(2)} ${(p.y - Math.sin(p.a) * 3.4).toFixed(2)}L${(p.x + Math.cos(p.a) * 3.4).toFixed(2)} ${(p.y + Math.sin(p.a) * 3.4).toFixed(2)}` : null, r: frame === 'dotted' ? 1.6 : 2.6 }); } }
+  }
+  const lampG = mk('g', { class: 'lamps' }); body.append(lampG);
+  lamps.sort((a, b) => a.s - b.s).forEach((l, i) => { const [core, glow] = pairs[i % N];
+    const g = l.d ? light(lampG, ctx, l.d, core, glow, { w: 2.6 }) : light(lampG, ctx, dotD(l.p.x, l.p.y, l.r), core, glow, { fill: true, hotD: dotD(l.p.x, l.p.y, l.r * 0.45) });
+    g.classList.add('lamp'); g.style.setProperty('--i', i); g.style.setProperty('--n', lamps.length); g.style.setProperty('--r', ((i * 7919) % 13) / 13); if (i % 2) g.classList.add('odd'); });
+  // the symbols, lit like lamps (they chase, breathe and twinkle with the frame)
+  const edgeG = mk('g', { class: 'edge-syms' }); lights.append(edgeG);
+  marks.forEach((s, i) => { const [core, glow] = pairs[i % N], g = glyph(edgeG, ctx, spec.edge, o.at(s), frame === 'symbols' ? 12 : 13, core, glow);
+    g.classList.add('lamp'); g.style.setProperty('--i', i); g.style.setProperty('--n', marks.length); g.style.setProperty('--r', ((i * 7919) % 13) / 13); if (i % 2) g.classList.add('odd'); });
+  // the chase: a brighter stretch of the same light running round each tube, seamlessly (its dash pattern is exactly
+  // the loop's length, and each stretch between symbols starts where it falls in the loop)
+  if (spots.length) {
+    const spotG = mk('g', { class: 'spots' }); body.append(spotG);
+    const byTube = new Map(); for (const sp of spots) { if (!byTube.has(sp[3])) byTube.set(sp[3], []); byTube.get(sp[3]).push(sp); }
+    for (const list of byTube.values()) {
+      const lens = list.map(([d]) => { const p = mk('path', { d }); svg.append(p); let L = 0; try { L = p.getTotalLength(); } catch { L = 0; } p.remove(); return L; }), total = lens.reduce((a, b) => a + b, 0) || 1;
+      let at = 0; list.forEach(([d, core, glow, , haloOnly], i) => { const g = Math.min(total * 0.12, 70);
+        light(spotG, ctx, d, hot(core === '#ffffff' ? glow : core), glow, { w: haloOnly ? 7 : 2.8, haloOnly, cls: 'spot', dash: `${g.toFixed(1)} ${(total - g).toFixed(1)}`, offset: at.toFixed(1), style: { '--L': `${total.toFixed(1)}px`, '--s0': `${at.toFixed(1)}px` } }); at += lens[i]; });
+    }
+  }
+  // a swap: the tubes trade colours (the next pair's, or the glow's), fading across and back
+  if (spec.motion === 'swap' && spots.length) {
+    const swapG = mk('g', { class: 'swaps' }); body.append(swapG);
+    for (const [d, , , i] of spots) { const [core, glow] = N > 1 ? pairs[(i + 1) % N] : [pairs[0][1], pairs[0][0]]; light(swapG, ctx, d, core, glow, { w: frame === 'striped' || frame === 'checkered' ? 4.6 : 2.4 }); }
+  }
+  if (spec.blinks?.border?.on) body.classList.add('bk', `bk-${spec.blinks.border.pattern || 'breathe'}`);
+  if (spec.blinks?.edge?.on) edgeG.classList.add('bk', `bk-${spec.blinks.edge.pattern || 'breathe'}`);
+}
+
+// ---------- the name's decorations: the large symbol after it and the crown off its first letter ----------
+function letterBoxes(nameEl, origin, fs, k = 1) { // k: how much the page is scaled (the stage fits the window)
+  const node = [...nameEl.childNodes].find((n) => n.nodeType === 3) || nameEl.firstChild; if (!node?.textContent) return [];
+  const out = [], range = document.createRange();
+  for (let i = 0; i < node.textContent.length; i++) { if (/\s/.test(node.textContent[i])) continue; range.setStart(node, i); range.setEnd(node, i + 1); const r = range.getBoundingClientRect(); if (!r.width) continue;
+    // the ink, not the font's whole line: script capitals reach about 0.7em over the baseline
+    out.push({ l: (r.left - origin.left) / k + fs * 0.04, r: (r.right - origin.left) / k - fs * 0.04, t: (r.top - origin.top) / k + fs * 0.16, b: (r.bottom - origin.top) / k - fs * 0.2, i }); }
+  return out;
+}
+function drawDeco(svg, el, spec) {
+  svg.replaceChildren(); const nameEl = el.querySelector('.neon-name'); if (!nameEl) return;
+  const ctx = defsFor(svg); ctx.svg = svg;
+  const origin = svg.getBoundingClientRect(), fs = parseFloat(getComputedStyle(nameEl).fontSize) || 27, k = origin.width / (svg.clientWidth || origin.width || 1) || 1, boxes = letterBoxes(nameEl, origin, fs, k);
+  if (!boxes.length) return;
+  const avoid = boxes.map((b) => ({ l: b.l - 1.5, r: b.r + 1.5, t: b.t - 1.5, b: b.b + 1.5 })), [core, glow] = spec.name;
+  if (spec.symbol?.on && SYMBOLS[spec.symbol.id]) {
+    const last = boxes[boxes.length - 1], size = fs * 1.15, x = last.r + size * 0.3, y = (last.t + last.b) / 2;
+    const g = litSymbol(svg, ctx, spec.symbol.id, { x, y, k: size / 24 }, spec.symbol.colors?.[0] || core, spec.symbol.colors?.[1] || glow, { avoid, w: 2.4, cls: `name-sym motion-${spec.symbol.motion}` });
+    if (spec.blinks?.symbol?.on) g.classList.add('bk', `bk-${spec.blinks.symbol.pattern || 'breathe'}`);
+  }
+  const lvl = spec.crown?.level; if (lvl && CROWNS[lvl]) {
+    // room above the name for the crown, so it hangs inside the sign
+    const room = `${Math.round(fs * (0.62 + lvl * 0.07) * 0.72)}px`; if (el.querySelector('.nsign')?.style.paddingTop !== room) { el.querySelector('.nsign').style.paddingTop = room; return requestAnimationFrame(() => drawDeco(svg, el, spec)); }
+    const first = boxes[0], hgt = fs * (0.62 + lvl * 0.07), k = hgt / 24, cc = spec.crown.colors || spec.border;
+    const g = litSymbol(svg, ctx, CROWNS[lvl], { x: first.l + (first.r - first.l) * 0.32, y: first.t - hgt * 0.22, k, deg: -17, cx: 14, cy: 19 }, cc[0], cc[1], { avoid, w: 2, cls: `crown crown-${lvl}` });
+    if (spec.blinks?.crown?.on) g.classList.add('bk', `bk-${spec.blinks.crown.pattern || 'breathe'}`);
+  }
 }
 
 // Dress an element as a sign: its colours (as the --who-part1/2 variables the table's styles read), its frame, mount,
-// edge symbols, motion and blink. Can be called again to redress it.
+// symbols, crown, motion and blinks. Can be called again to redress it.
 export function dressSign(el, spec, who) {
   for (const p of PARTS) spec[p].forEach((c, i) => el.style.setProperty(`--${who}-${p}${i + 1}`, c));
   el.style.setProperty('--sf1', spec.border[0]); el.style.setProperty('--sf2', spec.border[1]);
   el.style.setProperty('--sign-r', `${Math.max(0, +spec.radius || 0)}px`);
   el.style.setProperty('--mount', spec.mount.color || 'transparent'); el.style.setProperty('--mount-img', safeUrl(spec.mount.image) || 'none');
-  el.classList.remove(...[...el.classList].filter((c) => c.startsWith('frame-') || c.startsWith('blink-') || c.startsWith('motion-')));
+  el.classList.remove(...[...el.classList].filter((c) => /^(frame|motion|blink|bk)-/.test(c)));
   el.classList.add('neonsign', `frame-${spec.frame}`, `motion-${spec.motion}`);
-  if (spec.blink.part !== 'none') el.classList.add(`blink-${spec.blink.part}`, `blink-${BLINKS.includes(spec.blink.pattern) ? spec.blink.pattern : 'breathe'}`);
-  for (const old of el.querySelectorAll(':scope > .sign-edge, :scope > .sign-frame')) old.remove();
+  for (const part of ['name', 'cls']) { const b = spec.blinks?.[part]; if (b?.on) el.classList.add(`blink-${part}`, `bk-${part}-${BLINKS.includes(b.pattern) ? b.pattern : 'breathe'}`); }
+  for (const old of el.querySelectorAll(':scope > .sign-frame, .sign-deco')) old.remove();
   el._signObs?.disconnect();
-  if (spec.frame === 'none' && !(spec.edge && spec.edgeAt !== 'none')) return el;
-  const svg = mk('svg', { class: 'sign-frame', 'aria-hidden': 'true' }); el.append(svg);
+  const nsign = el.querySelector('.nsign'); if (nsign) { nsign.classList.toggle('has-symbol', !!spec.symbol?.on); nsign.classList.toggle('has-crown', !!spec.crown?.level); }
+  const svg = spec.frame === 'none' && spec.edgeAt === 'none' ? null : mk('svg', { class: 'sign-frame', 'aria-hidden': 'true' }); if (svg) el.append(svg);
+  const deco = nsign && (spec.symbol?.on || spec.crown?.level) ? mk('svg', { class: 'sign-deco', 'aria-hidden': 'true' }) : null; if (deco) nsign.append(deco);
   let last = '';
-  const redraw = () => { const w = el.offsetWidth, h = el.offsetHeight, key = `${w}x${h}`; if (key === last) return; last = key; drawFrame(svg, spec, w, h, who); };
+  const redraw = () => { const w = el.offsetWidth, h = el.offsetHeight, key = `${w}x${h}`; if (key === last) return; last = key; if (svg) drawFrame(svg, spec, w, h, who); if (deco) drawDeco(deco, el, spec); };
   if (typeof ResizeObserver !== 'undefined') { el._signObs = new ResizeObserver(redraw); el._signObs.observe(el); }
   requestAnimationFrame?.(redraw);
+  document.fonts?.ready?.then(() => { last = ''; redraw(); }); // the script face changes the letters' shapes once it loads
   return el;
 }

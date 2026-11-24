@@ -459,20 +459,31 @@ its hover.
 - Every Build-mode option has a hover saying what it is for (`help.<label key>` in `js/text/en.js`, shown by `lab()`).
 
 ### Neon signs
-Every seat at the table is a neon sign, and so is the House's (`js/ui/sign.js`). A sign has a tube and glow colour for
-its frame, name and class; a frame drawn as an SVG over the sign (tubes: tube, double, triple, rope, zigzag, wave,
-gradient; lamps: dashes, dots, bulbs, or *symbols*, the edge symbol all the way round; or none) and corner rounding;
-a frame **motion** (chase, breathe, swap, twinkle, still: lamps do it one by one, tubes along their length, with a
-glint running round a chasing tube); a symbol at the corners or along the top and bottom, which replaces the frame
-under it (no `$`; signs, stars of four to eight points and stars in or round shapes, shapes, card suits, dice, a
-drawn skull and the skull and crossbones, all shown as text rather than emoji); a mount (a backing colour and an image, by URL or from a file); and one part
-that blinks (breathe, pulse, flicker or alternate). Every blink is slow and soft (well under three changes a second,
-never fully dark) and all of them, the House's bulbs included, stop under reduced motion. There is no separate Neon
-tool: the Roller maker lists *Every Roller's sign* (`D.NEON.you`) above the Rollers and gives each its own
-(`ROLLERS[id].sign`); the Opponent maker lists *Every opponent's sign* and *The House's sign* (`D.NEON.them / house`)
-above the opponents and gives each its own (`ROSTER[id].sign`). An own sign is laid over its shared look. The House's bulb flash was slowed to stay under three
-flashes a second.
-
+Every seat at the table is a neon sign, and so is the House's (`js/ui/sign.js`, symbols in `js/ui/symbols.js`).
+- **One light.** Every tube, lamp, symbol and crown is lit the same way: a halo in its glow colour, blurred along the
+  tube's own path (a wavy tube glows wavy), the tube, and a hot core. Every motion moves that same light: a chase
+  runs a brighter stretch of the tube round it, seamlessly (its dash is exactly the loop's length, so it leaves the
+  end as it enters the start), and lamps light in turn at the same pace; a breath dims and lifts all of it; a swap
+  fades the colours across; a twinkle flickers lamp by lamp and shimmers a tube's glow.
+- **Frames.** Tubes: plain, wavy, zigzag, gradient. Light strips: striped, checkered, twisted strands (a real braid,
+  each strand passing over and under, with a dark gap where it crosses). Lamps: dashes, dots, bulbs, or the edge
+  symbol all the way round. A frame takes one to three colour pairs: one tube each for plain, wavy and zigzag; the
+  colours of a gradient (more colours, not more tubes); the stripes, checks or strands of a strip; the lamps in turn.
+- **Symbols** are drawn tubes, not font glyphs (signs, stars of four to eight points, stars in rings and rings in
+  stars, shapes, suits, dice, a skull, skull and crossbones, a crown, a moon, a bolt, a note, a horseshoe, cherries,
+  a seven, a flame, a cocktail; or any character, set as text). At the corners or along the top and bottom, the frame
+  stops short of each symbol with rounded tube ends and starts again after it.
+- **The name's symbol**: an optional large symbol after the name, its last letter just over it, with its own motion.
+- **Crowns**: a High Roller wears its floor's crown, tilted off the first letter of its name, grander floor by floor.
+  Clearing one puts its crown in your crown case; wear it from your suite (it shows on your sign for the run, and does
+  nothing else). Where a crown or a symbol meets the letters, its tube stops short of them with a rounded end, as a
+  real sign's tube passes behind another.
+- **Blinks**: the name, class line, frame, edge symbols, name symbol and crown can each blink, each in its own pattern.
+- Signs saved before keep their look: double and triple tubes become two and three colour pairs, a rope a twist, the
+  one blinking part its toggle, a symbol character its drawn symbol. The class line under a High Roller's name is its
+  class (High Roller is its rank, in its hover).
+Each sign is edited in Build mode's Roller and Opponent makers. Everything moves slowly and softly, and nothing moves
+for players who ask their system for reduced motion.
 ### Classes, Rollers and Opponents
 - A **Class** (`CLASSES`) is attributes only: Draw, Bid, Roll (TIP), Stack height, Bet rows, Stake rows (BVD), a
   starting Charisma, Cunning and Conviction (`ccc`, which the table's rows then add to), the attribute it leans on
