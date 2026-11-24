@@ -1,4 +1,4 @@
-// The lounge's music: the rags in MUSIC, one after another on a loop, quietly under the game. Browsers only let
+// The lounge's music: the band's set in MUSIC, one after another on a loop, quietly under the game. Browsers only let
 // sound start after the player touches the page, so it begins on the first click. The ♪ button in the corner
 // turns it on or off (remembered in this browser); its hover names the tune.
 import { MUSIC } from '../content/assets.js';
@@ -19,7 +19,7 @@ export function initMusic(stage) {
     audio.play().catch(() => {});
   }
   const button = btn('♪', () => { on = !on; keep(on); if (on) play(); else audio?.pause(); mark(); },
-    () => (on ? t('music.playing', { title: now().title, by: now().by, year: now().year }) : t('music.off')), 'small music-btn');
+    () => (on ? t('music.playing', { title: now().title, style: now().by }) : t('music.off')), 'small music-btn');
   const mark = () => button.classList.toggle('muted', !on);
   mark(); stage.append(button);
   const first = () => { document.removeEventListener('pointerdown', first, true); if (on) play(); };

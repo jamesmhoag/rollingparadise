@@ -16,13 +16,17 @@ export const NEON = {
   them: { border: ["#ff4d6a", "#ffa13d"], name: ["#9dff6e", "#2fd0ff"], cls: ["#b98bff", "#ff6edc"] },
 };
 
-// the lounge's music, played in turn on a loop: Scott Joplin's rags, all published 1901-1909 and in the public domain,
-// from the public-domain Mutopia Project engravings, played by the game's own piano (tools/render-music.py)
+// the lounge band's set, played in turn on a loop: original tunes written for Rolling Paradise, one per corner of
+// Vegas jazz from the 1940s to the 1980s, composed and rendered by tools/jazz (FluidR3 GM soundfont, MIT licence)
 export const MUSIC = [
-  { title: "The Easy Winners", by: "Scott Joplin", year: 1901, src: "assets/music/easy-winners.mp3" },
-  { title: "Wall Street Rag", by: "Scott Joplin", year: 1909, src: "assets/music/wall-street-rag.mp3" },
-  { title: "The Entertainer", by: "Scott Joplin", year: 1902, src: "assets/music/the-entertainer.mp3" },
-  { title: "Solace", by: "Scott Joplin", year: 1909, src: "assets/music/solace.mp3" },
+  { title: "Neon Strip", by: "1950s lounge swing", src: "assets/music/neon-strip.mp3" },
+  { title: "Velvet Rope", by: "1960s bossa nova", src: "assets/music/velvet-rope.mp3" },
+  { title: "High Roller", by: "1960s showroom big band", src: "assets/music/high-roller.mp3" },
+  { title: "Last Call", by: "late-1950s ballad", src: "assets/music/last-call.mp3" },
+  { title: "Velour", by: "1970s jazz-funk", src: "assets/music/velour.mp3" },
+  { title: "Lucky Streak", by: "1940s jump blues", src: "assets/music/lucky-streak.mp3" },
+  { title: "Satin Dice", by: "1980s smooth jazz", src: "assets/music/satin-dice.mp3" },
+  { title: "Hammond Hour", by: "1960s soul-jazz organ", src: "assets/music/hammond-hour.mp3" },
 ];
 
 export const IMAGES = {
