@@ -1705,6 +1705,48 @@ function* sky(b, s) {
   if (!s.sky.some((o) => o.kind === 'blizzard') && ((b.weather.includes('blizzard') && b.rng.chance(0.2)) || (s.calamities.includes('blizzard') && b.turn % 4 === 3)))
     { s.sky.push({ id: b.nextId++, kind: 'blizzard', r: -1, c: -1, str: str() }); yield step(b, tx('feed.a-blizzard-rolls-in', { name: s.name }), [], 'weather'); }
 }
+// ---------- creatures: a third hand in each House phase ----------
+// A creature acts in the House phase of its type (CREATURES[kind].type: what its action is, an Investment, Insurance,
+// Expense or Correction), after both Rollers have played theirs, so a trick aimed at it or its stack lands first and
+// what it does is something you answer in the next turn's plays.
+export const creatureType = (kind) => CREATURES[kind]?.type || 'expense';
+const actingIn = (b, type) => (b.creatures || []).filter((x) => !x.gone && x.arrive <= b.turn && x.acted !== b.turn && creatureType(x.kind) === type);
+function* creaturePhase(b, type) {
+  for (const cr of actingIn(b, type)) { const s = b.sides[cr.side]; b.ctx = { phase: type, who: cr.side, creature: true }; cr.acted = b.turn; yield* creatureAct(b, s, cr); }
+}
+function* creatureAct(b, s, cr) {
+  let text = '', at = null;
+    if (cr.kind === 'mole') { // digs up an empty space
+      const free = allCells(s).filter((x) => !x.cell.hole && !x.cell.chips.length && !x.cell.link && !x.cell.roost);
+      if (free.length) { at = b.rng.pick(free); at.cell.hole = true; delete at.cell.puddle; text = tx('feed.a-mole-digs-a'); } else text = tx('feed.a-mole-finds-nowhere');
+    } else if (cr.kind === 'ghost') { // haunts a row with stacks in it
+      if (cr.r < 0) { const rows = [...new Set(allCells(s).filter((x) => solidCount(x.cell)).map((x) => x.r))]; cr.r = rows.length ? b.rng.pick(rows) : 0; cr.c = Math.floor(s.dims.cols / 2); }
+      at = { r: cr.r, c: cr.c }; text = tx('feed.a-ghost-haunts-a');
+    } else if (cr.kind === 'ghostship') { // sails across empty spaces to a Gold-topped stack and steals the Gold
+      const gold = allCells(s).filter((x) => { const i = topSolid(x.cell); return i >= 0 && x.cell.chips[i].gold && !x.cell.chips[i].treasure; });
+      const empty = allCells(s).filter((x) => !x.cell.chips.length && !x.cell.hole && !x.cell.link && !x.cell.roost);
+      if (cr.r < 0) { const st = b.rng.pick(empty.length ? empty : allCells(s)); cr.r = st.r; cr.c = st.c; }
+      const d = (x, y) => Math.max(Math.abs(x.r - y.r), Math.abs(x.c - y.c)), goal = gold.sort((x, y) => d(x, cr) - d(y, cr))[0];
+      if (goal && d(goal, cr) <= 1) { const i = topSolid(goal.cell), v = goal.cell.chips.splice(i, 1)[0]; cr.hold.push(v); b.fx[v.id] = 'abduct'; s.destroyed += v.value; emptyOut(b, goal.cell); text = tx('feed.the-ghost-ship-steals', { value: v.value }); at = { r: cr.r, c: cr.c }; }
+      else { const step1 = empty.filter((x) => d(x, cr) === 1).sort((x, y) => (goal ? d(x, goal) - d(y, goal) : b.rng.next() - 0.5))[0];
+        if (step1) { cr.r = step1.r; cr.c = step1.c; } at = { r: cr.r, c: cr.c }; text = goal ? tx('feed.the-ghost-ship-sails') : tx('feed.the-ghost-ship-drifts'); }
+    } else {
+      const live = allCells(s).filter((x) => solidCount(x.cell) && (cr.kind === 'dragon' || !anchored(x.cell)));
+      if (!live.length) { cr.gone = true; return; }
+      const stay = cr.kind === 'mothership' && cr.r >= 0 && solidCount(s.grid[cr.r][cr.c]) && !anchored(s.grid[cr.r][cr.c]) ? { r: cr.r, c: cr.c, cell: s.grid[cr.r][cr.c] } : null;
+      at = stay || b.rng.pick(live); const i = topSolid(at.cell);
+      if (cr.kind === 'ufo' || cr.kind === 'mothership') { const v = at.cell.chips.splice(i, 1)[0]; b.fx[v.id] = 'abduct'; if (isPayable(v)) s.destroyed += v.value; text = cr.kind === 'ufo' ? tx('feed.a-ufo-abducts-a') : tx('feed.the-mothership-beams-up'); if (cr.kind === 'mothership' && !solidCount(at.cell)) cr.life = 1; }
+      else if (cr.kind === 'dragon') { if (!hasResist(at.cell, 'burn') && !at.cell.chips.some((ch) => ch.kind === 'burn')) at.cell.chips.push(mkHazard(b, 'burn')); text = tx('feed.a-dragon-breathes-fire'); }
+      else if (cr.kind === 'unicorn') { for (let k = at.cell.chips.length - 1; k >= 0; k--) if (!isHazard(at.cell.chips[k])) transform(b, at.cell, k); text = tx('feed.a-unicorn-transforms-a'); }
+      else { transform(b, at.cell, i); text = tx('feed.a-fairy-transforms-a'); }
+      emptyOut(b, at.cell);
+    }
+    if (at) { cr.r = at.r; cr.c = at.c; }
+    if (--cr.life <= 0) cr.gone = true;
+    const nest = cr.gone && cr.roost && !cr.bountied ? allCells(s).find((x) => x.cell.roost?.id === cr.roost) : null;
+    if (nest) { nest.cell.chips.push(mkChip(b, 'egg', 0, { shop: 'egg', hits: shopVars('egg').hits || 5, prog: 0, foe: s.idx })); text += tx('feed.nests-and-lays-an'); }
+    yield step(b, tx('feed.in-s-position', { text, name: s.name, v: cr.gone ? tx('feed.then-leaves') : '' }), at ? [ref(s, at.r, at.c)] : [], 'creature');
+}
 function* ticks(b) {
   for (const s of b.sides) {
     b.ctx = { phase: 'house', who: s.idx };
@@ -1772,39 +1814,6 @@ function* ticks(b) {
     for (const { cell } of allCells(s)) if (cell.roost && !cell.chips.some((ch) => ch.kind === 'egg') && b.turn % 3 === 0 && !b.creatures.some((x) => x.roost === cell.roost.id && !x.gone))
       b.creatures.push(newCreature(b, 'dragon', s.idx, b.turn, { roost: cell.roost.id }));
     if (s.sky.some((o) => o.kind === 'moon') && b.turn % 4 === 0) b.creatures.push(newCreature(b, 'ghost', s.idx, b.turn)); // the Moon brings Ghosts out
-    for (const cr of b.creatures.filter((x) => x.side === s.idx && !x.gone && x.arrive <= b.turn)) {
-      let text = '', at = null;
-      if (cr.kind === 'mole') { // digs up an empty space
-        const free = allCells(s).filter((x) => !x.cell.hole && !x.cell.chips.length && !x.cell.link && !x.cell.roost);
-        if (free.length) { at = b.rng.pick(free); at.cell.hole = true; delete at.cell.puddle; text = tx('feed.a-mole-digs-a'); } else text = tx('feed.a-mole-finds-nowhere');
-      } else if (cr.kind === 'ghost') { // haunts a row with stacks in it
-        if (cr.r < 0) { const rows = [...new Set(allCells(s).filter((x) => solidCount(x.cell)).map((x) => x.r))]; cr.r = rows.length ? b.rng.pick(rows) : 0; cr.c = Math.floor(s.dims.cols / 2); }
-        at = { r: cr.r, c: cr.c }; text = tx('feed.a-ghost-haunts-a');
-      } else if (cr.kind === 'ghostship') { // sails across empty spaces to a Gold-topped stack and steals the Gold
-        const gold = allCells(s).filter((x) => { const i = topSolid(x.cell); return i >= 0 && x.cell.chips[i].gold && !x.cell.chips[i].treasure; });
-        const empty = allCells(s).filter((x) => !x.cell.chips.length && !x.cell.hole && !x.cell.link && !x.cell.roost);
-        if (cr.r < 0) { const st = b.rng.pick(empty.length ? empty : allCells(s)); cr.r = st.r; cr.c = st.c; }
-        const d = (x, y) => Math.max(Math.abs(x.r - y.r), Math.abs(x.c - y.c)), goal = gold.sort((x, y) => d(x, cr) - d(y, cr))[0];
-        if (goal && d(goal, cr) <= 1) { const i = topSolid(goal.cell), v = goal.cell.chips.splice(i, 1)[0]; cr.hold.push(v); b.fx[v.id] = 'abduct'; s.destroyed += v.value; emptyOut(b, goal.cell); text = tx('feed.the-ghost-ship-steals', { value: v.value }); at = { r: cr.r, c: cr.c }; }
-        else { const step1 = empty.filter((x) => d(x, cr) === 1).sort((x, y) => (goal ? d(x, goal) - d(y, goal) : b.rng.next() - 0.5))[0];
-          if (step1) { cr.r = step1.r; cr.c = step1.c; } at = { r: cr.r, c: cr.c }; text = goal ? tx('feed.the-ghost-ship-sails') : tx('feed.the-ghost-ship-drifts'); }
-      } else {
-        const live = allCells(s).filter((x) => solidCount(x.cell) && (cr.kind === 'dragon' || !anchored(x.cell)));
-        if (!live.length) { cr.gone = true; continue; }
-        const stay = cr.kind === 'mothership' && cr.r >= 0 && solidCount(s.grid[cr.r][cr.c]) && !anchored(s.grid[cr.r][cr.c]) ? { r: cr.r, c: cr.c, cell: s.grid[cr.r][cr.c] } : null;
-        at = stay || b.rng.pick(live); const i = topSolid(at.cell);
-        if (cr.kind === 'ufo' || cr.kind === 'mothership') { const v = at.cell.chips.splice(i, 1)[0]; b.fx[v.id] = 'abduct'; if (isPayable(v)) s.destroyed += v.value; text = cr.kind === 'ufo' ? tx('feed.a-ufo-abducts-a') : tx('feed.the-mothership-beams-up'); if (cr.kind === 'mothership' && !solidCount(at.cell)) cr.life = 1; }
-        else if (cr.kind === 'dragon') { if (!hasResist(at.cell, 'burn') && !at.cell.chips.some((ch) => ch.kind === 'burn')) at.cell.chips.push(mkHazard(b, 'burn')); text = tx('feed.a-dragon-breathes-fire'); }
-        else if (cr.kind === 'unicorn') { for (let k = at.cell.chips.length - 1; k >= 0; k--) if (!isHazard(at.cell.chips[k])) transform(b, at.cell, k); text = tx('feed.a-unicorn-transforms-a'); }
-        else { transform(b, at.cell, i); text = tx('feed.a-fairy-transforms-a'); }
-        emptyOut(b, at.cell);
-      }
-      if (at) { cr.r = at.r; cr.c = at.c; }
-      if (--cr.life <= 0) cr.gone = true;
-      const nest = cr.gone && cr.roost && !cr.bountied ? allCells(s).find((x) => x.cell.roost?.id === cr.roost) : null;
-      if (nest) { nest.cell.chips.push(mkChip(b, 'egg', 0, { shop: 'egg', hits: shopVars('egg').hits || 5, prog: 0, foe: s.idx })); text += tx('feed.nests-and-lays-an'); }
-      yield step(b, tx('feed.in-s-position', { text, name: s.name, v: cr.gone ? tx('feed.then-leaves') : '' }), at ? [ref(s, at.r, at.c)] : [], 'creature');
-    }
     for (const { r, c, cell } of allCells(s)) if (cell.worm && cell.chips.length) { // pulled through to the other side
       const o = b.sides[1 - s.idx], free = allCells(o).filter((x) => !x.cell.hole && !x.cell.chips.length), moving = cell.chips.splice(0);
       if (free.length) { const x = b.rng.pick(free); x.cell.chips = moving; yield step(b, tx('feed.chip-pulled-through-to', { name: CALAMITIES.wormhole.name, movingN: moving.length, name2: o.name }), [ref(s, r, c), ref(o, x.r, x.c)], 'hazard'); }
@@ -2053,9 +2062,21 @@ function* chipPhase(b, s, type) {
 export const phaseOf = (id) => TRICKS[id].early || TRICKS[id].type;
 // Each trick of this type plays. A Forgetter on the opponent negates a trick whose dice total its count; a Repeater
 // on your side plays a trick whose dice total its count again; each Mimic on top plays one of them again.
-function* sidePhase(b, s, type, cx) {
+// The spaces a play reaches, as { side, r, c } keys
+function reach(b, s, e) {
+  const def = TRICKS[e.trick.id]; if (!e.target || def.approach === 'none') return [];
+  const t = b.sides[e.target.side]; return affected(b, t, def, e.target, e.dice.length).map((x) => `${t.idx}:${x.r}:${x.c}`);
+}
+// Plays that reach a space the other Roller's play in the same phase also reaches, when the space is the player's own:
+// the owner of a contested space plays on it first.
+export function ownerFirst(b, plays) {
+  const out = new Set(), R = plays.map((p) => ({ ...p, keys: new Set(reach(b, p.s, p.e)) }));
+  for (const x of R) for (const y of R) if (x.s !== y.s) for (const k of x.keys) if (y.keys.has(k) && +k.split(':')[0] === x.s.idx) out.add(x.e);
+  return out;
+}
+function* sidePhase(b, s, type, cx, keep = () => true, firstPass = false) {
   const o = b.sides[1 - s.idx], done = [];
-  for (const e of s.run.filter((x) => x.state === 'play' && phaseOf(x.trick.id) === type)) {
+  for (const e of s.run.filter((x) => x.state === 'play' && phaseOf(x.trick.id) === type && keep(x))) {
     cx.uid = e.uid; const roll = e.dice.length ? sum(e.dice, (d) => d.value) : null;
     const fg = roll != null && tops(o, 'forgetter').find((x) => x.n === roll && (o.forgotUsed[x.ch.id] || 0) < 1 + x.charge);
     if (fg) o.forgotUsed[fg.ch.id] = (o.forgotUsed[fg.ch.id] || 0) + 1;
@@ -2063,6 +2084,7 @@ function* sidePhase(b, s, type, cx) {
     if (roll == null || fg) continue; done.push(e);
     for (const rp of tops(s, 'repeater').filter((x) => x.n === roll)) for (let k = 0; k <= rp.charge; k++) yield* play(b, s, e, { again: 'Repeater' });
   }
+  if (firstPass) return; // Mimics and lingering made tricks play once, with the rest
   for (const mm of tops(s, 'mimic')) { void mm; if (!done.length) break; const e = b.rng.pick(done); cx.uid = e.uid; yield* play(b, s, e, { again: 'Mimic' }); }
   for (const ec of s.echoes.filter((x) => x.phase === type && x.from !== b.turn)) { // lingering made tricks play again with the same roll
     cx.uid = ec.e.uid; yield* play(b, s, ec.e, { again: 'Lingering' }); ec.left--; }
@@ -2083,13 +2105,17 @@ export function* resolve(b) {
   // Each phase is played for both Rollers at once. What a trick is worth is read from the table as it
   // stood when the phase was called, so neither Roller's play changes the other's in the same phase.
   for (const type of Object.keys(TYPES).sort((x, y) => TYPES[x].order - TYPES[y].order)) {
-    if (!plays.some((p) => phaseOf(p.e.trick.id) === type) && !b.sides.some((s) => chipWorkIn(s, type) || heldIn(s, type).length)) continue;
+    if (!plays.some((p) => phaseOf(p.e.trick.id) === type) && !b.sides.some((s) => chipWorkIn(s, type) || heldIn(s, type).length) && !actingIn(b, type).length) continue;
     b.ctx = { phase: type }; yield step(b, tx('feed.the-house-calls-s', { name: TYPES[type].name }), [], 'phase');
     if (b.sides.some((s) => heldIn(s, type).length)) yield* zip(b, b.sides.map((s) => deployHeld(b, s, type)), b.sides.map((s) => ({ phase: type, who: s.idx }))); // the held rewards go out
     if (b.sides.some((s) => chipWorkIn(s, type))) yield* zip(b, b.sides.map((s) => chipPhase(b, s, type)), b.sides.map((s) => ({ phase: type, who: s.idx })));
     for (const s of b.sides) s.fz = { ...s.mods };
+    // a space both Rollers' tricks reach: its owner's trick plays (and resolves) first, then the rest play together
+    const first = ownerFirst(b, plays.filter((p) => phaseOf(p.e.trick.id) === type));
+    if (first.size) { const c1 = b.sides.map((s) => ({ phase: type, who: s.idx, uid: null })); yield* zip(b, b.sides.map((s, i) => sidePhase(b, s, type, c1[i], (e) => first.has(e), true)), c1); }
     const cxs = b.sides.map((s) => ({ phase: type, who: s.idx, uid: null }));
-    yield* zip(b, b.sides.map((s, i) => sidePhase(b, s, type, cxs[i])), cxs);
+    yield* zip(b, b.sides.map((s, i) => sidePhase(b, s, type, cxs[i], (e) => !first.has(e))), cxs);
+    if (actingIn(b, type).length) yield* creaturePhase(b, type); // then the creatures whose action is of this type
     if (type === 'expense' && b.sides.some(anyDue)) { b.ctx = { phase: type }; yield step(b, tx('feed.the-house-settles-the'), [], 'settle'); yield* settleAll(b, type); }
     for (const s of b.sides) { b.ctx = { phase: type, who: s.idx }; yield* madeWork(b, s, type, plays.some((p) => p.s === s && phaseOf(p.e.trick.id) === type)); }
   }
@@ -2198,4 +2224,4 @@ export function summary(b, idx) {
 }
 
 // internals the tests drive directly
-export const _test = { deployHeld, blockedBy, madeWork, placeMade, engage, settleAll, feeShares, setDebt, ticks, play, sidePhase, growth, strike, water, freezeTop, newCreature, setHard, arrange, chipPhase, placeFx, addToMeter };
+export const _test = { deployHeld, creaturePhase, blockedBy, madeWork, placeMade, engage, settleAll, feeShares, setDebt, ticks, play, sidePhase, growth, strike, water, freezeTop, newCreature, setHard, arrange, chipPhase, placeFx, addToMeter };
