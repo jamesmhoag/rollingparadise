@@ -85,7 +85,7 @@ export function dimsWhy(run, extra = {}) {
 }
 // effective attributes: class + jacket + cards + rest + cheat tilts
 export function rollerStats(run, extra = {}) {
-  const K = D.CLASSES[run.cls], v = { ...K.tip, ...K.c, ...K.bvd };
+  const K = D.CLASSES[run.cls], v = { ...K.tip, charisma: 0, cunning: 0, conviction: 0, ...K.bvd }; // CCC: only what gear adds (the table earns the rest)
   const add = (mods) => { for (const [k, n] of Object.entries(mods || {})) v[k] = (v[k] || 0) + n; };
   add(D.JACKETS[run.jacket]?.mods); for (const id of run.cards) add(D.CARDS[id]?.mods);
   if (run.rest && run.rest.bouts > 0) add({ [K.primary]: run.rest.amt });
@@ -93,7 +93,7 @@ export function rollerStats(run, extra = {}) {
   for (let i = 0; i < (extra.position || 0); i++) v[bvdKeys[i % 3]] += 1;
   const dims = { cols: D.BASE_DIMS.cols, stackMax: Math.max(1, D.BASE_DIMS.stackMax + v.balance), meterRows: Math.max(1, D.BASE_DIMS.meterRows + v.versatility), barRows: Math.max(1, D.BASE_DIMS.barRows + v.depth) };
   return { v, dims, tip: { trickery: Math.max(1, v.trickery), ingenuity: Math.max(1, v.ingenuity), proficiency: Math.max(1, v.proficiency) },
-    c: { charisma: Math.max(0, v.charisma), cunning: Math.max(0, v.cunning), conviction: Math.max(0, v.conviction) } };
+    c: { charisma: v.charisma, cunning: v.cunning, conviction: v.conviction } }; // can be below 0: a jacket's cost comes off what the table earns
 }
 export const maxDenom = (floor) => Math.max(...D.DENOMS.filter((d) => d.floor <= Math.max(1, floor)).map((d) => d.value));
 export const denomsFor = (floor) => D.DENOMS.filter((d) => d.floor <= Math.max(1, floor)).map((d) => d.value);
@@ -109,7 +109,7 @@ function rosterOpts(id, o = {}) { const X = D.ROSTER[id]; if (!X) return o; retu
 export function genOpponent(run, floor, worthTarget, o = {}) {
   const X = o.roster ? D.ROSTER[o.roster] : null; if (X?.purse > 0) worthTarget = X.purse;
   const rng = run.rng, cls = o.cls || rng.pick(Object.keys(D.CLASSES)), K = D.CLASSES[cls], f = clamp(floor, 1, 4);
-  const tip = { ...K.tip }, c = { ...K.c }, bvd = { ...K.bvd };
+  const tip = { ...K.tip }, c = { charisma: 0, cunning: 0, conviction: 0 }, bvd = { ...K.bvd };
   for (const [k, v] of Object.entries(D.JACKETS[X?.jacket]?.mods || {})) { if (k in tip) tip[k] += v; else if (k in c) c[k] += v; else if (k in bvd) bvd[k] += v; } // its jacket
   if (floor >= 2) tip.proficiency++; if (floor >= 3) tip.ingenuity++; if (floor >= 4) tip.trickery++;
   const why = { balance: [[tx('run.class', { name: K.name }), K.bvd.balance]].filter((x) => x[1]), versatility: [[tx('run.class', { name: K.name }), K.bvd.versatility]].filter((x) => x[1]), depth: [[tx('run.class', { name: K.name }), K.bvd.depth]].filter((x) => x[1]) };

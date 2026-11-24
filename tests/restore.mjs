@@ -59,34 +59,34 @@ for (let seed = 1; seed <= 12; seed++) {
   assert(s.pouch.length >= beforeD, 'the end of the turn restores dice by Stake column');
 }
 
-// Charisma / Cunning / Conviction pay only while every Stake row (lane) is occupied
+// Charisma, Cunning and Conviction are earned by occupying rows: Stake rows → the class's own, Bet rows → all three
 {
-  const run = R.newRun('hustler', 'standard', 77), { bout } = R.startIntro(run), s = bout.sides[0], m = s.dims.meterRows;
-  clearBoard(s); for (let c = 0; c < s.dims.cols; c++) occupy(bout, s, m, c);
-  const on = B.rewardOf(s, 'draw');
-  assert(!on.gated && on.n === B.cOf(s, 'charisma') * on.unused, 'every Stake row occupied: unused draws pay');
+  const run = R.newRun('hustler', 'standard', 77), { bout } = R.startIntro(run), s = bout.sides[0], m = s.dims.meterRows, C = s.dims.cols;
+  clearBoard(s); s.c = { charisma: 0, cunning: 0, conviction: 0 }; // no gear
+  assert(B.CCC.every((k) => B.cOf(s, k) === 0) && B.rewardOf(s, 'draw').n === 0, 'nothing held: no Charisma, Cunning or Conviction');
+  for (let c = 0; c < C; c++) occupy(bout, s, m + (c % 2), c); // every Stake row, not lined up
+  assert(B.cOf(s, 'charisma') === 1 && B.cOf(s, 'cunning') === 0 && B.cOf(s, 'conviction') === 0, 'every Stake row held: +1 to the Hustler\'s own, Charisma');
+  for (let c = 0; c < C; c++) occupy(bout, s, c % m, c);
+  assert(B.cOf(s, 'charisma') === 2 && B.cOf(s, 'cunning') === 1 && B.cOf(s, 'conviction') === 1, 'and every Bet row: +1 to all three (the class\'s usual 2 / 1 / 1)');
+  clearBoard(s); for (let c = 0; c < C; c++) { occupy(bout, s, m, c); occupy(bout, s, 0, c); }
+  assert(B.cOf(s, 'charisma') === 4 && B.cOf(s, 'cunning') === 2 && B.cOf(s, 'conviction') === 2, 'lined up in one column each: +2 instead, for +4 / +2 / +2');
+  const on = B.rewardOf(s, 'draw'); assert(on.n === 4 * on.unused, 'unused draws pay at that rate');
   s.grid[m][2].chips = [];
-  const off = B.rewardOf(s, 'draw');
-  assert(off.gated && off.n === 0 && off.unused === on.unused, 'a Stake row left empty: no Charisma, Cunning or Conviction rewards');
+  assert(B.cOf(s, 'charisma') === 2 && B.cOf(s, 'cunning') === 2, 'a Stake row left empty loses the Stake\'s part only');
+  const P = B.statParts(s, 'charisma'); assert(P.base === 2 && P.total === 2, 'the hover splits it: earned at the table, then gear and food');
+  const fox = R.newRun('rascal', 'standard', 78), fb = R.startIntro(fox).bout.sides[0]; clearBoard(fb); fb.c = { charisma: 0, cunning: 0, conviction: 0 };
+  for (let c = 0; c < C; c++) occupy(bout, fb, fb.dims.meterRows, c);
+  assert(B.cOf(fb, 'cunning') === 2 && B.cOf(fb, 'charisma') === 0, 'a Rascal\'s Stake earns Cunning');
 }
 
-// a Fully Occupied Bet at the end of a turn: next turn restores everything and gives +1 Draw, Roll, Bid per Bet column
+// no Fully Occupied Bet bonus any more: a full Bet restores by column like any other
 {
   const run = R.newRun('rascal', 'standard', 5150), { bout } = R.startIntro(run), s = bout.sides[0], m = s.dims.meterRows;
-  const tricks = s.book.splice(0, 3), dice = s.pouch.splice(0, 2);
-  s.tapped.tricks = tricks.map((t) => ({ trick: t, at: 1 })); s.tapped.dice = dice.map((d) => ({ die: d, at: 1 }));
+  const tricks = s.book.splice(0, 3); s.tapped.tricks = tricks.map((t) => ({ trick: t, at: 1 }));
   clearBoard(s); for (let r = 0; r < m; r++) for (let c = 0; c < s.dims.cols; c++) occupy(bout, s, r, c);
-  for (let r = m; r < s.rows; r++) occupy(bout, s, r, 0);
-  assert(B.occupancy(s).full && B.restorePlan(bout, s).fullNext, 'every Bet space occupied is a Fully Occupied Bet');
-  const base = { t: s.tip.trickery, p: s.tip.proficiency, i: s.tip.ingenuity };
-  s.fullBet = true; bout.phase = 'drink'; B.nextTurn(bout);
-  assert(!s.tapped.tricks.length && !s.tapped.dice.length, 'a turn that opens on a Fully Occupied Bet restores everything');
-  const P = B.statParts(s, 'trickery');
-  assert(P.temp.some((x) => x.from === 'Full Bet' && x.n === m) && B.tipOf(s, 'trickery') >= base.t + m - 1, `+${m} Draw from the Full Bet (one per Bet column)`);
-  assert(B.statParts(s, 'proficiency').temp.some((x) => x.from === 'Full Bet') && B.statParts(s, 'ingenuity').temp.some((x) => x.from === 'Full Bet'), '+Roll and +Bid too');
-  assert(P.base === D.CLASSES.rascal.tip.trickery && P.base + P.gear === s.tip.trickery, 'a stat splits into base and gear');
-  // a Hole in the Bet does not have to be occupied
-  s.grid[0][0].chips = []; assert(!B.occupancy(s).full, 'one empty Bet space and the Bet is not full');
-  s.grid[0][0].hole = true; assert(B.occupancy(s).full, 'a Hole is not counted');
+  bout.phase = 'drink'; B.nextTurn(bout);
+  assert(s.tapped.tricks.length === 3 && !B.statParts(s, 'trickery').temp.length, 'a full Bet gives no extra restores or actions');
+  assert(B.restorePlan(bout, s).nTricks === m, 'it restores one trick per occupied Bet column');
+  const P = B.statParts(s, 'trickery'); assert(P.base === D.CLASSES.rascal.tip.trickery && P.base + P.gear === s.tip.trickery, 'a stat splits into base and gear');
 }
-console.log('ok, restore: tapping, restores by column, order, CCC gate on Stake rows, Fully Occupied Bet, stat parts');
+console.log('ok, restore: tapping, restores by column, order, CCC earned by rows, no Full Bet bonus, stat parts');

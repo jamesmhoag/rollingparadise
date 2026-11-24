@@ -15,9 +15,10 @@ is not built yet. Tab names are in **bold**.
 ### The bout (**Bout**, **Plays**, **Effects**, **Tricks**, **Targeting**, **Game**)
 - Goal: deplete the opponent's Worth before they deplete yours.
 - A turn has four planning phases, then the House plays it (see **The turn** below). Draws, rolls and bids left
-  unused pay **as soon as their phase is passed**, as chips on the Bet at random spaces with room (lost if it is
-  full): unused draws make a **Steal chip** (Charisma) that steals from the Stage in the House phase, unused rolls
-  **Power chips** (Conviction), unused bids **Opportunity chips** (Cunning) (rotated in round 17). All added Power is Power chips on the Bet,
+  unused are **held** when their phase is passed (nothing goes on the table yet), and the House **deploys** them in
+  their own phase at what Charisma, Cunning or Conviction is worth then: unused rolls as **Power chips** with the
+  Investments, unused bids as **Opportunity chips** with the Insurances (chips at random Bet spaces with room, lost if
+  it is full), unused draws as a **Steal** from the Stage with the Expenses. All added Power is Power chips on the Bet,
   one per point (Stir, an Investment trait, a Boost or Press bonus too): the same Power chip Empower makes. Each adds
   +1 to your roll effects for the turn (in the Investment phase, or at once if it arrives during play) and lasts that
   turn; nothing spends it. Both sides' chips appear when the phase closes, so you see your opponent's build up. Each step pill says
@@ -100,14 +101,17 @@ lane (`c`). Columns vary with Versatility and Depth; rows are always 5.
 - **Live preview.** `restorePlan` is read after every action: tapped tricks show under the Book and tapped dice after
   the Pouch, ringed **RESTORES** when the end of the turn would bring them back as the board stands now. The Restore
   badge counts them.
-- **Charisma, Cunning, Conviction** pay for unused draws, rolls and bids only while every Stake row has a chip
-  (checked live; the Stake rows badge and the step pill hovers say so).
-- **Fully Occupied Bet.** Every Bet space occupied at the end of a turn (a Hole is not counted): the next turn opens
-  by restoring every tapped trick and die and gives +1 Draw, Roll and Bid per Bet column for that turn. It repeats
-  every turn the Bet stays Fully Occupied. The Bet badge shows the meter (occupied of total).
+- **Charisma, Cunning, Conviction are earned by occupying rows.** They have no class base. A chip in every row of
+  the **Stake** earns +1 to the class's own (Hustler Charisma, Rascal Cunning, Technician Conviction); a chip in every
+  row of the **Bet** earns +1 to all three. Both together are the class's old 2 / 1 / 1. If the chips holding the rows
+  all sit in **one column**, that zone earns +2 instead: both lined up is +4 / +2 / +2. Otherwise they are 0, apart
+  from food, a sip or a jacket. Amounts in `TUNING.occupancy`. Read live, and again when the House deploys.
+- There is no Fully Occupied Bet bonus any more: more columns held is still how more tricks and dice restore.
+- **Meters on the position.** Under each zone of each position, by its label: a dot per row (lit when held, with what
+  holding them all earns) and a bar per column (lit when held: each restores a trick on the Bet, a die on the Stake).
 - **Stat display.** A step pill (and the opponent's pills) shows the stat as it stands this turn, in the
-  temporary-change colour with ▲ or ▼ when food, drink, a Full Bet or a Curse changes it. The hover splits it into
-  class base, gear (jacket, cards, the run) and each temporary change with its source.
+  temporary-change colour with ▲ or ▼ when food, drink or a Curse changes it. The hover splits it into
+  class base (for Charisma, Cunning and Conviction: what the rows earn now), gear (jacket, cards, the run) and each temporary change with its source.
 
 ### Chip lifetimes (Gameplay tuner)
 The tuner's **Chip lifetimes** set how long the chips the table makes stay (`TUNING.chipLife`): Opportunity, Bounty,

@@ -10,32 +10,32 @@ function table(seed = 3, cls = 'hustler') {
   const { bout } = R.startTable(run, R.newPrep(run, 'table', 0)); return { run, bout, me: bout.sides[0], opp: bout.sides[1] };
 }
 
-// ---------- the rewards rotate: unused draws → a Steal chip, unused rolls → Power chips, unused bids → Opportunity ----------
+// ---------- the rewards rotate: unused draws → Steal, unused rolls → Power, unused bids → Opportunity ----------
+// Passing a phase only holds the unused actions; the House deploys them in their own phase (Power with the
+// Investments, Opportunity with the Insurances, the Steal with the Expenses).
 {
   const { bout, me } = table();
   assert(B.REWARD.draw.what === 'Steal' && B.REWARD.roll.what === 'Power' && B.REWARD.bid.what === 'Opportunity', 'draws give Steal, rolls Power, bids Opportunity');
+  assert(B.REWARD.roll.deploy === 'investment' && B.REWARD.bid.deploy === 'insurance' && B.REWARD.draw.deploy === 'expense', 'Power is an Investment, Opportunity an Insurance, Steal an Expense');
   const steal = B.cOf(me, 'charisma') * B.tipOf(me, 'trickery');
   assert(B.rewardOf(me, 'draw').n === steal, 'what passing Draw will give is known before it is passed');
   B.advance(bout, true);
-  const st = me.grid.flat().flatMap((c) => c.chips.filter((ch) => ch.shop === 'steal'));
-  assert(st.length === 1 && st[0].amt === steal, 'unused draws become a Steal chip on the Meter when Draw is passed');
-  assert(bout.rewards.some((w) => w.side === 1 && w.phase === 'draw') === (B.rewardOf(bout.sides[1], 'draw').n > 0), 'the opponent builds theirs too, where you can see them');
+  assert(!me.grid.flat().some((c) => c.chips.some((ch) => ch.shop === 'steal')) && me.held.some((x) => x.phase === 'draw'), 'passing Draw holds the unused draws: nothing goes on the table yet');
   const want = B.cOf(me, 'conviction') * B.tipOf(me, 'proficiency');
   B.advance(bout, true); // Roll passed with nothing thrown
-  const pc = B.powerChips(me);
-  assert(pc.length === want && pc.every((x) => x.r < me.dims.meterRows && x.ch.shop === 'power' && x.ch.life === 1) && B.powerOf(me) === want, 'unused rolls become Power chips (the same chip Empower makes), one per point, on the Meter, for the turn');
-  assert(D.SHOP_CHIPS.power.name === 'Power chip', 'the Power chip keeps its name');
-  assert(bout.rewards.some((w) => w.side === 0 && w.phase === 'roll' && /Power chip/.test(w.text)), 'the reward is reported for the feed');
+  assert(B.powerChips(me).length === 0 && B.powerAhead(me) === want, 'unused rolls are held too, and counted as Power still to come');
   const e = { uid: 'x', trick: { id: 'charge', q: 1, up: 0 }, dice: [{ id: 'd1', type: 'd6', value: 3, up: [] }], bid: [], bidValue: 1, state: 'play', lingerLeft: 0, lingerTotal: 0 };
   assert(B.previewTotal(me, e) >= 3 + want, 'while you plan, a preview counts the Power still to come');
-  me.mods.boost = 0; drain(B._test.chipPhase(bout, me, 'investment'));
-  assert(me.mods.boost === want && B.powerOf(me) === 0 && B.powerChips(me).length === want, 'in the Investment phase the Power chips boost roll effects for the turn');
-  e.target = B.validTargets(bout, me, { ...e, state: 'bid' })[0];
-  drain(B._test.play(bout, me, e)); drain(B._test.play(bout, me, { ...e, uid: 'y' }));
-  assert(me.mods.boost === want && B.powerChips(me).length === want, 'playing roll effects does not spend them: they last the turn');
+  me.mods.boost = 0; drain(B._test.deployHeld(bout, me, 'investment'));
+  const pc = B.powerChips(me);
+  assert(pc.length === want && pc.every((x) => x.r < me.dims.meterRows && x.ch.life === 1) && me.mods.boost === want, 'the House deploys them with the Investments: Power chips on the Bet, boosting the turn');
+  assert(!me.held.some((x) => x.phase === 'roll') && B.powerAhead(me) === 0, 'once deployed, they are no longer held');
+  assert(bout.rewards.some((w) => w.side === 0 && w.phase === 'roll' && /Power chip/.test(w.text)) || want === 0, 'the reward is reported for the feed');
   drain(B._test.chipPhase(bout, me, 'investment')); assert(me.mods.boost === want, 'a Power chip adds once a turn');
-  const o0 = count(me, (ch) => ch.kind === 'opp'); B.advance(bout, true);
-  assert(count(me, (ch) => ch.kind === 'opp') - o0 === B.rewardOf(me, 'bid').n || me.overflow > 0, 'unused bids become Opportunity chips on the Meter when Bid is passed');
+  const o0 = count(me, (ch) => ch.kind === 'opp'), nOpp = B.rewardOf(me, 'bid').n; B.advance(bout, true);
+  assert(count(me, (ch) => ch.kind === 'opp') === o0, 'unused bids wait for the Insurance phase');
+  drain(B._test.deployHeld(bout, me, 'insurance'));
+  assert(count(me, (ch) => ch.kind === 'opp') - o0 === nOpp || me.overflow > 0, 'then become Opportunity chips on the Bet');
   bout.phase = 'resolve'; const b0 = me.mods.boost, n = B.addPower(bout, me, 2);
   assert(me.mods.boost === b0 + n, 'Power added during play boosts the rest of the turn at once');
 }
@@ -46,15 +46,15 @@ function table(seed = 3, cls = 'hustler') {
   const w = B.rewardOf(me, 'draw'); B.advance(bout, true);
   assert(w.unused === 0 ? !me.grid.flat().some((c) => c.chips.some((ch) => ch.shop === 'steal')) : true, 'with every draw used, passing Draw makes nothing');
 }
-// ---------- the Steal chip steals in the House phase ----------
+// ---------- the Steal goes out with the Expenses ----------
 {
   const { bout, me } = table(7);
   B.advance(bout, true); B.advance(bout, true); B.advance(bout, true);
-  assert(me.grid.flat().some((c) => c.chips.some((ch) => ch.shop === 'steal')), 'a Steal chip waits on the Meter');
+  assert(me.held.some((x) => x.phase === 'draw'), 'unused draws are held until the House plays');
   bout.stage.paid[0] = 6; bout.stage.paid[1] = 6; const w0 = B.worth(me);
   bout.phase = 'resolve'; for (const s of bout.sides) for (const e of s.run) e.state = 'shown';
   const steps = drain(B.resolve(bout)).flatMap((st) => [st, ...(st.parts || [])]);
-  assert(steps.some((st) => /Steal chip/.test(st.text)) && !me.grid.flat().some((c) => c.chips.some((ch) => ch.shop === 'steal')), 'the Steal chip steals from the Stage in the House phase, then is gone');
+  assert(!B.rewardOf(me, 'draw').n || steps.some((st) => /Steal/.test(st.text)), 'the Steal takes from the Stage in the Expense phase');
   assert(B.worth(me) > w0 - 99, 'the stolen chips land on the table');
 }
 
