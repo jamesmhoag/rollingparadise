@@ -496,7 +496,10 @@ const loose = (e) => e.state !== 'play'; // shown or bid this turn: can still ta
 // Dice go only on a trick bid on this turn, any number and any size; the first `count` dice of the trick's own die
 // size (flipped chips count as any size) are its Bonus dice (bonusDice).
 const roomOn = (e) => e.state !== 'play'; // shown or bid this turn: could still be bid, then take dice
-const fitsOn = (d, e) => e.state === 'bid';
+const fitsOn = (d, e) => e.state === 'bid' && (d.chip || !sizeOn(e) || sizeOn(e) === d.type);
+// All the dice on one trick are one size: the first real die put on it sets the size (a flipped chip joins any size).
+// No size is required to play; only the trick's own size makes its Bonus.
+export const sizeOn = (e) => e.dice.find((d) => !d.chip)?.type || null;
 const spare = (s, ch) => worth(s) - ch.value > 0; // spending this chip does not leave you broke
 export function flippable(s) { const out = []; for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const ch = bidChip(s, r, c); if (ch?.kind === 'std' && spare(s, ch)) out.push({ r, c, ch }); } return out; }
 export function biddable(s) { const out = []; for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const ch = bidChip(s, r, c); if (ch && spare(s, ch)) out.push({ r, c, ch }); } return out; }
@@ -514,7 +517,7 @@ export const placedThisTurn = (b, s) => s.run.some((e) => e.dice.some((d) => d.t
 export const trayPlaceable = (s) => s.tray.some((d) => s.run.some((e) => fitsOn(d, e)));
 export const canThrowAny = (s) => !s.thrown && tipOf(s, 'proficiency') > 0 && s.run.some(roomOn) && (flippable(s).length > 0 || s.pouch.length > 0);
 // The dice a trick's Bonus reads: the first `count` on it of its own die size (a flipped chip counts as any size).
-export function bonusDice(e) { const def = defOf(e.trick), out = []; for (const d of e.dice) if (out.length < def.count && (d.chip || d.type === def.die)) out.push(d); return out; }
+export function bonusDice(e) { const def = defOf(e.trick), sz = sizeOn(e); if (sz && sz !== def.die) return []; return e.dice.slice(0, def.count); }
 // Bonus dice still wanted on a trick
 export const bonusRoom = (e) => Math.max(0, defOf(e.trick).count - bonusDice(e).length);
 // What still stops this Roller closing the current phase, or null.
@@ -845,6 +848,7 @@ export function canPlace(b, s, dieId, e) {
   if (e.state === 'play') return tx('table.that-trick-is-already');
   if (e.state !== 'bid') return tx('feed.bid-before-dice', { name: def.name });
   if (e.dice.some((x) => x.id === dieId)) return tx('feed.that-die-is-already');
+  const sz = sizeOn(e); if (!d.chip && sz && sz !== d.type) return tx('feed.all-dice-one-size', { name: def.name, die: sz });
   return null;
 }
 function takeLoose(s, dieId) {
@@ -854,7 +858,7 @@ function takeLoose(s, dieId) {
 export function place(b, s, dieId, e) {
   if (canPlace(b, s, dieId, e)) return null;
   const d = takeLoose(s, dieId); e.dice.push(d); d.t = b.turn;
-  if (d.chip) d.type = defOf(e.trick).die; // a flipped chip counts as the trick's own die size
+  const sz = sizeOn(e) || defOf(e.trick).die; for (const x of e.dice) if (x.chip) x.type = sz; // a flipped chip takes the size of the dice it joins
   return d;
 }
 export function unplace(b, s, dieId) { if (!canMove(b, s, dieId)) return null; const d = takeLoose(s, dieId); s.tray.push(d); return d; }

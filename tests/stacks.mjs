@@ -16,11 +16,15 @@ const die = (id, type, value) => ({ id, type, value, up: [], t: 1 });
   bout.phase = 'aim'; me.tray.push(die('a', 'd8', 5), die('b', 'd4', 2), die('c', 'd6', 3), die('d', 'd6', 3));
   assert(B.canPlace(bout, me, 'a', e), 'a shown trick with no bid takes no dice');
   e.state = 'bid'; e.bidValue = 1; e.bid = [{ id: 1, kind: 'std', value: 1 }];
-  for (const id of ['a', 'b', 'c', 'd']) assert(!B.canPlace(bout, me, id, e) && B.place(bout, me, id, e), `die ${id} goes on the bid trick, whatever its size`);
-  assert(e.dice.length === 4 && e.dice.length > D.TRICKS.charge.count, 'a trick takes more dice than its Bonus count');
-  assert(B.bonusDice(e).map((d) => d.id).join() === 'c,d', 'its Bonus dice are the first of its own size (Charge: 2d6)');
-  assert(B.bonusMet(me, e), 'the two d6 match, so the Bonus is met even with other dice on it');
-  assert(B.totalParts(me, e).diceSum === 13 && B.totalParts(me, e).bid === 1, 'every die adds its value, and so does the bid');
+  assert(!B.canPlace(bout, me, 'a', e) && B.place(bout, me, 'a', e), 'any size of die can go on a bid trick');
+  assert(B.canPlace(bout, me, 'b', e) && B.canPlace(bout, me, 'c', e), 'but then every die on it is that size');
+  assert(!B.bonusDice(e).length && !B.bonusMet(me, e), 'a d8 on Charge (2d6) plays, but makes no Bonus');
+  B.unplace(bout, me, 'a');
+  for (const id of ['c', 'd']) assert(!B.canPlace(bout, me, id, e) && B.place(bout, me, id, e), `d6 ${id} goes on`);
+  me.tray.push(die('e', 'd6', 1));
+  assert(B.place(bout, me, 'e', e) && e.dice.length > D.TRICKS.charge.count, 'a trick takes more dice than its Bonus count');
+  assert(B.bonusDice(e).map((d) => d.id).join() === 'c,d' && B.bonusMet(me, e), 'its Bonus reads the first ones of its own size');
+  assert(B.totalParts(me, e).diceSum === 7 && B.totalParts(me, e).bid === 1, 'every die adds its value, and so does the bid');
 }
 // ---------- no Trait: a bid trick with no dice plays its roll effect at the bid's value ----------
 {
@@ -49,7 +53,7 @@ const die = (id, type, value) => ({ id, type, value, up: [], t: 1 });
   if (!bout.over) { bout.phase = 'resolve'; drain(B.resolve(bout));
     assert(!me.run.includes(e) && me.tapped.tricks.some((x) => x.trick.uid === a.uid), 'the last copy plays, then it and its dice tap'); }
 }
-console.log('ok, stacks: bid before dice, any dice, Bonus dice, no Trait, bids add value, stacked tricks linger');
+console.log('ok, stacks: bid before dice, one size of dice per trick, Bonus dice, no Trait, bids add value, stacked tricks linger');
 
 // ---------- the owner of a contested space plays on it first; creatures act after both Rollers ----------
 {

@@ -110,7 +110,7 @@ function planDraw(b, s) {
 // The tricks the roll can feed: room left, and a die type that fits
 // Dice go on tricks bid on this turn, any number of any size; the trick's own size feeds its Bonus.
 const room = (e) => e.state !== 'play';
-const takes = (e, d) => d.chip || d.type === defOf(e.trick).die;
+const takes = (e, d) => d.chip || d.type === (B.sizeOn(e) || defOf(e.trick).die);
 const behaviourRoll = (s) => behaveOf(s);
 function planRoll(b, s) {
   // pick the dice that suit the shown tricks; they are thrown as the Bid opens
@@ -132,7 +132,7 @@ function placeDice(b, s) {
   const bh = behaveOf(s), bonusW = bh.bonus === 'no' ? 0 : 4;
   let open = s.run.filter((e) => e.state === 'bid').sort((x, y) => prio(x) - prio(y));
   if (!open.length) return;
-  if (bh.bluff === 'many') for (const e of open) { const d = s.tray[0]; if (d) B.place(b, s, d.id, e); } // a die on each trick first
+  if (bh.bluff === 'many') for (const e of open) { const d = s.tray.find((x) => !B.canPlace(b, s, x.id, e)); if (d) B.place(b, s, d.id, e); } // a die on each trick first
   if (bh.bluff !== 'big') for (const e of open) {
     const want = B.bonusRoom(e), tray = s.tray.slice(0, 8); if (!want || !tray.length) continue;
     let best = null, bv = -1;
@@ -144,8 +144,11 @@ function placeDice(b, s) {
     }
     if (best && bv >= bonusW && bonusW) for (const d of best) B.place(b, s, d.id, e);
   }
-  const main = open.slice().sort((x, y) => prio(x) - prio(y) || B.previewTotal(s, y) - B.previewTotal(s, x))[0];
-  for (const d of s.tray.slice()) B.place(b, s, d.id, bh.bluff === 'many' ? open[s.tray.length % open.length] : main);
+  const ranked = open.slice().sort((x, y) => prio(x) - prio(y) || B.previewTotal(s, y) - B.previewTotal(s, x));
+  for (const d of s.tray.slice()) { // each die goes where its size fits (a trick holds one size of dice)
+    const fits = ranked.filter((e) => !B.canPlace(b, s, d.id, e)); if (!fits.length) continue;
+    B.place(b, s, d.id, bh.bluff === 'many' ? fits[s.tray.length % fits.length] : fits[0]);
+  }
 }
 
 function planBid(b, s) {
