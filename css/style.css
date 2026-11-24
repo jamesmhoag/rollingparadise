@@ -980,3 +980,6 @@ p.flavor { font-style: italic; color: var(--dim); }
 /* the hand of bid chips is a stack, not a fan; the bid pile on a card is an empty space for the chips */
 .hand-cursor.stack { flex-direction: column-reverse; } .hand-cursor.stack > * { margin-left: 0; margin-top: -22px; rotate: 0deg; } .hand-cursor.stack > *:last-child { margin-top: 0; }
 .bidslot { font-size: 0 !important; color: transparent !important; }
+/* a flat chip lying under the stacks across its footprint: a thin disc, seen through */
+.chip.mat { opacity: .55 !important; pointer-events: none; box-shadow: 0 0 0 1px rgba(255, 255, 255, .25), 0 0 18px color-mix(in srgb, var(--cc, #b98bff) 60%, transparent) !important; }
+.chip.mat i { opacity: .5; }

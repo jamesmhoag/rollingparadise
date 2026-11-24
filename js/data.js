@@ -232,8 +232,8 @@ export const TRICKS = {
   renew: { name: 'Renew', type: 'insurance', cls: null, die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'hit',
     roll: { k: 'regen', text: 'Regen up to the total of the value chips in the target stack, for 1 turn per 4 rolled: a Regen chip paid to the Stage comes straight back to its stack, without its Regen.' }, bonus: { cond: 'match', k: 'spread', text: 'Renews the neighbouring stacks too (Swipe).' } },
   // --- Investments ---
-  stir: { name: 'Stir', type: 'investment', cls: null, die: 'd6', count: 1, side: 'none', approach: 'none', dist: 'hit',
-    roll: { k: 'boost', text: 'Boost: your other roll effects this turn gain the total.' }, bonus: { cond: 'over:5', k: 'extend', text: 'Also grants that much Power for next turn.' } },
+  stir: { name: 'Stir', type: 'investment', cls: null, die: 'd6', count: 1, side: 'self', approach: 'any', dist: 'hit',
+    roll: { k: 'chips', chip: 'stir', convert: 'lump', place: 'under', deploy: 'hit', foot: 'large', flat: true, slip: true, text: '' }, bonus: { cond: 'over:5', k: 'double', text: '' } },
   rattle: { name: 'Rattle', type: 'investment', cls: null, die: 'd6', count: 1, side: 'none', approach: 'none', dist: 'hit',
     roll: { k: 'enfeeble', text: 'Enfeeble: your opponent\'s roll effects this turn lose the total.' }, bonus: { cond: 'over:5', k: 'extend', text: 'They also lose half of it next turn.' } },
   bend: { name: 'Bend', type: 'investment', cls: 'rascal', die: 'd8', count: 1, side: 'none', approach: 'none', dist: 'hit', chooseRoller: true,
@@ -247,8 +247,8 @@ export const TRICKS = {
   saturate: { name: 'Saturate', type: 'investment', cls: 'rascal', die: 'd6', count: 2, side: 'none', approach: 'none', dist: 'hit',
     roll: { k: 'saturate', text: 'Your other roll effects this turn gain the total, and your opponent\'s boosts this turn are subdued to nothing.' }, bonus: { cond: 'match', k: 'extend', text: 'Their Power is drained to nothing as well.' } },
   // --- Corrections ---
-  settle: { name: 'Settle', type: 'correction', cls: null, die: 'd6', count: 1, side: 'none', approach: 'none', dist: 'hit',
-    roll: { k: 'settle', text: 'Remove Debt and hazard chips from your position up to the total, then organize your Stake into full stacks.' }, bonus: { cond: 'over:5', k: 'blocks', text: 'Also adds 2 Block chips to your Bet.' } },
+  settle: { name: 'Settle', type: 'correction', cls: null, die: 'd6', count: 1, side: 'self', approach: 'any', dist: 'hit',
+    roll: { k: 'settle', text: 'In the targeted column, remove Debt and hazard chips up to the total, then gather that column\'s chips into full stacks starting at the targeted space, filling outward from it.' }, bonus: { cond: 'over:5', k: 'blocks', text: 'Also adds 2 Block chips to your Bet.' } },
   gather: { name: 'Gather', type: 'correction', cls: null, die: 'd6', count: 2, side: 'none', approach: 'none', dist: 'hit',
     roll: { k: 'gather', text: 'Recover up to the total in ¢ from the fees you have paid to the Stage, back onto your Bet.' }, bonus: { cond: 'match', k: 'both', text: 'Takes from your opponent\'s paid fees as well.' } },
   scatter: { name: 'Scatter', type: 'correction', cls: 'rascal', die: 'd6', count: 2, side: 'none', approach: 'none', dist: 'hit',

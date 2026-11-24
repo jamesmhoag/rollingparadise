@@ -31,7 +31,7 @@ export const MOVES = {
   toTop: 'Sorts to the top when restacked', toBottom: 'Sorts to the bottom when restacked', anchored: 'Anchored: other effects cannot move it', flying: 'Flying: untouched by effects from below',
   spreading: 'Spreading: infects what it touches', jumping: 'Jumping: to a random neighbouring space', shifting: 'Shifting: to the next row', advancing: 'Advancing: forward', retreating: 'Retreating: back',
 };
-export const REACH = { all: 'All chips', yours: 'All yours', theirs: 'All theirs', touching: 'Chips it touches', touchingValue: 'Touching chips with value', touchingHits: 'Touching chips with strength',
+export const REACH = { inside: 'Chips inside it (lying on it)', all: 'All chips', yours: 'All yours', theirs: 'All theirs', touching: 'Chips it touches', touchingValue: 'Touching chips with value', touchingHits: 'Touching chips with strength',
   sameType: 'Chips of its own type', named: 'Chips with a given name', typed: 'Chips of a given type' };
 // triggers: { on, type? (phase, effect), what? (exposed: a chip name or kind) }
 // actions: { k, dir? (move: left, right, up, down), n? (value, hits, power), chip? (become) }
@@ -43,9 +43,16 @@ export const ACTIONS = { move: 'Move them (left, right, up, down, or to an area)
 export const PULL_FROM = { mine: 'Its own Pit', theirs: 'The other Pit', both: 'Both Pits' };
 
 // a new chip from the maker starts as this
+// slip: a wide flat chip slides under the stacks across its footprint instead of needing empty spaces
+export const SLIP = { no: 'Needs empty spaces', yes: 'Slips under the stacks there' };
 export const NEW_CHIP = { name: 'New chip', text: '', value: 1, hits: 0, source: 'trick', lasts: 'paid', turns: 3, height: 'basic', foot: 'basic', must: 'any', onTop: 'fits', immune: [],
   color: '#7df3ff', move: 'still', reach: { to: 'touching', range: 1 }, triggers: [], actions: [] };
 
 // Chips made in the build mode, by id. The trick maker can make any of them.
 export const MADE_CHIPS = {
+  // Stir: a wide flat chip that slips under the stacks where it lands (no stack height). When it is made it hands out
+  // the roll it was made with, 1¢ at a time, round the value chips lying on it; it is gone at the end of the turn.
+  stir: { name: 'Stir', text: 'A flat chip under the stacks: the chips lying on it share the roll it was made with, 1¢ at a time. Gone at the end of the turn.',
+    value: 0, hits: 0, source: 'trick', lasts: 'turn', turns: 1, height: 'tiny', foot: 'large', slip: true, must: 'bottom', onTop: 'fits', immune: ['moves'],
+    color: '#b98bff', move: 'anchored', reach: { to: 'inside', range: 1 }, triggers: [{ on: 'created' }], actions: [{ k: 'value', n: 'share' }] },
 };

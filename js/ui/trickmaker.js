@@ -5,6 +5,7 @@ import * as D from '../data.js';
 import * as B from '../build/draft.js';
 import { trickTip } from './parts.js';
 import { flavorField } from './rostermaker.js';
+import { FOOTPRINT, HEIGHT } from '../content/chipmaker.js';
 import { t } from '../text.js';
 import { CONVERT, PLACE, DEPLOY, BONUS, AIMS, ZONES, CLASSIC, NEW_TRICK } from '../content/trickmaker.js';
 import { isMade, makeName, makeKind, makeChoices, describeRoll, describeBonus, isFxChip, DIST_OF } from '../trickmaker.js';
@@ -30,7 +31,7 @@ export function trickMaker(id, redraw) {
   const set = (ks, v) => { B.setValue(path(id, ...ks), v); rewrite(id); redraw(); };
   const field = (label, el, ks) => h('div', { class: `b-field ${ks && B.changed(path(id, ...ks)) ? 'ch' : ''}` }, h('label', { text: label }), el,
     ks && path(id, ...ks) in B.draft.changes ? btn('↺', () => { B.revert(path(id, ...ks)); rewrite(id); redraw(); }, null, 'small b-revert') : h('span'));
-  const select = (ks, list, value, num) => h('select', { onchange: (e) => set(ks, e.target.value === '' ? null : num ? Number(e.target.value) : e.target.value) },
+  const select = (ks, list, value, num) => h('select', { onchange: (e) => set(ks, e.target.value === '' ? null : e.target.value === 'true' ? true : e.target.value === 'false' ? false : num ? Number(e.target.value) : e.target.value) },
     list.map(([v, l]) => h('option', { value: v ?? '', ...(String(v ?? '') === String(value ?? '') ? { selected: 'selected' } : {}), text: l })));
   const number = (ks, value, min = 0) => h('input', { type: 'number', min, step: 1, value: value ?? '', onchange: (e) => set(ks, Math.max(min, Math.round(Number(e.target.value) || 0))) });
   const text = (ks, value) => h('input', { type: 'text', value, onchange: (e) => set(ks, e.target.value) });
@@ -61,6 +62,12 @@ export function trickMaker(id, redraw) {
       !fee && R.place === 'precise' ? field(t('maker.at'), number(['roll', 'at'], R.at ?? 1), ['roll', 'at']) : null,
       field(t('maker.deploy'), select(['roll', 'deploy'], opts(DEPLOY, (x) => `${x.name} — ${x.text}`), R.deploy), ['roll', 'deploy']),
       isFxChip(R.chip) ? field(t('maker.life'), number(['roll', 'life'], R.life ?? 3, 1), ['roll', 'life']) : null);
+    if (D.MADE_CHIPS[R.chip]) { // the size of the chip this trick makes: its width, its thickness, and whether it slips under stacks
+      const M = D.MADE_CHIPS[R.chip], foot = R.foot && R.foot !== 'model' ? R.foot : M.foot || 'basic';
+      parts.push(field(t('maker.foot'), select(['roll', 'foot'], [['model', t('maker.foot.model', { v: FOOTPRINT[M.foot || 'basic'] })], ...Object.entries(FOOTPRINT)], R.foot || 'model'), ['roll', 'foot']),
+        field(t('maker.flat'), select(['roll', 'flat'], [[false, t('maker.flat.no', { v: HEIGHT[M.height || 'basic']?.name })], [true, t('maker.flat.yes')]], !!R.flat), ['roll', 'flat']),
+        foot !== 'basic' ? field(t('maker.slip'), select(['roll', 'slip'], [[false, t('maker.slip.no')], [true, t('maker.slip.yes')]], !!(R.slip ?? M.slip)), ['roll', 'slip']) : null);
+    }
   } else {
     parts.push(h('span', { class: 'cap', text: t('maker.part.classic') }),
       h('p', { html: `<b>${CLASSIC[def.roll.k] || def.roll.k}</b> — ${def.roll.text}` }),

@@ -407,6 +407,18 @@ tilt, felt, drink, jacket, wallet, card, pass, die material, die upgrade and opp
 `js/content/flavor.js` (table `FLAVOR`, editable in Build mode; the makers have a Flavour field), shown in italics in
 its hover.
 
+### Redistribution, Settle and Stir
+- Chips an effect puts on the Bet go front to back, left to right, the same for every Roller: a class's deployment
+  shapes only its own starting position, never the outcome of an effect.
+- **Settle** aims at a space of your own position. In that column of that zone (Bet or Stake) it clears Debt and
+  hazards up to the total, then gathers the column's chips into full stacks starting at the targeted space and
+  filling outward from it, biggest chips nearest. Anchored stacks, Holes and big chips stay; what cannot fit goes to
+  the Bet.
+- **Stir** makes a Stir chip: a 3×3 flat chip (no stack height) that slips under the stacks where it lands. When made
+  it hands out the roll it was made with, 1¢ at a time, round the value chips lying on it, and it is gone at the end
+  of the turn. Any made-chip trick can set the chip's width, a flat thickness, and whether a wide chip slips under
+  stacks (`roll.foot`, `roll.flat`, `roll.slip`, in the Trick maker); the chip maker's reach has *Chips inside it*.
+
 ### Neon signs
 Every seat at the table is a neon sign, and so is the House's (`js/ui/sign.js`). A sign has a tube and glow colour for
 its frame, name and class; a frame style (tube, double, dashed, dotted, bulbs, none) and corner rounding; a Unicode
