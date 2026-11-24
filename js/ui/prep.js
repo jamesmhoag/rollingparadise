@@ -34,7 +34,7 @@ export function planner(getExtra, onChange) {
     h('span', { class: 'stat', tip: t('prep.capacity.tip') }, h('em', { text: t('prep.capacity') }), countEl));
   const dims = () => R.rollerStats(run, getExtra()).dims;
   // ---------- painting chips ----------
-  let brush = null, last = null, warned = false;
+  let brush = null, last = null, warned = false, warnedShort = false;
   function drawBrushes() {
     const denoms = D.DENOMS.filter((x) => x.floor <= R.chipFloor(run));
     brushBox.replaceChildren(...denoms.map((x) => { const b = guided(btn('', () => { brush = brush === x.value ? null : x.value; drawBrushes(); }, t('prep.brush.tip', { amt: cents(x.value) }), `small ${brush === x.value ? 'on' : ''}`), 'brush');
@@ -50,7 +50,7 @@ export function planner(getExtra, onChange) {
     if (first) warned = false;
     const d = dims(), m = d.meterRows, warn = (msg) => { if (!warned) toast(msg, 'warn'); warned = true; };
     if (at.r < m) return warn(t('prep.paint.bet'));
-    if (!run.plan.layout?.length) run.plan.layout = layoutNow();
+    run.plan.layout = layoutNow(); // you change the position as it stands for this bout
     const L = run.plan.layout, br = at.r - m; let sp = L.find((x) => x.r === br && x.c === at.c);
     if (brush === 'erase') { if (!sp?.chips.length) return; sp.chips.pop(); }
     else {
@@ -78,15 +78,16 @@ export function planner(getExtra, onChange) {
       c = run.plan.counts = R.autoCounts(run, d);
       for (const v of D.DENOM_VALUES) { const over = total() - barCapacity(d); if (over <= 0) break; c[v] -= Math.min(c[v] || 0, over); }
       if (total() > barCapacity(d)) run.plan.resist = {}; }
-    if (run.plan.layout && !R.validLayout(run, d)) { run.plan.layout = null; c = run.plan.counts = R.autoCounts(run, d); toast(t('prep.paintNoFit'), 'warn'); }
-    if (run.plan.layout) c = run.plan.counts = R.layoutCounts(run.plan.layout);
+    const fitted = run.plan.layout ? R.validLayout(run, d) : null;
+    if (run.plan.layout && !fitted) { run.plan.layout = null; c = run.plan.counts = R.autoCounts(run, d); toast(t('prep.paintNoFit'), 'warn'); }
+    else if (fitted) { if (R.layoutWorth(fitted) < R.layoutWorth(run.plan.layout) && !warnedShort) { warnedShort = true; toast(t('prep.paintShort'), 'warn'); } c = run.plan.counts = R.layoutCounts(fitted); }
     const side = R.previewPosition(run, c, { position: extra.position, resist: run.plan.resist }); last = side;
     // cells
     const rows = side.rows, m = side.dims.meterRows, want = new Set(); CW = Math.max(34, Math.min(56, Math.floor(400 / rows))); board.style.width = `${rows * CW}px`;
     for (let r = 0; r < rows; r++) for (let col = 0; col < 5; col++) { const k = `${r}-${col}`; want.add(k); let ce = cells.get(k);
       const x = (rows - 1 - r) * CW, y = col * CH;
       if (!ce) { ce = h('div', { class: 'mcell', style: { height: `${CH - 3}px`, opacity: 0, transition: 'transform .45s cubic-bezier(.22,.8,.24,1), width .45s, opacity .4s, background-color .4s' } }); ce.style.transform = `translate(${x}px, ${y}px) scale(.6)`; board.prepend(ce); cells.set(k, ce); void ce.offsetWidth; }
-      ce.classList.toggle('meter', r < m); ce.style.width = `${CW - 3}px`; ce.style.opacity = 1; ce.style.transform = `translate(${x}px, ${y}px)`; }
+      ce.classList.toggle('meter', r < m); ce.classList.toggle('alt', (r + col) % 2 === 1); ce.style.width = `${CW - 3}px`; ce.style.opacity = 1; ce.style.transform = `translate(${x}px, ${y}px)`; }
     for (const [k, ce] of cells) if (!want.has(k)) { ce.style.opacity = 0; cells.delete(k); setTimeout(() => ce.remove(), 450); }
     labels[0].style.left = '0px'; labels[0].style.width = `${(rows - m) * CW}px`; labels[1].style.left = `${(rows - m) * CW}px`; labels[1].style.width = `${m * CW}px`;
     // chips

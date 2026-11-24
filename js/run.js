@@ -65,7 +65,7 @@ export function newRun(who, jacketReq = 'standard', seed = (Date.now() ^ (Math.r
   const kept = [].concat(gear.passes ?? gear.pass ?? []).filter((f) => f > 0);
   const run = { v: 1, rng: new RNG(seed), seed, cls, roller, worth0: Rl.worth ?? 200, bizCards: [], trait: null, jacket, wallet: gear.wallet || 'worn_cloth', pass: 0, passes: [], pendingCard: null, floor: 0, purse: 0, nextId: 1, dice: [], tricks: [], chips: {},
     drink: null, cards: [], punches: 0, rest: null, suiteKey: false, phase: 'intro', fs: null, bets: [], news: [], ledger: [], ascent: null,
-    plan: { spacing: 'row', stacking: 'maxed', counts: null, resist: {} },
+    plan: { spacing: 'row', stacking: 'maxed', counts: null, resist: {}, layout: Rl.layout?.length ? JSON.parse(JSON.stringify(Rl.layout)) : null }, // your Roller's own position, to change before each bout
     stats: { bouts: 0, wins: 0, losses: 0, spent: 0, won: 0, turns: 0, dd: 0 } };
   for (const f of kept) addPass(run, f);
   for (const [type, n] of Object.entries(Rl.dice || {})) for (let i = 0; i < n; i++) run.dice.push(mkDie(run, type));
@@ -144,8 +144,8 @@ export function genOpponent(run, floor, worthTarget, o = {}) {
   for (const [id, n] of Object.entries(X?.chips || {})) if (n > 0 && D.SHOP_CHIPS[id]) groups.push({ value: 1, count: n, resist: id }); // its own chips
   const drink = X?.drink ? D.DRINKS.find((d) => d.id === X.drink) : null;
   return { name: o.name || rng.pick(D.OPPONENTS), title: o.title || '', cls, floor, ai: true, tip, c, dims, why, deploy: K.deploy, dice, tricks,
-    plan: { chips: groups, spacing: X?.deploy?.spacing || 'row', stacking: X?.deploy?.stacking || 'maxed', ...(X?.layout?.length ? { layout: X.layout } : {}) },
-    worth: X?.layout?.length ? X.layout.reduce((t, sp) => t + (sp.chips || []).reduce((u, it) => u + (typeof it === 'number' ? it : 1), 0), 0) : nBig * big + petty,
+    plan: { chips: groups, spacing: X?.deploy?.spacing || 'row', stacking: X?.deploy?.stacking || 'maxed', ...(X?.layout?.length ? { layout: fitLayout(X.layout, dims) } : {}) },
+    worth: X?.layout?.length ? layoutWorth(fitLayout(X.layout, dims)) : nBig * big + petty,
     roster: o.roster || null, sign: X?.sign || null, trait: X?.boss || o.boss ? X?.trait || bossTraitByName(o.name) : null, boss: !!(o.boss || X?.boss), wallet: X?.wallet || null, drink: drink ? { ...drink } : null,
     behave: { ...D.DEFAULT_BEHAVE, ...(X?.behave || {}) }, phases: X?.phases ? JSON.parse(JSON.stringify(X.phases)) : null };
 }
@@ -423,13 +423,38 @@ export function validCounts(run, dims) {
   if (c && planWorth(c) <= run.purse && sum(Object.values(c)) + shop <= barCapacity(dims) && planWorth(c) > 0) return c;
   return autoCounts(run, dims, run.purse, shop);
 }
+// The shape of a Roller's or an opponent's position before the table changes it: its class, its jacket, and (for a
+// High Roller) the extra chip a stack takes. The Build-mode Stake editors draw from this, so they always show the
+// right number of rows and stack height for whatever the class and gear add up to.
+export function posDims({ cls, jacket, boss } = {}) {
+  const K = D.CLASSES[cls] || D.CLASSES.hustler, bvd = { ...K.bvd };
+  for (const [k, v] of Object.entries(D.JACKETS[jacket]?.mods || {})) if (k in bvd) bvd[k] += v;
+  if (boss) bvd.balance++;
+  const B0 = D.BASE_DIMS; return { cols: B0.cols, stackMax: Math.max(1, B0.stackMax + bvd.balance), meterRows: Math.max(1, B0.meterRows + bvd.versatility), barRows: Math.max(1, B0.barRows + bvd.depth) };
+}
+const itemWorth = (it) => (typeof it === 'number' ? it : 1);
+export const layoutWorth = (layout) => sum(layout || [], (sp) => sum(sp.chips || [], itemWorth));
+// A laid-out position fitted to a position and a purse: spaces outside it and chips over a stack's height are left
+// out; and if the purse cannot cover all of it, it is built again from the bottom up (every stack's first chip, front
+// to back, then every second chip...) for as long as the next chip can be afforded.
+export function fitLayout(layout, dims, purse = Infinity) {
+  const inside = (layout || []).filter((sp) => sp.r >= 0 && sp.r < dims.barRows && sp.c >= 0 && sp.c < dims.cols).map((sp) => ({ r: sp.r, c: sp.c, chips: (sp.chips || []).slice(0, dims.stackMax) }));
+  if (layoutWorth(inside) <= purse) return inside.filter((sp) => sp.chips.length);
+  const order = inside.slice().sort((a, b) => a.r - b.r || a.c - b.c), out = order.map((sp) => ({ r: sp.r, c: sp.c, chips: [] }));
+  let spent = 0;
+  fill: for (let lvl = 0; lvl < dims.stackMax; lvl++) for (let i = 0; i < order.length; i++) { const it = order[i].chips[lvl]; if (it === undefined) continue;
+    if (spent + itemWorth(it) > purse) break fill; spent += itemWorth(it); out[i].chips.push(it); }
+  return out.filter((sp) => sp.chips.length);
+}
 // A painted position (click and hold in the planner): [{ r, c, chips: [values] }], r counted from the Stake's front.
 // Its counts are what is painted; it holds only if the purse covers it and every stack fits.
 export const layoutCounts = (layout) => { const c = noCounts(); for (const sp of layout || []) for (const v of sp.chips) if (typeof v === 'number') c[v] = (c[v] || 0) + 1; return c; };
+// The position laid out for this bout: the one you set (your Roller's to begin with), fitted to the position and
+// the purse you have now (filled from the bottom up when the purse falls short). null when nothing of it is left.
 export function validLayout(run, dims) {
   const L = run.plan.layout; if (!L?.length) return null;
-  if (L.some((sp) => sp.r < 0 || sp.r >= dims.barRows || sp.c < 0 || sp.c >= dims.cols || sp.chips.length > dims.stackMax)) return null;
-  const c = layoutCounts(L); return planWorth(c) > 0 && planWorth(c) <= run.purse ? L : null;
+  const F = fitLayout(L.map((sp) => ({ ...sp, chips: sp.chips.filter((v) => typeof v === 'number') })), dims, run.purse);
+  return planWorth(layoutCounts(F)) > 0 ? F : null;
 }
 export const planWorth = (counts) => sum(Object.entries(counts), ([v, n]) => v * n);
 export const planCount = (counts, resist) => sum(Object.values(counts)) + sum(Object.values(resist || {}));
@@ -444,7 +469,7 @@ function planGroups(run, counts, resist) {
 function playerSpec(run, counts, extra = {}, dimsOverride) {
   const st = rollerStats(run, extra), K = D.CLASSES[run.cls];
   return { name: 'You', title: K.name, cls: run.cls, roller: run.roller || D.rollerOf(run.cls), trait: run.trait || null, sign: D.ROLLERS[run.roller]?.sign || null, tip: st.tip, c: st.c, dims: dimsOverride || st.dims, why: dimsOverride ? { note: tx('run.a-bar-table-one') } : dimsWhy(run, extra), deploy: K.deploy, tricks: run.tricks, dice: run.dice,
-    plan: { chips: planGroups(run, counts, extra.resist), spacing: run.plan.spacing, stacking: run.plan.stacking, ...(validLayout(run, dimsOverride || st.dims) ? { layout: run.plan.layout } : {}), resistChips: run.cards.map((id) => D.CARDS[id]?.resist).filter(Boolean) }, drink: run.drink && run.drink.sips > 0 ? run.drink : null, ...extra.side };
+    plan: { chips: planGroups(run, counts, extra.resist), spacing: run.plan.spacing, stacking: run.plan.stacking, ...(validLayout(run, dimsOverride || st.dims) ? { layout: validLayout(run, dimsOverride || st.dims) } : {}), resistChips: run.cards.map((id) => D.CARDS[id]?.resist).filter(Boolean) }, drink: run.drink && run.drink.sips > 0 ? run.drink : null, ...extra.side };
 }
 const committed = (bout) => sum(bout.sides[0].grid.flat().flatMap((c) => c.chips).filter((ch) => ch.kind === 'std' && !ch.resist), (ch) => ch.value);
 

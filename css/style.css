@@ -1005,6 +1005,14 @@ p.flavor { font-style: italic; color: var(--dim); }
 @keyframes sf-shimmer { 0%, 100% { opacity: 1; } 30% { opacity: 0.82; } 55% { opacity: 1; } 75% { opacity: 0.88; } }
 .glyph-group { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; } .glyph-group .cap { width: 100%; margin-top: 4px; }
 .small.glyph { min-width: 26px; padding: 2px 4px; font-family: 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols 2', 'DejaVu Sans', 'DejaVu Sans Mono', 'OpenSymbol', sans-serif; } .small.glyph svg { width: 12px; height: 12px; fill: currentColor; vertical-align: middle; }
-.b-lcell { min-height: 38px; border: 1px solid rgba(255,255,255,.14); border-radius: 6px; padding: 2px; display: flex; flex-direction: column; align-items: stretch; gap: 1px; font-size: 10px; cursor: crosshair; user-select: none; }
-.b-lchip { background: rgba(255,255,255,.08); border-radius: 3px; padding: 0 3px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .b-lchip.fx { background: rgba(185,139,255,.22); }
 .b-list-edit { gap: 4px; } .b-li { gap: 2px; } .b-li.bad select { border-color: #ff6a6a; }
+.sb-wrap { gap: 8px; } .sb-scroll { overflow-x: auto; padding: 8px 0 4px; }
+.stakeboard { position: relative; flex: none; touch-action: none; cursor: crosshair; user-select: none; border-radius: 10px; padding: 0; }
+.sb-cell { position: absolute; border-radius: 4px; background: radial-gradient(ellipse at 50% 35%, #a52232, #7c1420 70%); box-shadow: inset 0 0 0 1px rgba(255, 210, 160, .14), inset 0 -6px 12px rgba(0, 0, 0, .25); }
+.sb-cell.dark { background: radial-gradient(ellipse at 50% 35%, #3a0d14, #24070c 70%); }
+.stakeboard:hover .sb-cell:hover { outline: 2px solid var(--gold); outline-offset: -2px; }
+.sb-bet { position: absolute; top: 0; width: 24px; border-radius: 6px; background: rgba(110, 160, 255, .1); border: 1px dashed rgba(110, 160, 255, .35); writing-mode: vertical-rl; display: grid; place-items: center; font-size: 11px; color: var(--dim); letter-spacing: .1em; }
+.sb-chip { transition: transform .32s cubic-bezier(.2, 1.3, .4, 1), opacity .3s; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .45)); }
+.mboard .mcell:not(.meter) { background: radial-gradient(ellipse at 50% 35%, #a52232, #7c1420 70%); border-color: rgba(255, 210, 160, .14); }
+.mboard .mcell.alt:not(.meter) { background: radial-gradient(ellipse at 50% 35%, #3a0d14, #24070c 70%); }
+.sb-rack { flex-wrap: wrap; max-width: 560px; }
