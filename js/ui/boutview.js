@@ -1,6 +1,6 @@
 // The table. Every chip, die, trick card and creature is one persistent element that is
 // moved, faded or flipped to follow the bout state, so nothing ever pops between states.
-import { h, tip, wait, tween, swapText, setOn, pulse, syncList, toast, btn, refreshTip, redrawTip, box, vc, detail, paint, guided } from './core.js';
+import { h, tip, wait, tween, swapText, setOn, pulse, syncList, toast, btn, refreshTip, redrawTip, box, vc, detail, paint, guided, stagePoint, rightClick } from './core.js';
 import { chipSig, chipGlyph, chipName, chipText, chipTip, dieTip, trickTip, trickWord, trickWords, statTip, drinkTip, dieMarks, dieDyes, dieStyle, dieClass, trickLook, feltStyle, seenAs, traitsOf, traitsHtml, dieEl, chipEl, trickChip } from './parts.js';
 import { iconKids, iconFill } from './icons.js';
 import { flyerTraits } from '../traits.js';
@@ -28,7 +28,7 @@ const fmtX = (m) => '×' + (m % 1 ? m.toFixed(2).replace(/0$/, '') : m);
 export function boutScene(root, bout, ctx, onDone) {
   const [me, opp] = bout.sides;
   const cw = bout.sides.map((s) => Math.min(SPACE, Math.floor((PX - 30) / s.rows))), ck = cw.map((w) => w / SPACE_REF); // column width, chip scale
-  const ui = { peek: null, peekPhase: null, handAim: new Set(), mode: null, die: null, entry: null, locked: false, speed: globalThis.RP_FAST || 1, first: true, sel: new Set(), flips: [], hand: [], card: null, point: null }; // RP_FAST: set by automated playthroughs
+  const ui = { held: [], cursor: null, peek: null, peekPhase: null, handAim: new Set(), mode: null, die: null, entry: null, locked: false, speed: globalThis.RP_FAST || 1, first: true, sel: new Set(), flips: [], hand: [], card: null, point: null }; // RP_FAST: set by automated playthroughs
   // sel: Pouch dice picked for the throw · flips: stacks whose top chip is picked to flip · hand: the bid chips picked up, one {r,c} per chip (a stack picked twice gives its top two) · card: trick under the pointer · point: the chip under the pointer in a stack
   const els = { chips: new Map(), dice: new Map(), cards: new Map(), cells: [[], []], creatures: new Map(), stage: new Map() };
   const layer = h('div', { class: 'bout-layer' });
@@ -518,7 +518,7 @@ export function boutScene(root, bout, ctx, onDone) {
   }
   function sync(fx = {}) {
     const plan = B.restorePlan(bout, me); // the live restore preview: follows the board after every action
-    syncFolds(); syncLedger(); syncMeters();
+    syncFolds(); syncLedger(); syncMeters(); queueMicrotask(drawHand);
     layoutEffects();
     const cards = cardLayout();
     // trick cards
@@ -808,7 +808,42 @@ export function boutScene(root, bout, ctx, onDone) {
     else text = left <= 0 ? say(tx('table.out-of-bids-press'), tx('table.out-of-bids-bluff')) : me.used.bid ? say(tx('table.bid-again-left-click', { left }), tx('table.left-or-bluff', { left })) : say(tx('table.step-3-bid-click'), tx('table.bid-a-chip-on'));
     setPrompt(text);
   }
-  function setMode(mode, v) { ui.mode = mode; ui.die = mode === 'die' ? v : null; ui.entry = mode === 'target' || mode === 'bid' ? v : null; } // 'bid': a trick picked to bid onto, chip by chip
+  // ---------- the hand ----------
+  // What you have picked up rides with the pointer: dice for the throw (and chips to flip), chips to bid, rolled dice
+  // to put on a trick. The ones you hold dim where they lie. Click a trick (or the roll, to throw) to put the hand
+  // down; right-click lets go of everything in it.
+  const handEl = h('div', { class: 'hand-cursor' }); root.append(handEl);
+  function heldItems() {
+    if (bout.phase === 'roll' && !me.thrown) return [...me.pouch.filter((d) => ui.sel.has(d.id)).map((d) => ({ d })), ...ui.flips.map((f) => ({ ch: B.bidChip(me, f.r, f.c) })).filter((x) => x.ch)];
+    if (bout.phase === 'bid') return (B.handChips(me, ui.hand) || []).map((x) => ({ ch: x.ch }));
+    if (bout.phase === 'aim') return ui.held.map((id) => me.tray.find((d) => d.id === id)).filter(Boolean).map((d) => ({ d, v: d.value }));
+    return [];
+  }
+  function drawHand() {
+    const items = ui.locked ? [] : heldItems(); handEl.classList.toggle('on', items.length > 0 && !!ui.cursor);
+    handEl.replaceChildren(...items.slice(0, 12).map((x, i) => { const el = x.d ? dieEl(x.d, x.v ?? '', 'mini') : chipEl(x.ch, 'mini'); el.style.setProperty('--i', i); return el; }));
+    for (const el of els.dice.values()) el.classList.toggle('inhand', false); for (const el of els.chips.values()) el.classList.toggle('inhand', false);
+    for (const x of items) (x.d ? els.dice.get(x.d.id) : els.chips.get(x.ch.id))?.classList.add('inhand');
+    trayBox.classList.toggle('drop', bout.phase === 'roll' && !me.thrown && items.length > 0); trayBox.dataset.drop = tx('table.roll-here', { n: items.length });
+  }
+  const moveHand = () => { if (ui.cursor) handEl.style.transform = `translate(${ui.cursor.x + 14}px, ${ui.cursor.y + 10}px)`; };
+  root.addEventListener('mousemove', (ev) => { const was = !!ui.cursor; ui.cursor = stagePoint(ev); moveHand(); if (!was) drawHand(); });
+  root.addEventListener('mouseleave', () => { ui.cursor = null; handEl.classList.remove('on'); });
+  // put the hand down: what moves starts from the pointer and settles where it goes
+  function fromHand(list) {
+    if (!ui.cursor) return;
+    for (const el of list) { if (!el) continue; el.style.transition = 'none'; el.style.transform = `translate(${ui.cursor.x - 16}px, ${ui.cursor.y - 16}px) scale(.8)`; void el.offsetWidth; el.style.transition = '';
+      el.classList.add('landing'); setTimeout(() => el.classList.remove('landing'), 900); }
+  }
+  function letGo() {
+    if (!heldItems().length) return false;
+    act(() => { if (bout.phase === 'roll') { ui.sel.clear(); ui.flips = []; } if (bout.phase === 'bid') { ui.hand = []; if (ui.mode === 'bid') setMode(null); } if (bout.phase === 'aim') setMode(null); });
+    return true;
+  }
+  rightClick.take = () => root.isConnected && letGo();
+  // the roll takes the handful you picked up: click it to throw (the same as pressing the button)
+  trayBox.onclick = () => { if (bout.phase === 'roll' && !me.thrown && selCount()) commit(); };
+  function setMode(mode, v) { if (mode !== 'die') ui.held = []; else if (v != null && !ui.held.includes(v)) ui.held = [v]; ui.mode = mode; ui.die = mode === 'die' ? ui.held[0] ?? v : null; ui.entry = mode === 'target' || mode === 'bid' ? v : null; } // 'bid': a trick picked to bid onto, chip by chip
   function act(fn) { if (ui.locked) return; fn(); sync(); hint(); }
   const nope = (msg, el) => { toast(msg, 'warn'); if (el) pulse(el, 'shake'); };
 
@@ -822,7 +857,8 @@ export function boutScene(root, bout, ctx, onDone) {
     if (bout.phase === 'draw') { const why = B.canUndraw(bout, me, uid); if (why) return nope(why === 'Only a trick drawn this turn can go back to the Book.' ? tx('table.that-trick-was-drawn') : why, el); return act(() => B.undraw(bout, me, uid)); }
     if (bout.phase === 'roll') return nope(tx('table.pick-dice-from-your'), el);
     if (ui.mode === 'die') { const why = B.canPlace(bout, me, ui.die, e); if (why) return nope(why, el);
-      return act(() => { B.place(bout, me, ui.die, e); aimBest(); const next = me.tray.find((d) => me.run.some((x) => !B.canPlace(bout, me, d.id, x))); setMode(next ? 'die' : null, next?.id); }); }
+      const ids = ui.held.filter((id) => !B.canPlace(bout, me, id, e)); // the whole handful goes on
+      fromHand(ids.map((id) => els.dice.get(id))); return act(() => { for (const id of ids) B.place(bout, me, id, e); aimBest(); setMode(null); }); }
     if (bout.phase === 'aim') { if (e.state === 'bid' && B.needsTarget(e)) return act(() => { ui.hand = []; setMode('target', uid); });
       if (me.tray.length) return nope(tx('table.click-a-die-in'), el);
       return nope(e.state === 'bid' ? tx('table.that-trick-needs-no') : tx('table.only-tricks-you-bid'), el); }
@@ -833,7 +869,7 @@ export function boutScene(root, bout, ctx, onDone) {
       if (me.used.bid >= B.tipOf(me, 'ingenuity')) return nope(tx('table.no-bids-left-this'), el);
       return act(() => setMode('bid', uid)); }
     const why = B.canBidMany(bout, me, e, ui.hand); if (why) return nope(why, el);
-    act(() => { B.bidMany(bout, me, e, ui.hand); ui.hand = []; setMode(null); });
+    fromHand((B.handChips(me, ui.hand) || []).map((x) => els.chips.get(x.ch.id))); act(() => { B.bidMany(bout, me, e, ui.hand); ui.hand = []; setMode(null); });
   }
   function clickDie(id) {
     if (ui.locked) return;
@@ -844,9 +880,10 @@ export function boutScene(root, bout, ctx, onDone) {
       if (selCount() >= B.tipOf(me, 'proficiency')) return nope(tx('table.you-can-roll-this', { tipOf: B.tipOf(me, 'proficiency') }), el);
       return act(() => ui.sel.add(id));
     }
-    if (me.tray.some((d) => d.id === id)) { if (bout.phase !== 'aim') return nope(tx('table.dice-go-on-tricks'), el); return act(() => setMode(ui.mode === 'die' && ui.die === id ? null : 'die', id)); }
+    if (me.tray.some((d) => d.id === id)) { if (bout.phase !== 'aim') return nope(tx('table.dice-go-on-tricks'), el); // gather a handful from the roll
+      return act(() => { const k = ui.held.indexOf(id); if (k >= 0) ui.held.splice(k, 1); else ui.held.push(id); if (ui.held.length) { ui.mode = 'die'; ui.die = ui.held[0]; } else setMode(null); }); }
     if (!B.canMove(bout, me, id)) return nope(B.holderOf(me, id)?.state === 'play' ? tx('table.that-trick-is-in') : bout.phase !== 'aim' && B.holderOf(me, id)?.dice.find((d) => d.id === id)?.t === bout.turn ? tx('table.dice-are-moved-in') : tx('table.that-die-was-placed'), el);
-    act(() => { ui.hand = []; B.unplace(bout, me, id); aimBest(); setMode('die', id); });
+    act(() => { ui.hand = []; B.unplace(bout, me, id); aimBest(); }); // back to the roll, where it came from
   }
   function clickCell(si, r, c) {
     if (ui.locked) return;
@@ -1055,7 +1092,7 @@ export function boutScene(root, bout, ctx, onDone) {
       [tt('test.tools.effect'), Object.entries(D.SHOP_CHIPS).map(([k, X]) => [tx('table.shop', { k }), X.name])]].filter(([, l]) => l.length);
   }
   async function finish() {
-    document.removeEventListener('keydown', onKey);
+    document.removeEventListener('keydown', onKey); if (rightClick.take) rightClick.take = null;
     const win = bout.winner === 0; lights('flash'); neonCall(tx(win ? 'table.win-call' : 'table.lose-call'), win ? '#7dff9e' : '#ff4d6a', 2600); await wait(500);
     banner.append(h('div', { class: `banner-card ${win ? 'win' : 'lose'}` }, h('h1', { text: win ? tx('table.the-table-is-yours') : tx('table.broke') }),
       h('p', { text: win ? tx('table.is-out-of-worth', { name: opp.name, turn: bout.turn }) : tx('table.takes-everything-on-the', { name: opp.name }) }),
