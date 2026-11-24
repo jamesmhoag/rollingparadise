@@ -976,3 +976,7 @@ p.flavor { font-style: italic; color: var(--dim); }
 .tags .tag-t, #tooltip .tag-t { display: inline-block; margin: 1px 2px; }
 .b-tricks { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; } .b-trick { gap: 2px; align-items: center; }
 .b-dice { gap: 8px; } .b-die { display: inline-flex; align-items: center; gap: 4px; }
+
+/* the hand of bid chips is a stack, not a fan; the bid pile on a card is an empty space for the chips */
+.hand-cursor.stack { flex-direction: column-reverse; } .hand-cursor.stack > * { margin-left: 0; margin-top: -22px; rotate: 0deg; } .hand-cursor.stack > *:last-child { margin-top: 0; }
+.bidslot { font-size: 0 !important; color: transparent !important; }

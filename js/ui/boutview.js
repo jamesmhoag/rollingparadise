@@ -85,7 +85,7 @@ export function boutScene(root, bout, ctx, onDone) {
   const pitSlot = (si, k, n) => { const per = Math.ceil(n / 2), step = Math.min(4, (PIT.bottom - PIT.top - CHIP) / Math.max(1, per - 1));
     return { x: (si === 0 ? PX + 2 : PX + 72) + (k % 2) * 34, y: PIT.bottom - CHIP - Math.floor(k / 2) * step, z: 30 + k }; };
   // a trick's bid pile sits just right of its BID ring: the ring (or the card) adds a bid, the pile gives its top chip back
-  function bidSpot(el) { const s = el?.querySelector('.bidslot'); return s ? { x: s.offsetLeft + s.offsetWidth + 3, y: s.offsetTop + (s.offsetHeight - CHIP) / 2 } : { x: 46, y: 80 }; }
+  function bidSpot(el) { const s = el?.querySelector('.bidslot'); return s ? { x: s.offsetLeft + (s.offsetWidth - CHIP) / 2, y: s.offsetTop + (s.offsetHeight - CHIP) / 2 } : { x: 46, y: 80 }; } // the pile stacks in the space
 
   // ---------- static frame ----------
   const worthEl = [h('b', { class: 'num' }), h('b', { class: 'num' })], stageEl = [h('b', { class: 'num' }), h('b', { class: 'num' })];
@@ -443,7 +443,7 @@ export function boutScene(root, bout, ctx, onDone) {
         h('div', { class: 'c-name' }, illus(def), h('b', { text: def.name }), h('span', { class: 'c-stack', tip: () => stackTip(t.uid) }), h('span', { class: 'q', html: trickWord(t) })),
         h('div', { class: 'c-type' }, T.name, h('span', { class: `xm ${t.foil ? 'up' : ''}`, text: ` ${fmtX(B.multOf(t))}` }), h('span', { class: 'qd', tip: tx('table.quality-2', { QNAME: D.QNAME[t.q], qdieText: D.qdieText(t.q) }) }), h('span', { class: 'tgt', text: 'aim', 'data-act': 'target', tip: tx('table.aim-change-where-this') })),
         h('div', { class: 'c-dice' }), // the dice on it are drawn over this row
-        h('div', { class: 'c-bid' }, h('span', { class: 'bidslot', text: tx('table.bid-5'), 'data-act': 'bid' }), h('div', { class: 'c-math' })), // the roll breakdown sits beside the bid pile
+        h('div', { class: 'c-bid' }, h('span', { class: 'bidslot', tip: tx('table.bid-space-tip') }), h('div', { class: 'c-math' })), // the roll breakdown sits beside the bid pile
         h('div', { class: 'c-text' }, h('p', {}, h('em', { text: tx('table.roll-2') }), def.roll.text), h('p', { class: 'bonus', tip: tx('table.bonus-dice-tip', { count: def.count, die: def.die }) }, h('em', { text: tx('table.bonus') }), h('span', { class: 'c-need' }, Array.from({ length: def.count }, () => h('i', { class: 'need', text: def.die }))), def.bonus.text)),
         h('div', { class: 'c-total' }, h('span', { class: 'state' }), h('b', { class: 'num' }))));
     el._tuid = t.uid; tip(el, () => (si ? oppCardTip(t.uid) : cardTip(t.uid))); layer.append(el); return el;
@@ -535,7 +535,7 @@ export function boutScene(root, bout, ctx, onDone) {
         el.classList.toggle('can', !e ? !ui.locked && !B.canDraw(bout, me, uid) : false);
         const tapped = !e && !me.book.some((x) => x.uid === uid); el.classList.toggle('tapped', tapped); el.classList.toggle('restoring', tapped && plan.tricks.includes(uid));
         el.classList.toggle('pick', !!e && (ui.mode === 'die' ? !B.canPlace(bout, me, ui.die, e) : ui.hand.length > 0 && !B.canBidMany(bout, me, e, ui.hand)));
-        el.classList.toggle('active', !!e && ui.entry === e.uid && (ui.mode === 'bid' || ui.mode === 'target'));
+        el.classList.toggle('active', !!e && ui.entry === e.uid && ui.mode === 'target');
       }
       if (e) {
         const def = D.TRICKS[t.id], met = B.bonusMet(s, e);
@@ -548,7 +548,6 @@ export function boutScene(root, bout, ctx, onDone) {
         swapText(el.querySelector('.state'), e.state === 'play' ? (stackN ? tx('table.state-lingers', { n: stackN }) : tx('table.state-in-play')) : e.state === 'bid' ? tx('table.state-bid', { n: e.bidValue }) : tx('table.state-needs-bid'));
         swapText(el.querySelector('.c-stack'), stackN ? `⧉ ×${stackN + 1}` : ''); el.classList.toggle('stacked', stackN > 0); el.style.setProperty('--stack', Math.min(3, stackN));
         // the BID ring stays beside the pile: BID while empty, + once bid (each chip bid adds its value)
-        swapText(el.querySelector('.bidslot'), e.bid.length ? '+' : tx('table.bid-5'));
         const live = e.dice.length || e.state !== 'shown';
         tween(el.querySelector('.c-total .num'), B.previewTotal(s, e), (n) => (live ? '= ' + Math.round(n) : ''));
         const P = B.totalParts(s, e), bits = e.dice.length ? [P.dice.join('+')] : [];
@@ -804,7 +803,6 @@ export function boutScene(root, bout, ctx, onDone) {
     else if (bout.phase === 'aim' && ui.mode !== 'target' && B.trayPlaceable(me)) text = say(tx('table.the-bluff-put-your'), tx('table.place-your-dice'));
     else if (bout.phase === 'aim' && ui.mode !== 'target') { const left = me.run.filter((x) => x.state === 'bid' && B.needsTarget(x)); text = left.length ? say(tx('table.the-bluff-the-bids', { v: left.length === 1 ? 'your trick is' : 'each trick is', join: left.map((x) => `${D.TRICKS[x.trick.id].name} → ${where(x.target)}`).join(', ') }), tx('table.aimed-at-the-best')) : say(tx('table.nothing-to-aim-press'), 'Play.'); }
     else if (ui.mode === 'target') text = say(tx('table.pick-where-lands-or', { name, v: fcNow ? ' Forecast: ' + fcSummary(fcNow) : '' }), tx('table.aim', { name }));
-    else if (ui.mode === 'bid' && ui.entry) { const e0 = me.run.find((x) => x.uid === ui.entry); text = say(tx('table.bidding-onto-so-far', { name: D.TRICKS[e0.trick.id].name, bidValue: e0.bidValue, left }), tx('table.click-stacks-to-bid', { name: D.TRICKS[e0.trick.id].name })); }
     else if (hand.length) text = say(tx('table.in-your-hand-click', { join: hand.map((x) => x.ch.value).join(' + '), handN: hand.length, handV, left: left - hand.length }), tx('table.hand-pick-a-trick', { handV, handN: hand.length }));
     else text = left <= 0 ? say(tx('table.out-of-bids-press'), tx('table.out-of-bids-bluff')) : me.used.bid ? say(tx('table.bid-again-left-click', { left }), tx('table.left-or-bluff', { left })) : say(tx('table.step-3-bid-click'), tx('table.bid-a-chip-on'));
     setPrompt(text);
@@ -821,7 +819,7 @@ export function boutScene(root, bout, ctx, onDone) {
     return [];
   }
   function drawHand() {
-    const items = ui.locked ? [] : heldItems(); handEl.classList.toggle('on', items.length > 0 && !!ui.cursor);
+    const items = ui.locked ? [] : heldItems(); handEl.classList.toggle('on', items.length > 0 && !!ui.cursor); handEl.classList.toggle('stack', bout.phase === 'bid');
     handEl.replaceChildren(...items.slice(0, 12).map((x, i) => { const el = x.d ? dieEl(x.d, x.v ?? '', 'mini') : chipEl(x.ch, 'mini'); el.style.setProperty('--i', i); return el; }));
     for (const el of els.dice.values()) el.classList.toggle('inhand', false); for (const el of els.chips.values()) el.classList.toggle('inhand', false);
     for (const x of items) (x.d ? els.dice.get(x.d.id) : els.chips.get(x.ch.id))?.classList.add('inhand');
@@ -838,7 +836,7 @@ export function boutScene(root, bout, ctx, onDone) {
   }
   function letGo() {
     if (!heldItems().length) return false;
-    act(() => { if (bout.phase === 'roll') { ui.sel.clear(); ui.flips = []; } if (bout.phase === 'bid') { ui.hand = []; if (ui.mode === 'bid') setMode(null); } if (bout.phase === 'aim') setMode(null); });
+    act(() => { if (bout.phase === 'roll') { ui.sel.clear(); ui.flips = []; } if (bout.phase === 'bid') ui.hand = []; if (bout.phase === 'aim') setMode(null); });
     return true;
   }
   rightClick.take = () => root.isConnected && letGo();
@@ -858,19 +856,18 @@ export function boutScene(root, bout, ctx, onDone) {
     if (bout.phase === 'draw') { const why = B.canUndraw(bout, me, uid); if (why) return nope(why === 'Only a trick drawn this turn can go back to the Book.' ? tx('table.that-trick-was-drawn') : why, el); return act(() => B.undraw(bout, me, uid)); }
     if (bout.phase === 'roll') return nope(tx('table.pick-dice-from-your'), el);
     if (ui.mode === 'die') { const why = B.canPlace(bout, me, ui.die, e); if (why) return nope(why, el);
-      const ids = ui.held.filter((id) => !B.canPlace(bout, me, id, e)); // the whole handful goes on
-      fromHand(ids.map((id) => els.dice.get(id))); ids.forEach((_, i) => setTimeout(() => sfx('die'), 120 + i * 90)); return act(() => { for (const id of ids) B.place(bout, me, id, e); aimBest(); setMode(null); }); }
+      const ids = []; // the handful goes on, one size: what does not fit stays in your hand
+      for (const id of ui.held) { const d = me.tray.find((x) => x.id === id); const sz = B.sizeOn(e) || (ids.length ? me.tray.find((x) => x.id === ids[0])?.type : null);
+        if (!B.canPlace(bout, me, id, e) && (!sz || d?.chip || d?.type === sz)) ids.push(id); }
+      fromHand(ids.map((id) => els.dice.get(id))); ids.forEach((_, i) => setTimeout(() => sfx('die'), 120 + i * 90));
+      return act(() => { for (const id of ids) B.place(bout, me, id, e); aimBest(); const rest = ui.held.filter((id) => !ids.includes(id) && me.tray.some((d) => d.id === id)); if (rest.length) { ui.held = rest; ui.die = rest[0]; } else setMode(null); }); }
     if (bout.phase === 'aim') { if (e.state === 'bid' && B.needsTarget(e)) return act(() => { ui.hand = []; setMode('target', uid); });
       if (me.tray.length) return nope(tx('table.click-a-die-in'), el);
       return nope(e.state === 'bid' ? tx('table.that-trick-needs-no') : tx('table.only-tricks-you-bid'), el); }
     if (ev.target.dataset.act === 'target' && e.state === 'bid') return nope(tx('table.aim-in-the-bluff'), el);
     if (e.state === 'play') return nope(tx('table.that-trick-is-already'), el);
-    if (!ui.hand.length) { // no hand: pick this trick, then each stack clicked bids its top chip straight onto it
-      if (ui.mode === 'bid' && ui.entry === uid) return act(() => setMode(null));
-      if (me.used.bid >= B.tipOf(me, 'ingenuity')) return nope(tx('table.no-bids-left-this'), el);
-      return act(() => setMode('bid', uid)); }
-    const why = B.canBidMany(bout, me, e, ui.hand); if (why) return nope(why, el);
-    fromHand((B.handChips(me, ui.hand) || []).map((x) => els.chips.get(x.ch.id))); ui.hand.forEach((_, i) => setTimeout(() => sfx('bid'), 150 + i * 80)); act(() => { B.bidMany(bout, me, e, ui.hand); ui.hand = []; setMode(null); });
+    if (!ui.hand.length) return nope(me.used.bid >= B.tipOf(me, 'ingenuity') ? tx('table.no-bids-left-this') : tx('table.pick-up-a-chip-first'), el); // pick chips up from your stacks first
+    bidOne(e, el);
   }
   function clickDie(id) {
     if (ui.locked) return;
@@ -909,11 +906,6 @@ export function boutScene(root, bout, ctx, onDone) {
       const mine0 = me.run.filter((x) => x.state === 'bid' && B.needsTarget(x) && x.target && x.target.side === si && x.target.r === r && x.target.c === c);
       if (mine0.length) { const k = (mine0.findIndex((x) => x.uid === ui.lastAim) + 1) % mine0.length; ui.lastAim = mine0[k].uid; return act(() => setMode('target', mine0[k].uid)); }
     }
-    if (bout.phase === 'bid' && ui.mode === 'bid' && e) { // bid straight onto the picked trick
-      if (si !== 0) return nope(tx('table.bid-a-chip-from'), cellEl);
-      const why = B.canBid(bout, me, e, r, c); if (why) return nope(why, cellEl);
-      sfx('bid'); return act(() => { B.bid(bout, me, e, r, c); if (me.used.bid >= B.tipOf(me, 'ingenuity')) setMode(null); });
-    }
     if (bout.phase === 'bid') {
       if (si !== 0) return nope(tx('table.bid-a-chip-from'), cellEl);
       // a hand of chips: each click on a stack picks up its next chip; a stack with nothing more to give is let go
@@ -922,12 +914,20 @@ export function boutScene(root, bout, ctx, onDone) {
       if (!hand) return ui.hand.some((x) => x.r === r && x.c === c) ? drop() : nope(tx('table.only-uncovered-standard-or'), cellEl);
       if (more.length > left) return ui.hand.some((x) => x.r === r && x.c === c) ? drop() : nope(left <= 0 ? tx('table.no-bids-left-this-2') : tx('table.your-hand-is-full', { left }), cellEl);
       if (B.worth(me) - sum(hand, (x) => x.ch.value) <= 0) return nope(tx('table.that-is-your-last-2'), cellEl);
-      return act(() => { ui.hand = more; if (ui.mode === 'bid') setMode(null); });
+      sfx('chip'); return act(() => { ui.hand = more; });
     }
   }
-  // click undo: a chip bid this turn goes back to its stack
+  // The hand is a stack of chips: each click on a trick bids one, the top of the stack (the last picked up).
+  function bidOne(e, el) {
+    const top = ui.hand[ui.hand.length - 1], k = ui.hand.findIndex((x) => x.r === top.r && x.c === top.c); // a stack gives its top chip first
+    const why = B.canBid(bout, me, e, top.r, top.c); if (why) return nope(why, el);
+    const ch = B.bidChip(me, top.r, top.c); fromHand([els.chips.get(ch?.id)]); sfx('bid');
+    act(() => { B.bid(bout, me, e, top.r, top.c); ui.hand.splice(k, 1); });
+  }
+  // click undo: a chip bid this turn goes back to its stack (not while you hold chips: then the click bids one more)
   function clickBidChip(uid, chipId) {
-    if (ui.locked) return; const e = me.run.find((x) => x.uid === uid); chipId = e?.bid[e.bid.length - 1]?.id ?? chipId; // a pile gives back its top chip
+    if (ui.locked) return; const e = me.run.find((x) => x.uid === uid);
+    if (ui.hand.length && e) return bidOne(e, els.chips.get(chipId)); chipId = e?.bid[e.bid.length - 1]?.id ?? chipId; // a pile gives back its top chip
     const why = B.canUnbid(bout, me, e, chipId);
     if (why) return nope(why, els.chips.get(chipId));
     act(() => { B.unbid(bout, me, e, chipId); ui.hand = []; });
@@ -973,7 +973,7 @@ export function boutScene(root, bout, ctx, onDone) {
     ui.locked = false;
     if (bout.phase === 'resolve') return playTurn();
     spyPhase();
-    if (bout.phase === 'aim') { ui.handAim.clear(); aimBest(); const first = me.tray.find((d) => me.run.some((x) => !B.canPlace(bout, me, d.id, x))); if (first) setMode('die', first.id); }
+    if (bout.phase === 'aim') { ui.handAim.clear(); aimBest(); } // nothing is picked for you: you choose even the first die
     sync(); hint(); autoSkip();
   }
   // The Bluff opens with every trick that needs a target aimed at its best one: most impact, least waste, judged on

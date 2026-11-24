@@ -24,9 +24,10 @@ is not built yet. Tab names are in **bold**.
   turn; nothing spends it. Both sides' chips appear when the phase closes, so you see your opponent's build up. Each step pill says
   in its hover what passing it gives; once passed it shows ✓ (all used) or what it kept.
 - A trick has a Roll effect and a Bonus; there are no Traits. It plays once **bid on**: its total is the value of the
-  chips bid on it plus the dice put on it in the Bluff (any number, any size, only on a trick bid on this turn), plus
+  chips bid on it plus the dice put on it in the Bluff (any number, only on a trick bid on this turn, all one size:
+  the first real die sets it; no size is required), plus
   Power and the like, times quality and print. A bid with no dice plays the effect at the bid's value. The Bonus
-  reads the trick's first `count` dice of its own size (a flipped chip counts as any size), its condition met,
+  reads the trick's first `count` dice when they are its own size (a flipped chip joins any size), its condition met,
   matching class only; the card shows them as pips in the Bonus line.
 - Effects resolve in the workbook's order: Investments, Insurances, Expenses, Corrections.
 - Bids go to the House. A trick **lingers** only by **stacking copies**: drawing a copy of a trick already shown (same
@@ -89,7 +90,10 @@ the pile. Click the pile to take its top chip back. Dice are not placed yet: the
 - **The hand.** What you pick up rides with the pointer and dims where it lies: dice from the Pouch (and top chips to
   flip: click a viable top chip, no button) up to your Roll, chips to bid, rolled dice to put on a trick. Click the
   roll to throw the handful (the same as pressing Bid), a trick to bid the chips or put the dice on it. What moves
-  starts from the pointer and settles softly. **Right-click lets go** of everything in the hand (with nothing in hand,
+  starts from the pointer and settles softly. Chips picked up to bid **stack** in the hand; each click on a trick
+  bids one (the top), into the empty bid pile space on the card. While you hold chips, clicking a bid pile bids one
+  more instead of taking one back. There is no other way to bid (no BID button). Nothing is picked for you in the
+  Bluff, not even the first die. **Right-click lets go** of everything in the hand (with nothing in hand,
   right-click still switches verbose and concise hovers).
 - **Click to undo**, until the phase is locked in: click a trick drawn this turn to put it back in the Book, a die on
   a trick to take it back into the roll, a chip bid this turn to take it back to the stack it came from, a picked
