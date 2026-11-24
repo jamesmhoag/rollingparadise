@@ -7,7 +7,7 @@ import { h, lab, btn } from './core.js';
 import * as D from '../data.js';
 import * as B from '../build/draft.js';
 import { t } from '../text.js';
-import { signOf, dressSign, FRAMES, EDGE_AT, BLINK_PARTS, BLINKS, EDGE_GLYPHS } from './sign.js';
+import { signOf, dressSign, FRAMES, MOTIONS, EDGE_AT, BLINK_PARTS, BLINKS, GLYPH_GROUPS, SHAPES, glyphOf } from './sign.js';
 
 const PARTS = ['border', 'name', 'cls'];
 const SAMPLE = { you: () => [D.ROLLERS.owl?.name || 'Owl', D.CLASSES.hustler?.name || 'Hustler'], them: () => ['Low Ball', 'Doorman'], house: () => [t('table.house-sign'), 'Turn 1'] };
@@ -31,10 +31,13 @@ export function signEditor(base, who, own, redraw, sample) {
   return h('div', { class: 'neon-side' }, prev,
     ...PARTS.map((part) => field(lab(`neon.${part}`), h('div', { class: 'row' }, pick(part, 0), pick(part, 1)), [part])),
     field(lab('neon.frame'), select(['frame'], FRAMES, spec.frame), ['frame']),
+    spec.frame === 'none' ? null : field(lab('neon.motion'), select(['motion'], MOTIONS, spec.motion), ['motion']),
     field(lab('neon.radius'), h('input', { type: 'number', min: 0, max: 30, value: spec.radius, style: { width: '70px' }, onchange: (e) => set(['radius'], Math.max(0, Math.min(30, +e.target.value || 0))) }), ['radius']),
-    field(lab('neon.edge'), h('div', { class: 'row wrap' }, h('input', { type: 'text', maxlength: 2, value: spec.edge, style: { width: '48px', textAlign: 'center' }, onchange: (e) => set(['edge'], [...e.target.value][0] || '') }),
-      ...EDGE_GLYPHS.map((g) => btn(g, () => set(['edge'], g), null, `small glyph ${g === spec.edge ? 'on' : ''}`))), ['edge']),
-    field(lab('neon.edgeAt'), select(['edgeAt'], EDGE_AT, spec.edgeAt), ['edgeAt']),
+    field(lab('neon.edge'), h('div', { class: 'col' }, h('div', { class: 'row' }, h('input', { type: 'text', maxlength: 4, value: spec.edge?.startsWith(':') ? '' : spec.edge, placeholder: t('neon.edge.ph'), style: { width: '64px', textAlign: 'center' }, onchange: (e) => { const g = [...e.target.value.trim()][0]; if (g) set(['edge'], g); } })),
+      ...Object.entries(GLYPH_GROUPS).map(([k, list]) => h('div', { class: 'glyph-group' }, h('span', { class: 'cap', text: t(`neon.glyphs.${k}`) }),
+        ...list.map((g) => { const b = btn(g.startsWith(':') ? '' : g, () => set(['edge'], g), () => t('neon.glyph.tip', { g: g.startsWith(':') ? t(`neon.shape.${g.slice(1)}`) : g }), `small glyph ${g === glyphOf(spec.edge) ? 'on' : ''}`);
+          if (g.startsWith(':')) b.innerHTML = `<svg viewBox="0 0 12 12"><path fill-rule="evenodd" d="${SHAPES[g.slice(1)]}"/></svg>`; return b; })))), ['edge']),
+    spec.frame === 'symbols' ? null : field(lab('neon.edgeAt'), select(['edgeAt'], EDGE_AT, spec.edgeAt), ['edgeAt']),
     field(lab('neon.mount'), h('div', { class: 'row wrap' }, h('input', { type: 'color', value: spec.mount.color || '#07040f', onchange: (e) => set(['mount', 'color'], e.target.value) }),
       btn(t('neon.mount.none'), () => set(['mount', 'color'], ''), null, 'small')), ['mount', 'color']),
     field(lab('neon.image'), h('div', { class: 'row wrap' }, h('input', { type: 'text', value: spec.mount.image?.startsWith('data:') ? t('neon.image.file') : spec.mount.image || '', placeholder: t('neon.image.ph'), onchange: (e) => set(['mount', 'image'], e.target.value.trim()) }),
