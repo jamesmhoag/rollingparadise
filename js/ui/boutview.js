@@ -252,7 +252,7 @@ export function boutScene(root, bout, ctx, onDone) {
   const phaseCall = h('div', { class: 'phase-call' });
   let callT = 0;
   function neonCall(text, color, ms = 1500) { clearTimeout(callT); phaseCall.textContent = text; phaseCall.style.setProperty('--pc', color); phaseCall.classList.remove('in'); void phaseCall.offsetWidth; phaseCall.classList.add('in'); callT = setTimeout(() => phaseCall.classList.remove('in'), ms / ui.speed); }
-  function turnSign() { const last = me.heat > 1; neonCall(tx(last ? 'table.turn-call-last' : 'table.turn-call', { turn: bout.turn }), last ? '#ff4d6a' : '#6ef0ff'); lights('flash', 1300); }
+  function turnSign() { sfx('turn'); const last = me.heat > 1; neonCall(tx(last ? 'table.turn-call-last' : 'table.turn-call', { turn: bout.turn }), last ? '#ff4d6a' : '#6ef0ff'); lights('flash', 1300); }
   const arms = [0, 1].map((i) => { const piv = { x: i ? 726 : 554, y: 74 }, rest = i ? 62 : 118, el = h('div', { class: `stick arm${i}`, style: { left: `${piv.x}px`, top: `${piv.y - 2.5}px`, width: '30px', transform: `rotate(${rest}deg)` } }); let ang = rest; // the arms hang from the sign's lower corners
     return { el, to(x, y) { const dx = x - piv.x, dy = y - piv.y; let a = Math.atan2(dy, dx) * 180 / Math.PI; while (a - ang > 180) a -= 360; while (a - ang < -180) a += 360; ang = a;
       el.style.width = `${Math.max(30, Math.hypot(dx, dy) - 8)}px`; el.style.transform = `rotate(${a}deg)`; el.classList.add('live'); },
@@ -264,7 +264,7 @@ export function boutScene(root, bout, ctx, onDone) {
   const runEmpty = h('div', { class: 'run-empty', tip: tx('table.run-tricks-you-have'), text: tx('table.your-run-click-a') });
   const oppEmpty = h('div', { class: 'run-empty', tip: tx('table.s-run-the-tricks', { name: opp.name }), text: tx('table.their-run-empty', { name: opp.name }) });
   const sipBtn = btn(tx('table.sip'), () => { const why = B.canSip(bout, me); if (why) return nope(why, sipBtn); act(() => { B.sip(bout, me); toast(tx('table.you-sip-your-it', { name: me.drink.name })); }); }, () => (me.drink ? tx('table.sip-once-a-round', { drinkTip: drinkTip(me.drink) }) : ''), 'small');
-  const undoBtn = btn(tx('table.undo-2'), () => act(() => { B.resetPlan(bout, me); ui.sel.clear(); ui.flips = []; ui.hand = []; ui.handAim.clear(); setMode(null); if (bout.phase === 'aim') aimBest(); }),
+  const undoBtn = btn(tx('table.undo-2'), () => act(() => { sfx('undo'); B.resetPlan(bout, me); ui.sel.clear(); ui.flips = []; ui.hand = []; ui.handAim.clear(); setMode(null); if (bout.phase === 'aim') aimBest(); }),
     () => tx('table.undo', { v: bout.phase === 'draw' ? tx('table.put-back-the-tricks') : bout.phase === 'roll' ? (me.thrown ? tx('table.take-the-dice-off') : tx('table.clear-the-dice-and')) : tx('table.take-back-the-bids') }), 'small');
   const speedBtn = guided(btn('1×', () => { ui.speed = ui.speed === 1 ? 2 : ui.speed === 2 ? 4 : 1; swapText(speedBtn, `${ui.speed}×`); }, tx('table.speed-how-fast-the'), 'small'), 'btn:speed');
   const commitBtn = btn(tx('table.roll'), () => commit(), () => commitTip(), 'big');
@@ -604,9 +604,11 @@ export function boutScene(root, bout, ctx, onDone) {
       if (!el) { el = mkChip(w.ch); els.chips.set(id, el);
         if (fx[id] === 'from-stage' || fx[id] === 'from-pit') spawn(el, STAGE[w.side].x, STAGE[w.side].y, 'scale(.5)');
         else if (fx[id] === 'debt') spawn(el, HOUSE.x, HOUSE.y + 30, 'scale(.5)'); // Debt is dealt out by the House
-        else if (fx[id] === 'spawn' && !ui.first && !w.pit) { spawn(el, w.x, w.y - 34, 'scale(.8)'); sfx('land', 250); } // made chips appear just above their space, then land
+        else if (fx[id] === 'spawn' && !ui.first && !w.pit) { spawn(el, w.x, w.y - 34, 'scale(.8)'); sfx('spawn'); sfx('land', 250, { pan: w.side ? 0.5 : -0.3 }); } // made chips appear just above their space, then land
         else if (ui.first) spawn(el, w.x, w.y - 46, '', Math.min(900, n * 5));
         else spawn(el, w.x, w.y, 'scale(.1)'); n++; }
+      if (!ui.first && el._at && (Math.abs(el._at[0] - w.x) > 30 || Math.abs(el._at[1] - w.y) > 30) && !w.pit && bout.phase === 'resolve') sfx('move', 0, { pan: w.side ? 0.5 : -0.3 }); // the board moves chips: heard
+      el._at = [w.x, w.y];
       el._side = w.side; el.style.opacity = '1'; el.style.zIndex = w.z; place(el, w.x, w.y, extra); el.classList.toggle('inpit', !!w.pit); el.classList.toggle('mat', !!w.mat);
       if (w.pit) el._tip = () => tx('table.on-turn', { chipTip: chipTip(w.ch), v: w.ch.from === 'bid' ? tx('table.bid-to-the-house') : tx('table.lost-to-a-fee'), turn: w.ch.turn });
       el.classList.toggle('flipsel', flipIds.has(id)); el.classList.toggle('bidsel', handIds.has(id)); el.classList.toggle('handsel', handIds.has(id));
@@ -618,7 +620,7 @@ export function boutScene(root, bout, ctx, onDone) {
     for (const [id, el] of els.chips) if (!want.has(id)) {
       const how = fx[id] || 'void', m = /translate\(([-\d.]+)px, ([-\d.]+)px\)/.exec(el.style.transform), x = +m[1], y = +m[2];
       el.style.zIndex = 950; el.style.opacity = '0';
-      if (how === 'stage') { sfx('pay'); el.classList.add('paying'); place(el, STAGE[el._side].x, STAGE[el._side].y, 'scale(.6)'); }
+      if (how === 'stage') { sfx('pay', 0, { pan: el._side ? 0.5 : -0.3 }); el.classList.add('paying'); place(el, STAGE[el._side].x, STAGE[el._side].y, 'scale(.6)'); }
       else if (how === 'house') { el.classList.add('paying'); place(el, HOUSE.x, HOUSE.y, 'scale(.5)'); }
       else if (how === 'abduct') place(el, x, y - 190, 'scale(.7)');
       else place(el, x, y - 6, 'scale(.1) rotate(140deg)');
@@ -847,7 +849,7 @@ export function boutScene(root, bout, ctx, onDone) {
   trayBox.onclick = () => { if (bout.phase === 'roll' && !me.thrown && selCount()) commit(); };
   function setMode(mode, v) { if (mode !== 'die') ui.held = []; else if (v != null && !ui.held.includes(v)) ui.held = [v]; ui.mode = mode; ui.die = mode === 'die' ? ui.held[0] ?? v : null; ui.entry = mode === 'target' || mode === 'bid' ? v : null; } // 'bid': a trick picked to bid onto, chip by chip
   function act(fn) { if (ui.locked) return; fn(); sync(); hint(); }
-  const nope = (msg, el) => { toast(msg, 'warn'); if (el) pulse(el, 'shake'); };
+  const nope = (msg, el) => { toast(msg, 'warn'); sfx('refuse'); if (el) pulse(el, 'shake'); };
 
   // ---------- input ----------
   function clickCard(uid, ev) {
@@ -862,9 +864,9 @@ export function boutScene(root, bout, ctx, onDone) {
       const ids = []; // the handful goes on, one size: what does not fit stays in your hand
       for (const id of ui.held) { const d = me.tray.find((x) => x.id === id); const sz = B.sizeOn(e) || (ids.length ? me.tray.find((x) => x.id === ids[0])?.type : null);
         if (!B.canPlace(bout, me, id, e) && (!sz || d?.chip || d?.type === sz)) ids.push(id); }
-      fromHand(ids.map((id) => els.dice.get(id))); ids.forEach((_, i) => setTimeout(() => sfx('die'), 120 + i * 90));
+      fromHand(ids.map((id) => els.dice.get(id))); ids.forEach((_, i) => setTimeout(() => sfx('die'), 120 + i * 90)); sfx('step', 120);
       return act(() => { for (const id of ids) B.place(bout, me, id, e); aimBest(); const rest = ui.held.filter((id) => !ids.includes(id) && me.tray.some((d) => d.id === id)); if (rest.length) { ui.held = rest; ui.die = rest[0]; } else setMode(null); }); }
-    if (bout.phase === 'aim') { if (e.state === 'bid' && B.needsTarget(e)) return act(() => { ui.hand = []; setMode('target', uid); });
+    if (bout.phase === 'aim') { if (e.state === 'bid' && B.needsTarget(e)) { sfx('pick'); return act(() => { ui.hand = []; setMode('target', uid); }); }
       if (me.tray.length) return nope(tx('table.click-a-die-in'), el);
       return nope(e.state === 'bid' ? tx('table.that-trick-needs-no') : tx('table.only-tricks-you-bid'), el); }
     if (ev.target.dataset.act === 'target' && e.state === 'bid') return nope(tx('table.aim-in-the-bluff'), el);
@@ -879,19 +881,19 @@ export function boutScene(root, bout, ctx, onDone) {
       if (bout.phase !== 'roll' || me.thrown) return nope(bout.phase === 'draw' ? tx('table.press-roll-first-then') : me.thrown ? tx('table.you-have-rolled-this') : tx('table.rolling-is-over-for'), el);
       if (ui.sel.has(id)) return act(() => ui.sel.delete(id));
       if (selCount() >= B.tipOf(me, 'proficiency')) return nope(tx('table.you-can-roll-this', { tipOf: B.tipOf(me, 'proficiency') }), el);
-      sfx('die'); return act(() => ui.sel.add(id));
+      sfx('die'); sfx('pick'); return act(() => ui.sel.add(id));
     }
     if (me.tray.some((d) => d.id === id)) { if (bout.phase !== 'aim') return nope(tx('table.dice-go-on-tricks'), el); // gather a handful from the roll
       return act(() => { const k = ui.held.indexOf(id); if (k >= 0) ui.held.splice(k, 1); else ui.held.push(id); if (ui.held.length) { ui.mode = 'die'; ui.die = ui.held[0]; } else setMode(null); }); }
     if (!B.canMove(bout, me, id)) return nope(B.holderOf(me, id)?.state === 'play' ? tx('table.that-trick-is-in') : bout.phase !== 'aim' && B.holderOf(me, id)?.dice.find((d) => d.id === id)?.t === bout.turn ? tx('table.dice-are-moved-in') : tx('table.that-die-was-placed'), el);
-    act(() => { ui.hand = []; B.unplace(bout, me, id); aimBest(); }); // back to the roll, where it came from
+    sfx('undo'); act(() => { ui.hand = []; B.unplace(bout, me, id); aimBest(); }); // back to the roll, where it came from
   }
   function clickCell(si, r, c) {
     if (ui.locked) return;
     if (ui.sandbox?.op) return; // the test table's chip tools paint on press (see testTools)
     const cellEl = els.cells[si][r][c], e = me.run.find((x) => x.uid === ui.entry);
     if (ui.mode === 'target' && e) {
-      if (B.setTarget(bout, me, e, { side: si, r, c })) return act(() => { ui.handAim.add(e.uid); setMode(null); });
+      if (B.setTarget(bout, me, e, { side: si, r, c })) { sfx('aim'); return act(() => { ui.handAim.add(e.uid); setMode(null); }); }
       if (si !== 0 || !B.bidChip(me, r, c)) return nope(tx('table.not-a-valid-target'), cellEl);
       setMode(null); // a click on your own stack picks up a chip instead
     }
@@ -964,13 +966,13 @@ export function boutScene(root, bout, ctx, onDone) {
     if (bout.phase === 'drink') return closeDrink();
     pickToEngine();
     const why = B.needOf(bout, me); if (why) return nope(why, commitBtn);
-    ui.locked = true; setMode(null); ui.hand = []; ui.sel.clear(); ui.flips = []; prompt = ''; renderFeed();
+    ui.locked = true; setMode(null); ui.hand = []; ui.sel.clear(); ui.flips = []; prompt = ''; renderFeed(); sfx('confirm');
     const phase = bout.phase, before = ui.spyBefore || new Set(opp.run.map((e) => e.uid)), own = mine(phase), ownCells = phase === 'aim' ? me.run.filter((e) => e.state === 'bid' && e.target).map((e) => e.target) : [];
     if (own) feedPush(own, 0, ownCells, phase);
     if (ui.spied !== spyKey()) planPhase(bout, opp); ui.spied = null; ui.spyBefore = null;
     const r0 = (bout.rewards || []).length;
     if (!B.advance(bout)) B.advance(bout, true);
-    sync(); reveal(phase, before);
+    sync(); reveal(phase, before); if (bout.phase !== 'resolve' && !bout.over) sfx('phase', 520);
     for (const w of (bout.rewards || []).slice(r0)) feedPush(w.text.charAt(0).toUpperCase() + w.text.slice(1), w.side, w.cells, w.phase);
     await wait(420 / ui.speed);
     ui.locked = false;
@@ -1008,6 +1010,13 @@ export function boutScene(root, bout, ctx, onDone) {
   // dice put on tricks this turn, as feed text: '4 + 2 on Charge'
   const placed = (s) => s.run.map((e) => ({ e, ds: e.dice.filter((d) => d.t === bout.turn) })).filter((x) => x.ds.length).map((x) => tx('table.on-3', { join: x.ds.map((d) => d.value).join(' + '), name: D.TRICKS[x.e.trick.id].name }));
   const thrown = (s) => s.tray.filter((d) => d.t === bout.turn).map((d) => d.value);
+  // the opponent's moves are heard from across the table as they are shown
+  function oppSound(phase) {
+    if (phase === 'draw') { if (opp.run.some((e) => e.drawn === bout.turn)) sfx('opp-draw', 250); }
+    else if (phase === 'roll') { if (thrown(opp).length) sfx('opp-roll', 200); }
+    else if (phase === 'bid') { if (opp.run.some((e) => e.state === 'bid')) sfx('opp-bid', 250); }
+    else if (phase === 'aim') { if (placed(opp).length) { sfx('die', 150, { pan: 0.55 }); sfx('opp-aim', 380); } }
+  }
   function reveal(phase, before) {
     const tn = (e) => D.TRICKS[e.trick.id].name; let text;
     if (phase === 'roll') { const mineT = thrown(me); if (mineT.length) feedPush(tx('table.you-roll', { join: mineT.join(', ') }), 0, [], phase); } // both throws land as the Bid opens
@@ -1015,7 +1024,7 @@ export function boutScene(root, bout, ctx, onDone) {
     else if (phase === 'roll') { const t = thrown(opp); text = t.length ? tx('table.rolls', { name: opp.name, join: t.join(', ') }) : tx('table.rolls-nothing', { name: opp.name }); }
     else if (phase === 'aim') { const on = placed(opp); text = tx('table.where-they-aim-you', { v: on.length ? tx('table.puts', { name: opp.name, names: names(on) }) : tx('table.places-no-dice', { name: opp.name }) }); }
     else { const bids = opp.run.filter((e) => e.state === 'bid'); text = bids.length ? tx('table.bids', { name: opp.name, names: names(bids.map((e) => tx('table.on-4', { bidValue: e.bidValue, tn: tn(e) }))) }) : tx('table.bids-nothing', { name: opp.name }); }
-    feedPush(text, 1, [], phase);
+    feedPush(text, 1, [], phase); oppSound(phase);
     for (const e of opp.run) { const el = els.cards.get(ckey(1, e.uid)); if (el) pulse(el, 'reveal'); }
   }
 
@@ -1111,7 +1120,7 @@ export function boutScene(root, bout, ctx, onDone) {
   }
   async function finish() {
     document.removeEventListener('keydown', onKey); if (rightClick.take) rightClick.take = null;
-    const win = bout.winner === 0; lights('flash'); neonCall(tx(win ? 'table.win-call' : 'table.lose-call'), win ? '#7dff9e' : '#ff4d6a', 2600); await wait(500);
+    const win = bout.winner === 0; sfx(win ? 'win' : 'lose'); lights('flash'); neonCall(tx(win ? 'table.win-call' : 'table.lose-call'), win ? '#7dff9e' : '#ff4d6a', 2600); await wait(500);
     banner.append(h('div', { class: `banner-card ${win ? 'win' : 'lose'}` }, h('h1', { text: win ? tx('table.the-table-is-yours') : tx('table.broke') }),
       h('p', { text: win ? tx('table.is-out-of-worth', { name: opp.name, turn: bout.turn }) : tx('table.takes-everything-on-the', { name: opp.name }) }),
       btn(tx('title.continue'), () => onDone(), null, 'big go')));

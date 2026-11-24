@@ -18,7 +18,9 @@ for (const [k, F] of Object.entries(FONTS)) { F.files.forEach((p) => want(p, `fo
 for (const [k, p] of Object.entries(D.IMAGES)) want(p, `image ${k}`);
 for (const [k, I] of Object.entries(D.ICONS)) { want(I.src, `icon ${k}`); ok(I.src || I.glyph || ['creature', 'orbital', 'chip'].includes(k.split(':')[0]), `icon ${k}: no file and no glyph`); }
 for (const [k, p] of Object.entries(D.TEXTURES)) want(p, `texture ${k}`);
-for (const M of MUSIC) want(M.src, `music ${M.title}`);
+for (const M of MUSIC) { want(M.src, `music ${M.title}`); ok(Number.isInteger(M.key) && M.key >= 0 && M.key < 12 && M.genre, `music ${M.title}: a key and a genre`); }
+const { SAMPLES } = await import('../js/ui/sfx.js').catch(() => ({ SAMPLES: null }));
+for (const n of SAMPLES || []) want(`assets/sfx/${n}.mp3`, `sound sample ${n}`);
 
 // 2 · every manifest id names something in the game
 const known = { room: ['smith', 'dice', 'trader', 'exchange', 'lounge', 'book', 'search', 'kit'], creature: [...Object.keys(D.CREATURES), 'bee'], orbital: Object.keys(D.ORBITALS), chip: Object.keys(D.SHOP_CHIPS), felt: Object.keys(D.FELTS) };
