@@ -21,16 +21,7 @@ export const NEON = {
 
 // the lounge band's set, played in turn on a loop: original tunes written for Rolling Paradise, one per corner of
 // Vegas jazz from the 1940s to the 1980s, composed and rendered by tools/jazz (FluidR3 GM soundfont, MIT licence)
-export const MUSIC = [
-  { title: "Neon Strip", by: "1950s lounge swing", src: "assets/music/neon-strip.mp3" },
-  { title: "Velvet Rope", by: "1960s bossa nova", src: "assets/music/velvet-rope.mp3" },
-  { title: "High Roller", by: "1960s showroom big band", src: "assets/music/high-roller.mp3" },
-  { title: "Last Call", by: "late-1950s ballad", src: "assets/music/last-call.mp3" },
-  { title: "Velour", by: "1970s jazz-funk", src: "assets/music/velour.mp3" },
-  { title: "Lucky Streak", by: "1940s jump blues", src: "assets/music/lucky-streak.mp3" },
-  { title: "Satin Dice", by: "1980s smooth jazz", src: "assets/music/satin-dice.mp3" },
-  { title: "Hammond Hour", by: "1960s soul-jazz organ", src: "assets/music/hammond-hour.mp3" },
-];
+export { MUSIC } from './music.js'; // the lounge band's set list (written by tools/jazz/render.py)
 
 export const IMAGES = {
   logoPink: "assets/logo-pink.png", logoCyan: "assets/logo-cyan.png", logoDice: "assets/logo-dice.png",
