@@ -475,9 +475,15 @@ Every seat at the table is a neon sign, and so is the House's (`js/ui/sign.js`, 
   a seven, a flame, a cocktail; or any character, set as text). At the corners or along the top and bottom, the frame
   stops short of each symbol with rounded tube ends and starts again after it.
 - **The name's symbol**: an optional large symbol after the name, its last letter just over it, with its own motion.
-- **Crowns**: a High Roller wears its floor's crown, tilted off the first letter of its name, grander floor by floor.
+- **Edge symbols** go at the corners, along the top, along the bottom, or both.
+- **The class line** sits under the end of the name (the symbol's slot), at its start, or centred (`clsAlign`).
+- **A seat's sign has a fixed slot at the table.** The frame's room (its nested tubes and any symbols along it) is
+  reserved as padding, and the name is set smaller until everything (name, crown, symbol, business card, stats) fits,
+  so no sign grows over the Book, the Run or the dice.
+- **Crowns**: a High Roller wears its floor's crown, set down on the first letter of its name and tilted, grander
+  floor by floor. It sits in front: where it crosses the letter or the frame it trims them (a dark gap under its tube).
   Clearing one puts its crown in your crown case; wear it from your suite (it shows on your sign for the run, and does
-  nothing else). Where a crown or a symbol meets the letters, its tube stops short of them with a rounded end, as a
+  nothing else). The name's symbol sits behind the letters: its tube stops short of them with a rounded end, as a
   real sign's tube passes behind another.
 - **Blinks**: the name, class line, frame, edge symbols, name symbol and crown can each blink, each in its own pattern.
 - Signs saved before keep their look: double and triple tubes become two and three colour pairs, a rope a twist, the

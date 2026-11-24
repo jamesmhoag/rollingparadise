@@ -33,7 +33,8 @@ export const STRIPS = ['striped', 'checkered', 'twist'];
 export const LAMPS = ['dashed', 'dotted', 'bulbs', 'symbols'];
 export const FRAMES = [...TUBES, ...STRIPS, ...LAMPS, 'none'];
 export const MOTIONS = ['chase', 'breathe', 'swap', 'twinkle', 'still'];
-export const EDGE_AT = ['none', 'corners', 'edge'];
+export const EDGE_AT = ['none', 'corners', 'top', 'bottom', 'edge']; // edge: the top and the bottom
+export const CLS_ALIGN = ['right', 'left', 'center'];
 export const BLINK_PARTS = ['name', 'cls', 'border', 'edge', 'symbol', 'crown'];
 export const BLINKS = ['breathe', 'pulse', 'flicker', 'alternate'];
 export const MAX_PAIRS = 3;
@@ -133,9 +134,10 @@ export function litSymbol(parent, ctx, sym, place, core, glow, o = {}) {
     let pts = run.pts;
     if (run.cut) { const len = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]); let k = 0, acc = 0; while (k < pts.length - 1 && acc < trim) { acc += len(pts[k], pts[k + 1]); k++; } let j = pts.length - 1; acc = 0; while (j > k && acc < trim) { acc += len(pts[j], pts[j - 1]); j--; } pts = pts.slice(k, j + 1); }
     if (pts.length < 3) continue;
+    if (o.sep) g.append(mk('path', { d: `M${pts.map((p) => `${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join('L')}${run.closed ? 'Z' : ''}`, fill: 'none', stroke: o.sep, 'stroke-width': w + 4.2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', class: 'sep' }));
     light(g, ctx, `M${pts.map((p) => `${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join('L')}${run.closed ? 'Z' : ''}`, core, glow, { w, style: { '--i': g.childElementCount } });
   }
-  for (const [x, y] of S.dots || []) { const q = M.transformPoint(new DOMPoint(x, y)); if (inside(q.x, q.y)) continue; const r = Math.max(1.1, 1.3 * place.k); light(g, ctx, dotD(q.x, q.y, r), core, glow, { fill: true, hotD: dotD(q.x, q.y, r * 0.45) }); }
+  for (const [x, y] of S.dots || []) { const q = M.transformPoint(new DOMPoint(x, y)); if (inside(q.x, q.y)) continue; const r = Math.max(1.1, 1.3 * place.k); if (o.sep) g.append(mk('path', { d: dotD(q.x, q.y, r + 1.8), fill: o.sep, class: 'sep' })); light(g, ctx, dotD(q.x, q.y, r), core, glow, { fill: true, hotD: dotD(q.x, q.y, r * 0.45) }); }
   return g;
 }
 // a character that is not one of the drawn symbols: set as text, lit the same way
@@ -157,7 +159,7 @@ function drawFrame(svg, spec, w, h, who) {
   const marks = [], G = 7.5; // a symbol's half-width on the edge
   if (frame === 'symbols') { const n = Math.max(6, Math.round(o.L / 17)); for (let i = 0; i < n; i++) marks.push((i / n) * o.L); }
   else if (frame !== 'none' && spec.edgeAt === 'corners') marks.push(...o.mids);
-  else if (frame !== 'none' && spec.edgeAt === 'edge') { for (const seg of [0, 4]) { const n = Math.max(2, Math.floor(o.lens[seg] / 18)); for (let i = 0; i < n; i++) marks.push(o.starts[seg] + (o.lens[seg] * (i + 0.5)) / n); } }
+  else if (frame !== 'none' && ['edge', 'top', 'bottom'].includes(spec.edgeAt)) { for (const seg of spec.edgeAt === 'top' ? [0] : spec.edgeAt === 'bottom' ? [4] : [0, 4]) { const n = Math.max(2, Math.floor(o.lens[seg] / 18)); for (let i = 0; i < n; i++) marks.push(o.starts[seg] + (o.lens[seg] * (i + 0.5)) / n); } }
   const runs = frame === 'symbols' ? [] : runsOf(o.L, marks.map((s) => [s - G, s + G]));
   const body = mk('g', { class: 'frame-body' }); lights.append(body);
   const spots = []; // paths a chase runs along: [d, core, glow, total length of its loop, where this stretch starts in it]
@@ -241,24 +243,35 @@ function letterBoxes(nameEl, origin, fs, k = 1) { // k: how much the page is sca
     out.push({ l: (r.left - origin.left) / k + fs * 0.04, r: (r.right - origin.left) / k - fs * 0.04, t: (r.top - origin.top) / k + fs * 0.16, b: (r.bottom - origin.top) / k - fs * 0.2, i }); }
   return out;
 }
+// measure the name's letters in an svg's own coordinates
+function nameIn(svg, el) {
+  const nameEl = el.querySelector('.neon-name'); if (!nameEl) return null;
+  const origin = svg.getBoundingClientRect(), fs = parseFloat(getComputedStyle(nameEl).fontSize) || 27, k = origin.width / (svg.clientWidth || origin.width || 1) || 1;
+  const boxes = letterBoxes(nameEl, origin, fs, k); return boxes.length ? { fs, boxes } : null;
+}
+// the symbol after the name: behind the letters, its tube stopping short of them
 function drawDeco(svg, el, spec) {
-  svg.replaceChildren(); const nameEl = el.querySelector('.neon-name'); if (!nameEl) return;
-  const ctx = defsFor(svg); ctx.svg = svg;
-  const origin = svg.getBoundingClientRect(), fs = parseFloat(getComputedStyle(nameEl).fontSize) || 27, k = origin.width / (svg.clientWidth || origin.width || 1) || 1, boxes = letterBoxes(nameEl, origin, fs, k);
-  if (!boxes.length) return;
-  const avoid = boxes.map((b) => ({ l: b.l - 1.5, r: b.r + 1.5, t: b.t - 1.5, b: b.b + 1.5 })), [core, glow] = spec.name;
-  if (spec.symbol?.on && SYMBOLS[spec.symbol.id]) {
-    const last = boxes[boxes.length - 1], size = fs * 1.15, x = last.r + size * 0.3, y = (last.t + last.b) / 2;
-    const g = litSymbol(svg, ctx, spec.symbol.id, { x, y, k: size / 24 }, spec.symbol.colors?.[0] || core, spec.symbol.colors?.[1] || glow, { avoid, w: 2.4, cls: `name-sym motion-${spec.symbol.motion}` });
-    if (spec.blinks?.symbol?.on) g.classList.add('bk', `bk-${spec.blinks.symbol.pattern || 'breathe'}`);
-  }
-  const lvl = spec.crown?.level; if (lvl && CROWNS[lvl]) {
-    // room above the name for the crown, so it hangs inside the sign
-    const room = `${Math.round(fs * (0.62 + lvl * 0.07) * 0.72)}px`; if (el.querySelector('.nsign')?.style.paddingTop !== room) { el.querySelector('.nsign').style.paddingTop = room; return requestAnimationFrame(() => drawDeco(svg, el, spec)); }
-    const first = boxes[0], hgt = fs * (0.62 + lvl * 0.07), k = hgt / 24, cc = spec.crown.colors || spec.border;
-    const g = litSymbol(svg, ctx, CROWNS[lvl], { x: first.l + (first.r - first.l) * 0.32, y: first.t - hgt * 0.22, k, deg: -17, cx: 14, cy: 19 }, cc[0], cc[1], { avoid, w: 2, cls: `crown crown-${lvl}` });
-    if (spec.blinks?.crown?.on) g.classList.add('bk', `bk-${spec.blinks.crown.pattern || 'breathe'}`);
-  }
+  svg.replaceChildren(); const N = nameIn(svg, el); if (!N || !spec.symbol?.on || !SYMBOLS[spec.symbol.id]) return;
+  const ctx = defsFor(svg); ctx.svg = svg; const { fs, boxes } = N, [core, glow] = spec.name;
+  const avoid = boxes.map((b) => ({ l: b.l - 1.5, r: b.r + 1.5, t: b.t - 1.5, b: b.b + 1.5 }));
+  const last = boxes[boxes.length - 1], size = fs * 1.15, x = last.r + size * 0.3, y = (last.t + last.b) / 2;
+  const g = litSymbol(svg, ctx, spec.symbol.id, { x, y, k: size / 24 }, spec.symbol.colors?.[0] || core, spec.symbol.colors?.[1] || glow, { avoid, w: 2.4, cls: `name-sym motion-${spec.symbol.motion}` });
+  if (spec.blinks?.symbol?.on) g.classList.add('bk', `bk-${spec.blinks.symbol.pattern || 'breathe'}`);
+}
+// the crown: set down on the first letter, tilted, in front of the letter and the frame, which it trims where it
+// crosses them (a dark gap under its tube, as a tube in front of another on a real sign)
+function drawCrown(svg, el, spec) {
+  svg.replaceChildren(); const lvl = spec.crown?.level, N = nameIn(svg, el); if (!N || !CROWNS[lvl]) return;
+  const ctx = defsFor(svg); ctx.svg = svg; const { fs, boxes } = N, first = boxes[0], hgt = fs * (0.5 + lvl * 0.06), k = hgt / 24, cc = spec.crown.colors || spec.border;
+  const g = litSymbol(svg, ctx, CROWNS[lvl], { x: first.l + (first.r - first.l) * 0.42, y: first.t + (first.b - first.t) * 0.24, k, deg: -17, cx: 14, cy: 21 }, cc[0], cc[1], { w: 2, sep: spec.mount.color || '#07040f', cls: `crown crown-${lvl}` });
+  if (spec.blinks?.crown?.on) g.classList.add('bk', `bk-${spec.blinks.crown.pattern || 'breathe'}`);
+}
+// how much room the frame takes inside the sign's edge: its tubes (nested inward) and any symbols along it
+export function frameRoom(spec) {
+  if (spec.frame === 'none') return 4;
+  const tubes = ['plain', 'wave', 'zigzag'].includes(spec.frame) ? pairsOf(spec).length - 1 : 0, strip = STRIPS.includes(spec.frame) ? 2 : 0;
+  const sym = spec.frame === 'symbols' || ['edge', 'top', 'bottom'].includes(spec.edgeAt) ? 6 : 0;
+  return Math.round(6 + tubes * 3.8 + strip + sym);
 }
 
 // Dress an element as a sign: its colours (as the --who-part1/2 variables the table's styles read), its frame, mount,
@@ -271,13 +284,16 @@ export function dressSign(el, spec, who) {
   el.classList.remove(...[...el.classList].filter((c) => /^(frame|motion|blink|bk)-/.test(c)));
   el.classList.add('neonsign', `frame-${spec.frame}`, `motion-${spec.motion}`);
   for (const part of ['name', 'cls']) { const b = spec.blinks?.[part]; if (b?.on) el.classList.add(`blink-${part}`, `bk-${part}-${BLINKS.includes(b.pattern) ? b.pattern : 'breathe'}`); }
-  for (const old of el.querySelectorAll(':scope > .sign-frame, .sign-deco')) old.remove();
+  for (const old of el.querySelectorAll(':scope > .sign-frame, :scope > .sign-crown, .sign-deco')) old.remove();
+  el.style.setProperty('--sign-room', `${frameRoom(spec)}px`);
   el._signObs?.disconnect();
-  const nsign = el.querySelector('.nsign'); if (nsign) { nsign.classList.toggle('has-symbol', !!spec.symbol?.on); nsign.classList.toggle('has-crown', !!spec.crown?.level); }
+  const nsign = el.querySelector('.nsign'); if (nsign) { nsign.classList.toggle('has-symbol', !!spec.symbol?.on); nsign.classList.toggle('has-crown', !!spec.crown?.level); nsign.classList.remove(...CLS_ALIGN.map((a) => `cls-${a}`)); nsign.classList.add(`cls-${CLS_ALIGN.includes(spec.clsAlign) ? spec.clsAlign : 'right'}`); }
   const svg = spec.frame === 'none' && spec.edgeAt === 'none' ? null : mk('svg', { class: 'sign-frame', 'aria-hidden': 'true' }); if (svg) el.append(svg);
-  const deco = nsign && (spec.symbol?.on || spec.crown?.level) ? mk('svg', { class: 'sign-deco', 'aria-hidden': 'true' }) : null; if (deco) nsign.append(deco);
+  const deco = nsign && spec.symbol?.on ? mk('svg', { class: 'sign-deco', 'aria-hidden': 'true' }) : null; if (deco) nsign.append(deco);
+  const crown = nsign && spec.crown?.level ? mk('svg', { class: 'sign-crown', 'aria-hidden': 'true' }) : null; if (crown) el.append(crown);
   let last = '';
-  const redraw = () => { const w = el.offsetWidth, h = el.offsetHeight, key = `${w}x${h}`; if (key === last) return; last = key; if (svg) drawFrame(svg, spec, w, h, who); if (deco) drawDeco(deco, el, spec); };
+  const redraw = () => { const w = el.offsetWidth, h = el.offsetHeight, key = `${w}x${h}`; if (key === last) return; last = key; if (svg) drawFrame(svg, spec, w, h, who); if (deco) drawDeco(deco, el, spec); if (crown) drawCrown(crown, el, spec); };
+  el._signRedraw = () => { last = ''; redraw(); }; // after something inside the sign changes size (its name is fitted)
   if (typeof ResizeObserver !== 'undefined') { el._signObs = new ResizeObserver(redraw); el._signObs.observe(el); }
   requestAnimationFrame?.(redraw);
   document.fonts?.ready?.then(() => { last = ''; redraw(); }); // the script face changes the letters' shapes once it loads

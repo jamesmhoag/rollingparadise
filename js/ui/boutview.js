@@ -136,12 +136,24 @@ export function boutScene(root, bout, ctx, onDone) {
   // a High Roller wears its floor's crown; you wear one you have claimed, in the colours of the sign it came off
   const crownOf = (c) => (c ? { level: c.floor, colors: signOf('them', D.ROSTER[c.roster]?.sign).border } : null);
   const signs = { you: () => ({ ...signOf('you', me.sign), crown: crownOf(me.crown) }), them: () => ({ ...signOf('them', opp.sign), crown: opp.boss ? { level: Math.max(1, Math.min(4, opp.floor || 1)) } : null }), house: () => signOf('house') };
+  // a seat's sign has a fixed slot: if its name (with its crown, symbol and frame) doesn't fit, the name is set smaller
+  function fitSeat(el) {
+    const fit = () => { el.style.removeProperty('--name-fs'); const n = el.querySelector('.neon-name'); if (!n) return;
+      let fs = parseFloat(getComputedStyle(n).fontSize) || 27;
+      // spilling over the slot either way (content is centred in it, so it can spill upward as well as down)
+      const spills = () => { const R0 = el.getBoundingClientRect(); return [...el.children].filter((c) => !c.matches('svg, .badges')).some((c) => { const q = c.getBoundingClientRect(); return q.height && (q.top < R0.top - 1 || q.bottom > R0.bottom + 1); }); };
+      while (fs > 16 && spills()) { fs -= 1; el.style.setProperty('--name-fs', `${fs}px`); }
+      el._signRedraw?.(); };
+    // after the seat is on the page and the script face has loaded (until then nothing can be measured)
+    requestAnimationFrame(() => requestAnimationFrame(fit)); document.fonts?.ready?.then(() => requestAnimationFrame(fit));
+  }
   function paintNeon() {
     const S = { you: signs.you(), them: signs.them(), house: signs.house() };
     for (const [who, N] of Object.entries(S)) for (const part of ['border', 'name', 'cls']) N[part].forEach((c, i) => root.style.setProperty(`--${who}-${part}${i + 1}`, c));
     root.style.setProperty('--you', S.you.name[0]); root.style.setProperty('--them', S.them.name[0]);
     const [mine, theirs] = [root.querySelector('.who.me'), root.querySelector('.who.them')];
     if (mine) dressSign(mine, S.you, 'you'); if (theirs) dressSign(theirs, S.them, 'them'); if (houseSign) dressSign(houseSign, S.house, 'house');
+    for (const el of [mine, theirs]) if (el) fitSeat(el);
     marquee.style.display = S.house.frame === 'bulbs' ? '' : 'none'; }
   const header = h('div', { class: 'bout-head' },
     h('div', { class: 'who me' }, nameSign(D.ROLLERS[me.roller || D.rollerOf(me.cls)]?.name || D.CLASSES[me.cls].name, D.CLASSES[me.cls].name, () => tx('table.sign-tip', { name: D.heroName(me.cls, me.roller), cls: D.CLASSES[me.cls].name })),

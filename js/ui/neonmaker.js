@@ -8,7 +8,7 @@ import { h, lab, btn } from './core.js';
 import * as D from '../data.js';
 import * as B from '../build/draft.js';
 import { t } from '../text.js';
-import { signOf, dressSign, TUBES, STRIPS, LAMPS, MOTIONS, EDGE_AT, BLINK_PARTS, BLINKS, MAX_PAIRS, pairsOf } from './sign.js';
+import { signOf, dressSign, TUBES, STRIPS, LAMPS, MOTIONS, EDGE_AT, CLS_ALIGN, BLINK_PARTS, BLINKS, MAX_PAIRS, pairsOf } from './sign.js';
 import { SYMBOLS, SYMBOL_GROUPS } from './symbols.js';
 
 const PARTS = ['border', 'name', 'cls'];
@@ -32,7 +32,7 @@ export function signEditor(base, who, own, redraw, sample, crown) {
   const set = (ks, v) => { B.setValue(P(...ks), v); redraw(); };
   const field = (label, el, ks) => h('div', { class: `b-field ${B.changed(P(...ks)) ? 'ch' : ''}` }, h('label', {}, label), el,
     P(...ks) in B.draft.changes ? btn('↺', () => { B.revert(P(...ks)); redraw(); }, t('build.revert.tip', { was: JSON.stringify(B.draft.orig[P(...ks)]) }), 'small b-revert') : h('span'));
-  const select = (ks, list, value, groups) => h('select', { onchange: (e) => set(ks, e.target.value) }, ...(groups
+  const select = (ks, list, value, groups) => h('select', { onchange: (e) => set(ks, e.target.value.replace(/^align-/, '')) }, ...(groups
     ? groups.map(([g, l]) => h('optgroup', { label: t(`neon.group.${g}`) }, ...l.map((v) => h('option', { value: v, text: t(`neon.opt.${v}`), ...(v === value ? { selected: 'selected' } : {}) }))))
     : list.map((v) => h('option', { value: v, text: t(`neon.opt.${v}`), ...(v === value ? { selected: 'selected' } : {}) }))));
   const colour = (value, on) => h('input', { type: 'color', value, onchange: (e) => on(e.target.value) });
@@ -59,6 +59,7 @@ export function signEditor(base, who, own, redraw, sample, crown) {
     spec.frame === 'none' ? null : field(lab('neon.edge'), symbolPicker(spec.edge, (g) => set(['edge'], g)), ['edge']),
     spec.frame === 'symbols' || spec.frame === 'none' ? null : field(lab('neon.edgeAt'), select(['edgeAt'], EDGE_AT, spec.edgeAt), ['edgeAt']),
     ...PARTS.slice(1).map((part) => field(lab(`neon.${part}`), pairEl(spec[part], (pr) => set([part], pr)), [part])),
+    field(lab('neon.clsAlign'), select(['clsAlign'], CLS_ALIGN.map((a) => `align-${a}`), `align-${spec.clsAlign || 'right'}`), ['clsAlign']),
     field(lab('neon.symbol'), h('div', { class: 'col' }, h('label', { class: 'row' }, h('input', { type: 'checkbox', ...(spec.symbol.on ? { checked: 'checked' } : {}), onchange: (e) => set(['symbol', 'on'], e.target.checked) }), h('span', { text: t('neon.symbol.on') })),
       spec.symbol.on ? h('div', { class: 'row' }, h('small', { text: t('neon.motion') }), select(['symbol', 'motion'], MOTIONS, spec.symbol.motion)) : null,
       spec.symbol.on ? symbolPicker(spec.symbol.id, (g) => set(['symbol', 'id'], g), false) : null), ['symbol']),

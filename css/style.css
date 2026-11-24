@@ -880,7 +880,7 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 .who.seat { width: 424px; top: 368px; align-items: center; row-gap: 4px; }
 .who.seat.me { left: 10px; } /* its frame is its sign's (.neonsign.frame-*) */
 .who .name.nsign { display: inline-grid; justify-items: start; line-height: 1; cursor: help; } .who.them .name.nsign { justify-items: end; }
-.neon-name { font-family: var(--script) !important; font-weight: 400; font-size: 27px !important; line-height: 26px; letter-spacing: .01em; }
+.neon-name { font-family: var(--script) !important; font-weight: 400; font-size: var(--name-fs, 27px) !important; line-height: 26px; letter-spacing: .01em; }
 .neon-class { font-family: var(--display); font-size: 9.5px; font-weight: 700; letter-spacing: .32em; text-transform: uppercase; margin-top: 1px; padding-left: 2px; }
 .who.me .neon-name { color: color-mix(in srgb, var(--you-name1) 28%, #fff) !important; text-shadow: 0 0 2px #fff, 0 0 7px var(--you-name1), 0 0 16px var(--you-name1), 0 0 28px var(--you-name2), 0 0 44px var(--you-name2) !important; }
 .who.them .neon-name { color: color-mix(in srgb, var(--them-name1) 28%, #fff) !important; text-shadow: 0 0 2px #fff, 0 0 7px var(--them-name1), 0 0 16px var(--them-name1), 0 0 28px var(--them-name2), 0 0 44px var(--them-name2) !important; }
@@ -905,7 +905,7 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 .who.seat .badges { min-height: 0; }
 
 /* ---------- High Rollers: a bigger sign, and the business card with their trait ---------- */
-.who.them.boss .neon-name { font-size: 38px !important; line-height: 36px; }
+.who.them.boss .neon-name { font-size: var(--name-fs, 38px) !important; line-height: .95; }
 .who.them.boss .neon-class { font-size: 13px; letter-spacing: .36em; }
 .who.them.boss.seat { padding: 10px 14px; }
 .gcard.bizcard { --gc: #f3ead2; --ink: #2a1c0a; display: inline-grid; align-content: center; justify-items: start; gap: 1px; width: auto; min-width: 96px; height: 40px; padding: 3px 9px;
@@ -985,8 +985,8 @@ p.flavor { font-style: italic; color: var(--dim); }
 .sb-rack { flex-wrap: wrap; max-width: 560px; }
 
 /* ---------- neon signs (sign.js): one light for every tube, lamp, symbol and crown ---------- */
-.sign-frame, .sign-deco { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
-.sign-frame { z-index: 1; } .sign-deco { z-index: 0; }
+.sign-frame, .sign-deco, .sign-crown { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.sign-frame { z-index: 1; } .sign-deco { z-index: 0; } .sign-crown { z-index: 3; }
 .nsign { position: relative; } .nsign .neon-name, .nsign .neon-class { position: relative; z-index: 1; }
 .nsign.has-symbol .neon-name { padding-right: 1.05em; }
 .lights, .lt, .lamp, .sym { transform-box: fill-box; }
@@ -1021,3 +1021,9 @@ p.flavor { font-style: italic; color: var(--dim); }
 .bk.bk-alternate, .neonsign.bk-name-alternate .neon-name, .neonsign.bk-name-alternate .hs-name { animation: sign-alt 3s ease-in-out infinite; } .neonsign.bk-cls-alternate .neon-class, .neonsign.bk-cls-alternate .turn { animation: sign-alt 3s ease-in-out -1.5s infinite; }
 .crown-case .row { align-items: center; gap: 12px; margin-top: 8px; } .crown-sample { position: relative; padding: 4px 12px; }
 .pick-sign { position: relative; align-self: flex-start; padding: 6px 14px; margin: 2px 0 6px; pointer-events: none; }
+.nsign.cls-right .neon-class { justify-self: end; } .nsign.cls-left .neon-class { justify-self: start; } .nsign.cls-center .neon-class { justify-self: center; }
+.nsign.has-crown { padding-top: .18em; }
+/* a seat's sign never grows past its slot: the frame's room is padding, and the name is fitted to what is left */
+.who.seat.neonsign { height: 88px; box-sizing: border-box; padding: var(--sign-room, 6px) calc(var(--sign-room, 6px) + 6px); align-content: center; }
+.who.them.boss.seat.neonsign { padding: var(--sign-room, 6px) calc(var(--sign-room, 6px) + 8px); }
+.who.seat .pills:not(.steps) { flex-wrap: nowrap; gap: 3px; } .who.seat .pills:not(.steps) .pill { white-space: nowrap; font-size: 9.5px; padding: 1px 4px; } .who.seat .pills:not(.steps) { justify-content: center; }
