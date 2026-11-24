@@ -324,8 +324,8 @@ export function boutScene(root, bout, ctx, onDone) {
     // Charisma, Cunning and Conviction) and which columns are held (what the end of the turn restores)
     const zm = (k) => { const rows = h('span', { class: `zm-rows ${k}`, guide: k === 'bet' ? 'bet-meter' : 'stake-rows', tip: () => rowsTip(s, k) }), bonus = h('em', { class: 'zm-bonus' }),
       cols = h('span', { class: `zm-cols ${k}`, guide: 'restore', tip: () => restoreTip(s, k) }); zoneMeters[si][k] = { rows, bonus, cols }; return [rows, bonus, cols]; };
-    root.insertBefore(h('div', { class: 'zone-label bet', style: { left: x0 + 'px', width: m * cw[si] + 'px', top: yl + 'px' } }, h('b', { text: tx('prep.label.bet'), tip: () => positionTip(s, 'meter') }), ...zm('bet')), layer);
-    root.insertBefore(h('div', { class: 'zone-label stake', style: { left: x1 + 'px', width: s.dims.barRows * cw[si] + 'px', top: yl + 'px' } }, h('b', { text: tx('prep.label.stake'), tip: () => positionTip(s, 'bar') }), ...zm('stake')), layer);
+    root.insertBefore(h('div', { class: 'zone-label bet', style: { left: x0 + 'px', width: m * cw[si] + 'px', top: yl + 'px' } }, h('b', { text: tx('prep.label.bet'), guide: 'position-label', tip: () => positionTip(s, 'meter') }), ...zm('bet')), layer);
+    root.insertBefore(h('div', { class: 'zone-label stake', style: { left: x1 + 'px', width: s.dims.barRows * cw[si] + 'px', top: yl + 'px' } }, h('b', { text: tx('prep.label.stake'), guide: 'position-label', tip: () => positionTip(s, 'bar') }), ...zm('stake')), layer);
   });
 
   // ---------- tooltips ----------
