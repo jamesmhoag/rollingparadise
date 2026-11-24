@@ -10,6 +10,7 @@ import { chipMaker, newChip } from './chipmaker.js';
 import { classicChips } from '../chipmodel.js';
 import { tuner, TUNER_SECTIONS } from './tuner.js';
 import { testTable } from './testtable.js';
+import { IMMUNE } from '../content/chipmaker.js';
 import { classMaker, newClass, rollerMaker, newRoller, rollerLabel, rollerSub, rosterMaker, newOpponent, rosterLabel, rosterSub, sharedSign, SHARED_SIGNS } from './rostermaker.js';
 import { isMade } from '../trickmaker.js';
 
@@ -19,7 +20,7 @@ const GROUPS = [
   ['build.group.tricks', ['TRICKS', 'TYPES', 'CONDITIONS', 'PACKS', 'QDIE']],
   ['build.group.chips', ['CHIPS', 'SHOP_CHIPS', 'CHIP_TIERS', 'CREATURES', 'ORBITALS', 'CALAMITIES']],
   ['build.group.dice', ['DICE', 'MATERIALS', 'DICE_SHOP', 'BONE', 'MELT', 'CASTS', 'DYES', 'DIAMOND', 'DIE_VARS']],
-  ['build.group.floors', ['FLOORS', 'OPPONENTS', 'BOSSES', 'FELTS', 'TILTS', 'TILT_PRESSURE', 'PRIZES']],
+  ['build.group.floors', ['FLOORS', 'FELTS', 'TILTS', 'TILT_PRESSURE', 'PRIZES']],
   ['build.group.shops', ['DRINKS', 'SPORTS', 'ODDS', 'JACKETS', 'CARDS', 'WALLETS', 'PASSES', 'DENOMS', 'WEAR']],
   ['build.group.words', ['TEXT', 'GUIDE']],
 ];
@@ -27,6 +28,24 @@ const isObj = (x) => x && typeof x === 'object';
 // a table of entries (each one an object) is listed entry by entry; anything else is edited as one block
 const entriesOf = (tb) => { const T = D.TABLES[tb]; const vals = Object.entries(T).filter(([, v]) => v != null);
   return vals.length && vals.filter(([, v]) => isObj(v) && !Array.isArray(v)).length >= vals.length * 0.6 ? vals.map(([k]) => k) : null; };
+// What a list's items name, so the list is edited by picking them rather than typing ids: by the field's name, or by
+// the table every item already belongs to. Each source gives [[id, label], ...].
+const named = (o) => Object.entries(o || {}).map(([k, v]) => [k, typeof v === 'string' ? v : v?.name || k]);
+const LIST_REFS = {
+  tricks: () => named(D.TRICKS), mats: () => named(D.MATERIALS), from: (path) => (path.startsWith('DYES') ? named(D.DYES) : named(D.MATERIALS)), needs: () => named(D.DYES),
+  also: () => named(D.CHIPS), weather: () => [...named(D.ORBITALS), ...named(D.CALAMITIES)], immune: () => named(IMMUNE),
+  pair: () => [...new Set(Object.values(D.CASTS).map((c) => c.fx).filter((x) => x && x !== 'pair'))].map((k) => [k, k]),
+  floors: () => [1, 2, 3, 4].map((n) => [n, D.FLOORS[n]?.name || `Floor ${n}`]), cards: () => named(D.CARDS), dice: () => Object.keys(D.DICE).map((k) => [k, k]),
+};
+function listRef(path, v) {
+  const key = D.splitPath(path).filter((k) => !/^\d+$/.test(k)).pop();
+  if (LIST_REFS[key]) return LIST_REFS[key](path);
+  if (v.length && v.every((x) => typeof x === 'string')) { // every item is an id in one table
+    const tb = Object.keys(D.TABLES).find((k) => !['TEXT', 'GUIDE', 'FLAVOR', 'TUNING'].includes(k) && isObj(D.TABLES[k]) && !Array.isArray(D.TABLES[k]) && v.every((x) => x in D.TABLES[k]));
+    if (tb) return named(D.TABLES[tb]);
+  }
+  return null;
+}
 const label = (tb, k) => { const v = D.TABLES[tb][k]; return isObj(v) && typeof v.name === 'string' ? v.name : k; };
 
 export function buildScene(root, opts = {}) {
@@ -129,11 +148,32 @@ export function buildScene(root, opts = {}) {
     const set = (x) => { B.setValue(path, x); drawStatus(); drawTables(); drawEntries(); drawEditor(); };
     if (typeof v === 'boolean') return h('input', { type: 'checkbox', ...(v ? { checked: 'checked' } : {}), onchange: (e) => set(e.target.checked) });
     if (typeof v === 'number') return h('input', { type: 'number', step: 'any', value: v, onchange: (e) => { const n = Number(e.target.value); if (Number.isFinite(n)) set(n); else toast(t('build.notNumber'), 'warn'); } });
-    if (Array.isArray(v)) return h('input', { type: 'text', value: v.join(', '), onchange: (e) => { const parts = e.target.value.split(',').map((s) => s.trim()).filter((s) => s !== ''); set(v.length && v.every((x) => typeof x === 'number') ? parts.map(Number) : parts); } });
+    if (Array.isArray(v)) return listInput(path, v, set);
     if (v == null) return h('input', { type: 'text', value: '', placeholder: t('build.none'), onchange: (e) => set(e.target.value.trim() === '' ? null : e.target.value.trim()) });
     if (isObj(v)) return h('textarea', { class: 'mono', rows: 3, text: JSON.stringify(v), onchange: (e) => { try { set(JSON.parse(e.target.value)); } catch { toast(t('build.notJson'), 'warn'); } } });
+    if (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v)) return h('div', { class: 'row' }, h('input', { type: 'color', value: v, onchange: (e) => set(e.target.value) }), h('input', { type: 'text', value: v, style: { width: '96px' }, onchange: (e) => (/^#[0-9a-f]{6}$/i.test(e.target.value.trim()) ? set(e.target.value.trim()) : toast(t('build.notColour'), 'warn')) }));
     const long = String(v).length > 48;
     return h(long ? 'textarea' : 'input', { ...(long ? { rows: Math.min(6, Math.ceil(String(v).length / 60)), text: v } : { type: 'text', value: v }), onchange: (e) => set(e.target.value) });
+  }
+  // a list, item by item: picked from what it names (tricks, materials, chips...), colours as colour pickers, numbers
+  // as numbers, and anything else (names, tags) as one box per item, offered the values already used in its table
+  function listInput(path, v, set) {
+    const ref = listRef(path, v), nums = v.length ? v.every((x) => typeof x === 'number') : ref ? ref.every(([k]) => typeof k === 'number') : false;
+    const colours = v.length && v.every((x) => typeof x === 'string' && /^#[0-9a-f]{6}$/i.test(x));
+    const put = (i, x) => set(v.map((y, j) => (j === i ? x : y))), drop = (i) => set(v.filter((_, j) => j !== i)), add = (x) => set([...v, x]);
+    const nameOf = (x) => ref?.find(([k]) => String(k) === String(x))?.[1];
+    const items = v.map((x, i) => h('span', { class: `row b-li ${ref && nameOf(x) == null ? 'bad' : ''}` },
+      ref ? h('select', { onchange: (e) => put(i, nums ? Number(e.target.value) : e.target.value) }, ...(nameOf(x) == null ? [h('option', { value: x, text: t('build.list.unknown', { id: x }), selected: 'selected' })] : []),
+        ...ref.map(([k, l]) => h('option', { value: k, text: l, ...(String(k) === String(x) ? { selected: 'selected' } : {}) })))
+        : colours ? h('input', { type: 'color', value: x, onchange: (e) => put(i, e.target.value) })
+        : nums ? h('input', { type: 'number', step: 'any', value: x, style: { width: '84px' }, onchange: (e) => { const n = Number(e.target.value); if (Number.isFinite(n)) put(i, n); else toast(t('build.notNumber'), 'warn'); } })
+        : h('input', { type: 'text', value: x, list: `dl-${path}`, onchange: (e) => (e.target.value.trim() ? put(i, e.target.value.trim()) : drop(i)) }),
+      colours ? null : btn('✕', () => drop(i), t('build.list.drop'), 'small')));
+    const seen = ref || colours || nums ? null : [...new Set(Object.values(D.TABLES[D.splitPath(path)[0]] || {}).flatMap((e) => (isObj(e) ? Object.values(e) : [])).filter(Array.isArray).flat().filter((x) => typeof x === 'string'))];
+    const adder = colours ? null : ref ? h('select', { onchange: (e) => e.target.value !== '' && add(nums ? Number(e.target.value) : e.target.value) }, h('option', { value: '', text: t('build.list.add') }), ...ref.filter(([k]) => !v.some((x) => String(x) === String(k))).map(([k, l]) => h('option', { value: k, text: l })))
+      : nums ? btn('+', () => add(v.length ? v[v.length - 1] : 0), t('build.list.add'), 'small')
+      : h('input', { type: 'text', placeholder: t('build.list.add'), list: `dl-${path}`, onchange: (e) => e.target.value.trim() && add(e.target.value.trim()) });
+    return h('div', { class: 'row wrap b-list-edit' }, ...items, adder, seen ? h('datalist', { id: `dl-${path}` }, ...seen.map((x) => h('option', { value: x }))) : null);
   }
   function revertBtn(path) {
     if (!(path in B.draft.changes)) return null;

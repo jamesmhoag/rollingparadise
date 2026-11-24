@@ -1005,3 +1005,6 @@ p.flavor { font-style: italic; color: var(--dim); }
 @keyframes sf-shimmer { 0%, 100% { opacity: 1; } 30% { opacity: 0.82; } 55% { opacity: 1; } 75% { opacity: 0.88; } }
 .glyph-group { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; } .glyph-group .cap { width: 100%; margin-top: 4px; }
 .small.glyph { min-width: 26px; padding: 2px 4px; font-family: 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols 2', 'DejaVu Sans', 'DejaVu Sans Mono', 'OpenSymbol', sans-serif; } .small.glyph svg { width: 12px; height: 12px; fill: currentColor; vertical-align: middle; }
+.b-lcell { min-height: 38px; border: 1px solid rgba(255,255,255,.14); border-radius: 6px; padding: 2px; display: flex; flex-direction: column; align-items: stretch; gap: 1px; font-size: 10px; cursor: crosshair; user-select: none; }
+.b-lchip { background: rgba(255,255,255,.08); border-radius: 3px; padding: 0 3px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .b-lchip.fx { background: rgba(185,139,255,.22); }
+.b-list-edit { gap: 4px; } .b-li { gap: 2px; } .b-li.bad select { border-color: #ff6a6a; }

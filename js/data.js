@@ -631,15 +631,10 @@ export const FLOORS = [
   { name: 'Rollers Suite', line: "You're doing it! Time to play with the high rollers. Do you have what it takes?", worth: [250, 300, 350], boss: 500, cut: 1000 },
   { name: 'Royal Paradise', line: 'This room is for royal rollers only. It sure would be a shame to dethrone them.', worth: [450, 550, 650], boss: 740, cut: 100000 },
 ];
-export const OPPONENTS = ['Leather Wallet', 'Designer Purse', 'Money Clip', 'Credit Card', 'Wad of Cash', 'Coin Dispenser', 'Piggy Bank', 'Trained Monkey', 'Tip Jar',
-  'Block Chain', 'Gold Chain', 'Platinum Teeth', 'Golden Parachute', 'Phone Scam', 'Phishing Email', 'Long Con', 'Blink Dagger', 'Paper Check', 'Money Order',
-  'Championship Trophy', 'Prize Pig', 'Bounty Reward', 'Finders Fee', 'Sly Fox', 'Ceramic Frog', 'Bearish Forecast', 'Bull Market', 'Savings Account', 'College Tuition',
-  'Research Grant', 'Student Loan', 'Mortgage Payment', 'Lease Agreement', 'Bank Statement', 'Pyramid Scheme', 'Highway Robber', 'Gambling Addict', 'Inside Job',
-  'Chocolate Coins', 'Finance Secretary', 'Certified Accountant', 'Shaken Stirrer', 'Stirred Shaker', 'High Ball', 'Chain Smoker', 'HSA Account', 'Health Benefits',
-  'Crinkled IOU', 'Veteran Hustler', 'Vending Machine', 'Low Ball'];
-export const BOSSES = [null,
-  ['ATM Machine', 'Pile of Cash', 'Exotic Animal', 'Antique Clock'], ['Gold Bar', 'Uncut Gem', 'Luxury Vehicle', 'Lucrative Deal'],
-  ['Sunken Treasure', 'Endangered Species', 'Vested 401k', 'Project Funding'], ['Trust Fund', 'The Vault', 'Priceless Painting', 'Ancient Artifact']];
+// The names dealt at the tables and the High Rollers on each floor come from the roster (content/roster.js), so a
+// renamed or new opponent is dealt under its own name. Both lists are rebuilt from it (refreshDerived).
+export const OPPONENTS = [];
+export const BOSSES = [null, [], [], [], []];
 export const ASCENT_NAMES = ['Shop Keeper', 'Veteran Hustler', 'Golden Parachute', 'Diamond Hands', 'The House'];
 // Table felts (a: centre, b: edge, rim: the rail). `weather`: the orbital weather the table brings (see ORBITALS);
 // `cold`: wet chips and Puddles on it freeze. `pool: false` felts are not dealt to random tables.
@@ -787,7 +782,7 @@ export { FONTS, IMAGES, ICONS, TEXTURES, NEON };
 import TEXT from './text/en.js';
 import { MATERIALS as _MAT, DICE_SHOP as _DS, BONE as _BONE, MELT as _MELT, CASTS as _CASTS, DYES as _DYES, DIAMOND as _DIA } from './content/dice.js';
 export const TABLES = { CLASSES, ROLLERS, BASE_DIMS, STATS, DICE, MATERIALS: _MAT, DICE_SHOP: _DS, BONE: _BONE, MELT: _MELT, CASTS: _CASTS, DYES: _DYES, DIAMOND: _DIA, DIE_VARS,
-  TYPES, TRICKS, CHIPS, SHOP_CHIPS, CHIP_TIERS, CREATURES, ORBITALS, CALAMITIES, TILTS, TILT_PRESSURE, FELTS, FLOORS, BOSSES, OPPONENTS, DRINKS, SPORTS, JACKETS, CARDS, WALLETS,
+  TYPES, TRICKS, CHIPS, SHOP_CHIPS, CHIP_TIERS, CREATURES, ORBITALS, CALAMITIES, TILTS, TILT_PRESSURE, FELTS, FLOORS, DRINKS, SPORTS, JACKETS, CARDS, WALLETS,
   PASSES, CONDITIONS, PACKS, QDIE, PRIZES, GUIDE, TEXT, MADE_CHIPS, ROSTER, BOSS_TRAITS, FLAVOR, TUNING, ODDS, DENOMS, WEAR, IMAGES, ICONS, TEXTURES, NEON };
 const isObj = (x) => x && typeof x === 'object';
 // a path's steps: keys are joined by '.', and a '.' inside a key (as in text keys) is written '\\.'
@@ -805,6 +800,9 @@ export function deletePath(path) { const ks = splitPath(path), last = ks.pop(); 
 export function refreshDerived() {
   TRICK_IDS.splice(0, TRICK_IDS.length, ...Object.keys(TRICKS));
   FELT_POOL.splice(0, FELT_POOL.length, ...Object.keys(FELTS).filter((k) => FELTS[k].pool !== false));
+  const R0 = Object.values(ROSTER);
+  OPPONENTS.splice(0, OPPONENTS.length, ...R0.filter((x) => !x.boss && x.name).map((x) => x.name));
+  for (let f = 1; f <= 4; f++) BOSSES[f] = R0.filter((x) => x.boss && x.name && (x.floors || [1, 2, 3, 4]).includes(f)).map((x) => x.name);
 }
 export function applyContent(changes = {}) {
   for (const [path, v] of Object.entries(changes)) if (TABLES[splitPath(path)[0]]) setPath(path, isObj(v) ? JSON.parse(JSON.stringify(v)) : v);
