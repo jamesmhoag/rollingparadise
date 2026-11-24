@@ -7,9 +7,9 @@ const fails = [], keys = new Set(keysOf('en'));
 const files = (dir) => readdirSync(dir).flatMap((f) => { const p = join(dir, f); return statSync(p).isDirectory() ? files(p) : p.endsWith('.js') ? [p] : []; });
 const used = new Set();
 const src = files('js').filter((f) => !f.endsWith('en.js')).map((f) => readFileSync(f, 'utf8')).join('\n');
-for (const m of src.matchAll(/\btt?\('([\w.]+)'/g)) used.add(m[1]); // asked for directly
+for (const m of src.matchAll(/\b(?:tt?|lab)\('([\w.]+)'/g)) used.add(m[1]); // asked for directly (lab: a Build-mode label)
 for (const k of keys) if (src.includes(`'${k}'`)) used.add(k); // or chosen between, t(x ? 'a' : 'b')
-const prefixes = [...src.matchAll(/\bt[tx]?\(`([\w.]+)\$\{/g)].map((m) => m[1]); // or built, t(`build.table.${id}`)
+const prefixes = [...src.matchAll(/\b(?:t[tx]?|lab)\(`([\w.]+)\$\{/g)].map((m) => m[1]); // or built, t(`build.table.${id}`)
 for (const k of keys) if (prefixes.some((pre) => k.startsWith(pre))) used.add(k);
 for (const k of used) if (!keys.has(k)) fails.push(`missing text: ${k}`);
 for (const k of keys) if (!used.has(k)) fails.push(`unused text: ${k}`);

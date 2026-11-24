@@ -10,13 +10,12 @@ import { chipMaker, newChip } from './chipmaker.js';
 import { classicChips } from '../chipmodel.js';
 import { tuner, TUNER_SECTIONS } from './tuner.js';
 import { testTable } from './testtable.js';
-import { classMaker, newClass, rosterMaker, newOpponent, rosterLabel, rosterSub } from './rostermaker.js';
+import { classMaker, newClass, rollerMaker, newRoller, rollerLabel, rollerSub, rosterMaker, newOpponent, rosterLabel, rosterSub, sharedSign, SHARED_SIGNS } from './rostermaker.js';
 import { isMade } from '../trickmaker.js';
-import { neonMaker } from './neonmaker.js';
 
 // the tables, grouped as the editor lists them
 const GROUPS = [
-  ['build.group.rollers', ['CLASSES', 'BASE_DIMS', 'STATS']],
+  ['build.group.rollers', ['CLASSES', 'ROLLERS', 'BASE_DIMS', 'STATS']],
   ['build.group.tricks', ['TRICKS', 'TYPES', 'CONDITIONS', 'PACKS', 'QDIE']],
   ['build.group.chips', ['CHIPS', 'SHOP_CHIPS', 'CHIP_TIERS', 'CREATURES', 'ORBITALS', 'CALAMITIES']],
   ['build.group.dice', ['DICE', 'MATERIALS', 'DICE_SHOP', 'BONE', 'MELT', 'CASTS', 'DYES', 'DIAMOND', 'DIE_VARS']],
@@ -44,27 +43,30 @@ export function buildScene(root, opts = {}) {
   function drawStatus() { const n = B.count(); status.textContent = n ? t('build.status', { n }) : t('build.status.none'); }
   function drawTables() {
     const tool = (k, label) => h('button', { class: `b-item tool ${ui.tool === k ? 'on' : ''}`, text: label, onclick: () => { ui.tool = k; ui.key = null; ui.filter = ''; filter.value = ''; draw(); } });
-    tables.replaceChildren(h('span', { class: 'cap', text: t('build.group.makers') }), tool('tricks', t('maker.title')), tool('chips', t('chipmaker.title')), tool('classes', t('roster.class.title')), tool('roster', t('roster.title')), tool('tuner', t('tuner.title')), tool('neon', t('neon.title')), tool('test', t('test.title')),
+    tables.replaceChildren(h('span', { class: 'cap', text: t('build.group.makers') }), tool('tricks', t('maker.title')), tool('chips', t('chipmaker.title')), tool('classes', t('roster.class.title')), tool('rollers', t('roster.roller.title')), tool('roster', t('roster.title')), tool('tuner', t('tuner.title')), tool('test', t('test.title')),
       ...GROUPS.flatMap(([g, list]) => [h('span', { class: 'cap', text: t(g) }),
       ...list.filter((tb) => D.TABLES[tb]).map((tb) => h('button', { class: `b-item ${ui.tool === 'tables' && ui.table === tb ? 'on' : ''} ${B.changed(tb) ? 'ch' : ''}`, text: t(`build.table.${tb}`), onclick: () => { ui.tool = 'tables'; ui.table = tb; ui.key = null; ui.filter = ''; filter.value = ''; draw(); } }))]));
   }
   function drawEntries() {
     if (ui.tool === 'test') { filter.style.display = 'none'; entries.replaceChildren(h('p', { class: 'sub', text: t('test.side') })); return; }
-    if (ui.tool === 'neon') { filter.style.display = 'none'; entries.replaceChildren(); return; }
     if (ui.tool === 'tuner') {
       filter.style.display = 'none'; if (!TUNER_SECTIONS.includes(ui.key)) ui.key = TUNER_SECTIONS[0];
       entries.replaceChildren(...TUNER_SECTIONS.map((k) => h('button', { class: `b-item ${ui.key === k ? 'on' : ''} ${B.changed(D.subPath('TUNING', k)) ? 'ch' : ''}`, onclick: () => { ui.key = k; draw(); } }, h('b', { text: t(`tuner.${k}`) }))));
       return;
     }
-    if (ui.tool === 'classes' || ui.tool === 'roster') {
-      const roster = ui.tool === 'roster', T = roster ? D.ROSTER : D.CLASSES, keys = Object.keys(T); filter.style.display = '';
-      if (!ui.key || !T[ui.key]) ui.key = keys[0];
-      const lab = (k) => (roster ? rosterLabel(k) : `${T[k].hero} the ${T[k].name}`), sub = (k) => (roster ? rosterSub(k) : k);
-      const item = (k) => h('button', { class: `b-item ${ui.key === k ? 'on' : ''} ${B.changed(D.subPath(roster ? 'ROSTER' : 'CLASSES', k)) ? 'ch' : ''}`, onclick: () => { ui.key = k; draw(); } }, h('b', { text: lab(k) }), h('small', { text: sub(k) }));
+    if (ui.tool === 'classes' || ui.tool === 'rollers' || ui.tool === 'roster') {
+      const roster = ui.tool === 'roster', rollers = ui.tool === 'rollers', table = roster ? 'ROSTER' : rollers ? 'ROLLERS' : 'CLASSES', T = D[table], keys = Object.keys(T); filter.style.display = '';
+      const shared = roster ? ['@them', '@house'] : rollers ? ['@you'] : [];
+      if (!ui.key || !(T[ui.key] || shared.includes(ui.key))) ui.key = keys[0];
+      const lab = (k) => (roster ? rosterLabel(k) : rollers ? rollerLabel(k) : T[k].name), sub = (k) => (roster ? rosterSub(k) : rollers ? rollerSub(k) : t('roster.class.usedBy', { n: Object.values(D.ROLLERS).concat(Object.values(D.ROSTER)).filter((x) => x.cls === k).length }));
+      const item = (k) => h('button', { class: `b-item ${ui.key === k ? 'on' : ''} ${B.changed(D.subPath(table, k)) ? 'ch' : ''}`, onclick: () => { ui.key = k; draw(); } }, h('b', { text: lab(k) }), h('small', { text: sub(k) }));
+      const signItem = (k) => h('button', { class: `b-item sign-item ${ui.key === k ? 'on' : ''} ${B.changed(D.subPath('NEON', SHARED_SIGNS[k])) ? 'ch' : ''}`, onclick: () => { ui.key = k; draw(); } }, h('b', { text: t(`neon.list.${SHARED_SIGNS[k]}`) }), h('small', { text: t('neon.list.sub') }));
       const shown = keys.filter((k) => !ui.filter || `${k} ${lab(k)}`.toLowerCase().includes(ui.filter));
       entries.replaceChildren(...(roster ? [btn(t('roster.new'), () => { const id = newOpponent(false); if (id) { ui.key = id; draw(); } }, null, 'small go'), btn(t('roster.newBoss'), () => { const id = newOpponent(true); if (id) { ui.key = id; draw(); } }, null, 'small'),
+        h('span', { class: 'cap', text: t('neon.list.cap') }), ...shared.map(signItem),
         h('span', { class: 'cap', text: t('roster.list.tables') }), ...shown.filter((k) => !T[k].boss).map(item),
         ...[1, 2, 3, 4].flatMap((n) => { const bs = shown.filter((k) => T[k].boss && (T[k].floors || []).includes(n)); return bs.length ? [h('span', { class: 'cap', text: t('roster.list.bosses', { floor: D.FLOORS[n].name }) }), ...bs.map(item)] : []; })]
+        : rollers ? [btn(t('roster.roller.new'), () => { const id = newRoller(T[ui.key] ? ui.key : null); if (id) { ui.key = id; draw(); } }, null, 'small go'), h('span', { class: 'cap', text: t('neon.list.cap') }), ...shared.map(signItem), h('span', { class: 'cap', text: t('roster.list.rollers') }), ...shown.map(item)]
         : [btn(t('roster.class.new'), () => { const id = newClass(ui.key); if (id) { ui.key = id; draw(); } }, null, 'small go'), ...shown.map(item)]));
       return;
     }
@@ -95,10 +97,11 @@ export function buildScene(root, opts = {}) {
       h('b', { text: label(ui.table, k) }), label(ui.table, k) !== k ? h('small', { text: k }) : null)));
   }
   function drawEditor() {
-    if (ui.tool === 'neon') { editor.replaceChildren(h('h2', { text: t('neon.title') }), h('p', { class: 'sub mono', text: 'NEON' }), neonMaker(draw)); return; }
     if (ui.tool === 'test') { editor.replaceChildren(h('h2', { text: t('test.title') }), testTable(draw, (o) => app.nav.test(o))); return; }
     if (ui.tool === 'tuner') { editor.replaceChildren(h('h2', { text: t(`tuner.${ui.key}`) }), h('p', { class: 'sub mono', text: ui.key === 'gear' ? '' : D.subPath('TUNING', ui.key) }), tuner(ui.key, draw, (tb) => { ui.tool = 'tables'; ui.table = tb; ui.key = null; draw(); })); return; }
-    if (ui.tool === 'classes') { editor.replaceChildren(h('h2', { text: `${D.CLASSES[ui.key].hero} the ${D.CLASSES[ui.key].name}` }), h('p', { class: 'sub mono', text: D.subPath('CLASSES', ui.key) }), classMaker(ui.key, draw)); return; }
+    if ((ui.tool === 'rollers' || ui.tool === 'roster') && SHARED_SIGNS[ui.key]) { editor.replaceChildren(h('h2', { text: t(`neon.list.${SHARED_SIGNS[ui.key]}`) }), h('p', { class: 'sub mono', text: `NEON.${SHARED_SIGNS[ui.key]}` }), sharedSign(ui.key, draw)); return; }
+    if (ui.tool === 'classes') { editor.replaceChildren(h('h2', { text: D.CLASSES[ui.key].name }), h('p', { class: 'sub mono', text: D.subPath('CLASSES', ui.key) }), classMaker(ui.key, draw)); return; }
+    if (ui.tool === 'rollers') { editor.replaceChildren(h('h2', { text: D.heroName(D.ROLLERS[ui.key].cls, ui.key) }), h('p', { class: 'sub mono', text: D.subPath('ROLLERS', ui.key) }), rollerMaker(ui.key, draw)); return; }
     if (ui.tool === 'roster') { editor.replaceChildren(h('h2', { text: rosterLabel(ui.key) }), h('p', { class: 'sub mono', text: D.subPath('ROSTER', ui.key) }), rosterMaker(ui.key, draw)); return; }
     if (ui.tool === 'chips') {
       const old = classicChips().find((c) => c.id === ui.key), name = D.MADE_CHIPS[ui.key]?.name || old?.name || '';

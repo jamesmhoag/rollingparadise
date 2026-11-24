@@ -433,10 +433,26 @@ Every seat at the table is a neon sign, and so is the House's (`js/ui/sign.js`).
 its frame, name and class; a frame style (tube, double, dashed, dotted, bulbs, none) and corner rounding; a Unicode
 symbol at the corners or along the edge; a mount (a backing colour and an image, by URL or from a file); and one part
 that blinks (breathe, pulse, flicker or alternate). Every blink is slow and soft (well under three changes a second,
-never fully dark) and all of them, the House's bulbs included, stop under reduced motion. Build mode › Neon sets
-yours, the opponents' shared look and the House's (`D.NEON.you / them / house`); the Opponent maker gives any
-opponent its own (`ROSTER[id].sign`, laid over the shared look). The House's bulb flash was slowed to stay under three
+never fully dark) and all of them, the House's bulbs included, stop under reduced motion. There is no separate Neon
+tool: the Roller maker lists *Every Roller's sign* (`D.NEON.you`) above the Rollers and gives each its own
+(`ROLLERS[id].sign`); the Opponent maker lists *Every opponent's sign* and *The House's sign* (`D.NEON.them / house`)
+above the opponents and gives each its own (`ROSTER[id].sign`). An own sign is laid over its shared look. The House's bulb flash was slowed to stay under three
 flashes a second.
+
+### Classes, Rollers and Opponents
+- A **Class** (`CLASSES`) is attributes only: Draw, Bid, Roll (TIP), Stack height, Bet rows, Stake rows (BVD), a
+  starting Charisma, Cunning and Conviction (`ccc`, which the table's rows then add to), the attribute it leans on
+  (`primary`, which picks the C its Stake rows reward), where it deploys from, and a colour. Build mode's Class maker.
+- A **Roller** (`ROLLERS`, `js/content/rollers.js`) is a name, a Class and a starting inventory: its Book, its Pouch,
+  its Worth (the ¢ it is staked with after the Doorman's bout), the wallet and jacket it walks in with (when you own
+  them), and its own neon sign. The pick screen lists Rollers. `newRun` takes a Roller id (a class id still works:
+  the first Roller of that class). Build mode's Roller maker.
+- An **Opponent** (`ROSTER`) is a Roller across the table: an Opponent name, a Class (every one has one now; the
+  maker has no *random class*), and a starting inventory: its own Book and Pouch when set (otherwise its class's
+  Roller's Book plus tricks for the floor, and dice for the floor), purse, wallet, jacket, drink and chips; plus where
+  it sits and how it plays. A **High Roller** adds its business card and its phases.
+- **Business cards**: clearing a High Roller hands you its card (`run.bizCards`). You play by one at a time
+  (`run.trait`, the first you win, changed from your inventory on the floor), with the same rule it played against you.
 
 ### High Roller traits (business cards)
 Business Cards no longer raise your attributes (old saves drop them; the starter wallet gets the discount cards).

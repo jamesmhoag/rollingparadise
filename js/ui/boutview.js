@@ -129,11 +129,11 @@ export function boutScene(root, bout, ctx, onDone) {
   // are D.NEON's, set in Build mode: a tube colour and a glow colour for the frame, the name and the class.
   // a High Roller's business card: the trait that bends one rule of the bout their way
   const bizCard = (s) => { const T = B.bossTrait(s); if (!T) return null;
-    return h('span', { class: 'gcard bizcard', guide: 'boss-trait', tip: () => tx('trait.card-tip', { name: s.name, title: T.title, trait: T.name, rule: B.traitRule(T), flavor: T.flavor }) },
+    return h('span', { class: 'gcard bizcard', guide: 'boss-trait', tip: () => tx('trait.card-tip', { name: s === me ? D.heroName(me.cls, me.roller) : s.name, title: T.title, trait: T.name, rule: B.traitRule(T), flavor: T.flavor }) },
       h('em', { text: tx('table.biz-card') }), h('b', { text: T.name })); };
   const nameSign = (name, cls, tipFn) => h('div', { class: 'name nsign', tip: tipFn }, h('b', { class: 'neon-name', text: name }), h('span', { class: 'neon-class', text: cls }));
   // the signs: yours, theirs (their own if their roster entry has one) and the House's, all built the same way (sign.js)
-  const signs = { you: () => signOf('you'), them: () => signOf('them', opp.sign), house: () => signOf('house') };
+  const signs = { you: () => signOf('you', me.sign), them: () => signOf('them', opp.sign), house: () => signOf('house') };
   function paintNeon() {
     const S = { you: signs.you(), them: signs.them(), house: signs.house() };
     for (const [who, N] of Object.entries(S)) for (const part of ['border', 'name', 'cls']) N[part].forEach((c, i) => root.style.setProperty(`--${who}-${part}${i + 1}`, c));
@@ -142,8 +142,9 @@ export function boutScene(root, bout, ctx, onDone) {
     if (mine) dressSign(mine, S.you, 'you'); if (theirs) dressSign(theirs, S.them, 'them'); if (houseSign) dressSign(houseSign, S.house, 'house');
     marquee.style.display = S.house.frame === 'bulbs' ? '' : 'none'; }
   const header = h('div', { class: 'bout-head' },
-    h('div', { class: 'who me' }, nameSign(D.CLASSES[me.cls].hero || D.CLASSES[me.cls].name, D.CLASSES[me.cls].name, () => tx('table.sign-tip', { name: D.heroName(me.cls), cls: D.CLASSES[me.cls].name })),
+    h('div', { class: 'who me' }, nameSign(D.ROLLERS[me.roller || D.rollerOf(me.cls)]?.name || D.CLASSES[me.cls].name, D.CLASSES[me.cls].name, () => tx('table.sign-tip', { name: D.heroName(me.cls, me.roller), cls: D.CLASSES[me.cls].name })),
       h('div', { class: 'worth', tip: worthTip(me) }, 'Worth ', worthEl[0], '¢', owesEl[0]),
+      bizCard(me),
       h('div', { class: 'pills steps' }, STEPS.map(([k, name, stat, reward, what], i) => (pillEl[k] = h('span', { class: 'pill step', tip: pillTip(stat, reward, what, k) },
         h('em', { text: String(i + 1) }), ` ${name} `, (pill[k] = h('span'))))))),
     h('div', { class: 'mid' }, (houseSign = h('div', { class: 'house-sign', tip: tx('table.the-house-every-chip') }, marquee,

@@ -1,5 +1,5 @@
-// Build mode › Neon: the signs at the table (D.NEON): yours, every opponent's (unless one has its own), and the
-// House's. The same editor sits in the Opponent maker, where it sets that opponent's own sign (ROSTER[id].sign).
+// The neon sign editor, used in Build mode's Roller and Opponent makers: each Roller's own sign (ROLLERS[id].sign),
+// each opponent's (ROSTER[id].sign), and the shared looks they are laid over (D.NEON: you, them, the House).
 // Each part of a sign (the frame, the script name, the class under it) takes two colours: the tube's own and the glow
 // it throws. Then the frame's style, a symbol along the edge or at the corners, what it is mounted on, and one part
 // that blinks, slowly and softly (see sign.js).
@@ -10,7 +10,7 @@ import { t } from '../text.js';
 import { signOf, dressSign, FRAMES, EDGE_AT, BLINK_PARTS, BLINKS, EDGE_GLYPHS } from './sign.js';
 
 const PARTS = ['border', 'name', 'cls'];
-const SAMPLE = { you: () => [D.CLASSES.hustler?.hero || 'Owl', D.CLASSES.hustler?.name || 'Hustler'], them: () => ['Low Ball', 'Doorman'], house: () => [t('table.house-sign'), 'Turn 1'] };
+const SAMPLE = { you: () => [D.ROLLERS.owl?.name || 'Owl', D.CLASSES.hustler?.name || 'Hustler'], them: () => ['Low Ball', 'Doorman'], house: () => [t('table.house-sign'), 'Turn 1'] };
 const MAX_IMAGE = 300 * 1024; // a mount image read from a file is kept in the build as a data URL
 
 // A sign editor. base: the content path its values live under ('NEON.you', or 'ROSTER.<id>.sign'); who: whose look it
@@ -41,9 +41,4 @@ export function signEditor(base, who, own, redraw, sample) {
       h('input', { type: 'file', accept: 'image/*', onchange: readImage }), spec.mount.image ? btn(t('neon.mount.none'), () => set(['mount', 'image'], ''), null, 'small') : null), ['mount', 'image']),
     field(lab('neon.blink'), select(['blink', 'part'], BLINK_PARTS, spec.blink.part), ['blink', 'part']),
     spec.blink.part === 'none' ? null : field(lab('neon.pattern'), select(['blink', 'pattern'], BLINKS, spec.blink.pattern), ['blink', 'pattern']));
-}
-
-export function neonMaker(redraw) {
-  return h('div', { class: 'col neon-maker' }, h('p', { class: 'sub', text: t('neon.sub') }),
-    ...['you', 'them', 'house'].map((who) => h('div', {}, h('h3', { text: t(`neon.${who}`) }), signEditor(`NEON.${who}`, who, D.NEON[who], redraw))));
 }
