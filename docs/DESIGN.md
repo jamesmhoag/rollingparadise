@@ -86,6 +86,11 @@ the pile. Click the pile to take its top chip back. Dice are not placed yet: the
 - Rolling is **one throw a turn**. Undo in the Roll phase drops the picks; once thrown, the values stand. Undo in the
   Bluff takes dice off tricks and back into the roll (and re-aims), never the throw. Undo in Draw or Bid takes back
   that phase only.
+- **The hand.** What you pick up rides with the pointer and dims where it lies: dice from the Pouch (and top chips to
+  flip: click a viable top chip, no button) up to your Roll, chips to bid, rolled dice to put on a trick. Click the
+  roll to throw the handful (the same as pressing Bid), a trick to bid the chips or put the dice on it. What moves
+  starts from the pointer and settles softly. **Right-click lets go** of everything in the hand (with nothing in hand,
+  right-click still switches verbose and concise hovers).
 - **Click to undo**, until the phase is locked in: click a trick drawn this turn to put it back in the Book, a die on
   a trick to take it back into the roll, a chip bid this turn to take it back to the stack it came from, a picked
   die or chip to drop it from the throw, a stack in your hand to let it go.
