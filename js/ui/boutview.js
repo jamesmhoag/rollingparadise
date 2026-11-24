@@ -13,6 +13,7 @@ import { t as tt } from '../text.js';
 import { facesOf, faceValue, dieName } from '../dice.js';
 import { solidEl } from './solid.js';
 import { signOf, dressSign } from './sign.js';
+import { sfx } from './sfx.js';
 import { t as tx } from '../text.js';
 
 // the table: the House's phase track runs along the top edge (y 100-124), the positions below it, and between them
@@ -572,7 +573,7 @@ export function boutScene(root, bout, ctx, onDone) {
       el.style.opacity = w.folded ? '0' : '1'; el.style.pointerEvents = w.folded ? 'none' : ''; place(el, w.x, w.y, w.folded ? 'scale(.5)' : ''); el.style.zIndex = w.on ? 6 : ui.peek === 'dice' ? 9 : 4; el.classList.toggle('on', !!w.on); el.classList.toggle('rolled', !!w.rolled); el.classList.toggle('sel', (ui.mode === 'die' && ui.die === id) || !!w.picked);
       el.classList.toggle('fixed', !!w.on && (!!w.si || !B.canMove(bout, me, id))); el.classList.toggle('tapped', !!w.tapped); el.classList.toggle('restoring', !!w.restoring); el.classList.toggle('bonusd', !!w.bonus);
       const label = el.firstChild, text = w.rolled ? String(w.value) : w.d.type.slice(1);
-      if (w.rolled && !el._rolled) { label.textContent = text; toss(el, w.d, w.value, from ? { x: +from[1], y: +from[2] } : { x: w.x, y: w.y + 90 }, { x: w.x, y: w.y }, tossN++); }
+      if (w.rolled && !el._rolled) { label.textContent = text; sfx('roll'); toss(el, w.d, w.value, from ? { x: +from[1], y: +from[2] } : { x: w.x, y: w.y + 90 }, { x: w.x, y: w.y }, tossN++); }
       else if (label.textContent !== text && !el.classList.contains('rolling')) label.textContent = text;
       el._text = text; el._rolled = !!w.rolled;
     }
@@ -601,7 +602,7 @@ export function boutScene(root, bout, ctx, onDone) {
       if (!el) { el = mkChip(w.ch); els.chips.set(id, el);
         if (fx[id] === 'from-stage' || fx[id] === 'from-pit') spawn(el, STAGE[w.side].x, STAGE[w.side].y, 'scale(.5)');
         else if (fx[id] === 'debt') spawn(el, HOUSE.x, HOUSE.y + 30, 'scale(.5)'); // Debt is dealt out by the House
-        else if (fx[id] === 'spawn' && !ui.first && !w.pit) spawn(el, w.x, w.y - 34, 'scale(.8)'); // made chips appear just above their space, then land
+        else if (fx[id] === 'spawn' && !ui.first && !w.pit) { spawn(el, w.x, w.y - 34, 'scale(.8)'); sfx('land', 250); } // made chips appear just above their space, then land
         else if (ui.first) spawn(el, w.x, w.y - 46, '', Math.min(900, n * 5));
         else spawn(el, w.x, w.y, 'scale(.1)'); n++; }
       el._side = w.side; el.style.opacity = '1'; el.style.zIndex = w.z; place(el, w.x, w.y, extra); el.classList.toggle('inpit', !!w.pit);
@@ -615,7 +616,7 @@ export function boutScene(root, bout, ctx, onDone) {
     for (const [id, el] of els.chips) if (!want.has(id)) {
       const how = fx[id] || 'void', m = /translate\(([-\d.]+)px, ([-\d.]+)px\)/.exec(el.style.transform), x = +m[1], y = +m[2];
       el.style.zIndex = 950; el.style.opacity = '0';
-      if (how === 'stage') { el.classList.add('paying'); place(el, STAGE[el._side].x, STAGE[el._side].y, 'scale(.6)'); }
+      if (how === 'stage') { sfx('pay'); el.classList.add('paying'); place(el, STAGE[el._side].x, STAGE[el._side].y, 'scale(.6)'); }
       else if (how === 'house') { el.classList.add('paying'); place(el, HOUSE.x, HOUSE.y, 'scale(.5)'); }
       else if (how === 'abduct') place(el, x, y - 190, 'scale(.7)');
       else place(el, x, y - 6, 'scale(.1) rotate(140deg)');
@@ -853,12 +854,12 @@ export function boutScene(root, bout, ctx, onDone) {
     const e = me.run.find((x) => x.uid === uid), el = els.cards.get(uid);
     if (!e) { const why = B.canDraw(bout, me, uid); if (why) return nope(why, el);
       const t = me.book.find((x) => x.uid === uid), onto = !ev?.shiftKey && me.run.find((x) => B.canStackOn(me, t, x)); // a copy stacks on the one shown (Shift: draw it apart)
-      return act(() => B.draw(bout, me, uid, onto ? onto.uid : null)); }
+      sfx(onto ? 'stack' : 'card'); return act(() => B.draw(bout, me, uid, onto ? onto.uid : null)); }
     if (bout.phase === 'draw') { const why = B.canUndraw(bout, me, uid); if (why) return nope(why === 'Only a trick drawn this turn can go back to the Book.' ? tx('table.that-trick-was-drawn') : why, el); return act(() => B.undraw(bout, me, uid)); }
     if (bout.phase === 'roll') return nope(tx('table.pick-dice-from-your'), el);
     if (ui.mode === 'die') { const why = B.canPlace(bout, me, ui.die, e); if (why) return nope(why, el);
       const ids = ui.held.filter((id) => !B.canPlace(bout, me, id, e)); // the whole handful goes on
-      fromHand(ids.map((id) => els.dice.get(id))); return act(() => { for (const id of ids) B.place(bout, me, id, e); aimBest(); setMode(null); }); }
+      fromHand(ids.map((id) => els.dice.get(id))); ids.forEach((_, i) => setTimeout(() => sfx('die'), 120 + i * 90)); return act(() => { for (const id of ids) B.place(bout, me, id, e); aimBest(); setMode(null); }); }
     if (bout.phase === 'aim') { if (e.state === 'bid' && B.needsTarget(e)) return act(() => { ui.hand = []; setMode('target', uid); });
       if (me.tray.length) return nope(tx('table.click-a-die-in'), el);
       return nope(e.state === 'bid' ? tx('table.that-trick-needs-no') : tx('table.only-tricks-you-bid'), el); }
@@ -869,7 +870,7 @@ export function boutScene(root, bout, ctx, onDone) {
       if (me.used.bid >= B.tipOf(me, 'ingenuity')) return nope(tx('table.no-bids-left-this'), el);
       return act(() => setMode('bid', uid)); }
     const why = B.canBidMany(bout, me, e, ui.hand); if (why) return nope(why, el);
-    fromHand((B.handChips(me, ui.hand) || []).map((x) => els.chips.get(x.ch.id))); act(() => { B.bidMany(bout, me, e, ui.hand); ui.hand = []; setMode(null); });
+    fromHand((B.handChips(me, ui.hand) || []).map((x) => els.chips.get(x.ch.id))); ui.hand.forEach((_, i) => setTimeout(() => sfx('bid'), 150 + i * 80)); act(() => { B.bidMany(bout, me, e, ui.hand); ui.hand = []; setMode(null); });
   }
   function clickDie(id) {
     if (ui.locked) return;
@@ -878,7 +879,7 @@ export function boutScene(root, bout, ctx, onDone) {
       if (bout.phase !== 'roll' || me.thrown) return nope(bout.phase === 'draw' ? tx('table.press-roll-first-then') : me.thrown ? tx('table.you-have-rolled-this') : tx('table.rolling-is-over-for'), el);
       if (ui.sel.has(id)) return act(() => ui.sel.delete(id));
       if (selCount() >= B.tipOf(me, 'proficiency')) return nope(tx('table.you-can-roll-this', { tipOf: B.tipOf(me, 'proficiency') }), el);
-      return act(() => ui.sel.add(id));
+      sfx('die'); return act(() => ui.sel.add(id));
     }
     if (me.tray.some((d) => d.id === id)) { if (bout.phase !== 'aim') return nope(tx('table.dice-go-on-tricks'), el); // gather a handful from the roll
       return act(() => { const k = ui.held.indexOf(id); if (k >= 0) ui.held.splice(k, 1); else ui.held.push(id); if (ui.held.length) { ui.mode = 'die'; ui.die = ui.held[0]; } else setMode(null); }); }
@@ -902,7 +903,7 @@ export function boutScene(root, bout, ctx, onDone) {
       if (ch?.kind !== 'std') return nope(tx('table.only-an-uncovered-standard'), cellEl);
       if (B.worth(me) - ch.value - sum(ui.flips, (f) => B.bidChip(me, f.r, f.c).value) <= 0) return nope(tx('table.that-is-your-last'), cellEl);
       if (selCount() >= B.tipOf(me, 'proficiency')) return nope(tx('table.you-can-roll-this-2', { tipOf: B.tipOf(me, 'proficiency') }), cellEl);
-      return act(() => ui.flips.push({ r, c }));
+      sfx('chip'); return act(() => ui.flips.push({ r, c }));
     }
     if (bout.phase === 'aim' && ui.mode !== 'target' && si >= 0) { // click a trick's marked target to move it
       const mine0 = me.run.filter((x) => x.state === 'bid' && B.needsTarget(x) && x.target && x.target.side === si && x.target.r === r && x.target.c === c);
@@ -911,7 +912,7 @@ export function boutScene(root, bout, ctx, onDone) {
     if (bout.phase === 'bid' && ui.mode === 'bid' && e) { // bid straight onto the picked trick
       if (si !== 0) return nope(tx('table.bid-a-chip-from'), cellEl);
       const why = B.canBid(bout, me, e, r, c); if (why) return nope(why, cellEl);
-      return act(() => { B.bid(bout, me, e, r, c); if (me.used.bid >= B.tipOf(me, 'ingenuity')) setMode(null); });
+      sfx('bid'); return act(() => { B.bid(bout, me, e, r, c); if (me.used.bid >= B.tipOf(me, 'ingenuity')) setMode(null); });
     }
     if (bout.phase === 'bid') {
       if (si !== 0) return nope(tx('table.bid-a-chip-from'), cellEl);
@@ -1018,6 +1019,20 @@ export function boutScene(root, bout, ctx, onDone) {
   // ---------- resolution ----------
   // The House works through the turn one call at a time: it names the phase, points the stick
   // at the trick being played, then at where it lands, and only then does the table change.
+  // the House's plays sound like what they are: the element a trick carries, else its type; creatures, hazards,
+  // misses and bonuses have their own
+  const ELEMENT_SOUND = ['burn', 'shock', 'frost', 'acid', 'boom', 'poison', 'corrupt', 'lava'];
+  function stepSound(st, parts) {
+    const p = parts.find((x) => x.kind === 'play') || parts[0]; if (!p) return;
+    if (p.kind === 'creature') return sfx('creature');
+    if (p.kind === 'hazard') return sfx('hazard');
+    if (p.kind === 'miss') return sfx('miss');
+    if (p.kind === 'bonus' || p.kind === 'familiar') return sfx('bonus');
+    if (p.kind !== 'play') return;
+    const e = p.uid != null ? bout.sides.flatMap((s) => s.run).find((x) => x.uid === p.uid) : null, def = e ? D.TRICKS[e.trick.id] : null;
+    const el = def?.element === 'lava' ? 'burn' : def?.element;
+    sfx(el && ELEMENT_SOUND.includes(def.element) ? el : (def?.type || p.phase || 'expense'));
+  }
   async function playTurn() {
     if (ui.locked || bout.over) return;
     ui.locked = true; ui.playing = true; setMode(null); prompt = ''; renderFeed(); sync();
@@ -1048,7 +1063,7 @@ export function boutScene(root, bout, ctx, onDone) {
         if (c0) { const pt = cellPoint(c0); armOf(p).to(pt.x, pt.y); moved = true; }
         else if (!tps[i] && p.who != null) { armOf(p).to(p.who === 0 ? 190 : 1090, 78); moved = true; } });
       if (moved) await pace(560);
-      sync(st.fx); parts.forEach(flash); bigLoss();
+      sync(st.fx); parts.forEach(flash); bigLoss(); stepSound(st, parts);
       const fees = parts.filter((p) => p.kind === 'fee' && p.cells[0]);
       if (fees.length) { await pace(240); for (const p of fees) armOf(p).to(STAGE[p.cells[0].side].x + 16, STAGE[p.cells[0].side].y + 14); } // rake what was paid to the Stage
       await pace(st.kind === 'over' ? 1000 : parts.some((p) => p.text) ? (parts.length > 1 ? 980 : 780) : 340);
