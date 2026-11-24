@@ -419,6 +419,15 @@ its hover.
   of the turn. Any made-chip trick can set the chip's width, a flat thickness, and whether a wide chip slips under
   stacks (`roll.foot`, `roll.flat`, `roll.slip`, in the Trick maker); the chip maker's reach has *Chips inside it*.
 
+### Trick quality and Bonuses (Trick maker)
+- A trick has no "lasts N turns" setting (its made chips have their own life, from the chip). The *Linger* Bonus is
+  gone; lingering is only ever by stacking copies.
+- **Quality level**: left on *Auto*, a trick shows a level rated from its traits (`D.rateTrick`: the average of its
+  Bonus dice, how far its deployment reaches, and how hard its Bonus condition is), Common to Royal. Set a level
+  (`q`, 1-4) and every copy of it is dealt at least that quality.
+- **Runs** is a Bonus condition: the Bonus dice show values in sequence (3-4-5), in any order.
+- Every Build-mode option has a hover saying what it is for (`help.<label key>` in `js/text/en.js`, shown by `lab()`).
+
 ### Neon signs
 Every seat at the table is a neon sign, and so is the House's (`js/ui/sign.js`). A sign has a tube and glow colour for
 its frame, name and class; a frame style (tube, double, dashed, dotted, bulbs, none) and corner rounding; a Unicode

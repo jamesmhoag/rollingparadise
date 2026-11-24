@@ -103,6 +103,17 @@ export const TYPES = {
 };
 export const QMULT = [0, 1, 2, 3, 4];
 export const QNAME = ['', 'Common', 'Fine', 'Grand', 'Royal'];
+// A trick's quality level. `q` on a trick (1-4) is set in the Trick maker: every copy of it is made at least that
+// good. Left unset, its level is rated from its traits (rateTrick): what its dice roll on average, how far it reaches,
+// and what its Bonus asks of the dice. The rating is shown; only a set level changes the copies dealt.
+export function rateTrick(def) {
+  const avg = def.count * ((DICE[def.die]?.faces || 6) + 1) / 2;
+  const reach = def.approach === 'none' ? 1 : Math.max(DIST[def.dist]?.min || 1, ['wave', 'aura', 'cone', 'spiral'].includes(def.roll?.deploy) ? 3 : 1);
+  const hard = { match: 1, evens: 1.1, odds: 1.1, run: 1.3 }[def.bonus?.cond] || (String(def.bonus?.cond).startsWith('over:') ? +def.bonus.cond.slice(5) / Math.max(1, avg) : 1);
+  const score = avg * (1 + (reach - 1) * 0.35) * hard;
+  return score < 7.5 ? 1 : score < 10 ? 2 : score < 14 ? 3 : 4;
+}
+export const qualityOf = (def) => (def?.q >= 1 && def.q <= 4 ? def.q : rateTrick(def));
 export const DIE_UPGRADE_MAX = 2;
 // Quality is unlocked by floor. Common and Fine tricks are reliable: they roll only their own small dice (d4, d6,
 // d8). Grand and Royal hit harder but less reliably: each time one is drawn it rolls a quality die (d10 or d20). A
@@ -171,7 +182,7 @@ export const DIST = {
   rain: { name: 'Rain', text: 'Random stacks, one drop per point rolled. Can repeat.', min: 1, inc: 0, max: 99 },
 };
 export const CONDS = {
-  match: 'at least two dice match', evens: 'every die is even', odds: 'every die is odd',
+  match: 'at least two dice match', evens: 'every die is even', odds: 'every die is odd', run: 'the dice make a run (in sequence, like 2-3-4)',
 };
 export const condText = (c) => CONDS[c] || (c.startsWith('over:') ? `total is ${c.slice(5)} or more` : `total is ${c.slice(6)} or less`);
 

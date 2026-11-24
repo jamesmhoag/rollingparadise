@@ -56,7 +56,7 @@ export function describeRoll(def) {
       : (R.convert === 'lump' ? tx('trick.make-one', { replace: makeName(R.chip).replace(/s$/, '') }) : R.convert === 'precise' ? tx('trick.make-one-per-die', { replace: makeName(R.chip).replace(/s$/, '') }) : tx('trick.make-one-per-point', { replace: makeName(R.chip).replace(/s$/, '') }));
   const where = def.approach === 'none' ? '' : tx('trick.of-position', { text: dep.text, toLowerCase: (AIMS[def.approach] || def.approach).toLowerCase(), v: def.side === 'self' ? 'your' : def.side === 'any' ? 'either' : "your opponent's" });
   const place = kind === 'fee' || kind === 'water' ? (kind === 'water' ? tx('trick.at-the-bottom-of') : '') : `, ${PLACE[R.place]?.text || PLACE.over.text}${R.place === 'precise' ? tx('trick.height', { v: R.at | 0 }) : ''}`;
-  const life = isFxChip(R.chip) ? tx('trick.for-turns', { v: R.life || 3 }) : '';
+  const life = isFxChip(R.chip) ? tx('trick.for-turns', { v: SHOP_CHIPS[R.chip]?.life || 3 }) : '';
   const M = MADE_CHIPS[R.chip], foot = R.foot && R.foot !== 'model' ? R.foot : M?.foot, n = { big: 2, large: 3, huge: 5 }[foot] || 1;
   const shape = !M ? '' : [n > 1 ? tx('trick.shape-wide', { n }) : '', R.flat || M.height === 'tiny' ? tx('trick.shape-flat') : '', n > 1 && (R.slip || M.slip) ? tx('trick.shape-slip') : ''].filter(Boolean).join(', ');
   return `${what}${where}${place}${life}${shape ? ` (${shape})` : ''}.${M?.text ? ' ' + M.text : ''}`;
