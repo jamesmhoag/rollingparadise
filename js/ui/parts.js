@@ -98,7 +98,12 @@ export function trickChip(def) {
   if (def.roll.k === 'fee') return def.element ? { kind: def.element } : def.plant ? { kind: def.plant } : { kind: 'debt', value: def.count };
   return CHIP_FOR[def.roll.k] || null;
 }
-export const chipTip = (ch, o = {}) => `<b>${chipName(ch)}</b><p>${chipText(ch)}</p>${traitsHtml(traitsOf(ch, o))}`;
+// a line of flavour for a hover (content/flavor.js), or nothing
+const esc = (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+export const flavorP = (table, id) => { const f = D.flavorOf(table, id); return f ? `<p class="flavor">${esc(f)}</p>` : ''; };
+// where a chip's flavour lives: its shop chip, its kind, or nothing for a made chip (its maker writes its text)
+const chipFlavor = (ch) => (ch.kind === 'made' ? '' : ch.shop && D.flavorOf('SHOP_CHIPS', ch.shop) ? flavorP('SHOP_CHIPS', ch.shop) : ch.resist && D.flavorOf('SHOP_CHIPS', ch.resist) ? flavorP('SHOP_CHIPS', ch.resist) : flavorP('CHIPS', ch.kind));
+export const chipTip = (ch, o = {}) => `<b>${chipName(ch)}</b><p>${chipText(ch)}</p>${chipFlavor(ch)}${traitsHtml(traitsOf(ch, o))}`;
 export { traitsOf, traitsHtml };
 
 // a die's faces as small numbers, with special faces marked
@@ -109,7 +114,7 @@ export function faceStrip(d) {
 export function dieTip(d, extra = '') {
   const ups = (d.up || []).map((u, k) => `<li><b style="color:${D.DIE_UPGRADES[u].color}">${D.DIE_UPGRADES[u].mark} ${D.DIE_UPGRADES[u].name}</b>${d.tgt?.[k] != null ? tx('parts.face', { tgt: d.tgt[k] + 1 }) : ''}<span class="v"> — ${D.upgradeText(u)}</span></li>`).join('');
   const M = D.MATERIALS[matOf(d)], B = d.bone && D.BONE[d.bone];
-  return `<b>${dieName(d)}</b> <span class="faces">${faceStrip(d)}</span>${B ? tx('parts.carved-with', { name: B.name, name2: D.DIE_UPGRADES[B.up].name, upgradeText: D.upgradeText(B.up) }) : ups ? `<ul>${ups}</ul>` : ''}${d.cast ? tx('parts.cast-by-the-diesmith', { name: D.CASTS[d.cast].name, v: (d.dyes || []).length ? ` with ${d.dyes.map((k) => D.DYES[k].name).join(', ')}` : '' }) : ''}<p class="dim v">${M.text}</p>${extra ? `<p>${extra}</p>` : ''}`;
+  return `<b>${dieName(d)}</b> <span class="faces">${faceStrip(d)}</span>${B ? tx('parts.carved-with', { name: B.name, name2: D.DIE_UPGRADES[B.up].name, upgradeText: D.upgradeText(B.up) }) : ups ? `<ul>${ups}</ul>` : ''}${d.cast ? tx('parts.cast-by-the-diesmith', { name: D.CASTS[d.cast].name, v: (d.dyes || []).length ? ` with ${d.dyes.map((k) => D.DYES[k].name).join(', ')}` : '' }) : ''}<p class="dim v">${M.text}</p>${extra ? `<p>${extra}</p>` : ''}${flavorP('MATERIALS', matOf(d))}`;
 }
 // one badge per upgrade, so every upgrade a die carries can be read off the die itself
 export const dieMarks = (d) => ((d.up || []).length ? h('span', { class: 'ups' }, d.up.map((u) => h('b', { class: `u-${u}`, style: { '--uc': D.DIE_UPGRADES[u].color }, text: D.DIE_UPGRADES[u].mark }))) : null);
@@ -145,7 +150,7 @@ export function trickTip(t, viewerCls, live) {
   const classOk = !def.cls || def.cls === viewerCls;
   const tgt = def.approach === 'none' ? (def.dist === 'rain' ? tx('parts.random-stacks-of-your') : tx('parts.no-target-needed'))
     : tx('parts.targets-in-position', { APPROACH: D.APPROACH[def.approach], v: def.side === 'self' ? 'your own' : "your opponent's", name: D.DIST[def.dist].name, text: D.DIST[def.dist].text });
-  return tx('parts.trait-bid-a-chip', { name: def.name, trickWords: trickWords(t), name2: D.CONDITIONS[D.condOf(t)].name, color: T.color, name3: T.name, v: def.cls ? ' · ' + D.CLASSES[def.cls].name : tx('parts.any-class'), text: T.text, count: def.count, die: def.die, text2: def.roll.text, v2: classOk ? '' : 'dim', condText: D.condText(def.bonus.cond), text3: def.bonus.text, v3: classOk ? '' : tx('parts.only', { name: D.CLASSES[def.cls].name }), printRule: printRule(t), tgt, printInfo: printInfo(t), v4: live || '' });
+  return tx('parts.trait-bid-a-chip', { name: def.name, trickWords: trickWords(t), name2: D.CONDITIONS[D.condOf(t)].name, color: T.color, name3: T.name, v: def.cls ? ' · ' + D.CLASSES[def.cls].name : tx('parts.any-class'), text: T.text, count: def.count, die: def.die, text2: def.roll.text, v2: classOk ? '' : 'dim', condText: D.condText(def.bonus.cond), text3: def.bonus.text, v3: classOk ? '' : tx('parts.only', { name: D.CLASSES[def.cls].name }), printRule: printRule(t), tgt, printInfo: printInfo(t), v4: flavorP('TRICKS', t.id) + (live || '') });
 }
 export function statTip(k, v) {
   const S = D.STATS[k];
@@ -164,16 +169,19 @@ export function statRow(v, keys) {
 export const money = (n) => cents(n);
 export function drinkTip(d) {
   const mods = Object.entries(d.mods).map(([k, n]) => `+${n} ${D.STATS[k].name}`).join(', ');
-  return tx('parts.for-one-turn-per', { name: d.name, verb: d.verb, mods, sips: d.sips, v: d.max ? ' left' : '' });
+  return tx('parts.for-one-turn-per', { name: d.name, verb: d.verb, mods, sips: d.sips, v: d.max ? ' left' : '' }) + flavorP('DRINKS', d.id);
 }
 // v: your current attributes (rollerStats(run).v), so a +1 can say what it changes
+// a card's rule: written from its numbers where it has them (a Resist Card's r), else its text
+export const cardRule = (id) => { const c = D.CARDS[id]; return c?.resist ? tx('parts.resist-card', { r: c.resist }) : c?.text || ''; };
 export function cardTip(id, v) {
   const c = D.CARDS[id];
-  return `<b>${c.name}</b>${c.mods ? changes(c.mods, v) : `<p>${c.text}</p>`}${c.mods ? tx('parts.lose-the-card-and') : ''}`;
+  const rule = cardRule(id);
+  return `<b>${c.name}</b>${c.mods ? changes(c.mods, v) : `<p>${rule}</p>`}${c.mods ? tx('parts.lose-the-card-and') : ''}${flavorP('CARDS', id)}`;
 }
 export function jacketTip(id, v) {
   const J = D.JACKETS[id];
-  return tx('parts.jacket', { name: J.name, effect: J.effect, v: Object.keys(J.mods).length ? changes(J.mods, v) : tx('parts.no-modifiers'), v2: J.cls ? tx('parts.cut-for-the-no', { name: D.CLASSES[J.cls].name }) : '' });
+  return tx('parts.jacket', { name: J.name, effect: J.effect, v: Object.keys(J.mods).length ? changes(J.mods, v) : tx('parts.no-modifiers'), v2: J.cls ? tx('parts.cut-for-the-no', { name: D.CLASSES[J.cls].name }) : '' }) + flavorP('JACKETS', id);
 }
 
 // ---------- gear visuals ----------
@@ -189,7 +197,7 @@ export function cardEl(id, cls = '') {
   return h('span', { class: `gcard ${lanyard ? 'lanyard' : ''} ${cls}`, style: { '--gc': L.c, '--ink': L.ink || '#fff' } }, h('em', { text: L.k }), h('b', { text: L.g }), h('small', { text: D.CARDS[id].name.replace(/^.*?: /, '') }));
 }
 // a pass: not a card, it rides in the wallet's own pass slot
-export const passTip = (f) => tx('parts.every-wallet-holds-one', { name: D.PASSES[f].name, text: D.PASSES[f].text });
+export const passTip = (f) => tx('parts.every-wallet-holds-one', { name: D.PASSES[f].name, text: D.PASSES[f].text }) + flavorP('PASSES', f);
 export function passEl(f, cls = '') {
   const P = D.PASSES[f]; const el = h('span', { class: `gcard gpass ${cls}`, style: { '--gc': P.color, '--ink': '#fff' } }, h('em', { text: tx('parts.pass') }), h('b', { text: P.glyph }), h('small', { text: P.name.replace(/ Pass$/, '') }));
   el._tip = () => passTip(f); el.classList.add('has-tip'); return el;

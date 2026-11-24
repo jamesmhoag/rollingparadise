@@ -4,7 +4,7 @@
 import { h, openPanel, closePanel, btn } from './core.js';
 import { app } from './app.js';
 import { upgrade as upgradeFaces, suggestFace, dieName } from '../dice.js';
-import { chipEl, chipTip, dieEl, dieTip, faceStrip, trickTip, trickWords, trickLook, cardEl, cardTip, passEl, walletEl, jacketEl, jacketTip, drinkEl, feltEl } from './parts.js';
+import { cardRule, chipEl, chipTip, dieEl, dieTip, faceStrip, trickTip, trickWords, trickLook, cardEl, cardTip, passEl, walletEl, jacketEl, jacketTip, drinkEl, feltEl } from './parts.js';
 import * as D from '../data.js';
 import { CHIP_LIST } from '../chiplist.js';
 import { TRAITS, traitsOf, traitsHtml, flyerTraits } from '../traits.js';
@@ -151,7 +151,7 @@ const shopFrom = (level) => (!level ? '' : level >= 4 ? tx('library.leaving-from
 const cardKind = (id) => (D.LANYARD_CARDS.includes(id) ? tx('library.lanyard-does-not-take') : D.STARTER_CARDS.includes(id) ? tx('library.starter-two-are-dealt') : D.FIND_CARDS.includes(id) ? tx('library.found-in-the-dodgy') : tx('library.takes-a-wallet-slot'));
 function cardsTab(own) {
   const out = [sec('Cards', tx('library.benefit-cards-ride-in'))];
-  for (const id of Object.keys(D.CARDS)) out.push(entry(tipped(cardEl(id), () => cardTip(id)), D.CARDS[id].name, [D.CARDS[id].text, dim(cardKind(id))], { own: own.card(id) ? tx('library.in-your-wallet') : null }));
+  for (const id of Object.keys(D.CARDS)) out.push(entry(tipped(cardEl(id), () => cardTip(id)), D.CARDS[id].name, [cardRule(id), dim(cardKind(id))], { own: own.card(id) ? tx('library.in-your-wallet') : null }));
   out.push(sec('Passes', tx('library.passes-are-not-cards')));
   for (let f = 1; f < D.PASSES.length; f++) out.push(entry(passEl(f), D.PASSES[f].name, [D.PASSES[f].text], { own: own.run && passesOf(own.run).includes(f) ? tx('library.in-your-wallet') : null }));
   out.push(noUpgrades('Cards'));

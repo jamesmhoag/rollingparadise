@@ -88,9 +88,9 @@ function selectScene(root) {
   const els = Object.entries(D.CLASSES).map(([id, K]) => {
     const dice = Object.entries(K.dice).flatMap(([type, n]) => Array.from({ length: n }, () => type));
     const el = h('button', { class: 'pick-card', style: { '--cc': K.color }, onclick: () => { cls = id; sync(); } },
-      h('h2', { text: K.hero }), h('p', { class: 'cap', text: t('select.hero.the', { cls: K.name }) }), h('p', { class: 'sub', text: K.blurb }),
+      h('h2', { text: K.hero }), h('p', { class: 'cap', text: t('select.hero.the', { cls: K.name }) }), h('p', { class: 'sub', text: D.classRule(id) }), D.flavorOf('CLASSES', id) ? h('p', { class: 'sub flavor', text: D.flavorOf('CLASSES', id) }) : null,
       h('span', { class: 'cap', text: t('select.eachTurn') }), statRow(K.tip, ['trickery', 'ingenuity', 'proficiency']),
-      h('span', { class: 'cap', text: t('select.unused') }), statRow(K.c, ['charisma', 'cunning', 'conviction']),
+      h('span', { class: 'cap', text: t('select.unused') }), h('p', { class: 'sub', text: t('select.unused.rows', { stat: D.STATS[D.primaryC(id)].name }) }),
       h('span', { class: 'cap', text: t('select.position') }), statRow(K.bvd, ['balance', 'versatility', 'depth']),
       h('span', { class: 'cap', text: t('select.pouch') }), h('div', { class: 'dicebox' }, dice.map((type) => { const d = dieEl({ type }); d._tip = () => dieTip({ type }); d.classList.add('has-tip'); return d; })),
       h('span', { class: 'cap', text: t('select.book') }), h('div', { class: 'inv' }, K.tricks.map((tid) => { const t = { id: tid, q: 1 }; return h('span', { class: 'tag-t', style: { '--tc': D.TYPES[D.TRICKS[tid].type].color }, tip: () => trickTip(t, id) }, D.TRICKS[tid].name); })));

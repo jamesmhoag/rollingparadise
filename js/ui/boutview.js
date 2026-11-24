@@ -1,7 +1,7 @@
 // The table. Every chip, die, trick card and creature is one persistent element that is
 // moved, faded or flipped to follow the bout state, so nothing ever pops between states.
 import { h, tip, wait, tween, swapText, setOn, pulse, syncList, toast, btn, refreshTip, redrawTip, box, vc, detail, paint, guided, stagePoint, rightClick } from './core.js';
-import { chipSig, chipGlyph, chipName, chipText, chipTip, dieTip, trickTip, trickWord, trickWords, statTip, drinkTip, dieMarks, dieDyes, dieStyle, dieClass, trickLook, feltStyle, seenAs, traitsOf, traitsHtml, dieEl, chipEl, trickChip } from './parts.js';
+import { chipSig, chipGlyph, chipName, chipText, chipTip, dieTip, trickTip, trickWord, trickWords, statTip, drinkTip, dieMarks, dieDyes, dieStyle, dieClass, trickLook, feltStyle, seenAs, traitsOf, traitsHtml, dieEl, chipEl, trickChip, flavorP } from './parts.js';
 import { iconKids, iconFill } from './icons.js';
 import { flyerTraits } from '../traits.js';
 import { openLibrary } from './library.js';
@@ -35,7 +35,7 @@ export function boutScene(root, bout, ctx, onDone) {
   const layer = h('div', { class: 'bout-layer' });
   root.classList.add('bout');
   // the table's felt: for now it only sets the colour
-  const feltBg = h('div', { class: 'table-felt', style: feltStyle(ctx?.felt || 'felt'), tip: () => { const F = D.feltOf(ctx?.felt || 'felt'); return tx('table.felt-no-board-effect', { name: F.name, line: F.line }); } });
+  const feltBg = h('div', { class: 'table-felt', style: feltStyle(ctx?.felt || 'felt'), tip: () => { const F = D.feltOf(ctx?.felt || 'felt'); return tx('table.felt-no-board-effect', { name: F.name, line: F.line }) + flavorP('FELTS', D.feltId(ctx?.felt || 'felt')); } });
   root.append(feltBg);
   const fxLayer = h('div', { class: 'fx-chips' }); root.append(fxLayer); // effect chips lie on the table, under the stacks
 
@@ -167,7 +167,7 @@ export function boutScene(root, bout, ctx, onDone) {
       h('div', { class: 'led-row' }, h('span', { class: 'led-k', text: tx('table.ledger-tapped') })), ledEl[si].tap)));
   function ledgerTip(si) {
     const s = bout.sides[si], bids = s.run.filter((e) => e.state === 'bid' && e.bid.length);
-    return tx('table.ledger-tip', { who: si ? opp.name : tx('end.you'), list: bids.map((e) => `${D.TRICKS[e.trick.id].name} ${sum(e.bid, (ch) => ch.value)}¢`).join(', ') || tx('table.ledger-none'), t: s.tapped.tricks.length, d: s.tapped.dice.length });
+    return tx('table.ledger-tip', { who: si ? opp.name : tx('end.you'), list: bids.map((e) => `<span class="tag-t" style="--tc:${D.TYPES[D.TRICKS[e.trick.id].type].color}">${D.TRICKS[e.trick.id].name} ${sum(e.bid, (ch) => ch.value)}¢</span>`).join(' ') || tx('table.ledger-none'), t: s.tapped.tricks.length, d: s.tapped.dice.length });
   }
   function syncLedger() {
     bout.sides.forEach((s, si) => { const bids = s.run.filter((e) => e.state === 'bid' && e.bid.length), L = ledEl[si];
@@ -271,7 +271,7 @@ export function boutScene(root, bout, ctx, onDone) {
   // the spines the Book and the dice fold into, and the panel a peek opens over the Run
   const togglePeek = (k) => { ui.peek = ui.peek === k ? null : k; ui.peekPhase = bout.phase; sync(); };
   const spines = {
-    book: h('button', { class: 'spine book', onclick: () => togglePeek('book'), tip: () => tx('table.spine-book', { n: me.book.length, list: me.book.map((t) => `<span style="color:${D.TYPES[D.defOf(t).type].color}">${D.defOf(t).name}</span>`).join(', ') || tx('table.spine-empty') }) },
+    book: h('button', { class: 'spine book', onclick: () => togglePeek('book'), tip: () => tx('table.spine-book', { n: me.book.length, list: me.book.map((t) => `<span class="tag-t" style="--tc:${D.TYPES[D.defOf(t).type].color}">${D.defOf(t).name}</span>`).join(' ') || tx('table.spine-empty') }) },
       h('span', { class: 'sp-t' }), h('span', { class: 'sp-marks' })),
     dice: h('button', { class: 'spine dice', onclick: () => togglePeek('dice'), tip: () => tx('table.spine-dice', { n: me.pouch.length, list: me.pouch.map((d) => dieName(d)).join(', ') || tx('table.spine-empty') }) },
       h('span', { class: 'sp-t' }), h('span', { class: 'sp-marks' })) };
@@ -632,10 +632,10 @@ export function boutScene(root, bout, ctx, onDone) {
     syncTags(tags);
     // creatures fly over the stacks, bees with them; orbital chips (weather, vehicles) ride above them
     const flyers = [...bout.creatures.map((cr) => ({ key: 'c' + cr.id, side: cr.side, r: cr.r, c: cr.c, gone: cr.gone, late: cr.arrive > bout.turn, icon: 'creature:' + cr.kind, glyph: D.CREATURES[cr.kind].glyph, cls: `creature cr-${cr.kind}`,
-      tip: () => `<b>${D.CREATURES[cr.kind].name}</b>${D.CREATURES[cr.kind].hits ? tx('table.of-hits-left', { hits: D.CREATURES[cr.kind].hits - (cr.dmg || 0), hits2: D.CREATURES[cr.kind].hits }) : ''}<p>${D.CREATURES[cr.kind].text}</p>${cr.hold?.length ? tx('table.holds-of-stolen-gold', { sum: sum(cr.hold, (x) => x.value) }) : ''}${traitsHtml(flyerTraits(cr.kind))}` })),
+      tip: () => `<b>${D.CREATURES[cr.kind].name}</b>${flavorP('CREATURES', cr.kind)}${D.CREATURES[cr.kind].hits ? tx('table.of-hits-left', { hits: D.CREATURES[cr.kind].hits - (cr.dmg || 0), hits2: D.CREATURES[cr.kind].hits }) : ''}<p>${D.CREATURES[cr.kind].text}</p>${cr.hold?.length ? tx('table.holds-of-stolen-gold', { sum: sum(cr.hold, (x) => x.value) }) : ''}${traitsHtml(flyerTraits(cr.kind))}` })),
       ...bout.sides.flatMap((s) => s.bees.map((bee) => ({ key: 'b' + bee.id, side: s.idx, r: bee.r, c: bee.c, icon: 'creature:bee', glyph: '🐝', cls: 'creature bee', tip: tx('table.bumble-bee-left-a', { life: bee.life }) }))),
       ...bout.sides.flatMap((s) => s.sky.filter((o) => D.ORBITALS[o.kind].size !== 'table').map((o) => ({ key: 's' + o.id, side: s.idx, r: o.r, c: o.c, icon: 'orbital:' + o.kind, glyph: D.ORBITALS[o.kind].glyph, cls: `creature orbital or-${o.kind}`, out: o.c < 0,
-        tip: () => `<b>${D.ORBITALS[o.kind].name}</b>${o.str ? tx('table.strength', { str: o.str }) : ''}<p>${D.ORBITALS[o.kind].text}</p>${traitsHtml(flyerTraits(o.kind, true))}` })))];
+        tip: () => `<b>${D.ORBITALS[o.kind].name}</b>${o.str ? tx('table.strength', { str: o.str }) : ''}<p>${D.ORBITALS[o.kind].text}</p>${flavorP('ORBITALS', o.kind)}${traitsHtml(flyerTraits(o.kind, true))}` })))];
     const live = new Set();
     for (const f of flyers) {
       let el = els.creatures.get(f.key); const on = f.r >= 0 && !f.out, p = on ? cellPos(f.side, f.r, Math.max(0, f.c)) : { x: f.side === 0 ? 300 : 960, y: 44, w: 40 };
@@ -705,7 +705,7 @@ export function boutScene(root, bout, ctx, onDone) {
     if (s.familiars) add('fam', `Familiar ×${s.familiars}`, `<b>Familiar</b><p>${D.TILTS.familiar.text}</p>`, 'good');
     if (s.interventions) add('int', 'Intervention', `<b>Intervention</b><p>${D.TILTS.intervention.text}</p>`, 'good');
     if (s.spawners) add('spn', `Spawner ×${s.spawners}`, `<b>Spawner</b><p>${D.TILTS.spawner.text}</p>`, 'bad');
-    s.calamities.forEach((cid, i) => add('cal' + i, D.CALAMITIES[cid].name, `<b>${D.CALAMITIES[cid].name}</b><p>${D.CALAMITIES[cid].text}</p>`, 'bad'));
+    s.calamities.forEach((cid, i) => add('cal' + i, D.CALAMITIES[cid].name, `<b>${D.CALAMITIES[cid].name}</b><p>${D.CALAMITIES[cid].text}</p>${flavorP('CALAMITIES', cid)}`, 'bad'));
     return out;
   }
   root.querySelector('.who.me').append(badgeBox[0]); root.querySelector('.who.them').append(badgeBox[1]);
