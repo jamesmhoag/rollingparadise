@@ -19,11 +19,11 @@ function jacketList(onPick, forSale) {
   render(); return { el: box, render };
 }
 
-export const walletTip = (id) => { const Wl = D.WALLETS[id]; return t('end.wallet.tip', { name: Wl.name, n: Wl.slots, keep: Wl.keep }); };
+export const walletTip = (id) => { const Wl = D.WALLETS[id]; return t('end.wallet.tip', { name: Wl.name, n: Wl.slots, p: R.passCap(id), keep: Wl.keep }); };
 function walletList(onBuy) {
   const run = app.run, meta = app.meta, box = h('div', { class: 'items list' });
   function render() {
-    syncList(box, Object.keys(D.WALLETS).filter((id) => D.WALLETS[id].price > 0 && !meta.wallets.includes(id)), (id) => id, (id) => { const Wl = D.WALLETS[id]; const el = h('div', { class: 'item', tip: () => walletTip(id) }, h('div', { class: 'main' }, h('b', { text: `👛 ${Wl.name}` }), h('small', { text: t('end.wallet.line', { n: Wl.slots, keep: Wl.keep }) })), h('span', { class: 'price' }), btn(t('shop.buy'), () => onBuy(id, el), null, 'small')); return el; },
+    syncList(box, Object.keys(D.WALLETS).filter((id) => D.WALLETS[id].price > 0 && !meta.wallets.includes(id)), (id) => id, (id) => { const Wl = D.WALLETS[id]; const el = h('div', { class: 'item', tip: () => walletTip(id) }, h('div', { class: 'main' }, h('b', { text: `👛 ${Wl.name}` }), h('small', { text: t('end.wallet.line', { n: Wl.slots, p: R.passCap(id), keep: Wl.keep }) })), h('span', { class: 'price' }), btn(t('shop.buy'), () => onBuy(id, el), null, 'small')); return el; },
       (el, id) => { const Wl = D.WALLETS[id], ok = R.walletAvailable(run, meta, id); el.querySelector('.price').textContent = ok ? cents(Wl.price) : Wl.crown && !meta.crowns ? t('end.wallet.crown') : t('end.reachFloor', { floor: Wl.level + 1 }); el.lastChild.classList.toggle('off', !ok || run.purse + (meta.debit ? meta.atm : 0) < Wl.price); });
   }
   render(); return { el: box, render };
@@ -81,11 +81,11 @@ export function alleyScene(root) {
   const run = app.run, roll = R.alleyRoll(run), Wl = R.walletOf(run);
   const dice = roll.dice.map((d) => tip(dieEl(d, '?', 'big'), () => dieTip(d)));
   const total = h('span', { class: 'total num', text: '—' }), verdict = h('h2', { class: 'fade-t', style: { opacity: 0 } }), kept = h('div', { class: 'inv list' });
-  const cont = btn(t('title.continue'), () => { app.kept = roll.kept ? roll.cards : []; app.keptPass = roll.kept ? roll.pass : 0; app.nav.summary(); }, null, 'big go off');
+  const cont = btn(t('title.continue'), () => { app.kept = roll.kept ? roll.cards : []; app.keptPass = roll.kept ? roll.passes : []; app.nav.summary(); }, null, 'big go off');
   root.append(h('div', { class: 'page', style: { top: 0, display: 'grid', placeItems: 'center' } }, h('div', { class: 'col', style: { width: '620px', textAlign: 'center', alignItems: 'center', gap: '14px' } },
     h('h1', { class: 'neon-p', text: t('alley.title') }),
     h('p', { class: 'sub', text: t('alley.sub') }),
-    h('div', { class: 'box col', guide: 'wallet', style: { alignItems: 'center', width: '100%' }, tip: () => walletTip(run.wallet) }, h('span', { class: 'cap', text: t(roll.pass ? 'alley.wallet.pass' : 'alley.wallet', { name: Wl.name, n: roll.cards.length, pass: roll.pass ? D.PASSES[roll.pass].name : '', need: roll.need }) }),
+    h('div', { class: 'box col', guide: 'wallet', style: { alignItems: 'center', width: '100%' }, tip: () => walletTip(run.wallet) }, h('span', { class: 'cap', text: t(roll.pass ? 'alley.wallet.pass' : 'alley.wallet', { name: Wl.name, n: roll.cards.length, p: roll.passes.length, pass: roll.passes.map((f) => D.PASSES[f].name).join(', '), need: roll.need }) }),
       h('div', { class: 'row', style: { gap: '18px', margin: '10px 0' } }, dice, h('span', { class: 'dim', text: '=' }), total), verdict, kept), cont)));
   (async () => {
     await wait(900);
@@ -93,7 +93,7 @@ export function alleyScene(root) {
     for (let i = 0; i < dice.length; i++) { const el = dice[i], d = roll.dice[i], f = D.DICE[d.type].faces; el.classList.add('rolling'); for (let n = 0; n < 12; n++) { el.firstChild.textContent = 1 + Math.floor(Math.random() * f); await wait(70); } el.classList.remove('rolling'); el.firstChild.textContent = d.value; pulse(el); await wait(420); }
     total._v = 0; tween(total, roll.total, undefined, 700); await wait(900);
     verdict.textContent = t(roll.kept ? 'alley.kept' : 'alley.lost'); verdict.className = `fade-t ${roll.kept ? 'neon-c' : 'neon-p'}`; verdict.style.opacity = 1;
-    if (roll.kept) syncList(kept, [...(roll.pass ? ['pass'] : []), ...roll.cards], (c) => c, (c) => (c === 'pass' ? passEl(roll.pass) : h('span', { class: 'tag-t', tip: () => cardTip(c), text: D.CARDS[c].name })));
+    if (roll.kept) syncList(kept, [...roll.passes.map((f) => 'pass:' + f), ...roll.cards], (c) => c, (c) => (c.startsWith('pass:') ? passEl(+c.slice(5)) : h('span', { class: 'tag-t', tip: () => cardTip(c), text: D.CARDS[c].name })));
     await wait(500); cont.classList.remove('off');
   })();
 }

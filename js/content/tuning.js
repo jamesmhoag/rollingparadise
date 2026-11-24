@@ -36,6 +36,15 @@ export const TUNING = {
     sipsPerRound: 1, // sips a Roller may take each Drink phase
     sipTurns: 1, // turns one sip's effect lasts
   },
+  // how long the chips the table makes stay: 'paid' (until a fee takes it), 'turn' (gone at the end of the turn) or
+  // 'match' (stays to the end of the match: fees pass it by and it cannot be bid). Whatever it is set to, a chip with a
+  // value counts toward Worth and is counted back at the end of the match. Chips made in the chip maker set their own.
+  chipLife: {
+    opp: 'paid', // Opportunity chips (unused bids, Lucky, Scrounge)
+    bounty: 'paid', // Bounty chips a creature drops when it is driven off
+    block: 'paid', // Block chips
+    counter: 'paid', // Counter chips
+  },
   // the Sports Book
   book: {
     houseEdge: 0.95, // odds pay this share of the fair price

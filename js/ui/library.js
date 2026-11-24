@@ -10,6 +10,7 @@ import { CHIP_LIST } from '../chiplist.js';
 import { TRAITS, traitsOf, traitsHtml, flyerTraits } from '../traits.js';
 import { multOf, traitOf } from '../bout.js';
 import { cents } from '../util.js';
+import { passesOf } from '../run.js';
 import { t as tx } from '../text.js';
 
 const TABS = [['chips', 'Chips'], ['list', tx('library.chip-list')], ['traits', 'Traits'], ['tricks', 'Tricks'], ['dice', 'Dice'], ['cards', 'Cards'], ['drinks', 'Drinks'], ['wallets', 'Wallets'], ['jackets', 'Jackets'], ['felts', 'Felts']];
@@ -152,7 +153,7 @@ function cardsTab(own) {
   const out = [sec('Cards', tx('library.benefit-cards-ride-in'))];
   for (const id of Object.keys(D.CARDS)) out.push(entry(tipped(cardEl(id), () => cardTip(id)), D.CARDS[id].name, [D.CARDS[id].text, dim(cardKind(id))], { own: own.card(id) ? tx('library.in-your-wallet') : null }));
   out.push(sec('Passes', tx('library.passes-are-not-cards')));
-  for (let f = 1; f < D.PASSES.length; f++) out.push(entry(passEl(f), D.PASSES[f].name, [D.PASSES[f].text], { own: own.run?.pass === f ? tx('library.in-your-wallet') : null }));
+  for (let f = 1; f < D.PASSES.length; f++) out.push(entry(passEl(f), D.PASSES[f].name, [D.PASSES[f].text], { own: own.run && passesOf(own.run).includes(f) ? tx('library.in-your-wallet') : null }));
   out.push(noUpgrades('Cards'));
   return out;
 }
@@ -172,7 +173,7 @@ function drinksTab(own) {
 function walletsTab(own) {
   const out = [sec('Wallets', tx('library.the-slots-are-drawn'))];
   for (const [id, Wl] of Object.entries(D.WALLETS)) out.push(entry(walletEl(id), Wl.name,
-    [tx('library.keep-on', { slots: Wl.slots, keep: Wl.keep }), Wl.price ? tx('library.in-the-gift-shop', { price: cents(Wl.price), shopFrom: shopFrom(Wl.level), v: Wl.crown ? tx('library.once-you-hold-a') : '' }) : tx('library.free-from-the-start')],
+    [tx('library.keep-on', { slots: Wl.slots, p: Wl.passes ?? 1, keep: Wl.keep }), Wl.price ? tx('library.in-the-gift-shop', { price: cents(Wl.price), shopFrom: shopFrom(Wl.level), v: Wl.crown ? tx('library.once-you-hold-a') : '' }) : tx('library.free-from-the-start')],
     { own: own.walletOn(id) ? 'Carrying' : own.wallet(id) ? 'Unlocked' : null }));
   out.push(noUpgrades('Wallets'));
   return out;
