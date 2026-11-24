@@ -64,7 +64,8 @@ export function boutScene(root, bout, ctx, onDone) {
         : { si: 0, x: 16, y: RUN_Y + 12 + i * 3, w: 26, h: 24, open: false, t, folded: true }));
     return out;
   }
-  const dieSlot = (cl, i) => ({ x: cl.x + 7 + (i % 3) * 36, y: cl.y + 50 + Math.floor(i / 3) * 36 });
+  // dice on a trick sit in one row; past three they close up (overlapping) so any number fits the card
+  const dieSlot = (cl, i, n = 3) => { const step = n <= 3 ? 36 : Math.max(10, Math.min(36, (cl.w - 44) / (n - 1))); return { x: cl.x + 7 + i * step, y: cl.y + 50 }; };
   // a dice column, top-aligned with the Run: the Roll's tray, then the Pouch (titles sit on the row above)
   // just under the commit button, five dice a row. The roll keeps dice from turn to turn, so it grows a row at a
   // time and the Pouch moves down under it.
@@ -359,9 +360,10 @@ export function boutScene(root, bout, ctx, onDone) {
     let live = tp ? `<p class="live">${B.restorePlan(bout, me).tricks.includes(uid) ? tx('table.tapped-will-restore') : tx('table.tapped-wont-restore')}</p>` : '';
     if (e) { const def = D.TRICKS[t.id];
       const P = B.totalParts(me, e);
-      live = `<p class="live">${e.dice.length ? tx('table.dice-roll-total', { join: P.dice.join(' + '), diceSum: P.diceSum, v: P.linger ? tx('table.linger-dice', { linger: P.linger, v: e.state === 'play' ? 'the bid' : tx('table.a-bid', { bidValue: e.bidValue }), turns: P.turns, diceN: e.dice.length }) : '', v2: P.power ? tx('table.power', { power: P.power }) : '', v3: P.venge ? tx('table.vengeance', { venge: P.venge }) : '', v4: P.mult !== 1 ? tx('table.quality', { v: +P.mult.toFixed(2) }) : '', v5: P.heat !== 1 ? tx('table.last-call', { toFixed: P.heat.toFixed(2) }) : '', v6: P.double ? tx('table.2-bonus') : '', total: P.total, v7: e.paid ? tx('table.paid-to-the-house', { join: e.paid.join(' + ') }) : '', v8: B.bonusMet(me, e) ? tx('table.bonus-met') : '' }) : tx('table.no-dice-yet-a')}
-        ${e.state === 'play' ? tx('table.in-play', { v: e.lingerLeft ? tx('table.roll-effect-in', { lingerLeft: e.lingerLeft }) : '' }) : e.bidValue > 1 ? tx('table.a-bid-lingers-turn', { bidValue: e.bidValue, bidValue2: e.bidValue - 1, v: e.bidValue > 2 ? 's' : '', bidValue3: (e.bidValue - 1) * Math.max(1, e.dice.length) }) : ''}
-        ${e.state !== 'play' ? tx('table.it-can-take-more') : ''}</p>`;
+      const parts = [P.dice.length ? tx('table.tip-dice', { join: P.dice.join(' + '), n: P.diceSum }) : '', P.bid ? tx('table.tip-bid', { n: P.bid }) : '', P.power ? tx('table.power', { power: P.power }) : '', P.venge ? tx('table.vengeance', { venge: P.venge }) : '', P.plus ? tx('table.tip-mis', { plus: P.plus }) : ''].filter(Boolean).join(', ') + (P.mult !== 1 ? tx('table.quality', { v: +P.mult.toFixed(2) }) : '') + (P.heat !== 1 ? tx('table.last-call', { toFixed: P.heat.toFixed(2) }) : '') + (P.double ? tx('table.2-bonus') : '');
+      live = `<p class="live">${parts ? tx('table.tip-total', { parts, total: P.total }) : ''}${B.bonusMet(me, e) ? tx('table.bonus-met') : ''}${e.paid ? tx('table.paid-to-the-house', { join: e.paid.join(' + ') }) : ''}
+        ${tx('table.tip-bonus-dice', { n: B.bonusDice(e).length, count: def.count, die: D.defOf(t).die })}
+        ${e.state === 'play' ? (e.stack?.length ? tx('table.tip-lingers', { n: e.stack.length }) : tx('table.tip-in-play')) : e.state === 'bid' ? tx('table.tip-bid-on', { n: e.stack?.length || 0 }) : tx('table.tip-needs-bid')}</p>`;
       const fc = e.target ? B.forecastFee(bout, me, e, e.target) : null;
       if (fc && def.type === 'expense') live += tx('table.at-the-marked-target', { fcSummary: fcSummary(fc) }); }
     return trickTip(t, me.cls, live);
@@ -417,14 +419,16 @@ export function boutScene(root, bout, ctx, onDone) {
     const el = h('div', { class: `tcard ${trickLook(t)}${si ? ' theirs' : ''}`, style: { '--tc': T.color }, ...(si ? {} : { onclick: (ev) => clickCard(t.uid, ev), onmouseenter: () => { ui.card = t.uid; marks(); }, onmouseleave: () => { if (ui.card === t.uid) { ui.card = null; marks(); } } }) },
       h('div', { class: 'c-compact' }, h('b', { text: def.name }), h('span', { class: 'req', text: `${def.count}${def.die}` }), h('span', { class: 'q', html: trickWord(t) })),
       h('div', { class: 'c-open' },
-        h('div', { class: 'c-name' }, h('b', { text: def.name }), h('span', { class: 'q', html: trickWord(t) })),
+        h('div', { class: 'c-name' }, h('b', { text: def.name }), h('span', { class: 'c-stack', tip: () => stackTip(t.uid) }), h('span', { class: 'q', html: trickWord(t) })),
         h('div', { class: 'c-type' }, T.name, h('span', { class: `xm ${t.foil ? 'up' : ''}`, text: ` ${fmtX(B.multOf(t))}` }), h('span', { class: 'qd', tip: tx('table.quality-2', { QNAME: D.QNAME[t.q], qdieText: D.qdieText(t.q) }) }), h('span', { class: 'tgt', text: 'aim', 'data-act': 'target', tip: tx('table.aim-change-where-this') })),
-        h('div', { class: 'c-slots', tip: tx('table.dice-holds-at-most', { name: def.name, count: def.count, die: def.die }) }, Array.from({ length: def.count }, () => h('span', { class: 'slot', text: def.die }))),
+        h('div', { class: 'c-dice' }), // the dice on it are drawn over this row
         h('div', { class: 'c-bid' }, h('span', { class: 'bidslot', text: tx('table.bid-5'), 'data-act': 'bid' }), h('div', { class: 'c-math' })), // the roll breakdown sits beside the bid pile
-        h('div', { class: 'c-text' }, h('p', {}, h('em', { text: tx('table.roll-2') }), def.roll.text), h('p', { class: 'bonus' }, h('em', { text: tx('table.bonus') }), def.bonus.text)),
+        h('div', { class: 'c-text' }, h('p', {}, h('em', { text: tx('table.roll-2') }), def.roll.text), h('p', { class: 'bonus', tip: tx('table.bonus-dice-tip', { count: def.count, die: def.die }) }, h('em', { text: tx('table.bonus') }), h('span', { class: 'c-need' }, Array.from({ length: def.count }, () => h('i', { class: 'need', text: def.die }))), def.bonus.text)),
         h('div', { class: 'c-total' }, h('span', { class: 'state' }), h('b', { class: 'num' }))));
-    tip(el, () => (si ? oppCardTip(t.uid) : cardTip(t.uid))); layer.append(el); return el;
+    el._tuid = t.uid; tip(el, () => (si ? oppCardTip(t.uid) : cardTip(t.uid))); layer.append(el); return el;
   }
+  function stackTip(uid) { const e = [...me.run, ...opp.run].find((x) => x.uid === uid || x.trick.uid === uid); if (!e?.stack?.length) return '';
+    return tx('table.stack-tip', { n: 1 + e.stack.length, more: e.stack.length, list: [e.trick, ...e.stack].map((x) => trickWords(x) || D.RARITY.basic.name).join(' → ') }); }
   function oppCardTip(uid) {
     const e = opp.run.find((x) => x.uid === uid); if (!e) return '';
     return trickTip(e.trick, opp.cls, `<p class="live">${e.dice.length ? tx('table.dice-roll-total-2', { join: e.dice.map((d) => d.value).join(' + '), previewTotal: B.previewTotal(opp, e) }) : tx('table.no-dice-on-it')}${e.state === 'bid' ? tx('table.bid-on-it-plays') : e.state === 'play' ? tx('table.in-play-2') : tx('table.shown-not-bid')}</p>`);
@@ -500,6 +504,7 @@ export function boutScene(root, bout, ctx, onDone) {
     // trick cards
     for (const [uid, cl] of cards) {
       const t = cl.e ? cl.e.trick : cl.t, s = sideOf(cl.si), mine = cl.si === 0; let el = els.cards.get(uid);
+      if (el && cl.e && el._tuid !== t.uid) { el.remove(); els.cards.delete(uid); el = null; } // the next copy of a stack is on top: its own print
       if (!el) { el = mkCard(t, cl.si); els.cards.set(uid, el); spawn(el, cl.x, cl.y + 20, ''); el.style.width = cl.w + 'px'; el.style.height = cl.h + 'px'; void el.offsetWidth; }
       el.style.opacity = cl.folded ? '0' : '1'; el.style.pointerEvents = cl.folded ? 'none' : ''; place(el, cl.x, cl.y); el.style.width = cl.w + 'px'; el.style.height = cl.h + 'px';
       el.classList.toggle('open', cl.open); el.style.zIndex = cl.peek ? 9 : cl.open ? 3 : 2;
@@ -518,14 +523,17 @@ export function boutScene(root, bout, ctx, onDone) {
         const xm = el.querySelector('.xm'), qd = el.querySelector('.qd'), qs = B.qState(e), et = B.effTrick(e); // Upgrade chips and the quality die change the multiplier as it stands
         swapText(xm, ` ${fmtX(B.multOf(et))}`); xm.classList.toggle('up', (et.foil || 0) > 0); xm.classList.toggle('dud', qs === 'dud');
         swapText(qd, e.qroll != null ? `${D.QDIE[t.q].die}:${e.qroll}` : ''); qd.classList.toggle('dud', qs === 'dud'); qd.classList.toggle('hot', qs === 'hot');
-        swapText(el.querySelector('.state'), e.state === 'play' ? (e.lingerLeft ? `lingers ${e.lingerLeft}` : 'in play') : e.state === 'bid' ? tx('table.bid', { bidValue: e.bidValue, v: e.bidValue > 1 ? `lingers ${e.bidValue - 1}` : 'plays now' }) : e.dice.length ? 'needs a bid' : 'shown');
-        // the BID ring stays beside the pile: BID while empty, + once bid (each 1¢ more lingers a turn longer)
+        const stackN = (e.stack || []).length;
+        swapText(el.querySelector('.state'), e.state === 'play' ? (stackN ? tx('table.state-lingers', { n: stackN }) : tx('table.state-in-play')) : e.state === 'bid' ? tx('table.state-bid', { n: e.bidValue }) : tx('table.state-needs-bid'));
+        swapText(el.querySelector('.c-stack'), stackN ? `⧉ ×${stackN + 1}` : ''); el.classList.toggle('stacked', stackN > 0); el.style.setProperty('--stack', Math.min(3, stackN));
+        // the BID ring stays beside the pile: BID while empty, + once bid (each chip bid adds its value)
         swapText(el.querySelector('.bidslot'), e.bid.length ? '+' : tx('table.bid-5'));
-        tween(el.querySelector('.c-total .num'), B.previewTotal(s, e), (n) => (e.dice.length ? '= ' + Math.round(n) : ''));
+        const live = e.dice.length || e.state !== 'shown';
+        tween(el.querySelector('.c-total .num'), B.previewTotal(s, e), (n) => (live ? '= ' + Math.round(n) : ''));
         const P = B.totalParts(s, e), bits = e.dice.length ? [P.dice.join('+')] : [];
-        if (e.dice.length) { if (P.linger) bits.push(tx('table.linger', { linger: P.linger })); if (P.power) bits.push(tx('table.pow', { power: P.power })); if (P.venge) bits.push(tx('table.venge', { venge: P.venge })); if (P.plus) bits.push(tx('table.trait', { plus: P.plus })); if (P.mult !== 1) bits.push(`×${+P.mult.toFixed(2)}`); if (P.heat !== 1) bits.push(tx('table.call', { toFixed: P.heat.toFixed(2) })); if (P.double) bits.push('×2'); }
-        swapText(el.querySelector('.c-math'), `${e.state === 'play' && e.paid ? tx('table.bid-2', { join: e.paid.join('+') }) : ''}${bits.join(' ')}`); // in play, the bid it was made with is recalled where its pile stood
-        [...el.querySelectorAll('.slot')].forEach((sl, i) => sl.classList.toggle('full', i < e.dice.length));
+        if (live) { if (P.bid) bits.push(tx('table.bid-plus', { n: P.bid })); if (P.power) bits.push(tx('table.pow', { power: P.power })); if (P.venge) bits.push(tx('table.venge', { venge: P.venge })); if (P.plus) bits.push(tx('table.mis-plus', { plus: P.plus })); if (P.mult !== 1) bits.push(`×${+P.mult.toFixed(2)}`); if (P.heat !== 1) bits.push(tx('table.call', { toFixed: P.heat.toFixed(2) })); if (P.double) bits.push('×2'); }
+        swapText(el.querySelector('.c-math'), bits.join(' '));
+        const nb = B.bonusDice(e).length; [...el.querySelectorAll('.c-need .need')].forEach((x, i) => x.classList.toggle('full', i < nb)); // the Bonus dice in, one pip each
       }
     }
     for (const [uid, el] of els.cards) if (!cards.has(uid)) { el.style.opacity = '0'; els.cards.delete(uid); setTimeout(() => el.remove(), 500); }
@@ -535,14 +543,14 @@ export function boutScene(root, bout, ctx, onDone) {
     me.pouch.forEach((d, i) => { const p = pouchSlot(i, nPD); wantDice.set(d.id, { ...p, y: p.y - (ui.sel.has(d.id) ? 7 : 0), d, picked: ui.sel.has(d.id) }); });
     tapD.forEach((d, i) => wantDice.set(d.id, { ...pouchSlot(me.pouch.length + i, nPD), d, tapped: true, restoring: plan.dice.includes(d.id) }));
     me.tray.forEach((d, i) => wantDice.set(d.id, { ...traySlot(i), d, value: d.value, rolled: true }));
-    for (const e of me.run) { const cl = cards.get(e.uid); e.dice.forEach((d, i) => wantDice.set(d.id, { ...dieSlot(cl, i), d, value: d.value, rolled: true, on: true })); }
+    for (const e of me.run) { const cl = cards.get(e.uid), bd = new Set(B.bonusDice(e).map((x) => x.id)); e.dice.forEach((d, i) => wantDice.set(d.id, { ...dieSlot(cl, i, e.dice.length), d, value: d.value, rolled: true, on: true, bonus: bd.has(d.id) })); }
     opp.tray.forEach((d, i) => wantDice.set(dkey(1, d.id), { ...traySlot(i, 1), d, value: d.value, rolled: true, si: 1 })); // their roll lands as the Bid opens
-    for (const e of opp.run) { const cl = cards.get(ckey(1, e.uid)); e.dice.forEach((d, i) => wantDice.set(dkey(1, d.id), { ...dieSlot(cl, i), d, value: d.value, rolled: true, on: true, si: 1 })); }
+    for (const e of opp.run) { const cl = cards.get(ckey(1, e.uid)), bd = new Set(B.bonusDice(e).map((x) => x.id)); e.dice.forEach((d, i) => wantDice.set(dkey(1, d.id), { ...dieSlot(cl, i, e.dice.length), bonus: bd.has(d.id), d, value: d.value, rolled: true, on: true, si: 1 })); }
     for (const [id, w] of wantDice) {
       let el = els.dice.get(id); if (!el) { el = mkDie(w.d, w.si); els.dice.set(id, el); const from = (w.d.chip && els.flipFrom?.get(id)) || { x: w.x, y: w.y - 16 }; spawn(el, from.x, from.y, 'scale(.4)'); }
       const from = /translate\(([-\d.]+)px, ([-\d.]+)px\)/.exec(el.style.transform);
       el.style.opacity = w.folded ? '0' : '1'; el.style.pointerEvents = w.folded ? 'none' : ''; place(el, w.x, w.y, w.folded ? 'scale(.5)' : ''); el.style.zIndex = w.on ? 6 : ui.peek === 'dice' ? 9 : 4; el.classList.toggle('on', !!w.on); el.classList.toggle('rolled', !!w.rolled); el.classList.toggle('sel', (ui.mode === 'die' && ui.die === id) || !!w.picked);
-      el.classList.toggle('fixed', !!w.on && (!!w.si || !B.canMove(bout, me, id))); el.classList.toggle('tapped', !!w.tapped); el.classList.toggle('restoring', !!w.restoring);
+      el.classList.toggle('fixed', !!w.on && (!!w.si || !B.canMove(bout, me, id))); el.classList.toggle('tapped', !!w.tapped); el.classList.toggle('restoring', !!w.restoring); el.classList.toggle('bonusd', !!w.bonus);
       const label = el.firstChild, text = w.rolled ? String(w.value) : w.d.type.slice(1);
       if (w.rolled && !el._rolled) { label.textContent = text; toss(el, w.d, w.value, from ? { x: +from[1], y: +from[2] } : { x: w.x, y: w.y + 90 }, { x: w.x, y: w.y }, tossN++); }
       else if (label.textContent !== text && !el.classList.contains('rolling')) label.textContent = text;
@@ -714,10 +722,10 @@ export function boutScene(root, bout, ctx, onDone) {
       for (const x of B.affected(bout, t, def, e.target, e.dice.length)) mark(t.idx, x.r, x.c, 'tgt'); mark(t.idx, e.target.r, e.target.c, 'origin');
     }
     for (const el of fcLayer.querySelectorAll('.pend')) el.remove();
-    bout.sides.forEach((s, si) => { for (const e of s.run) if (e.state === 'play' && e.lingerLeft > 0 && e.target && B.needsTarget(e)) { // known to both sides once played
+    bout.sides.forEach((s, si) => { for (const e of s.run) if (e.state === 'play' && e.target && B.needsTarget(e)) { // known to both sides once played
       const def = D.TRICKS[e.trick.id], t = bout.sides[e.target.side];
       for (const x of B.affected(bout, t, def, e.target, e.dice.length)) mark(t.idx, x.r, x.c, si ? 'pend-opp' : 'pend-me');
-      const p = cellPos(t.idx, e.target.r, e.target.c); fcLayer.append(h('div', { class: `pend ${si ? 'opp' : 'me'}`, style: { left: p.x + 'px', top: p.y + 2 + 'px', width: p.w + 'px' }, text: `${def.name} ${e.lingerLeft}↻` })); } });
+      const p = cellPos(t.idx, e.target.r, e.target.c); fcLayer.append(h('div', { class: `pend ${si ? 'opp' : 'me'}`, style: { left: p.x + 'px', top: p.y + 2 + 'px', width: p.w + 'px' }, text: `${def.name} ${e.stack.length + 1}↻` })); } });
     const e = me.run.find((x) => x.uid === ui.entry);
     if (!ui.locked && bout.phase === 'roll' && !me.thrown) { for (const f of B.flippable(me)) mark(0, f.r, f.c, 'soft'); for (const f of ui.flips) mark(0, f.r, f.c, 'sel'); }
     if (!ui.locked && bout.phase === 'bid' && ui.mode !== 'target') { for (const f of B.biddable(me)) mark(0, f.r, f.c, ui.hand.length ? 'soft' : 'ok'); for (const f of ui.hand) mark(0, f.r, f.c, 'sel'); }
@@ -788,7 +796,9 @@ export function boutScene(root, bout, ctx, onDone) {
   function clickCard(uid, ev) {
     if (ui.locked) return;
     const e = me.run.find((x) => x.uid === uid), el = els.cards.get(uid);
-    if (!e) { const why = B.canDraw(bout, me, uid); if (why) return nope(why, el); return act(() => B.draw(bout, me, uid)); }
+    if (!e) { const why = B.canDraw(bout, me, uid); if (why) return nope(why, el);
+      const t = me.book.find((x) => x.uid === uid), onto = !ev?.shiftKey && me.run.find((x) => B.canStackOn(me, t, x)); // a copy stacks on the one shown (Shift: draw it apart)
+      return act(() => B.draw(bout, me, uid, onto ? onto.uid : null)); }
     if (bout.phase === 'draw') { const why = B.canUndraw(bout, me, uid); if (why) return nope(why === 'Only a trick drawn this turn can go back to the Book.' ? tx('table.that-trick-was-drawn') : why, el); return act(() => B.undraw(bout, me, uid)); }
     if (bout.phase === 'roll') return nope(tx('table.pick-dice-from-your'), el);
     if (ui.mode === 'die') { const why = B.canPlace(bout, me, ui.die, e); if (why) return nope(why, el);

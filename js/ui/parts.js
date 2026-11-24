@@ -3,7 +3,7 @@ import { h } from './core.js';
 import * as D from '../data.js';
 import * as CM from '../content/chipmaker.js';
 import { cents, cap } from '../util.js';
-import { multOf, traitOf } from '../bout.js';
+import { multOf } from '../bout.js';
 import { facesOf, faceValue, matOf, dieName } from '../dice.js';
 import { traitsOf, traitsHtml } from '../traits.js';
 import { iconStyle, textureOf } from './icons.js';
@@ -65,7 +65,7 @@ export function chipText(ch) {
   if (ch.frozen) return D.CHIPS.frozen.text;
   const feather = ch.feather > 0 ? tx('parts.feathered-for-more', { feather: ch.feather, replace: D.CHIPS.feather.text.replace(/^A chip turned light for a few turns: /, '') }) : '';
   if (ch.gold) return tx('parts.gold-cannot-be-bid', { value: ch.value * 2, feather });
-  return extra + (ch.value === 1 ? tx('parts.basic-value-chip-bid') : tx('parts.basic-value-chip-a', { value: ch.value, value2: ch.value - 1, v: ch.value > 2 ? 's' : '' })) + feather;
+  return extra + (ch.value === 1 ? tx('parts.basic-value-chip-bid') : tx('parts.basic-value-chip-a', { value: ch.value })) + feather;
 }
 // a made chip's rules, in a sentence
 export function madeRules(M, ch = {}) {
@@ -130,11 +130,11 @@ export const trickWords = (t) => `${D.QNAME[t.q]}${D.rarityName(t) ? ' ' + rareW
 // one word where room is short (a compact card): the print if it is rare, else the quality above Common
 export const trickWord = (t) => rareWord(t) || (t.q > 1 ? D.QNAME[t.q] : '');
 export function trickTip(t, viewerCls, live) {
-  const def = D.defOf(t), T = D.TYPES[def.type], mi = traitOf(t);
+  const def = D.defOf(t), T = D.TYPES[def.type];
   const classOk = !def.cls || def.cls === viewerCls;
   const tgt = def.approach === 'none' ? (def.dist === 'rain' ? tx('parts.random-stacks-of-your') : tx('parts.no-target-needed'))
     : tx('parts.targets-in-position', { APPROACH: D.APPROACH[def.approach], v: def.side === 'self' ? 'your own' : "your opponent's", name: D.DIST[def.dist].name, text: D.DIST[def.dist].text });
-  return tx('parts.trait-bid-a-chip', { name: def.name, trickWords: trickWords(t), name2: D.CONDITIONS[D.condOf(t)].name, color: T.color, name3: T.name, v: def.cls ? ' · ' + D.CLASSES[def.cls].name : tx('parts.any-class'), text: T.text, traitText: T.traitText(mi), count: def.count, die: def.die, text2: def.roll.text, v2: classOk ? '' : 'dim', condText: D.condText(def.bonus.cond), text3: def.bonus.text, v3: classOk ? '' : tx('parts.only', { name: D.CLASSES[def.cls].name }), printRule: printRule(t), tgt, printInfo: printInfo(t), v4: live || '' });
+  return tx('parts.trait-bid-a-chip', { name: def.name, trickWords: trickWords(t), name2: D.CONDITIONS[D.condOf(t)].name, color: T.color, name3: T.name, v: def.cls ? ' · ' + D.CLASSES[def.cls].name : tx('parts.any-class'), text: T.text, count: def.count, die: def.die, text2: def.roll.text, v2: classOk ? '' : 'dim', condText: D.condText(def.bonus.cond), text3: def.bonus.text, v3: classOk ? '' : tx('parts.only', { name: D.CLASSES[def.cls].name }), printRule: printRule(t), tgt, printInfo: printInfo(t), v4: live || '' });
 }
 export function statTip(k, v) {
   const S = D.STATS[k];

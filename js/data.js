@@ -31,7 +31,7 @@ export const BASE_DIMS = { cols: 5, stackMax: 3, meterRows: 2, barRows: 3 };
 // `per`: what each point does, for hover text that says what a +1 or −1 actually changes
 export const STATS = {
   trickery: { name: 'Trickery', short: 'Draw', text: 'Tricks you may draw from your Book each turn.', per: (n) => `draw ${n} more trick${n === 1 ? '' : 's'} from your Book each turn, so more tricks are on your Run to roll onto and bid on` },
-  ingenuity: { name: 'Ingenuity', short: 'Bid', text: 'Chips you may bid on shown tricks each turn.', per: (n) => `bid ${n} more chip${n === 1 ? '' : 's'} each turn, so more tricks play (or linger) each turn` },
+  ingenuity: { name: 'Ingenuity', short: 'Bid', text: 'Chips you may bid on shown tricks each turn. A trick plays only once bid on, and each chip bid adds its value to the effect.', per: (n) => `bid ${n} more chip${n === 1 ? '' : 's'} each turn, so more tricks play, or bigger effects (each chip bid adds its value)` },
   proficiency: { name: 'Proficiency', short: 'Roll', text: 'Dice you may roll each turn. A die shows its value first; you then choose which shown trick it goes on.', per: (n) => `roll ${n} more ${n === 1 ? 'die' : 'dice'} (or flip ${n === 1 ? 'a chip' : 'chips'}) each turn, so bigger totals and more bonuses` },
   charisma: { name: 'Charisma', short: 'Steal', text: 'For each draw you leave unused, the House steals this many ¢ from the Stage for you with the Expenses. Earned at the table: hold a chip in every Bet row (and, for a Hustler, every Stake row).', per: (n) => `steal ${n} more ¢ from the Stage for every draw you leave unused` },
   cunning: { name: 'Cunning', short: 'Opportunity', text: 'For each bid you leave unused, the House puts this many Opportunity chips on your Bet with the Insurances. Earned at the table: hold a chip in every Bet row (and, for a Rascal, every Stake row).', per: (n) => `gain ${n} more Opportunity chip${n === 1 ? '' : 's'} for every bid you leave unused` },
@@ -85,14 +85,10 @@ export const upgradeText = (u) => { const t = DIE_UPGRADES[u].text; return typeo
 
 // ---------- Tricks ----------
 export const TYPES = {
-  investment: { name: 'Investment', order: 0, color: '#8a6fd1', text: 'Resolves first. Modifies every other effect played this turn.',
-    trait: 'Gain Power', traitText: (m) => `Gain ${m} Power (added to your next roll effect).` },
-  insurance: { name: 'Insurance', order: 1, color: '#4aa3c7', text: 'Resolves second. Prevents, reduces or mitigates expenses.',
-    trait: 'Block chip', traitText: (m) => `Add ${m} Block chip${m > 1 ? 's' : ''} to your Bet.` },
-  expense: { name: 'Expense', order: 2, color: '#d9564a', text: 'Resolves third. Charges fees that move chips from a position to the Stage.',
-    trait: 'Debt chip', traitText: (m) => `Place ${m}¢ of Debt on a random front stack of your opponent.` },
-  correction: { name: 'Correction', order: 3, color: '#5bb174', text: 'Resolves last. Adjusts the placement and state of chips.',
-    trait: 'Cleanse', traitText: (m) => `Remove ${m}¢ of Debt or ${m} hazard chip${m > 1 ? 's' : ''} from your position.` },
+  investment: { name: 'Investment', order: 0, color: '#8a6fd1', text: 'Resolves first. Modifies every other effect played this turn.' },
+  insurance: { name: 'Insurance', order: 1, color: '#4aa3c7', text: 'Resolves second. Prevents, reduces or mitigates expenses.' },
+  expense: { name: 'Expense', order: 2, color: '#d9564a', text: 'Resolves third. Charges fees that move chips from a position to the Stage.' },
+  correction: { name: 'Correction', order: 3, color: '#5bb174', text: 'Resolves last. Adjusts the placement and state of chips.' },
 };
 export const QMULT = [0, 1, 2, 3, 4];
 export const QNAME = ['', 'Common', 'Fine', 'Grand', 'Royal'];
@@ -119,15 +115,15 @@ export const FOIL = [null, { name: 'Foil', mult: 1.25 }, { name: 'Holo', mult: 1
 export const RARITY = {
   basic: { name: 'Basic', text: 'The plain print.' },
   foil: { name: 'Foil', text: 'A foil print multiplies the roll total: Foil ×1.25, Holo ×1.5, Prism ×2.' },
-  misprint: { name: 'Misprint', text: 'Printed with a changed value: its die or its Trait differs from the plain print.' },
+  misprint: { name: 'Misprint', text: 'Printed with a changed value: its die, or the value its effect adds, differs from the plain print.' },
   reprint: { name: 'Reprint', text: 'Printed with an older rule for its type.' },
 };
 // the older rule each type's Reprint plays
 export const REPRINT = {
-  expense: 'Older rule: the roll effect plays once for each die, each instance worth that die plus the Trait value.',
-  insurance: 'Older rule: the Trait plays once for each die on the trick.',
-  investment: 'Older rule: the Trait plays once for each die on the trick.',
-  correction: 'Older rule: the Trait plays once for each die on the trick.',
+  expense: 'Older rule: the roll effect plays once for each die, each instance worth that die (the bid joins the first).',
+  insurance: 'Older rule: the roll effect plays once for each die, each instance worth that die (the bid joins the first).',
+  investment: 'Older rule: the roll effect plays once for each die, each instance worth that die (the bid joins the first).',
+  correction: 'Older rule: the roll effect plays once for each die, each instance worth that die (the bid joins the first).',
 };
 export const rarityName = (t) => (t.foil ? FOIL[Math.min(3, t.foil)].name : t.rar && t.rar !== 'basic' ? RARITY[t.rar].name : '');
 // a trick's rules as printed on it: a Misprint's die differs from the plain print
@@ -136,7 +132,7 @@ export function defOf(t) {
   const d = t.mis?.die; if (!d) return TRICKS[t.id];
   const k = t.id + ':' + d; if (!printed.has(k)) printed.set(k, { ...TRICKS[t.id], die: d }); return printed.get(k);
 }
-export const misText = (t) => !t.mis ? '' : [t.mis.die && `prints ${t.mis.die} instead of ${TRICKS[t.id].die}`, t.mis.trait && `Trait ${t.mis.trait > 0 ? '+' : ''}${t.mis.trait}`].filter(Boolean).join(', ');
+export const misText = (t) => !t.mis ? '' : [t.mis.die && `prints ${t.mis.die} instead of ${TRICKS[t.id].die}`, t.mis.trait && `effect ${t.mis.trait > 0 ? '+' : ''}${t.mis.trait}`].filter(Boolean).join(', ');
 // Foil packs: five tricks of the set's quality, all Mint (each may be Gem Mint), one of them a rarer print.
 // Better sets cost more and open as the floors do: 200¢ × quality × floor, above what the five sell for at Mint.
 export const PACKS = [null,
@@ -702,8 +698,8 @@ export const CARDS = {
   resist_card_plus: { name: 'Resist Card: Gold', text: 'Debt resistance. Each bout starts with a Resist chip (r = 3) at the base of one of your front Stake stacks: fees under 3¢ on that stack are deterred.', resist: 3 },
   debit: { name: 'Debit Card', text: 'Found by searching the floor. Lets you use the ATM in the Gift Shop, which keeps chips between runs.' },
   punch: { name: 'Punch Card', text: 'One punch per drink bought. Five punches and the next drink is free.' },
-  note: { name: 'Note: on bidding', text: '"Small chips bid fast. Big chips linger. Keep a stack of 1¢ chips at the back."' },
-  note_dice: { name: 'Note: on dice', text: '"Roll, bid on what you rolled, then place in the Bluff. A low roll is not wasted: some bonuses want a small total, and a pair of anything is a match."' },
+  note: { name: 'Note: on bidding', text: '"Every chip you bid adds its worth to the trick. Two of the same trick, stacked, play twice for one bid."' },
+  note_dice: { name: 'Note: on dice', text: '"Roll, bid on what you rolled, then pile the dice on the bid tricks in the Bluff. Any die adds its value; the ones of the trick\'s own size make its Bonus."' },
   note_debt: { name: 'Note: on Debt', text: '"Debt only takes a chip it can cover. A 5¢ chip on top shrugs off a 4¢ fee, but the Debt stays and the next fee finishes it."' },
   note_house: { name: 'Note: on the House', text: '"Both arms move at once. What you play this phase cannot change what they play this phase. Insure a turn early, not the same turn."' },
   note_hold: { name: 'Note: on holding back', text: '"A turn with nothing worth playing still pays. Every draw, roll and bid you leave unused earns chips off the Stage, Power or Opportunity."' },
