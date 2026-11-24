@@ -20,44 +20,44 @@ G = {
     'swing': dict(era='1950s lounge swing', swing=.64, feel='swing', comp=('piano', PIANO, 'swing'), bass='walk', drums=('swing', JAZZ_KIT, 'swing'),
                   leads=[(MUTED_TPT, 'muted trumpet', 60, 82), (CLARINET, 'clarinet', 62, 86), (TENOR, 'tenor sax', 52, 74)],
                   answers=[(TENOR, 'tenor sax', 50, 70), (TROMBONE, 'trombone', 46, 66), (JAZZ_GTR, 'jazz guitar', 52, 74)],
-                  charts=[{'A': 'Cmaj7 A7 | Dm7 G7 | Em7 A7 | Dm7 G7 | Cmaj7 C7 | Fmaj7 Fm6 | Em7 A7 | Dm7 G7', 'B': 'E7 | E7 | A7 | A7 | D7 | D7 | Dm7 | G7'},
-                          {'A': 'C6 | Am7 | Dm7 | G7 | Em7 A7 | Dm7 G7 | Cmaj7 A7 | Dm7 G7', 'B': 'Fmaj7 | Fm6 | Em7 | A7 | Dm7 | G7 | Em7 A7 | Dm7 G7'},
-                          {'A': 'Cmaj7 | Gm7 C7 | Fmaj7 | Fm7 Bb7 | Em7 | A7 | Dm7 | G7', 'B': 'Gm7 | C7 | Fmaj7 | Fmaj7 | Am7 | D7 | Dm7 | G7'}],
+                  charts=[{'A': 'Cmaj7 A7 | Dm7 G7 | Em7 A7b9 | Dm7 G7 | Cmaj7 C7 | Fmaj7 Fm6 | Em7 A7b9 | Dm7 G7', 'B': 'E7 | E7 | A7 | A7 | D7 | D7 | Dm7 | G7'},
+                          {'A': 'C6 | Am7 | Dm7 | G7 | Em7 A7 | Dm7 G7 | Cmaj7 A7 | Dm7 G7', 'B': 'Fmaj7 | Fm6 | Em7 | A7b9 | Dm7 | G7 | Em7 A7 | Dm7 G7'},
+                          {'A': 'Cmaj7 | Gm7 C7 | Fmaj7 | Fm7 Bb7 | Em7 | A7b9 | Dm7 | G7', 'B': 'Gm7 | C7 | Fmaj7 | Fmaj7 | Am7 | D7 | Dm7 | G7'}],
                   form=['A', 'A', 'B', 'A'], talk=['A', 'A', 'B', 'A'], out=['B', 'A']),
     'bossa': dict(era='1960s bossa nova', swing=.5, feel='latin', comp=('gtr', NYLON, 'bossa'), bass='bossa', drums=('bossa', BRUSH_KIT, 'bossa'), pad=(SLOW_STRINGS, 30),
                   leads=[(FLUTE, 'flute', 67, 88), (TENOR, 'tenor sax', 55, 76), (CLARINET, 'clarinet', 62, 84)],
                   answers=[(TENOR, 'tenor sax', 52, 72), (NYLON, 'nylon guitar', 55, 76), (FLUTE, 'flute', 67, 86)],
                   charts=[{'A': 'Cmaj7 | Cmaj7 | D7 | D7 | Dm7 | G7 | Cmaj7 | Dm7 G7', 'B': 'Fmaj7 | Bb7 | Em7 | A7 | Dm7 | G7 | Cmaj7 | Dm7 G7'},
-                          {'A': 'Cmaj7 | Bm7b5 E7 | Am7 | D7 | Dm7 | G7 | Em7 A7 | Dm7 G7', 'B': 'Ebmaj7 | Ab7 | Dbmaj7 | Dm7 G7 | Cmaj7 | Am7 | Dm7 | G7'},
+                          {'A': 'Cmaj7 | Bm7b5 E7b9 | Am7 | D7 | Dm7 | G7 | Em7 A7b9 | Dm7 G7', 'B': 'Ebmaj7 | Ab7 | Dbmaj7 | Dm7 G7 | Cmaj7 | Am7 | Dm7 | G7'},
                           {'A': 'Am7 | D7 | Gm7 | C7 | Fmaj7 | Fm6 | Em7 A7 | Dm7 G7', 'B': 'Fmaj7 | Fm6 | Cmaj7 | A7 | Dm7 | G7 | Cmaj7 | Dm7 G7'}],
                   form=['A', 'A', 'B', 'A'], talk=['A', 'B', 'A'], out=['B', 'A']),
     'bigband': dict(era='1960s showroom big band', swing=.6, feel='swing', comp=('piano', PIANO, 'swing'), bass='walk', drums=('bigband', JAZZ_KIT, 'swing'), section=True,
                     leads=[(TRUMPET, 'trumpets', 64, 84), (ALTO, 'saxes', 60, 80), (TRUMPET, 'trumpets', 62, 82)],
                     answers=[(TROMBONE, 'trombones', 48, 68), (TENOR, 'tenor saxes', 50, 70), (FRENCH_HORN, 'horns', 50, 70)],
                     charts=[{'A': 'C6 | Dm7 G7 | C6 | Gm7 C7 | Fmaj7 | Fm6 | Em7 A7 | Dm7 G7', 'B': 'Am7 | D7 | Dm7 | G7 | Em7 | A7 | Dm7 | G7'},
-                            {'A': 'Cmaj7 | A7 | Dm7 | G7 | Cmaj7 | C7 | Fmaj7 Fm6 | Dm7 G7', 'B': 'Em7 | A7 | Dm7 | G7 | Cm7 | F7 | Dm7 | G7'},
-                            {'A': 'C6 | Ebdim | Dm7 | G7 | Em7 | Am7 | Dm7 | G7', 'B': 'Fmaj7 | Bb7 | Em7 | A7 | Dm7 | G7 | C6 | Dm7 G7'}],
+                            {'A': 'Cmaj7 | A7 | Dm7 | G7 | Cmaj7 | C7 | Fmaj7 Fm6 | Dm7 G7', 'B': 'Em7 | A7b9 | Dm7 | G7 | Cm7 | F7 | Dm7 | G7'},
+                            {'A': 'C6 | Ebdim | Dm7 | G7 | Em7 | Am7 | Dm7 | G7', 'B': 'Fmaj7 | Bb7 | Em7 | A7b9 | Dm7 | G7 | C6 | Dm7 G7'}],
                     form=['A', 'A', 'B', 'A'], talk=['A', 'A', 'B', 'A'], out=['B', 'A']),
     'ballad': dict(era='late-1950s ballad', swing=.66, feel='ballad', comp=('piano', PIANO, 'ballad'), bass='two', drums=('brush', BRUSH_KIT, 'brush'), pad=(STRINGS, 26), susp=.5,
                    leads=[(TENOR, 'tenor sax', 55, 76), (ALTO, 'alto sax', 58, 79), (TRUMPET, 'trumpet', 58, 79)],
                    answers=[(PIANO, 'piano', 60, 82), (CLARINET, 'clarinet', 55, 76), (CLEAN_GTR, 'guitar', 55, 76)],
-                   charts=[{'A': 'Cmaj7 Am7 | Dm7 G7 | Em7 A7 | Dm7 G7 | Cmaj7 C7 | Fmaj7 Fm6 | Em7 A7 | Dm7 G7', 'B': 'Fmaj7 | Bb7 | Em7 | A7 | Dm7 | G7 | Em7 A7 | Dm7 G7'},
-                           {'A': 'Cmaj7 | Bm7b5 E7 | Am7 | Gm7 C7 | Fmaj7 | Fm6 | Em7 A7 | Dm7 G7', 'B': 'Am7 | D7 | Gmaj7 | Gm7 C7 | Fmaj7 | Fm6 | Dm7 | G7'},
-                           {'A': 'Am7 | Am7 | Dm7 | G7 | Cmaj7 | Fmaj7 | Bm7b5 | E7', 'B': 'Dm7 | G7 | Cmaj7 | Fmaj7 | Bm7b5 | E7 | Am7 | E7'}],
+                   charts=[{'A': 'Cmaj7 Am7 | Dm7 G7 | Em7 A7 | Dm7 G7 | Cmaj7 C7 | Fmaj7 Fm6 | Em7 A7 | Dm7 G7', 'B': 'Fmaj7 | Bb7 | Em7 | A7b9 | Dm7 | G7 | Em7 A7 | Dm7 G7'},
+                           {'A': 'Cmaj7 | Bm7b5 E7b9 | Am7 | Gm7 C7 | Fmaj7 | Fm6 | Em7 A7 | Dm7 G7', 'B': 'Am7 | D7 | Gmaj7 | Gm7 C7 | Fmaj7 | Fm6 | Dm7 | G7'},
+                           {'A': 'Am7 | Am7 | Dm7 | G7 | Cmaj7 | Fmaj7 | Bm7b5 | E7b9', 'B': 'Dm7 | G7 | Cmaj7 | Fmaj7 | Bm7b5 | E7b9 | Am7 | E7b9', 'Z': 'Am6 | Am6'}],
                    form=['A', 'A', 'B', 'A'], talk=['A', 'A'], out=['A']),
     'funk': dict(era='1970s jazz-funk', swing=.5, feel='funk', comp=('rhodes', EPIANO, 'funk'), comp2=('gtr', MUTED_GTR, 'chank'), bass='funk', drums=('funk', STANDARD_KIT, 'funk'),
                  leads=[(ALTO, 'alto sax', 60, 80), (FLUTE, 'flute', 67, 88), (TENOR, 'tenor sax', 55, 75)],
                  answers=[(TRUMPET, 'trumpet', 58, 78), (CLEAN_GTR, 'guitar', 55, 76), (EPIANO, 'Rhodes', 60, 80)],
                  charts=[{'A': 'Cm7 | F7 | Cm7 | F7 | Cm7 | F7 | Abmaj7 | G7sus', 'B': 'Abmaj7 | Gm7 | Fm7 | Bb7 | Ebmaj7 | Abmaj7 | Dm7b5 | G7sus'},
-                         {'A': 'Dm7 | Dm7 | Em7 | Em7 | Dm7 | Dm7 | Fmaj7 | Em7', 'B': 'Bbmaj7 | Am7 | Gm7 | C7 | Fmaj7 | Bbmaj7 | Em7 | A7sus'},
-                         {'A': 'Cm7 | Cm7 | Fm7 | Fm7 | Cm7 | Cm7 | Dm7b5 | G7sus', 'B': 'Fm7 | Bb7 | Ebmaj7 | Abmaj7 | Dm7b5 | G7 | Cm7 | G7sus'}],
+                         {'A': 'Dm7 | Dm7 | Em7 | Em7 | Dm7 | Dm7 | Fmaj7 | Em7', 'B': 'Bbmaj7 | Am7 | Gm7 | C7 | Fmaj7 | Bbmaj7 | Em7 | A7sus', 'Z': 'Dm7 | Dm7'},
+                         {'A': 'Cm7 | Cm7 | Fm7 | Fm7 | Cm7 | Cm7 | Dm7b5 | G7sus', 'B': 'Fm7 | Bb7 | Ebmaj7 | Abmaj7 | Dm7b5 | G7b9 | Cm7 | G7sus'}],
                  form=['A', 'B'], talk=['A', 'A', 'B'], out=['A', 'B']),
-    'jump': dict(era='1940s jump blues', swing=.66, feel='blues', comp=('piano', PIANO, 'swing'), bass='walk', drums=('shuffle', JAZZ_KIT, 'shuffle'),
+    'jump': dict(era='1940s jump blues', swing=.66, feel='blues', comp=('piano', PIANO, 'swing'), bass='boogie', drums=('shuffle', JAZZ_KIT, 'shuffle'),
                  leads=[(TENOR, 'tenor sax', 52, 74), (ALTO, 'alto sax', 58, 80), (TRUMPET, 'trumpet', 60, 80)],
                  answers=[(TRUMPET, 'trumpet', 58, 78), (TROMBONE, 'trombone', 46, 66), (JAZZ_GTR, 'jazz guitar', 52, 74)],
-                 charts=[{'A': 'C7 | F7 | C7 | C7 | F7 | F7 | C7 | A7 | Dm7 | G7 | C7 A7 | Dm7 G7'},
+                 charts=[{'A': 'C7 | F7 | C7 | C7 | F7 | F7 | C7 | A7 | Dm7 | G7 | C7 A7b9 | Dm7 G7'},
                          {'A': 'C7 | C7 | C7 | C7 | F7 | F7 | C7 | C7 | G7 | F7 | C7 | G7'},
-                         {'A': 'C7 | F7 | C7 | Gm7 C7 | F7 | Fdim7 | C7 | A7 | Dm7 | G7 | Em7 A7 | Dm7 G7'}],
+                         {'A': 'C7 | F7 | C7 | Gm7 C7 | F7 | Fdim7 | C7 | A7 | Dm7 | G7 | Em7 A7b9 | Dm7 G7'}],
                  form=['A', 'A'], talk=['A', 'A', 'A'], out=['A']),
     'smooth': dict(era='1980s smooth jazz', swing=.5, feel='latin', comp=('ep', DXPIANO, 'smooth'), bass='smooth', drums=('smooth', ROOM_KIT, 'smooth'), pad=(WARM_PAD, 40),
                    leads=[(SOPRANO, 'soprano sax', 62, 84), (ALTO, 'alto sax', 60, 80), (CLEAN_GTR, 'guitar', 57, 79)],
@@ -70,40 +70,58 @@ G = {
                   leads=[(JAZZ_GTR, 'jazz guitar', 55, 77), (TENOR, 'tenor sax', 52, 74), (PERC_ORGAN, 'organ', 60, 82)],
                   answers=[(TENOR, 'tenor sax', 50, 70), (JAZZ_GTR, 'jazz guitar', 55, 74), (TRUMPET, 'trumpet', 58, 78)],
                   charts=[{'A': 'C7 | F7 | C7 | C7 | F7 | F7 | C7 | A7 | Dm7 | G7 | C7 | G7'},
-                          {'A': 'Cm7 | Fm7 | Cm7 | Cm7 | Fm7 | Fm7 | Cm7 | Cm7 | Ab7 | G7 | Cm7 | G7'},
-                          {'A': 'C7 | F7 | C7 | Gm7 C7 | F7 | F7 | C7 | Em7 A7 | Dm7 | G7 | C7 A7 | Dm7 G7'}],
+                          {'A': 'Cm7 | Fm7 | Cm7 | Cm7 | Fm7 | Fm7 | Cm7 | Cm7 | Ab7 | G7#9 | Cm7 | G7#9'},
+                          {'A': 'C7 | F7 | C7 | Gm7 C7 | F7 | F7 | C7 | Em7 A7 | Dm7 | G7 | C7 A7b9 | Dm7 G7'}],
                   form=['A', 'A'], talk=['A', 'A', 'A'], out=['A']),
 }
-ENDING = 'Cmaj7 | Cmaj7'
+# the last chord: the tonic as the style plays it (a 6 chord in swing, a 13th in the blues), the minor 6 for a minor tune
+ENDING = {'swing': 'C6 | C6', 'bigband': 'C6 | C6', 'jump': 'C9 | C9', 'organ': 'C9 | C9'}
+ENDING_MAJ = 'Cmaj7 | Cmaj7'
 ENDING_MINOR = 'Cm6 | Cm6'
+# how a style ends: a ritard into a held chord, or a 'button' (the band stops together on a hit, in tempo)
+BUTTON = {'bigband', 'funk', 'jump'}
+# how busy an improvised chorus is, by style
+SOLO = {'swing': .62, 'bossa': .45, 'bigband': .6, 'ballad': .32, 'funk': .5, 'jump': .58, 'smooth': .42, 'organ': .58}
 
 # (slug, title, genre, chart, key, tempo, lead, answer)
 SET = [
     ('neon-strip', 'Neon Strip', 'swing', 0, 5, 132, 0, 0), ('loose-change', 'Loose Change', 'swing', 1, 10, 144, 1, 2), ('side-bet', 'Side Bet', 'swing', 2, 3, 124, 2, 1),
-    ('velvet-rope', 'Velvet Rope', 'bossa', 0, 7, 128, 0, 0), ('pool-light', 'Pool Light', 'bossa', 1, 2, 120, 1, 1), ('desert-moon', 'Desert Moon', 'bossa', 2, 9, 132, 2, 2),
+    ('velvet-rope', 'Velvet Rope', 'bossa', 0, 7, 128, 0, 0), ('pool-light', 'Pool Light', 'bossa', 1, 2, 120, 1, 1), ('desert-moon', 'Desert Moon', 'bossa', 2, 9, 132, 2, 0),
     ('high-roller', 'High Roller', 'bigband', 0, 10, 168, 0, 0), ('marquee', 'Marquee', 'bigband', 1, 3, 156, 1, 1), ('double-down', 'Double Down', 'bigband', 2, 8, 176, 2, 2),
     ('last-call', 'Last Call', 'ballad', 0, 3, 64, 0, 0), ('house-lights', 'House Lights', 'ballad', 1, 8, 60, 1, 1), ('two-a-m', '2 A.M.', 'ballad', 2, 5, 66, 2, 2),
     ('velour', 'Velour', 'funk', 0, 7, 100, 0, 0), ('fresh-felt', 'Fresh Felt', 'funk', 1, 0, 104, 1, 1), ('pit-boss', 'Pit Boss', 'funk', 2, 2, 96, 2, 2),
     ('lucky-streak', 'Lucky Streak', 'jump', 0, 10, 144, 0, 0), ('comp-ticket', 'Comp Ticket', 'jump', 1, 7, 152, 1, 1), ('cash-out', 'Cash Out', 'jump', 2, 0, 138, 2, 2),
-    ('satin-dice', 'Satin Dice', 'smooth', 0, 5, 92, 0, 0), ('valet', 'Valet', 'smooth', 1, 2, 88, 1, 1), ('chrome', 'Chrome', 'smooth', 2, 10, 96, 2, 2),
+    ('satin-dice', 'Satin Dice', 'smooth', 0, 5, 92, 0, 0), ('valet', 'Valet', 'smooth', 1, 2, 88, 1, 0), ('chrome', 'Chrome', 'smooth', 2, 10, 96, 2, 2),
     ('hammond-hour', 'Hammond Hour', 'organ', 0, 5, 116, 0, 0), ('back-room', 'Back Room', 'organ', 1, 0, 108, 1, 1), ('after-hours', 'After Hours', 'organ', 2, 7, 120, 2, 2),
 ]
 
 
 def arrange(slug, title, genre, ci, key, bpm, li, ai, rng):
+    from engine import chord, tones
+    from story import strong_pcs
     g = G[genre]; chart = g['charts'][ci]; b = Band(title, bpm, g['swing'], rng)
-    lead, answer = g['leads'][li], g['answers'][ai]
-    if answer[0] == lead[0]: answer = g['answers'][(ai + 1) % len(g['answers'])]
+    fam = lambda prog: prog // 8  # GM family: pianos, organs, guitars, ...
+    cname, cprog, cstyle = g['comp']
+    lead = g['leads'][li]
+    if fam(lead[0]) == fam(cprog): cname, cprog, cstyle = 'gtr', JAZZ_GTR, 'swing'  # an organ lead: a guitar comps, not a second organ
+    answer = g['answers'][ai]
+    for k in range(1, len(g['answers']) + 1):  # the answer is a different sound from the lead and from the comping
+        if answer[0] != lead[0] and fam(answer[0]) != fam(cprog): break
+        answer = g['answers'][(ai + k) % len(g['answers'])]
     b.chan('lead', 0, lead[0], 104, 76, 50); b.chan('answer', 3, answer[0], 98, 46, 50)
-    cname, cprog, cstyle = g['comp']; b.chan(cname, 1, cprog, 82, 56, 40, 20)
+    b.chan(cname, 1, cprog, 82, 56, 40, 70 if fam(cprog) == 2 else 20)
     b.chan('bass', 2, {'funk': FINGER, 'smooth': FRETLESS}.get(g['bass'], UPRIGHT), 110, 62, 25)
     dstyle, dkit, _ = g['drums']; b.chan('drums', 9, dkit, 92, 64, 35)
     if g.get('comp2'): b.chan(g['comp2'][0], 4, g['comp2'][1], 66, 92, 30)
     if g.get('pad'): b.chan('pad', 5, g['pad'][0], 52, 64, 80)
-    if g.get('section'): b.chan('lead2', 6, lead[0], 86, 88, 50); b.chan('answer2', 7, answer[0], 86, 36, 50)
-    minor = chart['A'].split()[0].startswith('Cm')
+    if g.get('section'):
+        b.chan('lead2', 6, lead[0], 84, 88, 50); b.chan('answer2', 7, answer[0], 84, 36, 50)
+        b.chan('lead3', 10, lead[0], 78, 98, 50); b.chan('answer3', 11, answer[0], 78, 26, 50)
+    first = chord(chart['A'].split('|')[0].split()[0])
+    minor = first[0] == 0 and first[1] in ('m7', 'm6', 'm7b5')
+    end = chart.get('Z') or (ENDING_MINOR if minor else ENDING.get(genre, ENDING_MAJ))
     S = {k: transpose(v, key) for k, v in chart.items()}
-    S['I'] = transpose(' | '.join(chart['A'].split('|')[-4:]), key); S['Z'] = transpose(ENDING_MINOR if minor else ENDING, key)
+    S['I'] = transpose(' | '.join(chart['A'].split('|')[-4:]), key); S['Z'] = transpose(end, key)
     order = ['I'] + g['form'] + g['talk'] + g['out'] + ['Z']
     starts = []
     for name in order: starts.append(len(b.chart.bars)); b.chart.add(S[name])
@@ -111,40 +129,77 @@ def arrange(slug, title, genre, ci, key, bpm, li, ai, rng):
     segs = list(zip(starts, lens, order))
     nf, nt = len(g['form']), len(g['talk'])
     head, talk, out = segs[1:1 + nf], segs[1 + nf:1 + nf + nt], segs[1 + nf + nt:-1]
+    button = genre in BUTTON
+    stop = n - 1 if button else n - 2  # a button ending keeps the groove through the last chord's first bar
     # the rhythm section
-    b.comp(cname, 0, n - 2, cstyle, 50, 70, 56); b.comp(cname, n - 2, n, 'ballad' if cstyle != 'organ' else 'organ', 50, 70, 50)
-    if g.get('comp2'): b.comp(g['comp2'][0], starts[1], n - 2, g['comp2'][2], vel=52)
+    b.comp(cname, 0, stop, cstyle, 50, 70, 56)
+    if not button: b.comp(cname, n - 2, n, 'ballad' if cstyle != 'organ' else 'organ', 50, 70, 50)
+    if g.get('comp2'): b.comp(g['comp2'][0], starts[1], stop, g['comp2'][2], vel=52)
     if g.get('pad'): b.comp('pad', starts[1], n, 'pad', 55, 72, g['pad'][1])
     bass = g['bass']
-    if bass == 'walk': b.bass(0, starts[1], 'two'); b.bass(starts[1], n - 2, 'walk', vel=88); b.bass(n - 2, n, 'two')
-    elif bass == 'two': b.bass(0, n, 'two', vel=84)
-    else: b.bass(0, n - 2, bass, vel=90); b.bass(n - 2, n, 'two' if bass != 'funk' else 'two', vel=84)
-    sect = {s for s in starts[1:-1]}
-    b.drums(starts[1] if dstyle == 'brush' else 0, n - 2, dstyle, 74, fills={s - 1 for s in sect}, crash={talk[0][0], out[0][0]} if dstyle not in ('brush', 'bossa') else set())
-    # the story
+    if bass == 'walk': b.bass(0, starts[1], 'two'); b.bass(starts[1], stop, 'walk', vel=88)
+    elif bass == 'two': b.bass(0, stop, 'two', vel=84)
+    else: b.bass(0, stop, bass, vel=90)
+    if not button and bass != 'two': b.bass(n - 2, n, 'two', vel=84)
+    sect = {s for s in starts[1:-1]} | ({n - 2} if button else set())
+    b.drums(starts[1] if dstyle == 'brush' else 0, stop, dstyle, 74, fills={s - 1 for s in sect}, crash={talk[0][0], out[0][0]} if dstyle not in ('brush', 'bossa') else set())
+    # the story: the head, a chorus of real improvisation, the voices trading, the head out
     st = Story(b, g['feel'], key, rng)
+    zc = b.chart.at((n - 1) * 4); st.home = tones(zc, (1, 3, 5))
     voices = ('lead', 'answer'); lo_hi = {'lead': lead[2:], 'answer': answer[2:]}
-    st.horn = {'lead': lead[0] >= 56 and lead[0] <= 79, 'answer': answer[0] >= 56 and answer[0] <= 79}
+    st.horn = {'lead': 56 <= lead[0] <= 79, 'answer': 56 <= answer[0] <= 79}
+    st.bend = {'lead': 24 <= lead[0] <= 31 or 56 <= lead[0] <= 79, 'answer': 24 <= answer[0] <= 31 or 56 <= answer[0] <= 79}
     st.rng_lo = {'lead': lead[2] - 7, 'answer': answer[2] - 7}
     vel = {'lead': 92, 'answer': 84}
-    susp = g.get('susp', .3)
     st.converse(voices, head, lo_hi, vel, 'head')
-    arc = lambda x: .25 + .75 * (x / .66 if x < .66 else 1 - (x - .66) / .34 * .7)
-    st.converse(voices, talk, lo_hi, vel, 'talk', arc)
+    st.solo('lead', talk[0], *lo_hi['lead'], vel['lead'] - 2, SOLO[genre])
+    rest = talk[1:]
+    if len(talk) >= 3: st.solo('answer', talk[1], *lo_hi['answer'], vel['answer'], SOLO[genre]); rest = talk[2:]
+    arc = lambda x: .45 + .55 * (x / .66 if x < .66 else 1 - (x - .66) / .34 * .6)
+    if rest: st.converse(voices, rest, lo_hi, vel, 'talk', arc)
     st.converse(voices, out, lo_hi, vel, 'out')
-    st.coda(voices, n - 2, lo_hi, vel)
-    if g.get('section'):  # big band: each lead line doubled by its section a 3rd/6th under, in close harmony
+    st.coda(voices, n - 2, lo_hi, vel, slow=not button)
+    if g.get('section'):  # big band: each line voiced for its section, three parts in close harmony under the lead
         for (ch, t, dur, p, v, ns) in [x for x in b.notes if x[0] in (b.chans['lead'], b.chans['answer'])]:
-            name = 'lead2' if ch == b.chans['lead'] else 'answer2'; cur = b.chart.at(t)
-            from story import strong_pcs
-            good = strong_pcs(cur)
-            for gap in (3, 4, 8, 9, 5):
-                if (p - gap) % 12 in good: b.notes.append((b.chans[name], t, dur, p - gap, max(1, v - 14), ns)); break
+            two, three = ('lead2', 'lead3') if ch == b.chans['lead'] else ('answer2', 'answer3')
+            good = strong_pcs(b.chart.at(t)) | tones(b.chart.at(t))
+            x1 = next((p - gap for gap in (3, 4, 8, 9, 5) if (p - gap) % 12 in good), None)
+            if x1 is None: continue
+            b.notes.append((b.chans[two], t, dur, x1, max(1, v - 12), ns))
+            x2 = next((x1 - gap for gap in (3, 4, 5, 2) if (x1 - gap) % 12 in good and x1 - gap >= 43), None)
+            if x2 is not None: b.notes.append((b.chans[three], t, dur, x2, max(1, v - 18), ns))
     st.clear_bass()
     st.clear_comp([cname] + ([g['comp2'][0]] if g.get('comp2') else []) + (['pad'] if g.get('pad') else []))
-    t = b.ending(n - 2, None)
-    root = 24 + (key % 12) + (12 if key % 12 < 4 else 0)
-    b.note('bass', t, 7, root, 88)
-    if dkit != BRUSH_KIT: b.note('drums', t, 6, 49, 70)
-    else: b.note('drums', t, 6, 38, 40)
+    root = 24 + (zc[0] % 12) + (12 if zc[0] % 12 < 4 else 0)
+    if button:  # the band stops together on beat one of the last bar
+        th = (n - 1) * 4; kept = []
+        for x in b.notes:
+            if x[1] >= th - .01: continue
+            if x[1] + x[2] > th - .05: x = (x[0], x[1], max(.1, th - .05 - x[1]), x[3], x[4], x[5])
+            kept.append(x)
+        b.notes = kept
+        last = max((x for x in b.notes if x[0] == b.chans['lead']), key=lambda x: x[1])
+        p = nearest_in(st.home, last[3], *lo_hi['lead'])
+        for name in voices: b.note(name, th, .6, p if name == 'lead' else next((p - gp for gp in (3, 4, 8, 9, 5) if (p - gp) % 12 in st.home or (p - gp) % 12 in tones(zc)), p - 12), 104, tri=True)
+        for x in voicing(zc): b.note(cname, th, .6, x, 84, tri=True)
+        if g.get('comp2'):
+            for x in voicing(zc, 62, 78)[-3:]: b.note(g['comp2'][0], th, .3, x, 80, tri=True)
+        b.note('bass', th, .7, root + 12 if root < 36 else root, 104, tri=True)
+        for d, v in ((49, 110), (36, 108), (38, 96)): b.note('drums', th, .5, d, v, tri=True)
+        b.ending(n - 1, None, ritard=False)
+    else:
+        t = b.ending(n - 2, None)
+        b.note('bass', t, 7, root, 88)
+        if dkit != BRUSH_KIT: b.note('drums', t, 6, 49, 70)
+        else: b.note('drums', t, 6, 38, 40)
     return b, f"{g['era']}: {lead[1]} and {answer[1]}", key
+
+
+def nearest_in(pcs, p, lo, hi):
+    return min((x for x in range(lo, hi + 1) if x % 12 in pcs), key=lambda x: abs(x - p), default=p)
+
+
+def voicing(ch, lo=50, hi=72):  # the comping's rootless voicing for a chord, centred in its range
+    from engine import Q, voicings
+    vs = voicings([ch[0] + i for i in Q[ch[1]][1]], lo, hi)
+    return min(vs, key=lambda v: abs(sum(v) / len(v) - (lo + hi) / 2))

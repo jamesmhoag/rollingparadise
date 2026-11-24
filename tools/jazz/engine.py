@@ -236,6 +236,16 @@ class Band:
                     p = {'R': r, 'O': r + 12, '5': r + Q[ch[1]][0][5], '7': r + Q[ch[1]][0][7] - 12, '3': r + Q[ch[1]][0][3], 'g': r}[k]
                     while p > hi: p -= 12
                     self.note(name, t0 + st, d, p, (vel - 40 if k == 'g' else vel + (8 if st == 0 else 0)) + rng.randint(-5, 5)); prev = r
+            elif style == 'boogie':  # jump blues: the shuffle bass line, up the chord and back (R 3 5 6 b7 6 5 3)
+                cells = self.chart.bars[bar]
+                for st, ch in cells:
+                    r = root(ch, 36); q = Q[ch[1]][0]
+                    up = [0, q[3], q[5], 9, q[7], 9, q[5], q[3]] if len(cells) == 1 else [0, q[3], q[5], 9]
+                    for k, iv in enumerate(up):
+                        p = r + iv
+                        while p > hi: p -= 12
+                        self.note(name, t0 + st + k * .5, .45, p, vel + (6 if k % 2 == 0 else -8) + rng.randint(-4, 4))
+                    prev = r
             elif style == 'smooth':
                 for st, ch in self.chart.bars[bar]:
                     r = root(ch, 38); dur = 4 / len(self.chart.bars[bar])
@@ -258,8 +268,7 @@ class Band:
                 for b in range(4):
                     if not (bar in crash and b == 0): n(t0 + b, 51, vel - (8 if b % 2 == 0 else 0))
                     if b in (1, 3): n(t0 + b + .5, 51, vel - 18); n(t0 + b, 44, vel - 22)
-                    n(t0 + b, 36, 34)
-                    if style == 'bigband' and b in (1, 3): n(t0 + b, 38, 48)
+                    n(t0 + b, 36, 34 if style != 'bigband' else 44)
                 for _ in range(rng.choice([0, 1, 1, 2])): n(t0 + rng.choice([.5, 1.5, 2.5, 3.5]), 38, 36)
                 if fill:
                     for st in (2.5, 3, 3.5): n(t0 + st, rng.choice([38, 45, 48]), vel - 10)
@@ -372,9 +381,9 @@ class Band:
             t = math.floor(t * 2) / 2
 
     # ---- the end: a held tonic chord, a ritard into it
-    def ending(self, bar, parts, bars=2):
+    def ending(self, bar, parts, bars=2, ritard=True):
         t = bar * 4
-        self.tempos += [(t - 4, self.bpm * .93), (t - 2, self.bpm * .85), (t, self.bpm * .78)]
+        if ritard: self.tempos += [(t - 4, self.bpm * .93), (t - 2, self.bpm * .85), (t, self.bpm * .78)]
         return t
 
     # ---- write

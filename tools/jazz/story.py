@@ -82,29 +82,47 @@ RHYTHMS = {  # 2-bar rhythm cells by feel: (onset, length, accented)
     'swing': [[(0, 1.5, 1), (1.5, .5, 0), (2, .5, 0), (2.5, 1.5, 1), (4.5, .5, 0), (5, .5, 0), (5.5, 2, 1)],
               [(.5, .5, 0), (1, 1, 1), (2, .5, 0), (2.5, .5, 0), (3, 1.5, 1), (5, .5, 0), (5.5, .5, 0), (6, 2, 1)],
               [(0, 1, 1), (1, 1, 0), (2, .5, 0), (2.5, 2, 1), (5, 1, 0), (6, 2, 1)],
-              [(0, .5, 0), (.5, 1, 1), (1.5, .5, 0), (2, 2, 1), (4.5, .5, 0), (5, .5, 0), (5.5, .5, 0), (6, 2, 1)]],
+              [(0, .5, 0), (.5, 1, 1), (1.5, .5, 0), (2, 2, 1), (4.5, .5, 0), (5, .5, 0), (5.5, .5, 0), (6, 2, 1)],
+              [(0, .5, 0), (.5, .5, 0), (1, .5, 0), (1.5, 1, 1), (2.5, .5, 0), (3, 1, 1), (4.5, .5, 0), (5, .5, 0), (5.5, .5, 0), (6, .5, 0), (6.5, 1.5, 1)],
+              [(1, .5, 0), (1.5, 1.5, 1), (3.5, .5, 0), (4, 1, 1), (5, .5, 0), (5.5, 2.5, 1)]],
     'ballad': [[(0, 1, 1), (1, .5, 0), (1.5, .5, 0), (2, 2, 1), (4, 1.5, 1), (5.5, .5, 0), (6, 2, 1)],
                [(.5, .5, 0), (1, 1.5, 1), (2.5, .5, 0), (3, 1, 0), (4, 4, 1)],
-               [(0, 2, 1), (2, 1, 0), (3, 1, 0), (4, 3, 1)]],
+               [(0, 2, 1), (2, 1, 0), (3, 1, 0), (4, 3, 1)],
+               [(.5, .5, 0), (1, .5, 0), (1.5, 2, 1), (3.5, .5, 0), (4, 1, 1), (5, .5, 0), (5.5, 2.5, 1)]],
     'latin': [[(0, 1.5, 1), (1.5, 1, 0), (2.5, .5, 0), (3, 1, 1), (4, .5, 0), (4.5, 3.5, 1)],
               [(0, .5, 0), (.5, 1, 1), (1.5, 1, 0), (2.5, 1.5, 1), (4.5, 1, 0), (5.5, 2.5, 1)],
-              [(0, 2, 1), (2, 1, 0), (3, 1, 0), (4.5, 1.5, 1), (6, 2, 1)]],
+              [(0, 2, 1), (2, 1, 0), (3, 1, 0), (4.5, 1.5, 1), (6, 2, 1)],
+              [(.5, 1, 1), (1.5, 1, 0), (2.5, 1, 1), (3.5, 1, 0), (4.5, .5, 0), (5, 3, 1)]],
     'funk': [[(0, .5, 1), (.75, .25, 0), (1, .5, 0), (1.5, 1, 1), (2.75, .25, 0), (3, 1, 1), (4.5, .5, 0), (5, .5, 0), (5.5, 2, 1)],
              [(.5, .5, 0), (1, .5, 1), (1.75, .75, 0), (2.5, 1.5, 1), (4.75, .25, 0), (5, .5, 0), (5.5, .5, 0), (6, 1.5, 1)],
-             [(0, 1, 1), (1.5, .5, 0), (2, .5, 0), (2.5, 1.5, 1), (4.5, .5, 0), (5, 1, 0), (6, 2, 1)]],
+             [(0, 1, 1), (1.5, .5, 0), (2, .5, 0), (2.5, 1.5, 1), (4.5, .5, 0), (5, 1, 0), (6, 2, 1)],
+             [(0, .25, 0), (.25, .5, 1), (1, .25, 0), (1.25, .25, 0), (1.5, 1, 1), (3, .5, 1), (3.5, .25, 0), (3.75, .25, 0), (4, 1, 1), (5.5, .5, 0), (6, 1.5, 1)]],
     'blues': [[(0, .5, 0), (.5, 1.5, 1), (2, .5, 0), (2.5, 1.5, 1), (4.5, .5, 0), (5, 1, 0), (6, 2, 1)],
-              [(0, 1, 1), (1, .5, 0), (1.5, .5, 0), (2, 2, 1), (4, .5, 0), (4.5, .5, 0), (5, 3, 1)]],
+              [(0, 1, 1), (1, .5, 0), (1.5, .5, 0), (2, 2, 1), (4, .5, 0), (4.5, .5, 0), (5, 3, 1)],
+              [(0, .5, 1), (.5, .5, 0), (1, 1, 1), (2.5, .5, 0), (3, 1, 1), (4, .5, 1), (4.5, .5, 0), (5, 1, 1), (6.5, 1.5, 1)],
+              [(.5, .5, 0), (1, 1.5, 1), (3, .5, 0), (3.5, .5, 0), (4, 2, 1), (6, .5, 0), (6.5, 1.5, 1)]],
 }
 CONTOURS = [[0, 1, 1, 1, -2, -1, -1, 1, 1], [0, 2, -1, -1, 2, 1, -1, -2, 1], [0, -1, -1, 2, 1, 1, -1, -1, 1],
-            [0, 1, 2, -1, -1, 1, -2, 1, 1], [0, 2, 1, -1, -2, 1, 1, -1, -1], [0, -1, 2, 1, -2, 1, -1, 1, 1]]
+            [0, 1, 2, -1, -1, 1, -2, 1, 1], [0, 2, 1, -1, -2, 1, 1, -1, -1], [0, -1, 2, 1, -2, 1, -1, 1, 1],
+            # leaps: a 5th up and a step back, a falling 6th, an arpeggio, a riff that jumps and returns
+            [0, 4, -1, -1, -1, 3, -1, -2, 1, -1, 1], [0, -2, 5, -1, -2, -1, 2, -1, -1, 1, 1],
+            [0, 2, 2, 2, -1, -3, 1, 1, -2, 1, -1], [0, 3, -3, 3, -1, -2, 0, 3, -1, -1, 1]]
+USED = set()  # (feel, rhythm, contour) motifs already given to a tune in this set, so no two tunes share one
 
 
 class Story:
     def __init__(self, band, feel, key, rng):
         self.b, self.feel, self.key, self.rng = band, feel, key, rng
         self.mel = []  # (t, dur, pitch) of every melody note, for the comping to step round
-        self.motif = Motif(rng.choice(RHYTHMS[feel]), rng.choice(CONTOURS))
+        R = RHYTHMS[feel]
+        pairs = [(r, c) for r in range(len(R)) for c in range(len(CONTOURS)) if (feel, r, c) not in USED]
+        fresh = [(r, c) for r, c in pairs if not any(u[0] == feel and u[2] == c for u in USED)]
+        r, c = rng.choice(fresh or pairs); USED.add((feel, r, c))
+        self.motif = Motif(R[r], CONTOURS[c])
         self.horn, self.rng_lo = {}, {}  # voices that bend into long notes like a horn; the lowest a harmony may go
+        self.bend = {}  # voices that can bend a note (horns, guitars), for blue notes
+        self.home = {key % 12, (key + 4) % 12, (key + 7) % 12}  # the tonic chord's tones, where a cadence lands
+        self.chrom = .35 if feel in ('swing', 'blues', 'funk') else .2 if feel == 'ballad' else .15  # chromatic approach rate
 
     # ---- one phrase: a motif realised over the chords from a starting pitch
     def realise(self, voice, t0, m, lo, hi, prev, vel, cadence=False, harm=None, susp=.0, home=None):
@@ -112,13 +130,15 @@ class Story:
         n = len(m.rhythm)
         for i, ((on, dur, acc), c) in enumerate(zip(m.rhythm, m.contour + [0] * n)):
             t = t0 + on; ch = b.chart.at(t); pcs = set(scale(ch)); strong = (on % 1 == 0 and on % 2 == 0) or dur >= 1.5 or acc
-            p = step(prev, c, pcs, lo, hi) if c else nearest(strong_pcs(ch), prev, lo, hi)
-            if i == 0 and home is not None: p = nearest(strong_pcs(ch), home, lo, hi)
+            sp = self.strong(ch)
+            if self.blue_i(ch): pcs |= {(self.key + 3) % 12, (self.key + 6) % 12}  # the blues scale over the tonic
+            p = step(prev, c, pcs, lo, hi) if c else nearest(sp, prev, lo, hi)
+            if i == 0 and home is not None: p = nearest(sp, home, lo, hi)
             last = i == n - 1
-            if last: p = nearest(({(self.key) % 12, (self.key + 4) % 12, (self.key + 7) % 12} & strong_pcs(ch)) or land_pcs(ch), p, lo, hi) if cadence else nearest(land_pcs(ch), p, lo, hi)
-            elif strong and p % 12 not in strong_pcs(ch): p = nearest(strong_pcs(ch), p, lo, hi, 1 if c >= 0 else -1)
+            if last: p = nearest((self.home & strong_pcs(ch)) or land_pcs(ch), p, lo, hi) if cadence else nearest(land_pcs(ch), p, lo, hi)
+            elif strong and p % 12 not in sp: p = nearest(sp, p, lo, hi, 1 if c >= 0 else -1)
             elif not strong and i + 1 < n:  # a passing note leads by step to where the next strong note will be
-                nt = t0 + m.rhythm[i + 1][0]; nxt = nearest(strong_pcs(b.chart.at(nt)), p, lo, hi)
+                nt = t0 + m.rhythm[i + 1][0]; nxt = nearest(self.strong(b.chart.at(nt)), p, lo, hi)
                 if abs(nxt - p) > 4: p = step(nxt, 1 if p > nxt else -1, set(scale(b.chart.at(t))), lo, hi)
             if p % 12 not in pcs: p = nearest(pcs, p, lo, hi)
             # a suspension: over a new chord on the downbeat, the last note is held a moment and resolves down a step
@@ -129,11 +149,35 @@ class Story:
                     out.append((t, min(1, dur / 2), q, vel - 2)); out.append((t + min(1, dur / 2), dur - min(1, dur / 2), res, vel - 6)); prev = res; continue
             out.append((t, dur, p, vel + (6 if acc else 0) - (4 if last and not cadence else 0)))
             prev = p
+        # chromatic approach: a short note just before a long one slides into it from a half step away
+        for i in range(1, len(out) - 1):
+            t, d, p, v = out[i]; t2, d2, p2, v2 = out[i + 1]
+            if d <= .55 and d2 >= .9 and 1 <= abs(p2 - p) <= 4 and abs(t + d - t2) < .3 and rng.random() < self.chrom:
+                q = p2 - 1 if p < p2 or rng.random() < .3 else p2 + 1
+                if lo <= q <= hi and q != out[i - 1][2]: out[i] = (t, d, q, v - 4)
         for t, dur, p, v in out:
-            b.play(voice, t, dur, p, v + rng.randint(-3, 3), horn=self.horn.get(voice, True))
+            if self.bend.get(voice) and self.feel == 'blues' and p % 12 == (self.key + 4) % 12 and dur >= .5 and rng.random() < .55:
+                # a blue note: start a half step flat and bend up into the major 3rd
+                b.play(voice, t, dur, p, v + rng.randint(-3, 3), horn=False); ch_ = b.chans[voice]
+                b.ccs += [(ch_, t - .01, 'bend', -4096), (ch_, t + .18, 'bend', -1800), (ch_, t + .34, 'bend', 0)]
+            else: b.play(voice, t, dur, p, v + rng.randint(-3, 3), horn=self.horn.get(voice, True))
             self.mel.append((t, dur, p))
             if harm: self.harmony(harm, t, dur, p, v - 10)
         return prev
+
+    def blue_i(self, ch):  # the tonic (or a I7 in the blues): where the blue 3rd and 5th belong
+        return self.feel == 'blues' and (ch[0] - self.key) % 12 == 0 and ch[1] in ('7', '7#9')
+
+    def strong(self, ch):  # chord tones fit for a strong beat; in the blues the b3 (a #9) may sit on the tonic
+        return strong_pcs(ch) | ({(self.key + 3) % 12} if self.blue_i(ch) else set())
+
+    # ---- an improvised chorus: phrased lines over the changes (engine.solo), with chromatic approaches
+    def solo(self, voice, seg, lo, hi, vel, density):
+        b = self.b; st, nb, _ = seg; ch = b.chans[voice]; n0 = len(b.notes)
+        b.solo(voice, st, st + nb, lo, hi, vel, density=density, horn=self.horn.get(voice, True),
+               mode='blues' if self.feel == 'blues' else None, key=self.key, tri_rate=.08 if self.feel in ('swing', 'blues', 'ballad') else 0)
+        for x in b.notes[n0:]:
+            if x[0] == ch: self.mel.append((x[1], x[2], x[3]))
 
     # a harmony voice: a 3rd or a 6th under the lead, on a chord tone (a 4th or 5th only if nothing else fits)
     def harmony(self, voice, t, dur, p, vel):
@@ -191,8 +235,8 @@ class Story:
                 prev[L] = self.realise(L, t0, m, llo, lhi, prev[L], vel[L], harm=A, cadence=slot == 3 or end_of_sec, susp=.3 if end_of_sec else 0)
         return prev
 
-    def coda(self, voices, bar, lo_hi, vel):
-        L, A = voices; m = self.motif.fragment().augmented()
+    def coda(self, voices, bar, lo_hi, vel, slow=True):
+        L, A = voices; m = self.motif.fragment().augmented() if slow else self.motif.fragment()
         p = self.realise(L, bar * 4, m, *lo_hi[L], (lo_hi[L][0] + lo_hi[L][1]) // 2, vel[L] - 8, cadence=True, harm=A)
         return p
 
@@ -210,7 +254,7 @@ class Story:
                         p2 = p - 12
                         if p2 < 40 or any((m[2] - p2) % 12 in (1, 11) for m in over): continue
                         nt = (ch, t, dur, p2, vel, ns); p = p2
-                    if any((m[2] - p) % 12 == 1 or (p - m[2]) % 12 == 1 for m in over): continue
+                    if any(((m[2] - p) % 12 == 1 or (p - m[2]) % 12 == 1) and m[1] > .6 for m in over): continue
             keep.append(nt)
         self.b.notes = keep
 
