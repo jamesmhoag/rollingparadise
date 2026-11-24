@@ -87,6 +87,17 @@ export function madeRules(M, ch = {}) {
 // an effect chip whose icon has a file shows the file over its glyph (js/content/assets.js)
 const chipIcon = (ch) => (ch.kind === 'fx' || ch.shop ? iconStyle('chip:' + (ch.shop || ch.kind)) : {});
 export const chipEl = (ch, cls = '') => { const st = chipIcon(ch); return h('span', { class: `chip static ${chipSig(ch)} ${cls}` }, h('i', { text: chipGlyph(ch), class: st['--ico'] ? 'has-ico' : null, style: st })); };
+// The chip a trick makes, or that stands for what it does, to illustrate it on its card: the effect chip a maker
+// places, the hazard an element fee leaves, Debt for a plain fee, and so on, worked out from the trick's own rules.
+const CHIP_FOR = { block: { kind: 'block', value: 1 }, fence: { kind: 'counter', value: 1 }, harden: { kind: 'hard' }, sticky: { kind: 'sticky' }, hat: { kind: 'hat' },
+  gild: { kind: 'std', value: 5, gold: true }, gather: { kind: 'std', value: 5 }, scatter: { kind: 'std', value: 1 }, settle: { kind: 'counter', value: 1 }, sweep: { kind: 'block', value: 1 },
+  doom: { kind: 'dynamite' }, freeze: { kind: 'frost' }, boost: { kind: 'fx', shop: 'power', resist: 'power' }, press: { kind: 'fx', shop: 'power', resist: 'power' }, enfeeble: { kind: 'fx', shop: 'control', resist: 'control' } };
+export function trickChip(def) {
+  if (def.make?.chip && D.SHOP_CHIPS[def.make.chip]) return { kind: 'fx', shop: def.make.chip, resist: def.make.chip };
+  if (def.roll.k === 'chips' && def.roll.chip) return D.MADE_CHIPS[def.roll.chip] ? { kind: 'made', model: def.roll.chip, value: D.MADE_CHIPS[def.roll.chip].value || 0 } : { kind: def.roll.chip, value: 1 };
+  if (def.roll.k === 'fee') return def.element ? { kind: def.element } : def.plant ? { kind: def.plant } : { kind: 'debt', value: def.count };
+  return CHIP_FOR[def.roll.k] || null;
+}
 export const chipTip = (ch, o = {}) => `<b>${chipName(ch)}</b><p>${chipText(ch)}</p>${traitsHtml(traitsOf(ch, o))}`;
 export { traitsOf, traitsHtml };
 

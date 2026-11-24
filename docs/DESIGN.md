@@ -244,6 +244,9 @@ the ones that cannot be built yet, what is missing; `docs/CHIP-STATUS.md` is the
   Reducer, Rebound and Transpara, and the old Orange chip to the new one.
 - Creatures (UFO, Fairy, Dragon, Mole, and from the 5¢ and 10¢ floors Unicorn and Mothership), Familiars, Spawners
   and Calamities (Inferno, House Audit, Black Hole, Volcano, Tornado), used by the tilts.
+- **Space size.** A position's columns are at most `SPACE` wide (46, in `js/ui/boutview.js`); a side with more
+  columns shrinks them to fit (13 a side fits without touching the Pit), and its chips shrink with them, keeping the
+  same share of a space.
 - Dice are drawn as their solids (d4 triangle, d6 square, d8 diamond, d10 hexagon, d20 octagon) and chips as discs
   with an edge. A die's shape alone says its size; its colour and finish come from its material (`MATERIALS` in
   `js/content/dice.js` gives the colour, the `.m-*` skins in `css/style.css` the finish): Plastic matte, Glass clear,
@@ -294,7 +297,9 @@ can see it). Tweak an aim by clicking the trick, or its marked target on the tab
 it), then a new space. Aims stay hidden until the House plays them. The button after Bid reads **Bluff**, and in the Bluff it reads **Play**.
 
 ### Reading a trick
-A card shows how its total is made under the number: the dice, `+n bid`, `+n pow` (Power), Vengeance, a Misprint's
+A trick in the Book shows the chip it makes (or what stands for its effect: Debt for a fee, the hazard an element fee
+leaves, the effect chip a maker places) beside its name, and its Bonus requirement as a gold ★ badge: how many dice of
+which size. Book cards are a little taller for it. A card shows how its total is made under the number: the dice, `+n bid`, `+n pow` (Power), Vengeance, a Misprint's
 changed value, `×` quality and foil, `×` last call and `×2` for a doubling bonus.
 A Grand or Royal card shows its quality die (`d10:7`): red when it is a dud, glowing when it is hot. Its hover says the same in words. A stack
 shows `⧉ ×n` by its name and the copies under it as a shadow. Tricks still lingering mark the spaces they will land
