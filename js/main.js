@@ -42,7 +42,7 @@ function bouncerPanel(run) {
     h('div', { class: 'row' }, btn(t('bouncer.face'), () => { closePanel(true); nav.bouncer(); }, null, 'go'), btn(t('bouncer.later'), () => closePanel()))));
 }
 // who, where and how much, for the saved run
-const runWhere = (run) => ({ who: D.heroName(run.cls), where: run.phase === 'ascent' ? t('title.where.ascent') : t('title.where.floor', { floor: run.floor }), purse: cents(run.purse) });
+const runWhere = (run) => ({ who: D.heroName(run.cls, run.roller), where: run.phase === 'ascent' ? t('title.where.ascent') : t('title.where.floor', { floor: run.floor }), purse: cents(run.purse) });
 function titleScene(root) {
   const meta = app.meta = R.loadMeta(), saved = R.loadRun();
   const resume = saved && ['floor', 'ascent'].includes(saved.phase);
@@ -83,29 +83,33 @@ function howTo() {
 }
 
 function selectScene(root) {
-  const meta = app.meta; let cls = 'hustler', jacket = 'standard', wallet = meta.wallets.includes(meta.lastWallet) ? meta.lastWallet : 'worn_cloth';
+  const meta = app.meta; let who = Object.keys(D.ROLLERS)[0], jacket = 'standard', wallet = meta.wallets.includes(meta.lastWallet) ? meta.lastWallet : 'worn_cloth';
   const cards = h('div', { class: 'cols3' }), jackets = h('div', { class: 'row wrap' });
-  const els = Object.entries(D.CLASSES).map(([id, K]) => {
-    const dice = Object.entries(K.dice).flatMap(([type, n]) => Array.from({ length: n }, () => type));
-    const el = h('button', { class: 'pick-card', style: { '--cc': K.color }, onclick: () => { cls = id; sync(); } },
-      h('h2', { text: K.hero }), h('p', { class: 'cap', text: t('select.hero.the', { cls: K.name }) }), h('p', { class: 'sub', text: D.classRule(id) }), D.flavorOf('CLASSES', id) ? h('p', { class: 'sub flavor', text: D.flavorOf('CLASSES', id) }) : null,
+  // each Roller you can walk in as: its name, its Class's attributes, and what it starts with
+  const pickRoller = (rid) => { who = rid; const X = D.ROLLERS[rid]; if (X.jacket && meta.jackets.includes(X.jacket) && R.jacketFits(X.cls, X.jacket)) jacket = X.jacket; else if (!R.jacketFits(X.cls, jacket)) jacket = 'standard';
+    if (X.wallet && meta.wallets.includes(X.wallet)) wallet = X.wallet; sync(); };
+  const els = Object.entries(D.ROLLERS).filter(([, X]) => D.CLASSES[X.cls]).map(([rid, X]) => {
+    const id = X.cls, K = D.CLASSES[id];
+    const dice = Object.entries(X.dice || {}).flatMap(([type, n]) => Array.from({ length: n }, () => type));
+    const el = h('button', { class: 'pick-card', style: { '--cc': K.color }, onclick: () => pickRoller(rid) },
+      h('h2', { text: X.name }), h('p', { class: 'cap', text: t('select.hero.the', { cls: K.name }) }), h('p', { class: 'sub', text: D.classRule(id) }), D.flavorOf('CLASSES', id) ? h('p', { class: 'sub flavor', text: D.flavorOf('CLASSES', id) }) : null,
       h('span', { class: 'cap', text: t('select.eachTurn') }), statRow(K.tip, ['trickery', 'ingenuity', 'proficiency']),
       h('span', { class: 'cap', text: t('select.unused') }), h('p', { class: 'sub', text: t('select.unused.rows', { stat: D.STATS[D.primaryC(id)].name }) }),
       h('span', { class: 'cap', text: t('select.position') }), statRow(K.bvd, ['balance', 'versatility', 'depth']),
       h('span', { class: 'cap', text: t('select.pouch') }), h('div', { class: 'dicebox' }, dice.map((type) => { const d = dieEl({ type }); d._tip = () => dieTip({ type }); d.classList.add('has-tip'); return d; })),
-      h('span', { class: 'cap', text: t('select.book') }), h('div', { class: 'inv' }, K.tricks.map((tid) => { const t = { id: tid, q: 1 }; return h('span', { class: 'tag-t', style: { '--tc': D.TYPES[D.TRICKS[tid].type].color }, tip: () => trickTip(t, id) }, D.TRICKS[tid].name); })));
-    el._id = id; return el; });
+      h('span', { class: 'cap', text: t('select.book') }), h('div', { class: 'inv' }, (X.tricks || []).filter((tid) => D.TRICKS[tid]).map((tid) => { const t = { id: tid, q: 1 }; return h('span', { class: 'tag-t', style: { '--tc': D.TYPES[D.TRICKS[tid].type].color }, tip: () => trickTip(t, id) }, D.TRICKS[tid].name); })));
+    el._id = rid; return el; });
   cards.append(...els);
-  const jb = meta.jackets.map((id) => { const b = guided(btn(`🧥 ${D.JACKETS[id].name}`, () => { jacket = id; sync(); }, () => { const K = D.CLASSES[cls]; return jacketTip(id, { ...K.tip, ...K.c, ...K.bvd }) + `<p class="dim">${t('select.jacket.against', { cls: K.name })}</p>`; }, 'small'), 'jacket'); b._id = id; return b; });
+  const jb = meta.jackets.map((id) => { const b = guided(btn(`🧥 ${D.JACKETS[id].name}`, () => { jacket = id; sync(); }, () => { const K = D.CLASSES[D.ROLLERS[who].cls]; return jacketTip(id, { ...K.tip, ...K.c, ...K.bvd }) + `<p class="dim">${t('select.jacket.against', { cls: K.name })}</p>`; }, 'small'), 'jacket'); b._id = id; return b; });
   jackets.append(h('span', { class: 'cap', text: t('select.jacket') }), ...jb);
   const wb = meta.wallets.map((id) => { const b = guided(btn(`👛 ${D.WALLETS[id].name}`, () => { wallet = id; sync(); }, () => walletTip(id), 'small'), 'wallet'); b._id = id; return b; });
   const keptEl = h('span', { class: 'sub fade-t' });
   jackets.append(h('span', { class: 'cap', style: { marginLeft: '18px' }, text: t('select.wallet') }), ...wb, keptEl);
-  function sync() { for (const el of els) el.classList.toggle('sel', el._id === cls); for (const b of jb) b.classList.toggle('on', b._id === jacket); for (const b of wb) b.classList.toggle('on', b._id === wallet);
+  function sync() { for (const el of els) el.classList.toggle('sel', el._id === who); for (const b of jb) b.classList.toggle('on', b._id === jacket); for (const b of wb) b.classList.toggle('on', b._id === wallet);
     const k = (meta.kept || []).slice(0, D.WALLETS[wallet].slots); keptEl.textContent = k.length ? t('select.kept', { cards: k.map((c) => D.CARDS[c].name).join(', ') }) : ''; }
   sync();
   root.append(h('div', { class: 'page', style: { top: 0, padding: '22px 40px' } }, h('div', { class: 'row between' }, h('div', {}, h('h1', { text: t('select.title') }), h('p', { class: 'sub', text: t('select.sub') })),
-    h('div', { class: 'row' }, btn(t('select.back'), () => nav.title()), btn(t('select.walkIn'), () => { app.run = R.newRun(cls, jacket, undefined, { wallet, kept: meta.kept, pass: meta.keptPass }); meta.kept = []; meta.keptPass = 0; meta.lastWallet = wallet; R.saveMeta(meta); nav.intro().then(() => { if (app.meta.seenHow) return toast(t('select.doorman')); app.meta.seenHow = true; R.saveMeta(app.meta); howTo(); }); }, t('select.walkIn.tip'), 'big go'))),
+    h('div', { class: 'row' }, btn(t('select.back'), () => nav.title()), btn(t('select.walkIn'), () => { app.run = R.newRun(who, jacket, undefined, { wallet, kept: meta.kept, pass: meta.keptPass }); meta.kept = []; meta.keptPass = 0; meta.lastWallet = wallet; R.saveMeta(meta); nav.intro().then(() => { if (app.meta.seenHow) return toast(t('select.doorman')); app.meta.seenHow = true; R.saveMeta(app.meta); howTo(); }); }, t('select.walkIn.tip'), 'big go'))),
     h('div', { style: { marginTop: '16px' } }, cards), h('div', { style: { marginTop: '14px' } }, jackets)));
 }
 

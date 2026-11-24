@@ -33,7 +33,7 @@ export function loadRun() {
 }
 
 // A trick: its quality (q), wear (its condition), and its print: rarity, foil tier, a Misprint's changes, Gem Mint.
-const mkTrick = (run, id, q = 1, o = {}) => { const t = { uid: run.nextId++, id, q, wear: o.wear ?? D.WEAR.good, rar: o.rar || (o.foil ? 'foil' : 'basic') };
+const mkTrick = (run, id, q = 1, o = {}) => { q = Math.max(q, D.TRICKS[id]?.q || 1); const t = { uid: run.nextId++, id, q, wear: o.wear ?? D.WEAR.good, rar: o.rar || (o.foil ? 'foil' : 'basic') };
   if (o.foil) t.foil = o.foil; if (o.mis) t.mis = o.mis; if (o.gem) t.gem = true; return t; };
 const printOf = (t) => ({ foil: t.foil, rar: t.rar, mis: t.mis }); // a copy keeps the print, not the wear
 const mkDie = (run, type, mat = D.DEFAULT_MAT) => ({ id: run.nextId++, type, mat, up: [] });
@@ -58,17 +58,18 @@ export function dropCard(run, id) { if (!hasCard(run, id) || D.LANYARD_CARDS.inc
 export const price = (run, shop, base) => Math.max(1, Math.round(base * (hasCard(run, `discount_${shop}`) || (shop === 'trader' && hasCard(run, 'membership')) ? D.TUNING.shops.discount : 1)));
 function spend(run, amt, label) { if (run.purse < amt) return false; run.purse -= amt; run.stats.spent += amt; ledger(run, label, -amt); return true; }
 
-export function newRun(cls, jacketReq = 'standard', seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0, gear = {}) {
+// who: a Roller id (ROLLERS), or a class id for the first Roller of that class
+export function newRun(who, jacketReq = 'standard', seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0, gear = {}) {
+  const roller = D.rollerOf(who), Rl = D.ROLLERS[roller], cls = Rl.cls;
   const jacket = jacketFits(cls, jacketReq) ? jacketReq : 'standard'; // a level 0 jacket only fits the class it was cut for
   const kept = [].concat(gear.passes ?? gear.pass ?? []).filter((f) => f > 0);
-  const run = { v: 1, rng: new RNG(seed), seed, cls, jacket, wallet: gear.wallet || 'worn_cloth', pass: 0, passes: [], pendingCard: null, floor: 0, purse: 0, nextId: 1, dice: [], tricks: [], chips: {},
+  const run = { v: 1, rng: new RNG(seed), seed, cls, roller, worth0: Rl.worth ?? 200, bizCards: [], trait: null, jacket, wallet: gear.wallet || 'worn_cloth', pass: 0, passes: [], pendingCard: null, floor: 0, purse: 0, nextId: 1, dice: [], tricks: [], chips: {},
     drink: null, cards: [], punches: 0, rest: null, suiteKey: false, phase: 'intro', fs: null, bets: [], news: [], ledger: [], ascent: null,
     plan: { spacing: 'row', stacking: 'maxed', counts: null, resist: {} },
     stats: { bouts: 0, wins: 0, losses: 0, spent: 0, won: 0, turns: 0, dd: 0 } };
   for (const f of kept) addPass(run, f);
-  const K = D.CLASSES[cls];
-  for (const [type, n] of Object.entries(K.dice)) for (let i = 0; i < n; i++) run.dice.push(mkDie(run, type));
-  run.tricks = K.tricks.map((id) => mkTrick(run, id));
+  for (const [type, n] of Object.entries(Rl.dice || {})) for (let i = 0; i < n; i++) run.dice.push(mkDie(run, type));
+  run.tricks = (Rl.tricks || []).filter((id) => D.TRICKS[id]).map((id) => mkTrick(run, id));
   // cards kept from the last run are on the dresser; starters top the wallet up to two
   const slots = walletOf(run).slots; run.cards = (gear.kept || []).filter((id) => D.CARDS[id]).slice(0, slots);
   for (const id of run.rng.shuffle(D.STARTER_CARDS)) { if (run.cards.length >= Math.min(2, slots)) break; if (!run.cards.includes(id)) run.cards.push(id); }
@@ -86,7 +87,7 @@ export function dimsWhy(run, extra = {}) {
 }
 // effective attributes: class + jacket + cards + rest + cheat tilts
 export function rollerStats(run, extra = {}) {
-  const K = D.CLASSES[run.cls], v = { ...K.tip, charisma: 0, cunning: 0, conviction: 0, ...K.bvd }; // CCC: only what gear adds (the table earns the rest)
+  const K = D.CLASSES[run.cls], v = { ...K.tip, ...D.cccOf(run.cls), ...K.bvd }; // CCC: the class's base and what gear adds (the table earns the rest)
   const add = (mods) => { for (const [k, n] of Object.entries(mods || {})) v[k] = (v[k] || 0) + n; };
   add(D.JACKETS[run.jacket]?.mods); for (const id of run.cards) add(D.CARDS[id]?.mods);
   if (run.rest && run.rest.bouts > 0) add({ [K.primary]: run.rest.amt });
@@ -112,7 +113,7 @@ function rosterOpts(id, o = {}) { const X = D.ROSTER[id]; if (!X) return o; retu
 export function genOpponent(run, floor, worthTarget, o = {}) {
   const X = o.roster ? D.ROSTER[o.roster] : null; if (X?.purse > 0) worthTarget = X.purse;
   const rng = run.rng, cls = o.cls || rng.pick(Object.keys(D.CLASSES)), K = D.CLASSES[cls], f = clamp(floor, 1, 4);
-  const tip = { ...K.tip }, c = { charisma: 0, cunning: 0, conviction: 0 }, bvd = { ...K.bvd };
+  const tip = { ...K.tip }, c = D.cccOf(cls), bvd = { ...K.bvd };
   for (const [k, v] of Object.entries(D.JACKETS[X?.jacket]?.mods || {})) { if (k in tip) tip[k] += v; else if (k in c) c[k] += v; else if (k in bvd) bvd[k] += v; } // its jacket
   if (floor >= 2) tip.proficiency++; if (floor >= 3) tip.ingenuity++; if (floor >= 4) tip.trickery++;
   const why = { balance: [[tx('run.class', { name: K.name }), K.bvd.balance]].filter((x) => x[1]), versatility: [[tx('run.class', { name: K.name }), K.bvd.versatility]].filter((x) => x[1]), depth: [[tx('run.class', { name: K.name }), K.bvd.depth]].filter((x) => x[1]) };
@@ -120,9 +121,12 @@ export function genOpponent(run, floor, worthTarget, o = {}) {
   if (o.weak) { tip.trickery = 1; tip.proficiency = 1; tip.ingenuity = 1; }
   const B0 = D.BASE_DIMS, dims = { cols: o.cols || B0.cols, stackMax: Math.max(1, B0.stackMax + bvd.balance), meterRows: Math.max(1, B0.meterRows + bvd.versatility), barRows: Math.max(1, B0.barRows + bvd.depth) };
   const pools = [null, ['d4', 'd6'], ['d6', 'd8'], ['d6', 'd8', 'd10'], ['d8', 'd8', 'd10', 'd10', 'd20']];
-  const dice = Array.from({ length: o.weak ? 3 : 5 + f * 2 + (o.boss ? 2 : 0) }, () => mkDie(run, o.weak ? 'd4' : rng.pick(pools[f])));
-  const q = o.q || Math.min(3, f); let ids = o.weak ? ['charge'] : [...K.tricks];
-  if (!o.weak) { const extra = rng.shuffle(D.TRICK_IDS.filter((id) => !ids.includes(id) && (!D.TRICKS[id].cls || D.TRICKS[id].cls === cls))); ids = ids.concat(extra.slice(0, f + (o.boss ? 1 : 0))); }
+  // its own starting Pouch and Book when the roster gives them; otherwise dice and tricks for the floor
+  const ownDice = !o.weak && X?.dice && Object.values(X.dice).some((n) => n > 0) ? Object.entries(X.dice).flatMap(([type, n]) => Array.from({ length: n }, () => type)).filter((k) => D.DICE[k]) : null;
+  const dice = ownDice ? ownDice.map((type) => mkDie(run, type)) : Array.from({ length: o.weak ? 3 : 5 + f * 2 + (o.boss ? 2 : 0) }, () => mkDie(run, o.weak ? 'd4' : rng.pick(pools[f])));
+  const kit = D.ROLLERS[D.rollerOf(cls)]?.tricks || ['charge'], ownTricks = !o.weak && X?.tricks?.length ? X.tricks.filter((id) => D.TRICKS[id]) : null;
+  const q = o.q || Math.min(3, f); let ids = o.weak ? ['charge'] : ownTricks ? [...ownTricks] : [...kit];
+  if (!o.weak && !ownTricks) { const extra = rng.shuffle(D.TRICK_IDS.filter((id) => !ids.includes(id) && (!D.TRICKS[id].cls || D.TRICKS[id].cls === cls))); ids = ids.concat(extra.slice(0, f + (o.boss ? 1 : 0))); }
   const tricks = ids.map((id) => mkTrick(run, id, q, { foil: (o.boss ? rng.int(2) : 0) + (o.foil || 0) }));
   // chips: a little petty cash in 1¢ for bidding, the rest in the biggest chips the floor allows
   const md = o.maxDenom || maxDenom(floor), cap = barCapacity(dims);
@@ -439,7 +443,7 @@ function planGroups(run, counts, resist) {
 // ---------- bouts ----------
 function playerSpec(run, counts, extra = {}, dimsOverride) {
   const st = rollerStats(run, extra), K = D.CLASSES[run.cls];
-  return { name: 'You', title: K.name, cls: run.cls, tip: st.tip, c: st.c, dims: dimsOverride || st.dims, why: dimsOverride ? { note: tx('run.a-bar-table-one') } : dimsWhy(run, extra), deploy: K.deploy, tricks: run.tricks, dice: run.dice,
+  return { name: 'You', title: K.name, cls: run.cls, roller: run.roller || D.rollerOf(run.cls), trait: run.trait || null, sign: D.ROLLERS[run.roller]?.sign || null, tip: st.tip, c: st.c, dims: dimsOverride || st.dims, why: dimsOverride ? { note: tx('run.a-bar-table-one') } : dimsWhy(run, extra), deploy: K.deploy, tricks: run.tricks, dice: run.dice,
     plan: { chips: planGroups(run, counts, extra.resist), spacing: run.plan.spacing, stacking: run.plan.stacking, ...(validLayout(run, dimsOverride || st.dims) ? { layout: run.plan.layout } : {}), resistChips: run.cards.map((id) => D.CARDS[id]?.resist).filter(Boolean) }, drink: run.drink && run.drink.sips > 0 ? run.drink : null, ...extra.side };
 }
 const committed = (bout) => sum(bout.sides[0].grid.flat().flatMap((c) => c.chips).filter((ch) => ch.kind === 'std' && !ch.resist), (ch) => ch.value);
@@ -513,7 +517,7 @@ export function settle(run, ctx, bout) {
   run.stats.bouts++; run.stats.turns += sm.turns; if (sm.win) run.stats.wins++; else run.stats.losses++;
   if (run.drink) { run.drink.sips = bout.sides[0].drink ? bout.sides[0].drink.sips : run.drink.sips; if (run.drink.sips <= 0) run.drink = null; }
   if (ctx.kind === 'intro') {
-    if (sm.win) { run.purse = 200 + sm.oppFees; addPass(run, 1); lines.push([tx('run.welcome-stake-from-the'), 200], [tx('run.fees-your-opponent-paid'), sm.oppFees], [run.pass > 1 ? tx('run.your-gets-you-past', { name: D.PASSES[run.pass].name }) : tx('run.the-doorman-hands-you'), 0]); ledger(run, tx('run.intro-bout'), run.purse); }
+    if (sm.win) { run.purse = (run.worth0 ?? 200) + sm.oppFees; addPass(run, 1); lines.push([tx('run.welcome-stake-from-the'), run.worth0 ?? 200], [tx('run.fees-your-opponent-paid'), sm.oppFees], [run.pass > 1 ? tx('run.your-gets-you-past', { name: D.PASSES[run.pass].name }) : tx('run.the-doorman-hands-you'), 0]); ledger(run, tx('run.intro-bout'), run.purse); }
     else lines.push([tx('run.the-doorman-shrugs-try'), 0]);
     res.total = run.purse; return res;
   }
@@ -572,7 +576,10 @@ export function settle(run, ctx, bout) {
       if (ctx.prep.dd) { run.fs.ddStreak++; run.stats.dd++; run.fs.bossOpen = true; run.suiteKey = true; if (!hasCard(run, 'suite')) run.cards.push('suite'); res.news.push(tx('run.double-down-won-a')); }
       run.fs.lastWin = { tilts: { ...ctx.prep.tilts }, mult: ctx.mult };
       if (!tablesLeft(run) && !run.fs.bossOpen) { run.fs.bossOpen = true; res.news.push(tx('run.the-high-roller-is')); }
-    } else { res.news.push(tx('run.is-dethroned-the-stairs', { name: ctx.opp.name })); }
+    } else { res.news.push(tx('run.is-dethroned-the-stairs', { name: ctx.opp.name }));
+      // a High Roller's business card: yours to keep, and to play by (one at a time, picked on the floor)
+      const card = ctx.opp.trait; if (card && D.BOSS_TRAITS[card]) { run.bizCards = run.bizCards || []; if (!run.bizCards.includes(card)) run.bizCards.push(card); if (!run.trait) run.trait = card;
+        res.news.push(tx('run.biz-card-kept', { name: ctx.opp.name, trait: D.BOSS_TRAITS[card].name })); } }
   } else {
     run.purse = bounty;
     lines.push([tx('run.chips-in-your-position'), -ctx.committed], ['Wager', -ctx.wager]);
@@ -623,6 +630,8 @@ export function buildAscent(run, meta) {
   run.ascent = { ladder, step, start: step }; run.phase = 'ascent'; run.floor = 5; run.fs = null; run.cards = []; run.jacket = 'standard';
   return run.ascent;
 }
+// the business card you play by: one of the High Rollers' cards you have won (null: none)
+export function carryCard(run, id) { if (id && !(run.bizCards || []).includes(id)) return false; run.trait = id || null; return true; }
 export const jacketFits = (cls, id) => !D.JACKETS[id].cls || D.JACKETS[id].cls === cls;
 export const jacketAvailable = (run, id) => D.JACKETS[id].level <= Math.max(0, run.floor - 1);
 export function buyJacket(run, meta, id) {

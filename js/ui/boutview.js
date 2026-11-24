@@ -129,11 +129,11 @@ export function boutScene(root, bout, ctx, onDone) {
   // are D.NEON's, set in Build mode: a tube colour and a glow colour for the frame, the name and the class.
   // a High Roller's business card: the trait that bends one rule of the bout their way
   const bizCard = (s) => { const T = B.bossTrait(s); if (!T) return null;
-    return h('span', { class: 'gcard bizcard', guide: 'boss-trait', tip: () => tx('trait.card-tip', { name: s.name, title: T.title, trait: T.name, rule: B.traitRule(T), flavor: T.flavor }) },
+    return h('span', { class: 'gcard bizcard', guide: 'boss-trait', tip: () => tx('trait.card-tip', { name: s === me ? D.heroName(me.cls, me.roller) : s.name, title: T.title, trait: T.name, rule: B.traitRule(T), flavor: T.flavor }) },
       h('em', { text: tx('table.biz-card') }), h('b', { text: T.name })); };
   const nameSign = (name, cls, tipFn) => h('div', { class: 'name nsign', tip: tipFn }, h('b', { class: 'neon-name', text: name }), h('span', { class: 'neon-class', text: cls }));
   // the signs: yours, theirs (their own if their roster entry has one) and the House's, all built the same way (sign.js)
-  const signs = { you: () => signOf('you'), them: () => signOf('them', opp.sign), house: () => signOf('house') };
+  const signs = { you: () => signOf('you', me.sign), them: () => signOf('them', opp.sign), house: () => signOf('house') };
   function paintNeon() {
     const S = { you: signs.you(), them: signs.them(), house: signs.house() };
     for (const [who, N] of Object.entries(S)) for (const part of ['border', 'name', 'cls']) N[part].forEach((c, i) => root.style.setProperty(`--${who}-${part}${i + 1}`, c));
@@ -142,8 +142,9 @@ export function boutScene(root, bout, ctx, onDone) {
     if (mine) dressSign(mine, S.you, 'you'); if (theirs) dressSign(theirs, S.them, 'them'); if (houseSign) dressSign(houseSign, S.house, 'house');
     marquee.style.display = S.house.frame === 'bulbs' ? '' : 'none'; }
   const header = h('div', { class: 'bout-head' },
-    h('div', { class: 'who me' }, nameSign(D.CLASSES[me.cls].hero || D.CLASSES[me.cls].name, D.CLASSES[me.cls].name, () => tx('table.sign-tip', { name: D.heroName(me.cls), cls: D.CLASSES[me.cls].name })),
+    h('div', { class: 'who me' }, nameSign(D.ROLLERS[me.roller || D.rollerOf(me.cls)]?.name || D.CLASSES[me.cls].name, D.CLASSES[me.cls].name, () => tx('table.sign-tip', { name: D.heroName(me.cls, me.roller), cls: D.CLASSES[me.cls].name })),
       h('div', { class: 'worth', tip: worthTip(me) }, 'Worth ', worthEl[0], '¢', owesEl[0]),
+      bizCard(me),
       h('div', { class: 'pills steps' }, STEPS.map(([k, name, stat, reward, what], i) => (pillEl[k] = h('span', { class: 'pill step', tip: pillTip(stat, reward, what, k) },
         h('em', { text: String(i + 1) }), ` ${name} `, (pill[k] = h('span'))))))),
     h('div', { class: 'mid' }, (houseSign = h('div', { class: 'house-sign', tip: tx('table.the-house-every-chip') }, marquee,
@@ -588,7 +589,9 @@ export function boutScene(root, bout, ctx, onDone) {
       const fn = cell.anchor?.n || 2; // a Big chip or Volcano covers 2×2; big made chips 2, 3 or 5 a side
       if (cell.anchor && r + fn - 1 < s.rows && c + fn - 1 < s.dims.cols) { const a = cellPos(si, r, c), b2 = cellPos(si, r + fn - 1, c + fn - 1), cx = (a.x + b2.x) / 2 + a.w / 2, cy = (a.y + b2.y) / 2 + CH / 2;
         cell.chips.forEach((ch, lvl) => want.set(ch.id, { x: cx - CHIP / 2, y: cy - CHIP / 2 + 10 * ck[si] - Math.min(lvl, 12) * 5 * ck[si], z: 20 + c * 40 + lvl, ch: seenAs(ch, si), side: si, s: (ch.big || ch.kind === 'volcano' ? 1.9 : B.footOf(ch) > 1 ? B.footOf(ch) * 0.95 : 1) * ck[si] })); }
-      else cell.chips.forEach((ch, lvl) => want.set(ch.id, { ...chipPos(si, r, c, lvl), ch: seenAs(ch, si), side: si })); } });
+      else cell.chips.forEach((ch, lvl) => { if (ch.mat) { const n = ch.mat.n, a = cellPos(si, ch.mat.r, ch.mat.c), b2 = cellPos(si, ch.mat.r + n - 1, ch.mat.c + n - 1); // a flat chip lies under its whole footprint
+          want.set(ch.id, { x: (a.x + b2.x) / 2 + a.w / 2 - CHIP / 2, y: (a.y + b2.y) / 2 + CH / 2 - CHIP / 2, z: 2, ch: seenAs(ch, si), side: si, s: n * 0.95 * ck[si], mat: true }); return; }
+        want.set(ch.id, { ...chipPos(si, r, c, lvl - (cell.chips[0]?.mat ? 1 : 0)), ch: seenAs(ch, si), side: si }); }); } });
     // bids pile on their trick's BID ring (click the pile to take its top chip back; click the card to bid more)
     [0, 1].forEach((si) => { for (const e of sideOf(si).run) { const k = ckey(si, e.uid), cl = cards.get(k); if (!cl || !e.bid.length) continue; const sp = bidSpot(els.cards.get(k));
       e.bid.forEach((ch, i) => want.set(ch.id, { x: cl.x + sp.x, y: cl.y + sp.y - i * 3, z: 900 + i, ch, side: si, unbid: si ? null : e.uid })); } });
@@ -604,7 +607,7 @@ export function boutScene(root, bout, ctx, onDone) {
         else if (fx[id] === 'spawn' && !ui.first && !w.pit) { spawn(el, w.x, w.y - 34, 'scale(.8)'); sfx('land', 250); } // made chips appear just above their space, then land
         else if (ui.first) spawn(el, w.x, w.y - 46, '', Math.min(900, n * 5));
         else spawn(el, w.x, w.y, 'scale(.1)'); n++; }
-      el._side = w.side; el.style.opacity = '1'; el.style.zIndex = w.z; place(el, w.x, w.y, extra); el.classList.toggle('inpit', !!w.pit);
+      el._side = w.side; el.style.opacity = '1'; el.style.zIndex = w.z; place(el, w.x, w.y, extra); el.classList.toggle('inpit', !!w.pit); el.classList.toggle('mat', !!w.mat);
       if (w.pit) el._tip = () => tx('table.on-turn', { chipTip: chipTip(w.ch), v: w.ch.from === 'bid' ? tx('table.bid-to-the-house') : tx('table.lost-to-a-fee'), turn: w.ch.turn });
       el.classList.toggle('flipsel', flipIds.has(id)); el.classList.toggle('bidsel', handIds.has(id)); el.classList.toggle('handsel', handIds.has(id));
       el.classList.toggle('pointed', ui.point?.id === id);

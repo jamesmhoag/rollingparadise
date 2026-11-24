@@ -407,15 +407,66 @@ tilt, felt, drink, jacket, wallet, card, pass, die material, die upgrade and opp
 `js/content/flavor.js` (table `FLAVOR`, editable in Build mode; the makers have a Flavour field), shown in italics in
 its hover.
 
+### Redistribution, Settle and Stir
+- Chips an effect puts on the Bet go front to back, left to right, the same for every Roller: a class's deployment
+  shapes only its own starting position, never the outcome of an effect.
+- **Settle** aims at a space of your own position. In that column of that zone (Bet or Stake) it clears Debt and
+  hazards up to the total, then gathers the column's chips into full stacks starting at the targeted space and
+  filling outward from it, biggest chips nearest. Anchored stacks, Holes and big chips stay; what cannot fit goes to
+  the Bet.
+- **Stir** makes a Stir chip: a 3×3 flat chip (no stack height) that slips under the stacks where it lands. When made
+  it hands out the roll it was made with, 1¢ at a time, round the value chips lying on it, and it is gone at the end
+  of the turn. Any made-chip trick can set the chip's width, a flat thickness, and whether a wide chip slips under
+  stacks (`roll.foot`, `roll.flat`, `roll.slip`, in the Trick maker); the chip maker's reach has *Chips inside it*.
+
+### Trick quality and Bonuses (Trick maker)
+- A trick has no "lasts N turns" setting (its made chips have their own life, from the chip). The *Linger* Bonus is
+  gone; lingering is only ever by stacking copies.
+- **Quality level**: left on *Auto*, a trick shows a level rated from its traits (`D.rateTrick`: the average of its
+  Bonus dice, how far its deployment reaches, and how hard its Bonus condition is), Common to Royal. Set a level
+  (`q`, 1-4) and every copy of it is dealt at least that quality.
+- **Runs** is a Bonus condition: the Bonus dice show values in sequence (3-4-5), in any order.
+- Every Build-mode option has a hover saying what it is for (`help.<label key>` in `js/text/en.js`, shown by `lab()`).
+
 ### Neon signs
 Every seat at the table is a neon sign, and so is the House's (`js/ui/sign.js`). A sign has a tube and glow colour for
-its frame, name and class; a frame style (tube, double, dashed, dotted, bulbs, none) and corner rounding; a Unicode
-symbol at the corners or along the edge; a mount (a backing colour and an image, by URL or from a file); and one part
+its frame, name and class; a frame drawn as an SVG over the sign (tubes: tube, double, triple, rope, zigzag, wave,
+gradient; lamps: dashes, dots, bulbs, or *symbols*, the edge symbol all the way round; or none) and corner rounding;
+a frame **motion** (chase, breathe, swap, twinkle, still: lamps do it one by one, tubes along their length, with a
+glint running round a chasing tube); a symbol at the corners or along the top and bottom, which replaces the frame
+under it (no `$`; signs, stars of four to eight points and stars in or round shapes, shapes, card suits, dice, a
+drawn skull and the skull and crossbones, all shown as text rather than emoji); a mount (a backing colour and an image, by URL or from a file); and one part
 that blinks (breathe, pulse, flicker or alternate). Every blink is slow and soft (well under three changes a second,
-never fully dark) and all of them, the House's bulbs included, stop under reduced motion. Build mode › Neon sets
-yours, the opponents' shared look and the House's (`D.NEON.you / them / house`); the Opponent maker gives any
-opponent its own (`ROSTER[id].sign`, laid over the shared look). The House's bulb flash was slowed to stay under three
+never fully dark) and all of them, the House's bulbs included, stop under reduced motion. There is no separate Neon
+tool: the Roller maker lists *Every Roller's sign* (`D.NEON.you`) above the Rollers and gives each its own
+(`ROLLERS[id].sign`); the Opponent maker lists *Every opponent's sign* and *The House's sign* (`D.NEON.them / house`)
+above the opponents and gives each its own (`ROSTER[id].sign`). An own sign is laid over its shared look. The House's bulb flash was slowed to stay under three
 flashes a second.
+
+### Classes, Rollers and Opponents
+- A **Class** (`CLASSES`) is attributes only: Draw, Bid, Roll (TIP), Stack height, Bet rows, Stake rows (BVD), a
+  starting Charisma, Cunning and Conviction (`ccc`, which the table's rows then add to), the attribute it leans on
+  (`primary`, which picks the C its Stake rows reward), where it deploys from, and a colour. Build mode's Class maker.
+- A **Roller** (`ROLLERS`, `js/content/rollers.js`) is a name, a Class and a starting inventory: its Book, its Pouch,
+  its Worth (the ¢ it is staked with after the Doorman's bout), the wallet and jacket it walks in with (when you own
+  them), and its own neon sign. The pick screen lists Rollers. `newRun` takes a Roller id (a class id still works:
+  the first Roller of that class). Build mode's Roller maker.
+- An **Opponent** (`ROSTER`) is a Roller across the table: an Opponent name, a Class (every one has one now; the
+  maker has no *random class*), and a starting inventory: its own Book and Pouch when set (otherwise its class's
+  Roller's Book plus tricks for the floor, and dice for the floor), purse, wallet, jacket, drink and chips; plus where
+  it sits and how it plays. A **High Roller** adds its business card and its phases.
+- **Business cards**: clearing a High Roller hands you its card (`run.bizCards`). You play by one at a time
+  (`run.trait`, the first you win, changed from your inventory on the floor), with the same rule it played against you.
+
+### Build mode lists are linked, not typed
+- No Build-mode field takes a comma-separated list any more. A list of things the game defines (tricks, materials,
+  dyes, chips, weather, immunities, face effects, floors) is edited by picking each item from that table, by name,
+  with ✕ to take one off; an item that no longer exists is marked. Colour lists use colour pickers, number lists
+  number boxes, and free lists (tags) one box per item, offered the values already in use.
+- The test table's dice are a count per die; an opponent's precise Stake layout is painted with a brush, and each
+  space shows its chips by name.
+- The opponent names dealt at the tables and the High Rollers of each floor (`OPPONENTS`, `BOSSES`) are no longer
+  typed lists: they are rebuilt from the roster, so a renamed or new opponent is dealt under its own name.
 
 ### High Roller traits (business cards)
 Business Cards no longer raise your attributes (old saves drop them; the starter wallet gets the discount cards).

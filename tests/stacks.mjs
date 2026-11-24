@@ -68,4 +68,34 @@ console.log('ok, stacks: bid before dice, one size of dice per trick, Bonus dice
   assert(['ufo', 'dragon', 'mothership'].every((k) => B.creatureType(k) === 'expense') && B.creatureType('fairy') === 'correction', 'each creature acts in the House phase of its type');
   void opp;
 }
+
+// ---------- Settle gathers the targeted column toward the targeted space; effects place chips the same for every class ----------
+{
+  const { bout, me } = table(31), m = me.dims.meterRows, C = me.dims.cols;
+  for (let r = 0; r < me.rows; r++) for (let c = 0; c < C; c++) me.grid[r][c].chips = [];
+  const last = me.rows - 1, mk = (v) => ({ id: 7e6 + Math.random() * 1e6 | 0, kind: 'std', value: v });
+  me.grid[m][1].chips = [mk(1)]; me.grid[last][1].chips = [mk(5), { id: 7.9e6, kind: 'debt', value: 2 }]; me.grid[m][2].chips = [mk(1)];
+  const e = { uid: 'st', trick: { id: 'settle', q: 1 }, dice: [die('s1', 'd6', 4)], bid: [], bidValue: 0, paid: [], state: 'play', stack: [], target: { side: 0, r: last, c: 1 } };
+  drain(B._test.play(bout, me, e));
+  assert(me.grid[last][1].chips.filter((ch) => ch.kind === 'std').length === 2 && !me.grid[m][1].chips.length, 'the column\'s chips gather onto the targeted space');
+  assert(!me.grid[last][1].chips.some((ch) => ch.kind === 'debt'), 'its Debt is cleared');
+  assert(me.grid[m][2].chips.length === 1, 'other columns are left alone');
+  const fox = R.newRun('rascal', 'standard', 32); R.enterFloor(fox, 1); const fb = R.startTable(fox, R.newPrep(fox, 'table', 0)).bout, fs = fb.sides[0];
+  for (const x of [me, fs]) for (let r = 0; r < x.dims.meterRows; r++) for (let c = 0; c < x.dims.cols; c++) x.grid[r][c].chips = [];
+  B._test.addToMeter(bout, me, [mk(1)]); B._test.addToMeter(fb, fs, [mk(1)]);
+  const at = (x) => { for (let r = 0; r < x.dims.meterRows; r++) for (let c = 0; c < x.dims.cols; c++) if (x.grid[r][c].chips.length) return `${r}:${c}`; };
+  assert(at(me) === at(fs) && at(me) === '0:0', 'an effect puts chips on the Bet the same way for a Hustler and a Rascal');
+}
+// ---------- Stir: a wide flat chip that slips under the stacks and shares its roll among the chips on it ----------
+{
+  const { bout, me } = table(33), m = me.dims.meterRows;
+  for (let r = 0; r < me.rows; r++) for (let c = 0; c < me.dims.cols; c++) me.grid[r][c].chips = [];
+  const a = { id: 7.1e6, kind: 'std', value: 1 }, b = { id: 7.2e6, kind: 'std', value: 1 }, far = { id: 7.3e6, kind: 'std', value: 1 };
+  me.grid[m][0].chips = [a]; me.grid[m + 1][1].chips = [b]; me.grid[m][4].chips = [far];
+  const e = { uid: 'sr', trick: { id: 'stir', q: 1 }, dice: [die('x1', 'd6', 4)], bid: [], bidValue: 0, paid: [], state: 'play', stack: [], target: { side: 0, r: m, c: 0 } };
+  drain(B._test.play(bout, me, e)); drain(B._test.madeWork(bout, me, 'investment'));
+  const stir = me.grid[m][0].chips[0];
+  assert(stir?.model === 'stir' && stir.mat?.n === 3 && B.solidCount(me.grid[m][0]) === 1, 'it lies under the stack, 3×3, taking no height');
+  assert(a.value + b.value === 2 + 4 && far.value === 1, 'the chips on it share the roll; a chip off it gets nothing');
+}
 console.log('ok, resolution order: the owner first on a contested space; creatures after both Rollers');

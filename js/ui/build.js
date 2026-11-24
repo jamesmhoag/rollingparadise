@@ -10,17 +10,17 @@ import { chipMaker, newChip } from './chipmaker.js';
 import { classicChips } from '../chipmodel.js';
 import { tuner, TUNER_SECTIONS } from './tuner.js';
 import { testTable } from './testtable.js';
-import { classMaker, newClass, rosterMaker, newOpponent, rosterLabel, rosterSub } from './rostermaker.js';
+import { IMMUNE } from '../content/chipmaker.js';
+import { classMaker, newClass, rollerMaker, newRoller, rollerLabel, rollerSub, rosterMaker, newOpponent, rosterLabel, rosterSub, sharedSign, SHARED_SIGNS } from './rostermaker.js';
 import { isMade } from '../trickmaker.js';
-import { neonMaker } from './neonmaker.js';
 
 // the tables, grouped as the editor lists them
 const GROUPS = [
-  ['build.group.rollers', ['CLASSES', 'BASE_DIMS', 'STATS']],
+  ['build.group.rollers', ['CLASSES', 'ROLLERS', 'BASE_DIMS', 'STATS']],
   ['build.group.tricks', ['TRICKS', 'TYPES', 'CONDITIONS', 'PACKS', 'QDIE']],
   ['build.group.chips', ['CHIPS', 'SHOP_CHIPS', 'CHIP_TIERS', 'CREATURES', 'ORBITALS', 'CALAMITIES']],
   ['build.group.dice', ['DICE', 'MATERIALS', 'DICE_SHOP', 'BONE', 'MELT', 'CASTS', 'DYES', 'DIAMOND', 'DIE_VARS']],
-  ['build.group.floors', ['FLOORS', 'OPPONENTS', 'BOSSES', 'FELTS', 'TILTS', 'TILT_PRESSURE', 'PRIZES']],
+  ['build.group.floors', ['FLOORS', 'FELTS', 'TILTS', 'TILT_PRESSURE', 'PRIZES']],
   ['build.group.shops', ['DRINKS', 'SPORTS', 'ODDS', 'JACKETS', 'CARDS', 'WALLETS', 'PASSES', 'DENOMS', 'WEAR']],
   ['build.group.words', ['TEXT', 'GUIDE']],
 ];
@@ -28,6 +28,24 @@ const isObj = (x) => x && typeof x === 'object';
 // a table of entries (each one an object) is listed entry by entry; anything else is edited as one block
 const entriesOf = (tb) => { const T = D.TABLES[tb]; const vals = Object.entries(T).filter(([, v]) => v != null);
   return vals.length && vals.filter(([, v]) => isObj(v) && !Array.isArray(v)).length >= vals.length * 0.6 ? vals.map(([k]) => k) : null; };
+// What a list's items name, so the list is edited by picking them rather than typing ids: by the field's name, or by
+// the table every item already belongs to. Each source gives [[id, label], ...].
+const named = (o) => Object.entries(o || {}).map(([k, v]) => [k, typeof v === 'string' ? v : v?.name || k]);
+const LIST_REFS = {
+  tricks: () => named(D.TRICKS), mats: () => named(D.MATERIALS), from: (path) => (path.startsWith('DYES') ? named(D.DYES) : named(D.MATERIALS)), needs: () => named(D.DYES),
+  also: () => named(D.CHIPS), weather: () => [...named(D.ORBITALS), ...named(D.CALAMITIES)], immune: () => named(IMMUNE),
+  pair: () => [...new Set(Object.values(D.CASTS).map((c) => c.fx).filter((x) => x && x !== 'pair'))].map((k) => [k, k]),
+  floors: () => [1, 2, 3, 4].map((n) => [n, D.FLOORS[n]?.name || `Floor ${n}`]), cards: () => named(D.CARDS), dice: () => Object.keys(D.DICE).map((k) => [k, k]),
+};
+function listRef(path, v) {
+  const key = D.splitPath(path).filter((k) => !/^\d+$/.test(k)).pop();
+  if (LIST_REFS[key]) return LIST_REFS[key](path);
+  if (v.length && v.every((x) => typeof x === 'string')) { // every item is an id in one table
+    const tb = Object.keys(D.TABLES).find((k) => !['TEXT', 'GUIDE', 'FLAVOR', 'TUNING'].includes(k) && isObj(D.TABLES[k]) && !Array.isArray(D.TABLES[k]) && v.every((x) => x in D.TABLES[k]));
+    if (tb) return named(D.TABLES[tb]);
+  }
+  return null;
+}
 const label = (tb, k) => { const v = D.TABLES[tb][k]; return isObj(v) && typeof v.name === 'string' ? v.name : k; };
 
 export function buildScene(root, opts = {}) {
@@ -44,27 +62,30 @@ export function buildScene(root, opts = {}) {
   function drawStatus() { const n = B.count(); status.textContent = n ? t('build.status', { n }) : t('build.status.none'); }
   function drawTables() {
     const tool = (k, label) => h('button', { class: `b-item tool ${ui.tool === k ? 'on' : ''}`, text: label, onclick: () => { ui.tool = k; ui.key = null; ui.filter = ''; filter.value = ''; draw(); } });
-    tables.replaceChildren(h('span', { class: 'cap', text: t('build.group.makers') }), tool('tricks', t('maker.title')), tool('chips', t('chipmaker.title')), tool('classes', t('roster.class.title')), tool('roster', t('roster.title')), tool('tuner', t('tuner.title')), tool('neon', t('neon.title')), tool('test', t('test.title')),
+    tables.replaceChildren(h('span', { class: 'cap', text: t('build.group.makers') }), tool('tricks', t('maker.title')), tool('chips', t('chipmaker.title')), tool('classes', t('roster.class.title')), tool('rollers', t('roster.roller.title')), tool('roster', t('roster.title')), tool('tuner', t('tuner.title')), tool('test', t('test.title')),
       ...GROUPS.flatMap(([g, list]) => [h('span', { class: 'cap', text: t(g) }),
       ...list.filter((tb) => D.TABLES[tb]).map((tb) => h('button', { class: `b-item ${ui.tool === 'tables' && ui.table === tb ? 'on' : ''} ${B.changed(tb) ? 'ch' : ''}`, text: t(`build.table.${tb}`), onclick: () => { ui.tool = 'tables'; ui.table = tb; ui.key = null; ui.filter = ''; filter.value = ''; draw(); } }))]));
   }
   function drawEntries() {
     if (ui.tool === 'test') { filter.style.display = 'none'; entries.replaceChildren(h('p', { class: 'sub', text: t('test.side') })); return; }
-    if (ui.tool === 'neon') { filter.style.display = 'none'; entries.replaceChildren(); return; }
     if (ui.tool === 'tuner') {
       filter.style.display = 'none'; if (!TUNER_SECTIONS.includes(ui.key)) ui.key = TUNER_SECTIONS[0];
       entries.replaceChildren(...TUNER_SECTIONS.map((k) => h('button', { class: `b-item ${ui.key === k ? 'on' : ''} ${B.changed(D.subPath('TUNING', k)) ? 'ch' : ''}`, onclick: () => { ui.key = k; draw(); } }, h('b', { text: t(`tuner.${k}`) }))));
       return;
     }
-    if (ui.tool === 'classes' || ui.tool === 'roster') {
-      const roster = ui.tool === 'roster', T = roster ? D.ROSTER : D.CLASSES, keys = Object.keys(T); filter.style.display = '';
-      if (!ui.key || !T[ui.key]) ui.key = keys[0];
-      const lab = (k) => (roster ? rosterLabel(k) : `${T[k].hero} the ${T[k].name}`), sub = (k) => (roster ? rosterSub(k) : k);
-      const item = (k) => h('button', { class: `b-item ${ui.key === k ? 'on' : ''} ${B.changed(D.subPath(roster ? 'ROSTER' : 'CLASSES', k)) ? 'ch' : ''}`, onclick: () => { ui.key = k; draw(); } }, h('b', { text: lab(k) }), h('small', { text: sub(k) }));
+    if (ui.tool === 'classes' || ui.tool === 'rollers' || ui.tool === 'roster') {
+      const roster = ui.tool === 'roster', rollers = ui.tool === 'rollers', table = roster ? 'ROSTER' : rollers ? 'ROLLERS' : 'CLASSES', T = D[table], keys = Object.keys(T); filter.style.display = '';
+      const shared = roster ? ['@them', '@house'] : rollers ? ['@you'] : [];
+      if (!ui.key || !(T[ui.key] || shared.includes(ui.key))) ui.key = keys[0];
+      const lab = (k) => (roster ? rosterLabel(k) : rollers ? rollerLabel(k) : T[k].name), sub = (k) => (roster ? rosterSub(k) : rollers ? rollerSub(k) : t('roster.class.usedBy', { n: Object.values(D.ROLLERS).concat(Object.values(D.ROSTER)).filter((x) => x.cls === k).length }));
+      const item = (k) => h('button', { class: `b-item ${ui.key === k ? 'on' : ''} ${B.changed(D.subPath(table, k)) ? 'ch' : ''}`, onclick: () => { ui.key = k; draw(); } }, h('b', { text: lab(k) }), h('small', { text: sub(k) }));
+      const signItem = (k) => h('button', { class: `b-item sign-item ${ui.key === k ? 'on' : ''} ${B.changed(D.subPath('NEON', SHARED_SIGNS[k])) ? 'ch' : ''}`, onclick: () => { ui.key = k; draw(); } }, h('b', { text: t(`neon.list.${SHARED_SIGNS[k]}`) }), h('small', { text: t('neon.list.sub') }));
       const shown = keys.filter((k) => !ui.filter || `${k} ${lab(k)}`.toLowerCase().includes(ui.filter));
       entries.replaceChildren(...(roster ? [btn(t('roster.new'), () => { const id = newOpponent(false); if (id) { ui.key = id; draw(); } }, null, 'small go'), btn(t('roster.newBoss'), () => { const id = newOpponent(true); if (id) { ui.key = id; draw(); } }, null, 'small'),
+        h('span', { class: 'cap', text: t('neon.list.cap') }), ...shared.map(signItem),
         h('span', { class: 'cap', text: t('roster.list.tables') }), ...shown.filter((k) => !T[k].boss).map(item),
         ...[1, 2, 3, 4].flatMap((n) => { const bs = shown.filter((k) => T[k].boss && (T[k].floors || []).includes(n)); return bs.length ? [h('span', { class: 'cap', text: t('roster.list.bosses', { floor: D.FLOORS[n].name }) }), ...bs.map(item)] : []; })]
+        : rollers ? [btn(t('roster.roller.new'), () => { const id = newRoller(T[ui.key] ? ui.key : null); if (id) { ui.key = id; draw(); } }, null, 'small go'), h('span', { class: 'cap', text: t('neon.list.cap') }), ...shared.map(signItem), h('span', { class: 'cap', text: t('roster.list.rollers') }), ...shown.map(item)]
         : [btn(t('roster.class.new'), () => { const id = newClass(ui.key); if (id) { ui.key = id; draw(); } }, null, 'small go'), ...shown.map(item)]));
       return;
     }
@@ -95,10 +116,11 @@ export function buildScene(root, opts = {}) {
       h('b', { text: label(ui.table, k) }), label(ui.table, k) !== k ? h('small', { text: k }) : null)));
   }
   function drawEditor() {
-    if (ui.tool === 'neon') { editor.replaceChildren(h('h2', { text: t('neon.title') }), h('p', { class: 'sub mono', text: 'NEON' }), neonMaker(draw)); return; }
     if (ui.tool === 'test') { editor.replaceChildren(h('h2', { text: t('test.title') }), testTable(draw, (o) => app.nav.test(o))); return; }
     if (ui.tool === 'tuner') { editor.replaceChildren(h('h2', { text: t(`tuner.${ui.key}`) }), h('p', { class: 'sub mono', text: ui.key === 'gear' ? '' : D.subPath('TUNING', ui.key) }), tuner(ui.key, draw, (tb) => { ui.tool = 'tables'; ui.table = tb; ui.key = null; draw(); })); return; }
-    if (ui.tool === 'classes') { editor.replaceChildren(h('h2', { text: `${D.CLASSES[ui.key].hero} the ${D.CLASSES[ui.key].name}` }), h('p', { class: 'sub mono', text: D.subPath('CLASSES', ui.key) }), classMaker(ui.key, draw)); return; }
+    if ((ui.tool === 'rollers' || ui.tool === 'roster') && SHARED_SIGNS[ui.key]) { editor.replaceChildren(h('h2', { text: t(`neon.list.${SHARED_SIGNS[ui.key]}`) }), h('p', { class: 'sub mono', text: `NEON.${SHARED_SIGNS[ui.key]}` }), sharedSign(ui.key, draw)); return; }
+    if (ui.tool === 'classes') { editor.replaceChildren(h('h2', { text: D.CLASSES[ui.key].name }), h('p', { class: 'sub mono', text: D.subPath('CLASSES', ui.key) }), classMaker(ui.key, draw)); return; }
+    if (ui.tool === 'rollers') { editor.replaceChildren(h('h2', { text: D.heroName(D.ROLLERS[ui.key].cls, ui.key) }), h('p', { class: 'sub mono', text: D.subPath('ROLLERS', ui.key) }), rollerMaker(ui.key, draw)); return; }
     if (ui.tool === 'roster') { editor.replaceChildren(h('h2', { text: rosterLabel(ui.key) }), h('p', { class: 'sub mono', text: D.subPath('ROSTER', ui.key) }), rosterMaker(ui.key, draw)); return; }
     if (ui.tool === 'chips') {
       const old = classicChips().find((c) => c.id === ui.key), name = D.MADE_CHIPS[ui.key]?.name || old?.name || '';
@@ -126,11 +148,32 @@ export function buildScene(root, opts = {}) {
     const set = (x) => { B.setValue(path, x); drawStatus(); drawTables(); drawEntries(); drawEditor(); };
     if (typeof v === 'boolean') return h('input', { type: 'checkbox', ...(v ? { checked: 'checked' } : {}), onchange: (e) => set(e.target.checked) });
     if (typeof v === 'number') return h('input', { type: 'number', step: 'any', value: v, onchange: (e) => { const n = Number(e.target.value); if (Number.isFinite(n)) set(n); else toast(t('build.notNumber'), 'warn'); } });
-    if (Array.isArray(v)) return h('input', { type: 'text', value: v.join(', '), onchange: (e) => { const parts = e.target.value.split(',').map((s) => s.trim()).filter((s) => s !== ''); set(v.length && v.every((x) => typeof x === 'number') ? parts.map(Number) : parts); } });
+    if (Array.isArray(v)) return listInput(path, v, set);
     if (v == null) return h('input', { type: 'text', value: '', placeholder: t('build.none'), onchange: (e) => set(e.target.value.trim() === '' ? null : e.target.value.trim()) });
     if (isObj(v)) return h('textarea', { class: 'mono', rows: 3, text: JSON.stringify(v), onchange: (e) => { try { set(JSON.parse(e.target.value)); } catch { toast(t('build.notJson'), 'warn'); } } });
+    if (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v)) return h('div', { class: 'row' }, h('input', { type: 'color', value: v, onchange: (e) => set(e.target.value) }), h('input', { type: 'text', value: v, style: { width: '96px' }, onchange: (e) => (/^#[0-9a-f]{6}$/i.test(e.target.value.trim()) ? set(e.target.value.trim()) : toast(t('build.notColour'), 'warn')) }));
     const long = String(v).length > 48;
     return h(long ? 'textarea' : 'input', { ...(long ? { rows: Math.min(6, Math.ceil(String(v).length / 60)), text: v } : { type: 'text', value: v }), onchange: (e) => set(e.target.value) });
+  }
+  // a list, item by item: picked from what it names (tricks, materials, chips...), colours as colour pickers, numbers
+  // as numbers, and anything else (names, tags) as one box per item, offered the values already used in its table
+  function listInput(path, v, set) {
+    const ref = listRef(path, v), nums = v.length ? v.every((x) => typeof x === 'number') : ref ? ref.every(([k]) => typeof k === 'number') : false;
+    const colours = v.length && v.every((x) => typeof x === 'string' && /^#[0-9a-f]{6}$/i.test(x));
+    const put = (i, x) => set(v.map((y, j) => (j === i ? x : y))), drop = (i) => set(v.filter((_, j) => j !== i)), add = (x) => set([...v, x]);
+    const nameOf = (x) => ref?.find(([k]) => String(k) === String(x))?.[1];
+    const items = v.map((x, i) => h('span', { class: `row b-li ${ref && nameOf(x) == null ? 'bad' : ''}` },
+      ref ? h('select', { onchange: (e) => put(i, nums ? Number(e.target.value) : e.target.value) }, ...(nameOf(x) == null ? [h('option', { value: x, text: t('build.list.unknown', { id: x }), selected: 'selected' })] : []),
+        ...ref.map(([k, l]) => h('option', { value: k, text: l, ...(String(k) === String(x) ? { selected: 'selected' } : {}) })))
+        : colours ? h('input', { type: 'color', value: x, onchange: (e) => put(i, e.target.value) })
+        : nums ? h('input', { type: 'number', step: 'any', value: x, style: { width: '84px' }, onchange: (e) => { const n = Number(e.target.value); if (Number.isFinite(n)) put(i, n); else toast(t('build.notNumber'), 'warn'); } })
+        : h('input', { type: 'text', value: x, list: `dl-${path}`, onchange: (e) => (e.target.value.trim() ? put(i, e.target.value.trim()) : drop(i)) }),
+      colours ? null : btn('✕', () => drop(i), t('build.list.drop'), 'small')));
+    const seen = ref || colours || nums ? null : [...new Set(Object.values(D.TABLES[D.splitPath(path)[0]] || {}).flatMap((e) => (isObj(e) ? Object.values(e) : [])).filter(Array.isArray).flat().filter((x) => typeof x === 'string'))];
+    const adder = colours ? null : ref ? h('select', { onchange: (e) => e.target.value !== '' && add(nums ? Number(e.target.value) : e.target.value) }, h('option', { value: '', text: t('build.list.add') }), ...ref.filter(([k]) => !v.some((x) => String(x) === String(k))).map(([k, l]) => h('option', { value: k, text: l })))
+      : nums ? btn('+', () => add(v.length ? v[v.length - 1] : 0), t('build.list.add'), 'small')
+      : h('input', { type: 'text', placeholder: t('build.list.add'), list: `dl-${path}`, onchange: (e) => e.target.value.trim() && add(e.target.value.trim()) });
+    return h('div', { class: 'row wrap b-list-edit' }, ...items, adder, seen ? h('datalist', { id: `dl-${path}` }, ...seen.map((x) => h('option', { value: x }))) : null);
   }
   function revertBtn(path) {
     if (!(path in B.draft.changes)) return null;

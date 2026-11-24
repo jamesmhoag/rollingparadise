@@ -1,11 +1,16 @@
-// Build mode: the Class maker and the Opponent maker (rows 4 and 12). Classes are the Rollers' builds; the roster
-// lists every opponent and High Roller with its loadout, behaviour and (for High Rollers) its phases.
-import { h, btn, toast, paint } from './core.js';
+// Build mode: the Class maker, the Roller maker and the Opponent maker.
+//   A Class is attributes only: Draw, Bid, Roll (TIP), the position's shape (BVD), a starting Charisma, Cunning and
+//   Conviction (CCC), the attribute it leans on and where it deploys from. Every Roller, Opponent and High Roller has one.
+//   A Roller (ROLLERS) is a name, a Class and a starting inventory: its Book, Pouch, Worth, wallet and jacket, and its sign.
+//   An Opponent (ROSTER) is the same, plus where it sits and how it plays; a High Roller adds a business card and phases.
+// The neon signs live here too: each Roller's and Opponent's own, and the shared looks (yours, the opponents', the House's).
+import { h, lab, btn, toast, paint } from './core.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
 import * as B from '../build/draft.js';
 import { t } from '../text.js';
 import { NEW_OPPONENT, NEW_BOSS } from '../content/roster.js';
+import { NEW_ROLLER } from '../content/rollers.js';
 import { diceSummary } from './app.js';
 import { signEditor } from './neonmaker.js';
 import { dieEl } from './parts.js';
@@ -32,7 +37,7 @@ const isObj = (x) => x && typeof x === 'object';
 function form(base, redraw) {
   const P = (...ks) => ks.reduce((p, k) => D.subPath(p, k), base);
   const set = (ks, v) => { B.setValue(P(...ks), v); redraw(); };
-  const field = (label, el, ks) => h('div', { class: `b-field ${ks && B.changed(P(...ks)) ? 'ch' : ''}` }, h('label', { text: label }), el,
+  const field = (label, el, ks) => h('div', { class: `b-field ${ks && B.changed(P(...ks)) ? 'ch' : ''}` }, h('label', {}, label), el,
     ks && P(...ks) in B.draft.changes ? btn('↺', () => { B.revert(P(...ks)); redraw(); }, null, 'small b-revert') : h('span'));
   const select = (ks, list, value, onSet) => h('select', { onchange: (e) => (onSet || ((v) => set(ks, v)))(e.target.value === '' ? null : e.target.value) },
     list.map(([v, l]) => h('option', { value: v ?? '', ...(String(v ?? '') === String(value ?? '') ? { selected: 'selected' } : {}), text: l })));
@@ -46,31 +51,76 @@ const ask = (label, def, taken) => { const id = (globalThis.prompt?.(label, def)
   if (!id) return null; if (!/^\w+$/.test(id)) { toast(t('build.duplicate.badId'), 'warn'); return null; }
   if (taken[id]) { toast(t('build.duplicate.taken', { id }), 'warn'); return null; } return id; };
 
+// a Pouch: a count for each size of die
+function diceField(f, dice, ks = ['dice']) {
+  return f.field(lab('roster.dice'), h('div', { class: 'row wrap b-dice' }, ...Object.keys(D.DICE).map((k) => h('label', { class: 'b-die' }, dieEl({ type: k, up: [] }, '', 'mini'),
+    f.number(null, dice?.[k] || 0, { min: 0, w: '52px', on: (v) => { const out = { ...(dice || {}) }; if (v > 0) out[k] = v | 0; else delete out[k]; f.set(ks, Object.keys(out).length ? out : null); } })))), ks);
+}
+const optsOf = (o, none) => [...(none ? [[null, none]] : []), ...Object.entries(o).map(([k, v]) => [k, typeof v === 'string' ? v : v.name])];
+const usersOf = (cls) => [...Object.values(D.ROLLERS).filter((x) => x.cls === cls).map((x) => x.name), ...Object.values(D.ROSTER).filter((x) => x.cls === cls).map((x) => `${x.boss ? '👑 ' : ''}${x.name}`)];
+
 // ---------- classes ----------
-// Charisma, Cunning and Conviction have no class base: they are earned at the table by occupying rows (bout.js occBonus)
-const GROUPS = [['tip', ['trickery', 'ingenuity', 'proficiency']], ['bvd', ['balance', 'versatility', 'depth']]];
+// TIP and BVD are each Roller's own every bout; CCC is a base the table's rows add to (bout.js occBonus)
+const GROUPS = [['tip', ['trickery', 'ingenuity', 'proficiency']], ['bvd', ['balance', 'versatility', 'depth']], ['ccc', ['charisma', 'cunning', 'conviction']]];
 export function newClass(from) {
   const id = ask(t('roster.class.newId'), 'my_class', D.CLASSES); if (!id) return null;
-  B.setValue(D.subPath('CLASSES', id), { ...JSON.parse(JSON.stringify(D.CLASSES[from || 'hustler'])), name: 'New class', hero: 'Hero' }); return id;
+  B.setValue(D.subPath('CLASSES', id), { ...JSON.parse(JSON.stringify(D.CLASSES[from] || D.CLASSES.hustler)), name: 'New class' }); return id;
 }
 export function classMaker(id, redraw) {
   const K = D.CLASSES[id]; if (!K) return h('p', { class: 'sub', text: t('maker.none') });
-  const f = form(D.subPath('CLASSES', id), redraw), stat = (k) => D.STATS[k];
+  const f = form(D.subPath('CLASSES', id), redraw), stat = (k) => D.STATS[k], ccc = D.cccOf(id), users = usersOf(id);
+  const val = (g, k) => (g === 'ccc' ? ccc[k] : K[g]?.[k] ?? 0);
   return h('div', { class: 'b-maker' }, h('div', { class: 'b-fields' },
     h('span', { class: 'cap', text: t('roster.part.class') }),
-    f.field(t('maker.name'), f.text(['name'], K.name), ['name']), f.field(t('roster.hero'), f.text(['hero'], K.hero), ['hero']),
+    f.field(lab('maker.name'), f.text(['name'], K.name), ['name']),
     flavorField('CLASSES', id, redraw),
+    f.field(lab('roster.color'), h('input', { type: 'color', value: K.color || '#888888', onchange: (e) => f.set(['color'], e.target.value) }), ['color']),
     ...GROUPS.flatMap(([g, ks]) => [h('span', { class: 'cap', text: t(`roster.group.${g}`) }),
-      ...ks.map((k) => f.field(`${stat(k).name} (${stat(k).short})`, f.number([g, k], K[g][k], { min: g === 'tip' ? 1 : -3 }), [g, k]))]),
-    h('span', { class: 'cap', text: t('roster.part.kit') }),
-    f.field(t('roster.primary'), f.select(['primary'], GROUPS[0][1].map((k) => [k, stat(k).name]), K.primary), ['primary']),
-    f.field(t('roster.deploy'), f.select(['deploy'], [['start', t('roster.deploy.start')], ['center', t('roster.deploy.center')], ['end', t('roster.deploy.end')]], K.deploy), ['deploy']),
-    f.field(t('roster.tricks'), trickPicker(K.tricks || [], (ids) => f.set(['tricks'], ids)), ['tricks']),
-    f.field(t('roster.dice'), h('div', { class: 'row wrap b-dice' }, ...Object.keys(D.DICE).map((k) => h('label', { class: 'b-die' }, dieEl({ type: k, up: [] }, '', 'mini'),
-      f.number(null, K.dice?.[k] || 0, { min: 0, w: '52px', on: (v) => { const out = { ...(K.dice || {}) }; if (v > 0) out[k] = v | 0; else delete out[k]; f.set(['dice'], out); } })))), ['dice'])),
-  h('div', {}, h('span', { class: 'cap', text: t('maker.preview') }), h('div', { class: 'b-card' }, h('b', { text: `${K.hero} the ${K.name}` }), h('p', { text: D.classRule(id) }), D.flavorOf('CLASSES', id) ? h('p', { class: 'flavor', text: D.flavorOf('CLASSES', id) }) : null,
-    h('p', { class: 'dim', text: GROUPS.map(([g, ks]) => ks.map((k) => `${stat(k).short} ${K[g][k]}`).join(' · ')).join(' / ') })),
+      ...ks.map((k) => f.field(h('span', { class: 'b-lab has-help', text: `${stat(k).name} (${stat(k).short})`, tip: stat(k).text }), f.number([g, k], val(g, k), { min: g === 'tip' ? 1 : -3 }), [g, k]))]),
+    h('span', { class: 'cap', text: t('roster.part.lean') }),
+    f.field(lab('roster.primary'), f.select(['primary'], GROUPS[0][1].map((k) => [k, t('roster.primary.opt', { stat: stat(k).name, reward: stat(D.C_OF[k]).name })]), K.primary), ['primary']),
+    f.field(lab('roster.deploy'), f.select(['deploy'], [['start', t('roster.deploy.start')], ['center', t('roster.deploy.center')], ['end', t('roster.deploy.end')]], K.deploy), ['deploy'])),
+  h('div', {}, h('span', { class: 'cap', text: t('maker.preview') }), h('div', { class: 'b-card', style: { '--cc': K.color } }, h('b', { text: K.name }), h('p', { text: D.classRule(id) }), D.flavorOf('CLASSES', id) ? h('p', { class: 'flavor', text: D.flavorOf('CLASSES', id) }) : null,
+    h('p', { class: 'dim', text: GROUPS.map(([g, ks]) => ks.map((k) => `${stat(k).short} ${val(g, k)}`).join(' · ')).join(' / ') }),
+    h('p', { class: 'dim', text: t('roster.class.rewards', { stat: stat(D.primaryC(id)).name }) })),
+  h('span', { class: 'cap', text: t('roster.class.users') }), h('p', { class: 'sub', text: users.length ? users.join(' · ') : t('roster.class.unused') }),
   h('p', { class: 'sub', text: t('roster.class.note') })));
+}
+
+// ---------- Rollers: the heroes ----------
+export function newRoller(from) {
+  const id = ask(t('roster.roller.newId'), 'my_roller', D.ROLLERS); if (!id) return null;
+  B.setValue(D.subPath('ROLLERS', id), { ...JSON.parse(JSON.stringify(D.ROLLERS[from] || NEW_ROLLER)), name: 'New Roller' }); return id;
+}
+export function rollerMaker(id, redraw) {
+  const X = D.ROLLERS[id]; if (!X) return h('p', { class: 'sub', text: t('maker.none') });
+  const f = form(D.subPath('ROLLERS', id), redraw), K = D.CLASSES[X.cls];
+  const dice = Object.entries(X.dice || {}).flatMap(([type, n]) => Array.from({ length: n }, () => type));
+  return h('div', { class: 'b-maker' }, h('div', { class: 'b-fields' },
+    h('span', { class: 'cap', text: t('roster.part.roller') }),
+    f.field(lab('roster.rollerName'), f.text(['name'], X.name), ['name']),
+    f.field(lab('maker.cls'), f.select(['cls'], optsOf(D.CLASSES), X.cls), ['cls']),
+    h('span', { class: 'cap', text: t('roster.part.inventory') }),
+    f.field(lab('roster.tricks'), trickPicker(X.tricks || [], (ids) => f.set(['tricks'], ids)), ['tricks']),
+    diceField(f, X.dice),
+    f.field(lab('roster.worth'), f.number(['worth'], X.worth ?? 200, { min: 1 }), ['worth']),
+    f.field(lab('roster.wallet'), f.select(['wallet'], optsOf(D.WALLETS), X.wallet || 'worn_cloth'), ['wallet']),
+    f.field(lab('roster.jacket'), f.select(['jacket'], Object.entries(D.JACKETS).filter(([, J]) => !J.cls || J.cls === X.cls).map(([k, J]) => [k, J.name]), X.jacket || 'standard'), ['jacket']),
+    h('span', { class: 'cap', text: t('roster.part.sign') }), h('p', { class: 'sub', text: t('roster.sign.you') }),
+    signEditor(D.subPath(D.subPath('ROLLERS', id), 'sign'), 'you', X.sign, redraw, [X.name, K?.name || ''])),
+  h('div', {}, h('span', { class: 'cap', text: t('maker.preview') }), h('div', { class: 'b-card', style: { '--cc': K?.color } }, h('b', { text: D.heroName(X.cls, id) }), h('p', { text: D.classRule(X.cls) }),
+    h('p', { text: t('roster.roller.walksIn', { worth: X.worth ?? 200, wallet: D.WALLETS[X.wallet]?.name || '', jacket: D.JACKETS[X.jacket]?.name || '' }) }),
+    h('div', { class: 'dicebox' }, dice.map((type) => dieEl({ type }, '', 'mini'))), h('div', { class: 'row wrap tags' }, ...(X.tricks || []).filter((k) => D.TRICKS[k]).map((k) => trickTag({ id: k, q: 1 }, X.cls)))),
+  h('p', { class: 'sub', text: t('roster.roller.note') })));
+}
+export const rollerLabel = (id) => D.ROLLERS[id]?.name || id;
+export const rollerSub = (id) => D.CLASSES[D.ROLLERS[id]?.cls]?.name || t('roster.noClass');
+
+// the shared looks: every Roller's seat, every opponent's (unless it has its own) and the House's sign
+export const SHARED_SIGNS = { '@you': 'you', '@them': 'them', '@house': 'house' };
+export function sharedSign(key, redraw) {
+  const who = SHARED_SIGNS[key];
+  return h('div', { class: 'col neon-maker' }, h('p', { class: 'sub', text: t(`neon.sub.${who}`) }), signEditor(`NEON.${who}`, who, D.NEON[who], redraw));
 }
 
 // ---------- the roster ----------
@@ -85,7 +135,7 @@ function preview(id) {
     const run = R.newRun('hustler', 'standard', 1); run.floor = floor;
     const o = R.genOpponent(run, floor, X.boss ? D.FLOORS[floor].boss : D.FLOORS[floor].worth[(X.tables?.[0]) || 0], { roster: id, name: X.name, ...(X.cls ? { cls: X.cls } : {}), ...(X.boss ? { boss: true } : {}) });
     return h('div', { class: 'b-card' }, h('b', { text: o.name }), h('p', { class: 'dim', text: t('roster.preview.floor', { floor: D.FLOORS[floor].name }) }),
-      h('p', { text: `${X.cls ? D.CLASSES[o.cls].name : t('roster.randomClass')} · ${o.worth}¢ · ${o.dims.cols}×${o.dims.barRows} Stake, stacks of ${o.dims.stackMax}` }),
+      h('p', { text: `${D.CLASSES[o.cls].name} · ${o.worth}¢ · ${o.dims.cols}×${o.dims.barRows} Stake, stacks of ${o.dims.stackMax}` }),
       h('p', { text: diceSummary(o.dice) }), h('div', { class: 'row wrap tags' }, ...o.tricks.filter((x) => D.TRICKS[x.id]).map((x) => trickTag(x, o.cls))),
       o.drink ? h('p', { text: `${t('roster.drink')}: ${o.drink.name}` }) : null,
       h('p', { class: 'dim', text: Object.entries(o.behave).filter(([k, v]) => v !== D.DEFAULT_BEHAVE[k]).map(([k, v]) => D.BEHAVE[k][v]).join(' · ') || t('roster.balanced') }));
@@ -98,29 +148,31 @@ export function rosterMaker(id, redraw) {
   const chips = Object.entries(X.chips || {});
   const parts = [
     h('span', { class: 'cap', text: t('roster.part.who') }),
-    f.field(t('maker.name'), f.text(['name'], X.name), ['name']),
+    f.field(lab('roster.oppName'), f.text(['name'], X.name), ['name']),
     flavorField('ROSTER', id, redraw),
-    f.field(t('maker.cls'), f.select(['cls'], opt(D.CLASSES, t('roster.randomClass')), X.cls), ['cls']),
-    f.field(t('roster.floors'), f.checks(['floors'], [1, 2, 3, 4].map((n) => [n, D.FLOORS[n].name]), X.floors || [1, 2, 3, 4]), ['floors']),
-    X.boss ? f.field(t('roster.trait'), f.select(['trait'], opt(D.BOSS_TRAITS, t('roster.none')), X.trait), ['trait']) : null,
-    X.boss ? null : f.field(t('roster.tables'), f.checks(['tables'], [0, 1, 2].map((n) => [n, t('floor.table.name', { n: n + 1 })]), X.tables || [0, 1, 2]), ['tables']),
-    h('span', { class: 'cap', text: t('roster.part.loadout') }),
-    f.field(t('roster.purse'), f.number(['purse'], X.purse, { min: 0, ph: t('roster.purse.floor') }), ['purse']),
-    f.field(t('roster.wallet'), f.select(['wallet'], opt(D.WALLETS, t('roster.none')), X.wallet), ['wallet']),
-    f.field(t('roster.jacket'), f.select(['jacket'], opt(D.JACKETS, t('roster.none')), X.jacket), ['jacket']),
-    f.field(t('roster.drink'), f.select(['drink'], [[null, t('roster.none')], ...D.DRINKS.map((d) => [d.id, d.name])], X.drink), ['drink']),
-    f.field(t('roster.chips'), h('div', { class: 'b-list' }, ...chips.map(([cid, n]) => h('div', { class: 'row b-list-row' }, h('span', { text: D.SHOP_CHIPS[cid]?.name || cid }),
+    f.field(lab('maker.cls'), f.select(['cls'], [...(X.cls && D.CLASSES[X.cls] ? [] : [[null, t('roster.pickClass')]]), ...opt(D.CLASSES)], X.cls), ['cls']),
+    f.field(lab('roster.floors'), f.checks(['floors'], [1, 2, 3, 4].map((n) => [n, D.FLOORS[n].name]), X.floors || [1, 2, 3, 4]), ['floors']),
+    X.boss ? f.field(lab('roster.trait'), f.select(['trait'], opt(D.BOSS_TRAITS, t('roster.none')), X.trait), ['trait']) : null,
+    X.boss ? null : f.field(lab('roster.tables'), f.checks(['tables'], [0, 1, 2].map((n) => [n, t('floor.table.name', { n: n + 1 })]), X.tables || [0, 1, 2]), ['tables']),
+    h('span', { class: 'cap', text: t('roster.part.inventory') }),
+    f.field(lab('roster.ownTricks'), h('div', {}, trickPicker(X.tricks || [], (ids) => f.set(['tricks'], ids.length ? ids : null)), h('p', { class: 'sub', text: t(X.tricks?.length ? 'roster.ownTricks.on' : 'roster.ownTricks.off') })), ['tricks']),
+    diceField(f, X.dice),
+    f.field(lab('roster.purse'), f.number(['purse'], X.purse, { min: 0, ph: t('roster.purse.floor') }), ['purse']),
+    f.field(lab('roster.wallet'), f.select(['wallet'], opt(D.WALLETS, t('roster.none')), X.wallet), ['wallet']),
+    f.field(lab('roster.jacket'), f.select(['jacket'], opt(D.JACKETS, t('roster.none')), X.jacket), ['jacket']),
+    f.field(lab('roster.drink'), f.select(['drink'], [[null, t('roster.none')], ...D.DRINKS.map((d) => [d.id, d.name])], X.drink), ['drink']),
+    f.field(lab('roster.chips'), h('div', { class: 'b-list' }, ...chips.map(([cid, n]) => h('div', { class: 'row b-list-row' }, h('span', { text: D.SHOP_CHIPS[cid]?.name || cid }),
       f.number(null, n, { min: 0, w: '70px', on: (v) => f.set(['chips'], { ...X.chips, [cid]: Math.max(0, v | 0) }) }),
       btn('✕', () => { const c = { ...X.chips }; delete c[cid]; f.set(['chips'], c); }, null, 'small'))),
       f.select(null, [[null, t('chipmaker.add')], ...Object.entries(D.SHOP_CHIPS).filter(([k]) => !X.chips?.[k]).map(([k, v]) => [k, v.name])], null, (v) => v && f.set(['chips'], { ...(X.chips || {}), [v]: 1 }))), ['chips']),
-    f.field(t('roster.spacing'), f.select(['deploy', 'spacing'], [['row', t('roster.sp.row')], ['column', t('roster.sp.column')], ['random', t('roster.sp.random')]], X.deploy?.spacing || 'row'), ['deploy']),
-    f.field(t('roster.stacking'), f.select(['deploy', 'stacking'], [['maxed', t('roster.st.maxed')], ['balanced', t('roster.st.balanced')], ['random', t('roster.st.random')]], X.deploy?.stacking || 'maxed'), null),
-    f.field(t('roster.layout'), layoutGrid(X, (v) => f.set(['layout'], v), redraw), ['layout']),
+    f.field(lab('roster.spacing'), f.select(['deploy', 'spacing'], [['row', t('roster.sp.row')], ['column', t('roster.sp.column')], ['random', t('roster.sp.random')]], X.deploy?.spacing || 'row'), ['deploy']),
+    f.field(lab('roster.stacking'), f.select(['deploy', 'stacking'], [['maxed', t('roster.st.maxed')], ['balanced', t('roster.st.balanced')], ['random', t('roster.st.random')]], X.deploy?.stacking || 'maxed'), null),
+    f.field(lab('roster.layout'), layoutGrid(X, (v) => f.set(['layout'], v), redraw), ['layout']),
     h('span', { class: 'cap', text: t('roster.part.behave') }),
-    ...Object.keys(D.BEHAVE).map((k) => f.field(t(`roster.beh.${k}`), f.select(['behave', k], opt(D.BEHAVE[k]), beh[k]), ['behave', k])),
-    // its neon sign at the table: laid over the opponents' shared look (Build mode › Neon)
+    ...Object.keys(D.BEHAVE).map((k) => f.field(lab(`roster.beh.${k}`), f.select(['behave', k], opt(D.BEHAVE[k]), beh[k]), ['behave', k])),
+    // its neon sign at the table: laid over the opponents' shared look (the first entry in this list)
     h('span', { class: 'cap', text: t('roster.part.sign') }), h('p', { class: 'sub', text: t('roster.sign.note') }),
-    signEditor(D.subPath(D.subPath('ROSTER', id), 'sign'), 'them', X.sign, redraw, [X.name, X.boss ? t('run.high-roller') : X.cls ? D.CLASSES[X.cls].name : t('roster.randomClass')]),
+    signEditor(D.subPath(D.subPath('ROSTER', id), 'sign'), 'them', X.sign, redraw, [X.name, X.boss ? t('run.high-roller') : D.CLASSES[X.cls]?.name || '']),
   ];
   if (X.boss) {
     const phases = X.phases || [];
@@ -137,30 +189,32 @@ export function rosterMaker(id, redraw) {
   }
   return h('div', { class: 'b-maker' }, h('div', { class: 'b-fields' }, parts), h('div', {}, h('span', { class: 'cap', text: t('roster.preview') }), preview(id), h('p', { class: 'sub', text: t('roster.preview.note') })));
 }
-// a precise Stake layout: one box per space, chips as values or effect chip ids, comma-separated. Pick a brush to paint
-// instead: click and hold on a space to stack chips at a steady rate, sweep to paint each space you cross.
-let layoutBrush = 'type';
+// a precise Stake layout: one box per space, painted with a brush (a chip value or an effect chip): click and hold on
+// a space to stack chips at a steady rate, sweep to paint each space you cross; the eraser takes the top chip off.
+// Each space shows its stack by the chips' own names, so a renamed effect chip shows its new name here.
+let layoutBrush = '1';
+const chipLabel = (x) => (typeof x === 'number' ? `${x}¢` : D.SHOP_CHIPS[x]?.name || x);
 function layoutGrid(X, onSet, redraw) {
   const K = X.cls ? D.CLASSES[X.cls] : null, rows = Math.max(1, D.BASE_DIMS.barRows + (K?.bvd.depth || 0)), cols = D.BASE_DIMS.cols;
   const cap = Math.max(1, D.BASE_DIMS.stackMax + (K?.bvd.balance || 0));
   const cur = () => X.layout || [], at = (r, c) => cur().find((x) => x.r === r && x.c === c)?.chips || [];
-  const put = (r, c, chips, quiet) => { const rest = cur().filter((x) => !(x.r === r && x.c === c)), next = chips.length ? [...rest, { r, c, chips }].sort((a, b) => a.r - b.r || a.c - b.c) : rest;
-    if (quiet) B.setValue(D.subPath(D.subPath('ROSTER', idOf(X)), 'layout'), next.length ? next : null); else onSet(next.length ? next : null); };
-  const parse = (txt) => txt.split(',').map((x) => x.trim()).filter(Boolean).map((x) => (/^\d+$/.test(x) ? Number(x) : x)).filter((x) => typeof x === 'number' || D.SHOP_CHIPS[x]);
-  const painting = layoutBrush !== 'type';
-  const grid = h('div', { class: `b-layout ${painting ? 'painting' : ''}`, style: { gridTemplateColumns: `repeat(${cols}, 1fr)` } },
-    ...Array.from({ length: rows * cols }, (_, i) => { const r = Math.floor(i / cols), c = i % cols;
-      return h('input', { type: 'text', value: at(r, c).join(', '), placeholder: '·', 'data-rc': `${r}:${c}`, ...(painting ? { readonly: 'readonly' } : {}), title: t('roster.layout.cell', { r: r + 1, c: c + 1 }), onchange: (e) => put(r, c, parse(e.target.value)) }); }));
-  if (painting) paint(grid, (ev) => { const el = ev.target.closest?.('[data-rc]'); if (!el) return null; const [r, c] = el.dataset.rc.split(':').map(Number); return { key: el.dataset.rc, r, c, el }; },
+  const put = (r, c, chips) => { const rest = cur().filter((x) => !(x.r === r && x.c === c)), next = chips.length ? [...rest, { r, c, chips }].sort((a, b) => a.r - b.r || a.c - b.c) : rest;
+    B.setValue(D.subPath(D.subPath('ROSTER', idOf(X)), 'layout'), next.length ? next : null); };
+  if (!(layoutBrush === 'erase' || /^\d+$/.test(layoutBrush) || D.SHOP_CHIPS[layoutBrush])) layoutBrush = '1';
+  const show = (el, list) => { el.replaceChildren(...(list.length ? list.slice().reverse().map((x) => h('span', { class: `b-lchip ${typeof x === 'number' ? '' : 'fx'}`, text: chipLabel(x) })) : [h('span', { class: 'dim', text: '·' })])); };
+  const grid = h('div', { class: 'b-layout painting', style: { gridTemplateColumns: `repeat(${cols}, 1fr)` } },
+    ...Array.from({ length: rows * cols }, (_, i) => { const r = Math.floor(i / cols), c = i % cols, list = at(r, c);
+      const el = h('div', { class: 'b-lcell', 'data-rc': `${r}:${c}`, tip: () => t('roster.layout.cell', { r: r + 1, c: c + 1, chips: at(r, c).map(chipLabel).join(' · ') || t('roster.layout.empty') }) }); show(el, list); return el; }));
+  paint(grid, (ev) => { const el = ev.target.closest?.('[data-rc]'); if (!el) return null; const [r, c] = el.dataset.rc.split(':').map(Number); return { key: el.dataset.rc, r, c, el }; },
     (p) => { const list = at(p.r, p.c).slice(); if (layoutBrush === 'erase') list.pop(); else if (list.length < cap) list.push(/^\d+$/.test(layoutBrush) ? Number(layoutBrush) : layoutBrush); else return;
-      put(p.r, p.c, list, true); p.el.value = list.join(', '); }, 170, () => redraw());
+      put(p.r, p.c, list); show(p.el, list); }, 170, () => redraw());
   const brushes = h('select', { onchange: (e) => { layoutBrush = e.target.value; redraw(); } },
-    ...[['type', t('roster.brush.type')], ...D.DENOM_VALUES.map((v) => [String(v), `${v}¢`]), ...Object.entries(D.SHOP_CHIPS).map(([k, v]) => [k, v.name]), ['erase', t('roster.brush.erase')]]
+    ...[...D.DENOM_VALUES.map((v) => [String(v), `${v}¢`]), ...Object.entries(D.SHOP_CHIPS).map(([k, v]) => [k, v.name]), ['erase', t('roster.brush.erase')]]
       .map(([v, l]) => h('option', { value: v, ...(v === layoutBrush ? { selected: 'selected' } : {}), text: l })));
-  return h('div', {}, h('div', { class: 'row' }, h('span', { class: 'sub', text: t('roster.brush') }), brushes), grid,
+  return h('div', {}, h('div', { class: 'row' }, h('span', { class: 'sub', text: t('roster.brush') }), brushes, cur().length ? btn(t('roster.layout.clear'), () => onSet(null), null, 'small') : null), grid,
     h('p', { class: 'sub', text: t(cur().length ? 'roster.layout.on' : 'roster.layout.off') }));
 }
 const idOf = (X) => Object.keys(D.ROSTER).find((k) => D.ROSTER[k] === X);
 export const rosterLabel = (id) => { const X = D.ROSTER[id]; return `${X.boss ? '👑 ' : ''}${X.name}`; };
-export const rosterSub = (id) => { const X = D.ROSTER[id]; return `${X.cls ? D.CLASSES[X.cls].name : t('roster.randomClass')} · ${(X.floors || [1, 2, 3, 4]).map((n) => 'F' + n).join(' ')}`; };
+export const rosterSub = (id) => { const X = D.ROSTER[id]; return `${D.CLASSES[X.cls]?.name || t('roster.noClass')} · ${(X.floors || [1, 2, 3, 4]).map((n) => 'F' + n).join(' ')}`; };
 void isObj;

@@ -47,7 +47,7 @@ const stackOf = (n, v = 1) => Array.from({ length: n }, () => std(v));
   engage(bout, null, me, 3, 0, 3, {}); drain(settleAll(bout, 'expense')); assert(cell.chips[0].value === 5, 'fees pay from the bottom up');
 }
 { // water: Puddles, wet stacks, fire goes out, plants grow faster, Wood floats on a flooded Hole
-  const { bout, me } = table(); clear(me); const empty = { r: 3, c: 0, cell: me.grid[3][0] }, st = { r: 3, c: 1, cell: me.grid[3][1] }; st.cell.chips = [...stackOf(2), chip('burn', 0, { life: 3 })];
+  const { bout, me } = table(); clear(me); bout.weather = []; me.sky = me.sky.filter((o) => o.kind !== 'blizzard'); bout.cold = false; /* no Blizzard: it would freeze the Puddle over */ const empty = { r: 3, c: 0, cell: me.grid[3][0] }, st = { r: 3, c: 1, cell: me.grid[3][1] }; st.cell.chips = [...stackOf(2), chip('burn', 0, { life: 3 })];
   water(bout, me, empty); assert(empty.cell.puddle && B.capacityLeft(me, empty.cell) === 0, 'water on an empty space makes a Puddle that cannot be played on');
   water(bout, me, st); assert(B.wet(st.cell) && !st.cell.chips.some((ch) => ch.kind === 'burn'), 'water on a stack wets it and puts the fire out');
   st.cell.chips.push(chip('burn', 0, { life: 3 })); drain(ticks(bout)); assert(st.cell.chips.filter((ch) => ch.kind === 'std').length === 2, 'wet chips cannot burn');

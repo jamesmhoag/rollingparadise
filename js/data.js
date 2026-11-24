@@ -4,23 +4,29 @@
 // TIP = per-turn action limits. BVD = position shape. The rewards for actions left unused (Charisma, Cunning,
 // Conviction) have no class base: they are earned at the table by occupying rows (see occBonus in bout.js), and a
 // class's own one (`primary`'s reward: Trickery → Charisma, Ingenuity → Cunning, Proficiency → Conviction) earns most.
+// A Class is a Roller's attributes: what it does each turn (TIP), the shape of its position (BVD), what it starts
+// with in Charisma, Cunning and Conviction before the table adds to them (ccc), the attribute it leans on (primary,
+// which also picks the C its rows reward), where it deploys from, and its colour. Rollers (content/rollers.js),
+// Opponents and High Rollers (content/roster.js) each name a Class.
 export const CLASSES = {
   hustler: {
-    name: 'Hustler', hero: 'Owl',
-    tip: { trickery: 3, ingenuity: 2, proficiency: 2 }, bvd: { balance: 3, versatility: 1, depth: 0 }, primary: 'trickery', deploy: 'end',
-    dice: { d4: 4, d6: 4 }, tricks: ['charge', 'mug', 'stir', 'block', 'settle'], color: '#e0a23c',
+    name: 'Hustler',
+    tip: { trickery: 3, ingenuity: 2, proficiency: 2 }, bvd: { balance: 3, versatility: 1, depth: 0 }, ccc: { charisma: 0, cunning: 0, conviction: 0 }, primary: 'trickery', deploy: 'end', color: '#e0a23c',
   },
   rascal: {
-    name: 'Rascal', hero: 'Fox',
-    tip: { trickery: 2, ingenuity: 3, proficiency: 2 }, bvd: { balance: 0, versatility: 3, depth: 1 }, primary: 'ingenuity', deploy: 'center',
-    dice: { d6: 7 }, tricks: ['charge', 'stir', 'bend', 'block', 'settle'], color: '#c0569b',
+    name: 'Rascal',
+    tip: { trickery: 2, ingenuity: 3, proficiency: 2 }, bvd: { balance: 0, versatility: 3, depth: 1 }, ccc: { charisma: 0, cunning: 0, conviction: 0 }, primary: 'ingenuity', deploy: 'center', color: '#c0569b',
   },
   technician: {
-    name: 'Technician', hero: 'Hog',
-    tip: { trickery: 2, ingenuity: 2, proficiency: 3 }, bvd: { balance: 1, versatility: 0, depth: 3 }, primary: 'proficiency', deploy: 'start',
-    dice: { d6: 3, d8: 3 }, tricks: ['charge', 'stir', 'block', 'brace', 'settle'], color: '#4aa3c7',
+    name: 'Technician',
+    tip: { trickery: 2, ingenuity: 2, proficiency: 3 }, bvd: { balance: 1, versatility: 0, depth: 3 }, ccc: { charisma: 0, cunning: 0, conviction: 0 }, primary: 'proficiency', deploy: 'start', color: '#4aa3c7',
   },
 };
+import { ROLLERS } from './content/rollers.js';
+export { ROLLERS };
+// a Roller id from a Roller id or a class id (the first Roller of that class), so old saves and tests that name a class still work
+export const rollerOf = (id) => (ROLLERS[id] ? id : Object.keys(ROLLERS).find((k) => ROLLERS[k].cls === id) || Object.keys(ROLLERS)[0]);
+export const cccOf = (cls) => ({ charisma: 0, cunning: 0, conviction: 0, ...(CLASSES[cls]?.ccc || {}) });
 // a Roller's hero and class together: 'Owl the Hustler'
 // the reward stat for a primary action stat
 export const C_OF = { trickery: 'charisma', ingenuity: 'cunning', proficiency: 'conviction' };
@@ -36,7 +42,7 @@ export function classRule(cls) {
   const body = [...a, ...b].join(' and ');
   return `${body ? body.charAt(0).toUpperCase() + body.slice(1) + '. ' : ''}Deploys from ${from}.`;
 }
-export const heroName = (cls) => (CLASSES[cls].hero ? `${CLASSES[cls].hero} the ${CLASSES[cls].name}` : CLASSES[cls].name);
+export const heroName = (cls, roller) => { const R0 = ROLLERS[roller] || ROLLERS[rollerOf(cls)]; const K = CLASSES[cls] || CLASSES[R0?.cls]; return R0 ? `${R0.name} the ${K?.name || ''}`.trim() : K?.name || ''; };
 export const BASE_DIMS = { cols: 5, stackMax: 3, meterRows: 2, barRows: 3 };
 
 // `per`: what each point does, for hover text that says what a +1 or −1 actually changes
@@ -103,6 +109,17 @@ export const TYPES = {
 };
 export const QMULT = [0, 1, 2, 3, 4];
 export const QNAME = ['', 'Common', 'Fine', 'Grand', 'Royal'];
+// A trick's quality level. `q` on a trick (1-4) is set in the Trick maker: every copy of it is made at least that
+// good. Left unset, its level is rated from its traits (rateTrick): what its dice roll on average, how far it reaches,
+// and what its Bonus asks of the dice. The rating is shown; only a set level changes the copies dealt.
+export function rateTrick(def) {
+  const avg = def.count * ((DICE[def.die]?.faces || 6) + 1) / 2;
+  const reach = def.approach === 'none' ? 1 : Math.max(DIST[def.dist]?.min || 1, ['wave', 'aura', 'cone', 'spiral'].includes(def.roll?.deploy) ? 3 : 1);
+  const hard = { match: 1, evens: 1.1, odds: 1.1, run: 1.3 }[def.bonus?.cond] || (String(def.bonus?.cond).startsWith('over:') ? +def.bonus.cond.slice(5) / Math.max(1, avg) : 1);
+  const score = avg * (1 + (reach - 1) * 0.35) * hard;
+  return score < 7.5 ? 1 : score < 10 ? 2 : score < 14 ? 3 : 4;
+}
+export const qualityOf = (def) => (def?.q >= 1 && def.q <= 4 ? def.q : rateTrick(def));
 export const DIE_UPGRADE_MAX = 2;
 // Quality is unlocked by floor. Common and Fine tricks are reliable: they roll only their own small dice (d4, d6,
 // d8). Grand and Royal hit harder but less reliably: each time one is drawn it rolls a quality die (d10 or d20). A
@@ -171,7 +188,7 @@ export const DIST = {
   rain: { name: 'Rain', text: 'Random stacks, one drop per point rolled. Can repeat.', min: 1, inc: 0, max: 99 },
 };
 export const CONDS = {
-  match: 'at least two dice match', evens: 'every die is even', odds: 'every die is odd',
+  match: 'at least two dice match', evens: 'every die is even', odds: 'every die is odd', run: 'the dice make a run (in sequence, like 2-3-4)',
 };
 export const condText = (c) => CONDS[c] || (c.startsWith('over:') ? `total is ${c.slice(5)} or more` : `total is ${c.slice(6)} or less`);
 
@@ -232,8 +249,8 @@ export const TRICKS = {
   renew: { name: 'Renew', type: 'insurance', cls: null, die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'hit',
     roll: { k: 'regen', text: 'Regen up to the total of the value chips in the target stack, for 1 turn per 4 rolled: a Regen chip paid to the Stage comes straight back to its stack, without its Regen.' }, bonus: { cond: 'match', k: 'spread', text: 'Renews the neighbouring stacks too (Swipe).' } },
   // --- Investments ---
-  stir: { name: 'Stir', type: 'investment', cls: null, die: 'd6', count: 1, side: 'none', approach: 'none', dist: 'hit',
-    roll: { k: 'boost', text: 'Boost: your other roll effects this turn gain the total.' }, bonus: { cond: 'over:5', k: 'extend', text: 'Also grants that much Power for next turn.' } },
+  stir: { name: 'Stir', type: 'investment', cls: null, die: 'd6', count: 1, side: 'self', approach: 'any', dist: 'hit',
+    roll: { k: 'chips', chip: 'stir', convert: 'lump', place: 'under', deploy: 'hit', foot: 'large', flat: true, slip: true, text: '' }, bonus: { cond: 'over:5', k: 'double', text: '' } },
   rattle: { name: 'Rattle', type: 'investment', cls: null, die: 'd6', count: 1, side: 'none', approach: 'none', dist: 'hit',
     roll: { k: 'enfeeble', text: 'Enfeeble: your opponent\'s roll effects this turn lose the total.' }, bonus: { cond: 'over:5', k: 'extend', text: 'They also lose half of it next turn.' } },
   bend: { name: 'Bend', type: 'investment', cls: 'rascal', die: 'd8', count: 1, side: 'none', approach: 'none', dist: 'hit', chooseRoller: true,
@@ -247,8 +264,8 @@ export const TRICKS = {
   saturate: { name: 'Saturate', type: 'investment', cls: 'rascal', die: 'd6', count: 2, side: 'none', approach: 'none', dist: 'hit',
     roll: { k: 'saturate', text: 'Your other roll effects this turn gain the total, and your opponent\'s boosts this turn are subdued to nothing.' }, bonus: { cond: 'match', k: 'extend', text: 'Their Power is drained to nothing as well.' } },
   // --- Corrections ---
-  settle: { name: 'Settle', type: 'correction', cls: null, die: 'd6', count: 1, side: 'none', approach: 'none', dist: 'hit',
-    roll: { k: 'settle', text: 'Remove Debt and hazard chips from your position up to the total, then organize your Stake into full stacks.' }, bonus: { cond: 'over:5', k: 'blocks', text: 'Also adds 2 Block chips to your Bet.' } },
+  settle: { name: 'Settle', type: 'correction', cls: null, die: 'd6', count: 1, side: 'self', approach: 'any', dist: 'hit',
+    roll: { k: 'settle', text: 'In the targeted column, remove Debt and hazard chips up to the total, then gather that column\'s chips into full stacks starting at the targeted space, filling outward from it.' }, bonus: { cond: 'over:5', k: 'blocks', text: 'Also adds 2 Block chips to your Bet.' } },
   gather: { name: 'Gather', type: 'correction', cls: null, die: 'd6', count: 2, side: 'none', approach: 'none', dist: 'hit',
     roll: { k: 'gather', text: 'Recover up to the total in ¢ from the fees you have paid to the Stage, back onto your Bet.' }, bonus: { cond: 'match', k: 'both', text: 'Takes from your opponent\'s paid fees as well.' } },
   scatter: { name: 'Scatter', type: 'correction', cls: 'rascal', die: 'd6', count: 2, side: 'none', approach: 'none', dist: 'hit',
@@ -614,15 +631,10 @@ export const FLOORS = [
   { name: 'Rollers Suite', line: "You're doing it! Time to play with the high rollers. Do you have what it takes?", worth: [250, 300, 350], boss: 500, cut: 1000 },
   { name: 'Royal Paradise', line: 'This room is for royal rollers only. It sure would be a shame to dethrone them.', worth: [450, 550, 650], boss: 740, cut: 100000 },
 ];
-export const OPPONENTS = ['Leather Wallet', 'Designer Purse', 'Money Clip', 'Credit Card', 'Wad of Cash', 'Coin Dispenser', 'Piggy Bank', 'Trained Monkey', 'Tip Jar',
-  'Block Chain', 'Gold Chain', 'Platinum Teeth', 'Golden Parachute', 'Phone Scam', 'Phishing Email', 'Long Con', 'Blink Dagger', 'Paper Check', 'Money Order',
-  'Championship Trophy', 'Prize Pig', 'Bounty Reward', 'Finders Fee', 'Sly Fox', 'Ceramic Frog', 'Bearish Forecast', 'Bull Market', 'Savings Account', 'College Tuition',
-  'Research Grant', 'Student Loan', 'Mortgage Payment', 'Lease Agreement', 'Bank Statement', 'Pyramid Scheme', 'Highway Robber', 'Gambling Addict', 'Inside Job',
-  'Chocolate Coins', 'Finance Secretary', 'Certified Accountant', 'Shaken Stirrer', 'Stirred Shaker', 'High Ball', 'Chain Smoker', 'HSA Account', 'Health Benefits',
-  'Crinkled IOU', 'Veteran Hustler', 'Vending Machine', 'Low Ball'];
-export const BOSSES = [null,
-  ['ATM Machine', 'Pile of Cash', 'Exotic Animal', 'Antique Clock'], ['Gold Bar', 'Uncut Gem', 'Luxury Vehicle', 'Lucrative Deal'],
-  ['Sunken Treasure', 'Endangered Species', 'Vested 401k', 'Project Funding'], ['Trust Fund', 'The Vault', 'Priceless Painting', 'Ancient Artifact']];
+// The names dealt at the tables and the High Rollers on each floor come from the roster (content/roster.js), so a
+// renamed or new opponent is dealt under its own name. Both lists are rebuilt from it (refreshDerived).
+export const OPPONENTS = [];
+export const BOSSES = [null, [], [], [], []];
 export const ASCENT_NAMES = ['Shop Keeper', 'Veteran Hustler', 'Golden Parachute', 'Diamond Hands', 'The House'];
 // Table felts (a: centre, b: edge, rim: the rail). `weather`: the orbital weather the table brings (see ORBITALS);
 // `cold`: wet chips and Puddles on it freeze. `pool: false` felts are not dealt to random tables.
@@ -769,8 +781,8 @@ import { FONTS, IMAGES, ICONS, TEXTURES, NEON } from './content/assets.js';
 export { FONTS, IMAGES, ICONS, TEXTURES, NEON };
 import TEXT from './text/en.js';
 import { MATERIALS as _MAT, DICE_SHOP as _DS, BONE as _BONE, MELT as _MELT, CASTS as _CASTS, DYES as _DYES, DIAMOND as _DIA } from './content/dice.js';
-export const TABLES = { CLASSES, BASE_DIMS, STATS, DICE, MATERIALS: _MAT, DICE_SHOP: _DS, BONE: _BONE, MELT: _MELT, CASTS: _CASTS, DYES: _DYES, DIAMOND: _DIA, DIE_VARS,
-  TYPES, TRICKS, CHIPS, SHOP_CHIPS, CHIP_TIERS, CREATURES, ORBITALS, CALAMITIES, TILTS, TILT_PRESSURE, FELTS, FLOORS, BOSSES, OPPONENTS, DRINKS, SPORTS, JACKETS, CARDS, WALLETS,
+export const TABLES = { CLASSES, ROLLERS, BASE_DIMS, STATS, DICE, MATERIALS: _MAT, DICE_SHOP: _DS, BONE: _BONE, MELT: _MELT, CASTS: _CASTS, DYES: _DYES, DIAMOND: _DIA, DIE_VARS,
+  TYPES, TRICKS, CHIPS, SHOP_CHIPS, CHIP_TIERS, CREATURES, ORBITALS, CALAMITIES, TILTS, TILT_PRESSURE, FELTS, FLOORS, DRINKS, SPORTS, JACKETS, CARDS, WALLETS,
   PASSES, CONDITIONS, PACKS, QDIE, PRIZES, GUIDE, TEXT, MADE_CHIPS, ROSTER, BOSS_TRAITS, FLAVOR, TUNING, ODDS, DENOMS, WEAR, IMAGES, ICONS, TEXTURES, NEON };
 const isObj = (x) => x && typeof x === 'object';
 // a path's steps: keys are joined by '.', and a '.' inside a key (as in text keys) is written '\\.'
@@ -788,6 +800,9 @@ export function deletePath(path) { const ks = splitPath(path), last = ks.pop(); 
 export function refreshDerived() {
   TRICK_IDS.splice(0, TRICK_IDS.length, ...Object.keys(TRICKS));
   FELT_POOL.splice(0, FELT_POOL.length, ...Object.keys(FELTS).filter((k) => FELTS[k].pool !== false));
+  const R0 = Object.values(ROSTER);
+  OPPONENTS.splice(0, OPPONENTS.length, ...R0.filter((x) => !x.boss && x.name).map((x) => x.name));
+  for (let f = 1; f <= 4; f++) BOSSES[f] = R0.filter((x) => x.boss && x.name && (x.floors || [1, 2, 3, 4]).includes(f)).map((x) => x.name);
 }
 export function applyContent(changes = {}) {
   for (const [path, v] of Object.entries(changes)) if (TABLES[splitPath(path)[0]]) setPath(path, isObj(v) ? JSON.parse(JSON.stringify(v)) : v);

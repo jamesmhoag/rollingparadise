@@ -889,7 +889,6 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 .who.seat .pills, .who.seat .badges { flex-basis: 100%; }
 /* the Neon tool's preview */
 .neon-maker .neon-side { display: grid; gap: 6px; margin-bottom: 14px; } .neon-sample { display: flex; padding: 8px 14px; border-radius: 12px; background: #07040f; width: max-content; }
-.neon-sample.me { border: 2px solid var(--you-border1); box-shadow: 0 0 4px var(--you-border1), 0 0 14px var(--you-border2); }
 .neon-in { display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; } .neon-in input { width: 34px; height: 24px; padding: 0; border: 0; background: none; cursor: pointer; }
 .scene.bout .tcard .c-text { line-height: 1.17; } .scene.bout .tcard .c-open { gap: 3px; }
 
@@ -918,16 +917,7 @@ p.flavor { font-style: italic; color: var(--dim); }
 /* ---------- neon signs (js/ui/sign.js): frames, mounts, edge symbols, soft blinks ---------- */
 .neonsign { border-radius: var(--sign-r, 12px); background-color: var(--mount, transparent); background-image: var(--mount-img, none); background-size: cover; background-position: center; }
 .who.seat.neonsign { padding: 4px 10px 5px; }
-.neonsign.frame-tube { border: 2px solid var(--sf1); box-shadow: 0 0 4px var(--sf1), 0 0 14px var(--sf2), inset 0 0 8px color-mix(in srgb, var(--sf1) 35%, transparent), inset 0 0 18px color-mix(in srgb, var(--sf2) 18%, transparent); }
-.neonsign.frame-double { border: 5px double var(--sf1); box-shadow: 0 0 6px var(--sf1), 0 0 16px var(--sf2); }
-.neonsign.frame-dashed { border: 2px dashed var(--sf1); box-shadow: 0 0 10px color-mix(in srgb, var(--sf2) 60%, transparent); }
-.neonsign.frame-dotted { border: 3px dotted var(--sf1); box-shadow: 0 0 10px color-mix(in srgb, var(--sf2) 60%, transparent); }
-.neonsign.frame-bulbs { border: 5px dotted var(--sf1); filter: drop-shadow(0 0 3px var(--sf1)) drop-shadow(0 0 7px var(--sf2)); }
-.house-sign.neonsign.frame-bulbs { border: 0; filter: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sf1) 35%, transparent), 0 0 18px color-mix(in srgb, var(--sf1) 18%, transparent); }
-.neonsign.frame-none { border: 0; box-shadow: none; }
-.sign-edge { position: absolute; pointer-events: none; color: var(--sf1); text-shadow: 0 0 4px var(--sf1), 0 0 9px var(--sf2); font-size: 11px; line-height: 1; z-index: 1; }
-.sign-edge.corner.tl { left: -6px; top: -7px; } .sign-edge.corner.tr { right: -6px; top: -7px; } .sign-edge.corner.bl { left: -6px; bottom: -7px; } .sign-edge.corner.br { right: -6px; bottom: -7px; }
-.sign-edge.run { left: 10px; right: 10px; white-space: nowrap; overflow: hidden; font-size: 10px; letter-spacing: 1px; text-align: center; } .sign-edge.run.top { top: -7px; } .sign-edge.run.bottom { bottom: -7px; }
+.house-sign.neonsign.frame-bulbs { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sf1) 35%, transparent), 0 0 18px color-mix(in srgb, var(--sf1) 18%, transparent); }
 .house-sign .hs-name { color: color-mix(in srgb, var(--house-cls1, #fff4d6) 85%, #fff); text-shadow: 0 0 3px #fff, 0 0 9px var(--house-name1, #ffb84d), 0 0 20px var(--house-name2, #ff9a2e), 0 0 36px var(--house-name2, #ff7a1a); }
 .house-sign .marquee { --lc: var(--house-border1, #ffd76a); }
 /* soft blinks: slow, never fully dark (no strobing); off for reduced motion */
@@ -937,7 +927,7 @@ p.flavor { font-style: italic; color: var(--dim); }
 @keyframes sign-alt { 0%, 45% { opacity: 1; } 55%, 95% { opacity: .55; } 100% { opacity: 1; } }
 .neonsign { --bk-dur: 3.2s; } .neonsign.blink-pulse { --bk-dur: 2.2s; } .neonsign.blink-flicker { --bk-dur: 4.6s; } .neonsign.blink-alternate { --bk-dur: 3s; }
 .neonsign.blink-breathe { --bk: sign-breathe; } .neonsign.blink-pulse { --bk: sign-pulse; } .neonsign.blink-flicker { --bk: sign-flicker; } .neonsign.blink-alternate { --bk: sign-alt; }
-.neonsign.blink-name .neon-name, .neonsign.blink-name .hs-name, .neonsign.blink-cls .neon-class, .neonsign.blink-cls .turn, .neonsign.blink-edge .sign-edge { animation: var(--bk) var(--bk-dur) ease-in-out infinite; }
+.neonsign.blink-name .neon-name, .neonsign.blink-name .hs-name, .neonsign.blink-cls .neon-class, .neonsign.blink-cls .turn, .neonsign.blink-edge .sf-glyph { animation: var(--bk) var(--bk-dur) ease-in-out infinite; }
 .neonsign.blink-border { animation: var(--bk) var(--bk-dur) ease-in-out infinite; }
 .neonsign.blink-alternate.blink-name .neon-class, .neonsign.blink-alternate.blink-cls .neon-name { animation: var(--bk) var(--bk-dur) ease-in-out calc(var(--bk-dur) / -2) infinite; }
 @media (prefers-reduced-motion: reduce) { .neonsign, .neonsign *, .marquee i { animation: none !important; } }
@@ -980,3 +970,41 @@ p.flavor { font-style: italic; color: var(--dim); }
 /* the hand of bid chips is a stack, not a fan; the bid pile on a card is an empty space for the chips */
 .hand-cursor.stack { flex-direction: column-reverse; } .hand-cursor.stack > * { margin-left: 0; margin-top: -22px; rotate: 0deg; } .hand-cursor.stack > *:last-child { margin-top: 0; }
 .bidslot { font-size: 0 !important; color: transparent !important; }
+/* a flat chip lying under the stacks across its footprint: a thin disc, seen through */
+.chip.mat { opacity: .55 !important; pointer-events: none; box-shadow: 0 0 0 1px rgba(255, 255, 255, .25), 0 0 18px color-mix(in srgb, var(--cc, #b98bff) 60%, transparent) !important; }
+.chip.mat i { opacity: .5; }
+.b-lab.has-help { text-decoration: underline dotted rgba(255,255,255,.35); text-underline-offset: 3px; cursor: help; }
+
+/* ---------- neon sign frames (sign.js draws them as an SVG over the sign) ---------- */
+.sign-frame { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 1; }
+.sf-body { filter: drop-shadow(0 0 2px var(--sf1)) drop-shadow(0 0 6px var(--sf2)); }
+.sf-tube { fill: none; stroke: var(--sf1); stroke-width: 2.2; stroke-linejoin: round; }
+.sf-tube.thin { stroke-width: 1.6; } .sf-tube.b { stroke: var(--sf2); }
+.sf-tube.rope { stroke-width: 3; stroke-dasharray: 6 6; } .sf-tube.rope2 { stroke-dashoffset: 6; }
+.sf-tube.grad { stroke-width: 2.6; }
+.sf-glint { fill: none; stroke: color-mix(in srgb, var(--sf1) 35%, #fff); stroke-width: 2.6; stroke-linecap: round; stroke-dasharray: calc(var(--L) * 0.1px) calc(var(--L) * 1px); opacity: 0; }
+.sf-lamps { filter: drop-shadow(0 0 2px var(--sf1)) drop-shadow(0 0 5px var(--sf2)); }
+.sf-lamp { fill: var(--sf1); stroke: var(--sf1); }
+.sf-lamp.dash { stroke-width: 2.4; stroke-linecap: round; } .sf-lamp.dot { stroke: none; } .sf-lamp.bulb { stroke: color-mix(in srgb, var(--sf1) 50%, #fff); stroke-width: 0.8; }
+.sf-glyph { stroke: none; font-size: 11px; font-family: 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols 2', 'Noto Sans Symbols', 'DejaVu Sans', 'DejaVu Sans Mono', 'OpenSymbol', sans-serif; }
+.frame-symbols .sf-glyph { font-size: 10px; }
+/* motions: all slow (under one change a second) and never fully dark; reduced motion stops them (above) */
+.motion-chase .sf-lamp { animation: sf-chase 3s linear infinite; animation-delay: calc(var(--i) / var(--n) * 3s - 3s); }
+.motion-chase .sf-glint { opacity: 0.95; animation: sf-glint 4.5s linear infinite; }
+.motion-breathe .sf-lamp, .motion-breathe .sf-body { animation: sf-breathe 3.6s ease-in-out infinite; }
+.motion-swap .sf-lamp { animation: sf-alt 2.6s ease-in-out infinite; } .motion-swap .sf-lamp.odd { animation-delay: -1.3s; }
+.motion-swap .sf-tube { animation: sf-swap 3.2s ease-in-out infinite; } .motion-swap .sf-tube.b { animation-delay: -1.6s; }
+.motion-twinkle .sf-lamp { animation: sf-twinkle 3.4s ease-in-out infinite; animation-delay: calc(var(--r) * -3.4s); }
+.motion-twinkle .sf-body { animation: sf-shimmer 2.8s ease-in-out infinite; }
+@keyframes sf-chase { 0% { opacity: 1; } 18% { opacity: 0.45; } 100% { opacity: 0.45; } }
+@keyframes sf-glint { from { stroke-dashoffset: 0; } to { stroke-dashoffset: calc(var(--L) * -1px); } }
+@keyframes sf-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+@keyframes sf-alt { 0%, 100% { fill: var(--sf1); stroke: var(--sf1); opacity: 1; } 50% { fill: var(--sf2); stroke: var(--sf2); opacity: 0.6; } }
+@keyframes sf-swap { 0%, 100% { stroke: var(--sf1); } 50% { stroke: var(--sf2); } }
+@keyframes sf-twinkle { 0%, 100% { opacity: 1; } 45% { opacity: 0.5; } 60% { opacity: 0.9; } }
+@keyframes sf-shimmer { 0%, 100% { opacity: 1; } 30% { opacity: 0.82; } 55% { opacity: 1; } 75% { opacity: 0.88; } }
+.glyph-group { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; } .glyph-group .cap { width: 100%; margin-top: 4px; }
+.small.glyph { min-width: 26px; padding: 2px 4px; font-family: 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols 2', 'DejaVu Sans', 'DejaVu Sans Mono', 'OpenSymbol', sans-serif; } .small.glyph svg { width: 12px; height: 12px; fill: currentColor; vertical-align: middle; }
+.b-lcell { min-height: 38px; border: 1px solid rgba(255,255,255,.14); border-radius: 6px; padding: 2px; display: flex; flex-direction: column; align-items: stretch; gap: 1px; font-size: 10px; cursor: crosshair; user-select: none; }
+.b-lchip { background: rgba(255,255,255,.08); border-radius: 3px; padding: 0 3px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .b-lchip.fx { background: rgba(185,139,255,.22); }
+.b-list-edit { gap: 4px; } .b-li { gap: 2px; } .b-li.bad select { border-color: #ff6a6a; }

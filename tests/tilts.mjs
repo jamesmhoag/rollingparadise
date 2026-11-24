@@ -11,7 +11,7 @@ assert(R.maxDenom(1) === 1 && R.maxDenom(3) === 25 && R.maxDenom(4) === 250 && R
   assert(c[250] > 0 && R.planWorth(c) <= 20000 && Object.values(c).reduce((a, n) => a + n, 0) === B.barCapacity(st.dims), 'a big purse that does not fit in 10¢ chips uses the bigger chips the floor allows'); }
 { let o = null; for (let seed = 2; seed < 40 && !o; seed++) { const run = R.newRun('hustler', 'standard', seed); R.enterFloor(run, 4); const x = run.fs.boss.opp; if (x.worth <= B.barCapacity(x.dims) * 9) o = x; } // a boss whose worth fits in 10¢ chips
   assert(o && o.plan.chips.every((g) => g.value <= 10), 'opponents keep their usual chips when the worth fits'); }
-{ const run = R.newRun('hustler', 'standard', 2); R.enterFloor(run, 4); const o = R.genOpponent(run, 4, 20000, {}); assert(o.plan.chips.some((g) => g.value > 10) && Math.abs(o.worth - 20000) < 300, 'a rich opponent uses bigger chips to fit its worth'); }
+{ const run = R.newRun('hustler', 'standard', 2); R.enterFloor(run, 4); const o = R.genOpponent(run, 4, 20000, { cls: 'hustler' }); assert(o.plan.chips.some((g) => g.value > 10) && Math.abs(o.worth - 20000) < 300, 'a rich opponent uses bigger chips to fit its worth'); }
 
 // ---------- tilts ----------
 const run = R.newRun('technician', 'standard', 5); R.enterFloor(run, 1); run.purse = 600;

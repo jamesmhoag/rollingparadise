@@ -25,4 +25,6 @@ export function t(key, vars) {
   return fill(line, vars);
 }
 // every key in a language, for tools and tests
+// whether a line exists (in the language in use, or English)
+export const hasText = (key) => key in LANGS[lang] || key in EN;
 export const keysOf = (code = 'en') => Object.keys(LANGS[code] || {});

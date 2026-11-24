@@ -10,6 +10,12 @@
 // `npm run check:hovers` walks every screen in a browser and fails on any hover without one.
 export const GUIDE = {
   // ---------- at the table ----------
+  'sign-glyph': { name: 'Edge symbol', def: 'A symbol for the sign\'s edge.', how: ['Click it to use it at the corners or along the edge, or as the whole frame (frame style Symbols).'] },
+  'layout-space': { name: 'Stake space', def: 'One space of this opponent\'s Stake, as it sits down.', how: ['Pick a brush, then click and hold to stack chips, or sweep across spaces.', 'The eraser takes the top chip off.'] },
+  'build-option': { name: 'Build option', def: 'One setting of the thing you are building. The hover above says what it is for.',
+    how: ['Change it and the draft updates; ↺ beside it puts back what it was.', 'Nothing is kept until you save the draft.'] },
+  'bid-space': { name: 'Bid space', def: 'Where a trick\'s bids stack up.',
+    how: ['Pick up chips from your stacks, then click the trick: each click bids the top chip in your hand, one at a time.', 'While you hold a chip, clicking bids it; bids already made stay put.'] },
   die: { name: 'Die', def: 'A die from your pouch. Its faces are the values it can roll.',
     how: ['In the Roll step, pick the dice to throw; in the Bluff, put each rolled die on a trick you bid on.',
       'Any die adds its value. The first ones of the trick\'s own size are its Bonus dice; a flipped chip counts as any size.',
@@ -263,7 +269,7 @@ export const GUIDE_BY_CLASS = [
   ['gcard.gpass', 'pass'], ['gcard.lanyard', 'lanyard'], ['gcard', 'card'], ['gjacket', 'jacket'],
   ['box.row', 'denom'], ['dye', 'dye'],
   ['tilt.challenge', 'tilt:challenge'], ['tilt.cheat', 'tilt:cheat'], ['ocell', 'opp-stack'],
-  ['music-btn', 'music'], ['bonus-req', 'trick-dice'], ['nsign', 'sign'], ['house-sign', 'house'], ['pot', 'pit'], ['ledger', 'ledger'], ['phases', 'phase-track'], ['orbital', 'weather'], ['sfx-btn', 'sfx'], ['qd', 'quality'], ['tgt', 'aim'], ['bonus', 'trick-dice'], ['c-stack', 'trick-stack'], ['zone-title', 'zone'], ['zone-label', 'position-label'],
+  ['music-btn', 'music'], ['bonus-req', 'trick-dice'], ['nsign', 'sign'], ['house-sign', 'house'], ['pot', 'pit'], ['ledger', 'ledger'], ['phases', 'phase-track'], ['orbital', 'weather'], ['sfx-btn', 'sfx'], ['qd', 'quality'], ['tgt', 'aim'], ['bonus', 'trick-dice'], ['c-stack', 'trick-stack'], ['zone-title', 'zone'], ['zone-label', 'position-label'], ['b-lab', 'build-option'], ['glyph', 'sign-glyph'], ['b-lcell', 'layout-space'], ['bidslot', 'bid-space'],
   ['worth', 'worth'], ['weather', 'weather'], ['table-felt', 'felt'], ['turn', 'turn'], ['house', 'house'], ['pit', 'pit'],
   ['stage-strip', 'stage'], ['run-empty', 'run'], ['okit', 'opp-kit'], ['spine.book', 'spine:book'], ['spine.dice', 'spine:dice'],
 ];
