@@ -924,6 +924,7 @@ export default {
   "table.pointer-of-from-the": "<div class=\"chip-sec\"><span class=\"who\">Pointer · {pi} of {ti} from the bottom</span>the same as the top chip.</div>",
   "table.pointer-of-from-the-2": "Pointer · {pi} of {ti} from the bottom",
   "table.move-the-pointer-down": "Move the pointer down the space to read the chips below the top one.",
+  "table.bonus-req-tip": "<b>Bonus: {count} {die}</b><p>Put {count} {die} on it (once it is bid on), and if {cond}: {text}</p><p class=\"dim\">Other dice still add their value.</p>",
   "table.bonus-dice-tip": "<b>Bonus dice</b><p>The Bonus reads the first {count} {die} on this trick (a flipped chip counts as any size). Any other die still adds its value.</p>",
   "table.stack-tip": "<b>A stack of {n}</b><p>One bid plays the whole stack: the top copy this turn, then one more each turn with the same roll and target ({more} more {more|turn|turns}), each with its own print.</p><p class=\"dim\">{list}</p>",
   "table.state-lingers": "lingers {n}",

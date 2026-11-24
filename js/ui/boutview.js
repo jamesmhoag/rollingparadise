@@ -1,7 +1,7 @@
 // The table. Every chip, die, trick card and creature is one persistent element that is
 // moved, faded or flipped to follow the bout state, so nothing ever pops between states.
 import { h, tip, wait, tween, swapText, setOn, pulse, syncList, toast, btn, refreshTip, redrawTip, box, vc, detail, paint, guided } from './core.js';
-import { chipSig, chipGlyph, chipName, chipText, chipTip, dieTip, trickTip, trickWord, trickWords, statTip, drinkTip, dieMarks, dieDyes, dieStyle, dieClass, trickLook, feltStyle, seenAs, traitsOf, traitsHtml, dieEl } from './parts.js';
+import { chipSig, chipGlyph, chipName, chipText, chipTip, dieTip, trickTip, trickWord, trickWords, statTip, drinkTip, dieMarks, dieDyes, dieStyle, dieClass, trickLook, feltStyle, seenAs, traitsOf, traitsHtml, dieEl, chipEl, trickChip } from './parts.js';
 import { iconKids, iconFill } from './icons.js';
 import { flyerTraits } from '../traits.js';
 import { openLibrary } from './library.js';
@@ -17,7 +17,9 @@ import { t as tx } from '../text.js';
 
 // the table: the House's phase track runs along the top edge (y 100-124), the positions below it, and between them
 // the Pit (right under the House's arms), each Roller's pot, and the ledger of bids and tapped pieces
-const TOP = 128, CH = 44, PX = 570, OX = 710, CHIP = 32, STAGE_Y = 100;
+// SPACE: the most a position's column is wide; a side with more columns shrinks them all to fit (up to 13 a side), and its
+// chips shrink with them (CHIP is a chip's size in a SPACE_REF-wide column, so chips keep the same share of a space).
+const TOP = 128, CH = 42, PX = 570, OX = 710, CHIP = 32, STAGE_Y = 100, SPACE = 46, SPACE_REF = 52;
 const PIT = { left: PX, right: OX, top: TOP, bottom: TOP + 98 }; // the Pit's chips stack up from its floor
 const LEDGER_Y = PIT.bottom + 30; // under the pots: what each Roller has bid, and what is tapped
 const STAGE = [{ x: PX + 18, y: PIT.bottom - CHIP - 4 }, { x: OX - 50, y: PIT.bottom - CHIP - 4 }], HOUSE = { x: 624, y: 30 };
@@ -25,7 +27,7 @@ const fmtX = (m) => '×' + (m % 1 ? m.toFixed(2).replace(/0$/, '') : m);
 
 export function boutScene(root, bout, ctx, onDone) {
   const [me, opp] = bout.sides;
-  const cw = bout.sides.map((s) => Math.min(52, Math.floor(540 / s.rows)));
+  const cw = bout.sides.map((s) => Math.min(SPACE, Math.floor((PX - 30) / s.rows))), ck = cw.map((w) => w / SPACE_REF); // column width, chip scale
   const ui = { peek: null, peekPhase: null, handAim: new Set(), mode: null, die: null, entry: null, locked: false, speed: globalThis.RP_FAST || 1, first: true, sel: new Set(), flips: [], hand: [], card: null, point: null }; // RP_FAST: set by automated playthroughs
   // sel: Pouch dice picked for the throw · flips: stacks whose top chip is picked to flip · hand: the bid chips picked up, one {r,c} per chip (a stack picked twice gives its top two) · card: trick under the pointer · point: the chip under the pointer in a stack
   const els = { chips: new Map(), dice: new Map(), cards: new Map(), cells: [[], []], creatures: new Map(), stage: new Map() };
@@ -38,7 +40,7 @@ export function boutScene(root, bout, ctx, onDone) {
 
   // ---------- geometry ----------
   const cellPos = (side, r, c) => ({ x: side === 0 ? PX - (r + 1) * cw[0] : OX + r * cw[1], y: TOP + c * CH, w: cw[side] });
-  const chipPos = (side, r, c, lvl) => { const p = cellPos(side, r, c); return { x: p.x + p.w / 2 - CHIP / 2, y: p.y + CH - CHIP - 5 - Math.min(lvl, 12) * 4, z: 20 + c * 40 + lvl }; };
+  const chipPos = (side, r, c, lvl) => { const p = cellPos(side, r, c), k = ck[side]; return { x: p.x + p.w / 2 - CHIP / 2, y: p.y + CH - 5 - CHIP * (1 + k) / 2 - Math.min(lvl, 12) * 4 * k, z: 20 + c * 40 + lvl, k }; };
   // Under the table, two mirrored halves: yours on the left (Book · Run · dice), theirs on the right (dice · Run ·
   // Book), so both Rolls sit side by side in the middle. A Book or dice column folds to a thin spine when there is
   // nothing to do with it and gives its width to the Run. Click your spine, or press B or D, to peek inside.
@@ -59,9 +61,9 @@ export function boutScene(root, bout, ctx, onDone) {
   function cardLayout() {
     const out = new Map();
     [0, 1].forEach((si) => { const R = runSpan(si); sideOf(si).run.forEach((e, i) => out.set(ckey(si, e.uid), { si, x: R.l + i * (R.cw + 6), y: RUN_Y, w: R.cw, h: CARD_H, open: true, e })); });
-    const peek = ui.peek === 'book', tapT = B.tappedInOrder(me).tricks.map((x) => x.trick), shelf = [...me.book, ...tapT], step = Math.min(34, Math.floor(CARD_H / Math.max(1, shelf.length)));
-    shelf.forEach((t, i) => out.set(t.uid, bookOpen() ? { si: 0, x: 16, y: RUN_Y + i * step, w: BOOK_W - 4, h: Math.min(30, step - 3), open: false, t }
-      : peek ? { si: 0, x: 50, y: RUN_Y + i * step, w: BOOK_W - 4, h: Math.min(30, step - 3), open: false, t, peek: true }
+    const peek = ui.peek === 'book', tapT = B.tappedInOrder(me).tricks.map((x) => x.trick), shelf = [...me.book, ...tapT], step = Math.min(42, Math.floor(CARD_H / Math.max(1, shelf.length)));
+    shelf.forEach((t, i) => out.set(t.uid, bookOpen() ? { si: 0, x: 16, y: RUN_Y + i * step, w: BOOK_W - 4, h: Math.min(38, step - 3), open: false, t }
+      : peek ? { si: 0, x: 50, y: RUN_Y + i * step, w: BOOK_W - 4, h: Math.min(38, step - 3), open: false, t, peek: true }
         : { si: 0, x: 16, y: RUN_Y + 12 + i * 3, w: 26, h: 24, open: false, t, folded: true }));
     return out;
   }
@@ -427,12 +429,17 @@ export function boutScene(root, bout, ctx, onDone) {
       return dieTip(d, `${live ? tx('table.rolled', { value: live.value }) : ''}${where}`); });
     layer.append(el); return el;
   }
+  // a trick's card shows the chip it makes (or what stands for its effect) beside its name, and its Bonus
+  // requirement as a gold badge: how many dice of which size
+  const illus = (def) => { const ch = trickChip(def); return ch ? h('span', { class: 'c-illus' }, chipEl(ch, 'mini')) : null; };
+  const bonusReq = (def) => h('span', { class: 'req bonus-req', tip: tx('table.bonus-req-tip', { count: def.count, die: def.die, cond: D.condText(def.bonus.cond), text: def.bonus.text }) },
+    h('em', { text: '★' }), `${def.count}×`, dieEl({ type: def.die, up: [] }, '', 'mini'));
   function mkCard(t, si = 0) {
     const def = D.defOf(t), T = D.TYPES[def.type];
     const el = h('div', { class: `tcard ${trickLook(t)}${si ? ' theirs' : ''}`, style: { '--tc': T.color }, ...(si ? {} : { onclick: (ev) => clickCard(t.uid, ev), onmouseenter: () => { ui.card = t.uid; marks(); }, onmouseleave: () => { if (ui.card === t.uid) { ui.card = null; marks(); } } }) },
-      h('div', { class: 'c-compact' }, h('b', { text: def.name }), h('span', { class: 'req', text: `${def.count}${def.die}` }), h('span', { class: 'q', html: trickWord(t) })),
+      h('div', { class: 'c-compact' }, illus(def), h('b', { text: def.name }), h('span', { class: 'q', html: trickWord(t) }), bonusReq(def)),
       h('div', { class: 'c-open' },
-        h('div', { class: 'c-name' }, h('b', { text: def.name }), h('span', { class: 'c-stack', tip: () => stackTip(t.uid) }), h('span', { class: 'q', html: trickWord(t) })),
+        h('div', { class: 'c-name' }, illus(def), h('b', { text: def.name }), h('span', { class: 'c-stack', tip: () => stackTip(t.uid) }), h('span', { class: 'q', html: trickWord(t) })),
         h('div', { class: 'c-type' }, T.name, h('span', { class: `xm ${t.foil ? 'up' : ''}`, text: ` ${fmtX(B.multOf(t))}` }), h('span', { class: 'qd', tip: tx('table.quality-2', { QNAME: D.QNAME[t.q], qdieText: D.qdieText(t.q) }) }), h('span', { class: 'tgt', text: 'aim', 'data-act': 'target', tip: tx('table.aim-change-where-this') })),
         h('div', { class: 'c-dice' }), // the dice on it are drawn over this row
         h('div', { class: 'c-bid' }, h('span', { class: 'bidslot', text: tx('table.bid-5'), 'data-act': 'bid' }), h('div', { class: 'c-math' })), // the roll breakdown sits beside the bid pile
@@ -580,7 +587,7 @@ export function boutScene(root, bout, ctx, onDone) {
     bout.sides.forEach((s, si) => { for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const cell = s.grid[r][c];
       const fn = cell.anchor?.n || 2; // a Big chip or Volcano covers 2×2; big made chips 2, 3 or 5 a side
       if (cell.anchor && r + fn - 1 < s.rows && c + fn - 1 < s.dims.cols) { const a = cellPos(si, r, c), b2 = cellPos(si, r + fn - 1, c + fn - 1), cx = (a.x + b2.x) / 2 + a.w / 2, cy = (a.y + b2.y) / 2 + CH / 2;
-        cell.chips.forEach((ch, lvl) => want.set(ch.id, { x: cx - CHIP / 2, y: cy - CHIP / 2 + 10 - Math.min(lvl, 12) * 5, z: 20 + c * 40 + lvl, ch: seenAs(ch, si), side: si, s: ch.big || ch.kind === 'volcano' ? 1.9 : B.footOf(ch) > 1 ? B.footOf(ch) * 0.95 : 0 })); }
+        cell.chips.forEach((ch, lvl) => want.set(ch.id, { x: cx - CHIP / 2, y: cy - CHIP / 2 + 10 * ck[si] - Math.min(lvl, 12) * 5 * ck[si], z: 20 + c * 40 + lvl, ch: seenAs(ch, si), side: si, s: (ch.big || ch.kind === 'volcano' ? 1.9 : B.footOf(ch) > 1 ? B.footOf(ch) * 0.95 : 1) * ck[si] })); }
       else cell.chips.forEach((ch, lvl) => want.set(ch.id, { ...chipPos(si, r, c, lvl), ch: seenAs(ch, si), side: si })); } });
     // bids pile on their trick's BID ring (click the pile to take its top chip back; click the card to bid more)
     [0, 1].forEach((si) => { for (const e of sideOf(si).run) { const k = ckey(si, e.uid), cl = cards.get(k); if (!cl || !e.bid.length) continue; const sp = bidSpot(els.cards.get(k));
@@ -590,7 +597,7 @@ export function boutScene(root, bout, ctx, onDone) {
     [0, 1].forEach((si) => { const list = B.pitOf(bout, si); list.forEach((ch, k) => want.set(ch.id, { ...pitSlot(si, k, list.length), ch, side: si, pit: true })); });
     let n = 0;
     for (const [id, w] of want) {
-      let el = els.chips.get(id); const extra = w.s ? `scale(${w.s})` : '';
+      let el = els.chips.get(id); const sc = w.s || w.k || 1, extra = sc !== 1 ? `scale(${+sc.toFixed(3)})` : '';
       if (!el) { el = mkChip(w.ch); els.chips.set(id, el);
         if (fx[id] === 'from-stage' || fx[id] === 'from-pit') spawn(el, STAGE[w.side].x, STAGE[w.side].y, 'scale(.5)');
         else if (fx[id] === 'debt') spawn(el, HOUSE.x, HOUSE.y + 30, 'scale(.5)'); // Debt is dealt out by the House
