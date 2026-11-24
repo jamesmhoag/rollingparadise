@@ -28,7 +28,8 @@ const ask = (label, def, taken) => { const id = (globalThis.prompt?.(label, def)
   if (taken[id]) { toast(t('build.duplicate.taken', { id }), 'warn'); return null; } return id; };
 
 // ---------- classes ----------
-const GROUPS = [['tip', ['trickery', 'ingenuity', 'proficiency']], ['c', ['charisma', 'cunning', 'conviction']], ['bvd', ['balance', 'versatility', 'depth']]];
+// Charisma, Cunning and Conviction have no class base: they are earned at the table by occupying rows (bout.js occBonus)
+const GROUPS = [['tip', ['trickery', 'ingenuity', 'proficiency']], ['bvd', ['balance', 'versatility', 'depth']]];
 export function newClass(from) {
   const id = ask(t('roster.class.newId'), 'my_class', D.CLASSES); if (!id) return null;
   B.setValue(D.subPath('CLASSES', id), { ...JSON.parse(JSON.stringify(D.CLASSES[from || 'hustler'])), name: 'New class', hero: 'Hero' }); return id;

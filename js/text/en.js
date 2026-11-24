@@ -348,7 +348,6 @@ export default {
   "roster.part.class": "The class",
   "roster.hero": "Hero name",
   "roster.group.tip": "Draw, Bid, Roll (TIP)",
-  "roster.group.c": "Steal, Opportunity, Power (CCC)",
   "roster.group.bvd": "Stack height, Bet rows, Stake rows (BVD)",
   "roster.part.kit": "Its kit",
   "roster.primary": "Primary attribute",
