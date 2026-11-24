@@ -164,7 +164,7 @@ export function statChange(k, n, cur) {
 }
 const changes = (mods, v) => `<ul>${Object.entries(mods || {}).map(([k, n]) => statChange(k, n, v?.[k])).join('')}</ul>`;
 export function statRow(v, keys) {
-  return h('div', { class: 'stats' }, keys.map((k) => h('span', { class: 'stat', tip: () => statTip(k, v[k]) }, h('em', { text: D.STATS[k].short }), h('b', { text: v[k] }))));
+  return h('div', { class: 'stats' }, keys.map((k) => h('span', { class: 'stat', tip: () => statTip(k, v[k]) }, h('em', { text: D.STATS[k].name }), h('b', { text: v[k] }))));
 }
 export const money = (n) => cents(n);
 export function drinkTip(d) {

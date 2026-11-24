@@ -156,7 +156,7 @@ export function boutScene(root, bout, ctx, onDone) {
       nameSign(opp.name, D.CLASSES[opp.cls].name, () => tx('table.sign-tip', { name: opp.title ? `${opp.name}, ${opp.title}` : opp.name, cls: D.CLASSES[opp.cls].name })), // the class line names its class, High Rollers' too
       bizCard(opp),
       (oppPills = h('div', { class: 'pills' }, ['trickery', 'proficiency', 'ingenuity', 'charisma', 'cunning', 'conviction'].map((k) =>
-        h('span', { class: 'pill small', 'data-k': k, tip: () => statTip(k, k in opp.tip ? B.tipOf(opp, k) : B.cOf(opp, k)) + statSplit(B.statParts(opp, k)) + (k in opp.tip ? '' : cccGate(opp)) }, `${D.STATS[k].short} `, h('b', { text: k in opp.tip ? opp.tip[k] : B.cOf(opp, k) })))))));
+        h('span', { class: 'pill small', 'data-k': k, tip: () => statTip(k, k in opp.tip ? B.tipOf(opp, k) : B.cOf(opp, k)) + statSplit(B.statParts(opp, k)) + (k in opp.tip ? '' : cccGate(opp)) }, `${D.STATS[k].name} `, h('b', { text: k in opp.tip ? opp.tip[k] : B.cOf(opp, k) })))))));
   // the middle of the table: the Pit right under the House's arms, each Roller's pot under it, then a ledger per
   // Roller of what is bid on tricks this turn and what is tapped (waiting to be restored)
   const ledEl = [0, 1].map((si) => ({ bid: h('b', { class: 'num' }), on: h('small'), tap: h('span', { class: 'led-tap' }) }));
@@ -943,7 +943,7 @@ export function boutScene(root, bout, ctx, onDone) {
   function eatCell(si, r, c) {
     if (ui.locked || si !== 0) return;
     const why = B.canEat(bout, me, r, c); if (why) return;
-    act(() => { const f = B.eat(bout, me, r, c); toast(tx('table.you-eat', { label: f.label, join: Object.entries(f.mods).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${D.STATS[k].short}`).join(', '), v: f.turns > 1 ? ` for ${f.turns} turns` : ' this turn' })); });
+    act(() => { const f = B.eat(bout, me, r, c); toast(tx('table.you-eat', { label: f.label, join: Object.entries(f.mods).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${D.STATS[k].name}`).join(', '), v: f.turns > 1 ? ` for ${f.turns} turns` : ' this turn' })); });
   }
   function hoverCell(si, r, c) { hover = r < 0 ? null : { side: si, r, c }; if (ui.mode === 'target') { marks(); hint(); } }
   const onKey = (ev) => { if (ev.target?.closest?.('input, textarea, select')) return;

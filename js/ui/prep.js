@@ -118,7 +118,7 @@ export function planner(getExtra, onChange) {
 function oppBox(opp, label) {
   return h('div', { class: 'box col', guide: 'opponent', tip: () => oppTip(opp) }, h('span', { class: 'cap', text: label }), h('h2', { text: opp.name }),
     h('p', { class: 'sub', text: `${opp.title ? opp.title + ' · ' : ''}${t('prep.opp.line', { cls: D.CLASSES[opp.cls].name, amt: cents(opp.worth) })}` }),
-    h('div', { class: 'stats' }, ['trickery', 'ingenuity', 'proficiency'].map((k) => h('span', { class: 'stat', tip: () => statTip(k, opp.tip[k]) }, h('em', { text: D.STATS[k].short }), h('b', { text: opp.tip[k] })))),
+    h('div', { class: 'stats' }, ['trickery', 'ingenuity', 'proficiency'].map((k) => h('span', { class: 'stat', tip: () => statTip(k, opp.tip[k]) }, h('em', { text: D.STATS[k].name }), h('b', { text: opp.tip[k] })))),
     h('p', { class: 'sub', text: diceSummary(opp.dice) }), h('div', { class: 'inv' }, opp.tricks.map((t) => trickTag(t, opp.cls))));
 }
 

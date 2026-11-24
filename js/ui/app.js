@@ -26,7 +26,7 @@ export function hud(place, sub) {
     h('div', { class: 'purse', tip: '<b>Purse</b><p>Chips you carry between bouts. Spend them in the shops, bet them at the Sports Book, then put them on the table: whatever you do not place in your position is wagered on the bout.</p>' }, h('span', { class: 'cap', text: 'Purse' }), purse));
   function update() {
     const st = R.rollerStats(run).v;
-    syncList(stats, KEYS6, (k) => k, (k) => h('span', { class: 'stat', tip: () => statTip(k, R.rollerStats(run).v[k]) }, h('em', { text: D.STATS[k].short }), h('b', {})), (e, k) => { e.lastChild.textContent = st[k]; });
+    syncList(stats, KEYS6, (k) => k, (k) => h('span', { class: 'stat', tip: () => statTip(k, R.rollerStats(run).v[k]) }, h('em', { text: D.STATS[k].name }), h('b', {})), (e, k) => { e.lastChild.textContent = st[k]; });
     const items = [
       { k: 'dice', text: `🎲 ${run.dice.length}`, tip: () => `<b>Pouch</b><p>${diceSummary(run.dice)}</p><ul>${run.dice.filter((d) => d.up.length).map((d) => `<li>${dieTip(d)}</li>`).join('')}</ul>` },
       { k: 'tricks', text: `📖 ${run.tricks.length}`, tip: () => `<b>Book</b><ul>${run.tricks.map((t) => `<li>${D.TRICKS[t.id].name} <span class="q">${trickWords(t)} · ${D.CONDITIONS[D.condOf(t)].name}</span> <span class="dim">${D.TYPES[D.TRICKS[t.id].type].name}</span></li>`).join('')}</ul>` },

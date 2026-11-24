@@ -36,7 +36,7 @@ export function classRule(cls) {
   const K = CLASSES[cls]; if (!K) return '';
   const top = (group, k) => Object.values(CLASSES).every((x) => (x[group]?.[k] ?? 0) <= (K[group]?.[k] ?? 0));
   const most = { trickery: 'draws the most tricks', ingenuity: 'bids the most', proficiency: 'rolls the most dice' }, shape = { balance: 'stacks chips tallest', versatility: 'has the deepest Bet', depth: 'has the deepest Stake' };
-  const a = Object.keys(most).filter((k) => top('tip', k)).map((k) => `${most[k]} (${STATS[k].short} ${K.tip[k]})`), b = Object.keys(shape).filter((k) => top('bvd', k) && K.bvd[k] > 0).map((k) => shape[k]);
+  const a = Object.keys(most).filter((k) => top('tip', k)).map((k) => `${most[k]} (${STATS[k].name} ${K.tip[k]})`), b = Object.keys(shape).filter((k) => top('bvd', k) && K.bvd[k] > 0).map((k) => shape[k]);
   const from = { start: 'the front', center: 'the centre', end: 'the back' }[K.deploy] || K.deploy;
   const body = [...a, ...b].join(' and ');
   return `${body ? body.charAt(0).toUpperCase() + body.slice(1) + '. ' : ''}Deploys from ${from}.`;

@@ -70,7 +70,7 @@ export function setHoverMode(mode) {
   hover.mode = mode; try { globalThis.localStorage?.setItem(MODE_KEY, mode); } catch { /* storage unavailable */ }
   T.el?.classList.toggle('guidance', mode === 'guidance');
 }
-const STAT_BY_SHORT = Object.fromEntries(Object.entries(STATS).map(([k, X]) => [X.short, k]));
+const STAT_BY_SHORT = Object.fromEntries(Object.entries(STATS).flatMap(([k, X]) => [[X.short, k], [X.name, k]])); // a stat shown by its name (or its plain word)
 // which guidance entry an element shows: data-guide, or worked out from what the element is
 // mark an element with the guidance entry it shows (for things with no fixed class or label)
 export const guided = (el, key) => { if (el?.dataset) el.dataset.guide = key; return el; };
