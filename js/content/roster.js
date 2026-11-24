@@ -7,6 +7,7 @@
 //   purse (¢ on the table, replacing the floor's worth), wallet, jacket (a JACKETS id: its attribute changes apply),
 //   drink (a DRINKS id), chips ({ effect chip id: count }), layout ([{ r, c, chips: [value or effect chip id] }]: a
 //   precise Stake layout, row 0 = the Stake's front), deploy ({ spacing, stacking }), behave (see BEHAVE),
+//   trait (High Rollers: a BOSS_TRAITS id, the rule their business card bends their way),
 //   phases (High Rollers: [{ below, behave, cheat: { dice, tricks } }], switched to when Worth falls below `below`
 //   of what they sat down with; a cheat adds that many dice to the pouch and draws that many tricks at once)
 
@@ -25,7 +26,7 @@ export const BEHAVE = {
 export const DEFAULT_BEHAVE = { draw: 'balanced', temper: 'balanced', roll: 'balanced', dice: 'needed', bid: 'tricks', aim: 'effect', bluff: 'balanced', bonus: 'yes' };
 // a new opponent from the maker starts as this
 export const NEW_OPPONENT = { name: 'New Roller', cls: null, floors: [1, 2, 3, 4], tables: [0, 1, 2], behave: { ...DEFAULT_BEHAVE } };
-export const NEW_BOSS = { name: 'New High Roller', cls: null, boss: true, floors: [1], behave: { ...DEFAULT_BEHAVE, temper: 'aggressive' },
+export const NEW_BOSS = { name: 'New High Roller', cls: null, boss: true, floors: [1], trait: 'withdrawal', behave: { ...DEFAULT_BEHAVE, temper: 'aggressive' },
   phases: [{ below: 0.5, behave: { temper: 'rabid', bluff: 'big' }, cheat: { dice: 2, tricks: 1 } }] };
 
 export const ROSTER = {
@@ -80,20 +81,20 @@ export const ROSTER = {
   veteran_hustler: { name: "Veteran Hustler" },
   vending_machine: { name: "Vending Machine" },
   low_ball: { name: "Low Ball" },
-  atm_machine: { name: "ATM Machine", boss: true, floors: [1] },
-  pile_of_cash: { name: "Pile of Cash", boss: true, floors: [1] },
-  exotic_animal: { name: "Exotic Animal", boss: true, floors: [1] },
-  antique_clock: { name: "Antique Clock", boss: true, floors: [1] },
-  gold_bar: { name: "Gold Bar", boss: true, floors: [2] },
-  uncut_gem: { name: "Uncut Gem", boss: true, floors: [2] },
-  luxury_vehicle: { name: "Luxury Vehicle", boss: true, floors: [2] },
-  lucrative_deal: { name: "Lucrative Deal", boss: true, floors: [2] },
-  sunken_treasure: { name: "Sunken Treasure", boss: true, floors: [3] },
-  endangered_species: { name: "Endangered Species", boss: true, floors: [3] },
-  vested_401k: { name: "Vested 401k", boss: true, floors: [3] },
-  project_funding: { name: "Project Funding", boss: true, floors: [3] },
-  trust_fund: { name: "Trust Fund", boss: true, floors: [4] },
-  the_vault: { name: "The Vault", boss: true, floors: [4] },
-  priceless_painting: { name: "Priceless Painting", boss: true, floors: [4] },
-  ancient_artifact: { name: "Ancient Artifact", boss: true, floors: [4] },
+  atm_machine: { name: "ATM Machine", boss: true, floors: [1], trait: "withdrawal" },
+  pile_of_cash: { name: "Pile of Cash", boss: true, floors: [1], trait: "stacked" },
+  exotic_animal: { name: "Exotic Animal", boss: true, floors: [1], trait: "wildfire" },
+  antique_clock: { name: "Antique Clock", boss: true, floors: [1], trait: "clockwork" },
+  gold_bar: { name: "Gold Bar", boss: true, floors: [2], trait: "bullion" },
+  uncut_gem: { name: "Uncut Gem", boss: true, floors: [2], trait: "rough_cut" },
+  luxury_vehicle: { name: "Luxury Vehicle", boss: true, floors: [2], trait: "leased" },
+  lucrative_deal: { name: "Lucrative Deal", boss: true, floors: [2], trait: "closing" },
+  sunken_treasure: { name: "Sunken Treasure", boss: true, floors: [3], trait: "waterlogged" },
+  endangered_species: { name: "Endangered Species", boss: true, floors: [3], trait: "protected" },
+  vested_401k: { name: "Vested 401k", boss: true, floors: [3], trait: "vested" },
+  project_funding: { name: "Project Funding", boss: true, floors: [3], trait: "greenlit" },
+  trust_fund: { name: "Trust Fund", boss: true, floors: [4], trait: "old_money" },
+  the_vault: { name: "The Vault", boss: true, floors: [4], trait: "time_lock" },
+  priceless_painting: { name: "Priceless Painting", boss: true, floors: [4], trait: "masterpiece" },
+  ancient_artifact: { name: "Ancient Artifact", boss: true, floors: [4], trait: "cursed_relic" },
 };

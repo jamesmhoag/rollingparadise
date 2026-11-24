@@ -88,7 +88,7 @@ const stackOf = (n, v = 1) => Array.from({ length: n }, () => std(v));
   const { bout, me } = table(); clear(me); me.grid[3][1].chips = [std(1), std(5, { gold: true })];
   const sh = newCreature(bout, 'ghostship', 0, 1, { r: 3, c: 0 }); bout.creatures.push(sh);
   assert(D.CREATURES.ghostship.hits === 100, 'the Ghost Ship takes 100 hit instances');
-  drain(ticks(bout)); assert(sh.hold.length === 1 && sh.hold[0].value === 5, 'it steals a Gold chip from a stack it reaches');
+  drain(B._test.creaturePhase(bout, 'expense')); assert(sh.hold.length === 1 && sh.hold[0].value === 5, 'it steals a Gold chip from a stack it reaches (in the Expense phase, after the Rollers)');
   sh.dmg = 99; engage(bout, null, me, sh.r, sh.c, 1, {});
   const t = me.grid.flat().flatMap((x) => x.chips).find((ch) => ch.treasure); assert(sh.gone && t && t.gold && t.value >= 55 && t.value <= 105, 'sunk, it drops a Treasure chip of 50 to 100 Gold plus what it stole');
 }

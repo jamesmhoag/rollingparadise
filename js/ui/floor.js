@@ -3,7 +3,7 @@ import { h, syncList, openPanel, closePanel, toast, btn, tween, pulse, swapText,
 import { app, hud, oppTip, trickTag, diceSummary } from './app.js';
 import { faceList, dieName, canMelt, matOf } from '../dice.js';
 import { meltVolume, castNeed, castFor, mixDyes, mixOpen } from '../forge.js';
-import { dieEl, dieTip, trickTip, trickWords, drinkTip, cardTip, chipEl, chipTip, cardEl, walletEl, jacketEl, drinkEl, feltStyle, passEl } from './parts.js';
+import { dieEl, dieTip, trickTip, trickWords, drinkTip, cardTip, chipEl, chipTip, cardEl, walletEl, jacketEl, drinkEl, feltStyle, passEl , cardRule } from './parts.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
 import { cents } from '../util.js';
@@ -284,7 +284,7 @@ function bookPanel() {
 
 function kitPanel() {
   const run = app.run, st = R.rollerStats(run);
-  openPanel(h('div', {}, head(D.heroName(run.cls), D.CLASSES[run.cls].blurb),
+  openPanel(h('div', {}, head(D.heroName(run.cls), D.classRule(run.cls)),
     h('div', { class: 'col' }, h('span', { class: 'cap', text: tx('select.book') }), h('div', { class: 'inv' }, run.tricks.map((t) => trickTag(t, run.cls))),
       h('span', { class: 'cap', text: tx('select.pouch') }), h('div', { class: 'dicebox' }, run.dice.map((d) => { const el = dieEl(d); el._tip = () => dieTip(d); el.classList.add('has-tip'); return el; })),
       h('span', { class: 'cap', text: tx('floor.wallet-slots-plus-one', { name: R.walletOf(run).name, walletCardN: R.walletCards(run).length, slots: R.walletOf(run).slots }) }),
@@ -304,7 +304,7 @@ function dropText(run, c) {
 function walletFullPanel() {
   const run = app.run, id = run.pendingCard, Wl = R.walletOf(run);
   const done = (drop) => { R.resolvePending(run, drop); closePanel(); rerender(); toast(drop ? tx('floor.goes-in-your-wallet', { name: D.CARDS[id].name }) : tx('floor.you-leave-it-where')); };
-  openPanel(h('div', { class: 'col' }, h('h2', { text: tx('floor.found', { name: D.CARDS[id].name }) }), h('p', { class: 'sub', html: D.CARDS[id].mods ? Object.entries(D.CARDS[id].mods).map(([k, n]) => tx('floor.keep-it-and-goes', { name: D.STATS[k].name, v: R.rollerStats(run).v[k], v2: R.rollerStats(run).v[k] + n, per: D.STATS[k].per(n) })).join(' ') : D.CARDS[id].text }),
+  openPanel(h('div', { class: 'col' }, h('h2', { text: tx('floor.found', { name: D.CARDS[id].name }) }), h('p', { class: 'sub', html: D.CARDS[id].mods ? Object.entries(D.CARDS[id].mods).map(([k, n]) => tx('floor.keep-it-and-goes', { name: D.STATS[k].name, v: R.rollerStats(run).v[k], v2: R.rollerStats(run).v[k] + n, per: D.STATS[k].per(n) })).join(' ') : cardRule(id) }),
     h('p', { text: tx('floor.your-wallet-holds-and', { name: Wl.name, slots: Wl.slots }) }),
     h('div', { class: 'items' }, R.walletCards(run).map((c) => h('div', { class: 'item', tip: () => cardTip(c, R.rollerStats(run).v) }, cardEl(c), h('div', { class: 'main' }, h('b', { text: D.CARDS[c].name }), h('small', { html: dropText(run, c) })), btn(tx('floor.drop-this'), () => done(c), null, 'small danger')))),
     h('div', { class: 'row' }, btn(tx('floor.leave-the-new-card'), () => done(null), null, ''))));

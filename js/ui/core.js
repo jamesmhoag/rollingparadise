@@ -29,6 +29,9 @@ export function fit() {
 }
 // pointer position in stage coordinates
 function local(ev) { const r = $('stage').getBoundingClientRect(); return { x: (ev.clientX - r.left) / scale, y: (ev.clientY - r.top) / scale }; }
+export const stagePoint = local;
+// A screen may take the right-click for itself (the table lets go of what is in your hand): return true to keep it.
+export const rightClick = { take: null };
 // an element's box in stage coordinates
 export function box(el) { const s = $('stage').getBoundingClientRect(), r = el.getBoundingClientRect(); return { x: (r.left - s.left) / scale, y: (r.top - s.top) / scale, w: r.width / scale, h: r.height / scale }; }
 
@@ -133,7 +136,7 @@ function findTip(node) { while (node && node !== document.body) { if (node._tip)
 export function initTips() {
   T.el = $('tooltip'); setDetail(detail.verbose); setHoverMode(hover.mode);
   document.addEventListener('contextmenu', (ev) => {
-    ev.preventDefault(); setDetail(!detail.verbose);
+    ev.preventDefault(); if (rightClick.take?.(ev)) return; setDetail(!detail.verbose);
     toast(detail.verbose ? 'Verbose: hovers and prompts explain the rules. Right-click for concise.' : 'Concise: hovers and prompts show just the facts. Right-click for verbose.');
     if (T.cur) { const c = tipContent(T.cur); if (c) show(c); }
   });

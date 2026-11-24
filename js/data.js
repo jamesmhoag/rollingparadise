@@ -1,39 +1,52 @@
 // Static game content, taken from the Rolling Paradise design workbook.
 
 // ---------- Rollers ----------
-// TIP = per-turn action limits. C = reward for each action left unused. BVD = position shape.
+// TIP = per-turn action limits. BVD = position shape. The rewards for actions left unused (Charisma, Cunning,
+// Conviction) have no class base: they are earned at the table by occupying rows (see occBonus in bout.js), and a
+// class's own one (`primary`'s reward: Trickery → Charisma, Ingenuity → Cunning, Proficiency → Conviction) earns most.
 export const CLASSES = {
   hustler: {
-    name: 'Hustler', hero: 'Owl', blurb: 'Draws the most tricks and stacks chips tallest. Deploys from the back.',
-    tip: { trickery: 3, ingenuity: 2, proficiency: 2 }, c: { charisma: 2, cunning: 1, conviction: 1 },
-    bvd: { balance: 3, versatility: 1, depth: 0 }, primary: 'trickery', deploy: 'end',
+    name: 'Hustler', hero: 'Owl',
+    tip: { trickery: 3, ingenuity: 2, proficiency: 2 }, bvd: { balance: 3, versatility: 1, depth: 0 }, primary: 'trickery', deploy: 'end',
     dice: { d4: 4, d6: 4 }, tricks: ['charge', 'mug', 'stir', 'block', 'settle'], color: '#e0a23c',
   },
   rascal: {
-    name: 'Rascal', hero: 'Fox', blurb: 'Bids the most and has the deepest Bet. Deploys from the centre.',
-    tip: { trickery: 2, ingenuity: 3, proficiency: 2 }, c: { charisma: 1, cunning: 2, conviction: 1 },
-    bvd: { balance: 0, versatility: 3, depth: 1 }, primary: 'ingenuity', deploy: 'center',
+    name: 'Rascal', hero: 'Fox',
+    tip: { trickery: 2, ingenuity: 3, proficiency: 2 }, bvd: { balance: 0, versatility: 3, depth: 1 }, primary: 'ingenuity', deploy: 'center',
     dice: { d6: 7 }, tricks: ['charge', 'stir', 'bend', 'block', 'settle'], color: '#c0569b',
   },
   technician: {
-    name: 'Technician', hero: 'Hog', blurb: 'Rolls the most dice and has the deepest Stake. Deploys from the front.',
-    tip: { trickery: 2, ingenuity: 2, proficiency: 3 }, c: { charisma: 1, cunning: 1, conviction: 2 },
-    bvd: { balance: 1, versatility: 0, depth: 3 }, primary: 'proficiency', deploy: 'start',
+    name: 'Technician', hero: 'Hog',
+    tip: { trickery: 2, ingenuity: 2, proficiency: 3 }, bvd: { balance: 1, versatility: 0, depth: 3 }, primary: 'proficiency', deploy: 'start',
     dice: { d6: 3, d8: 3 }, tricks: ['charge', 'stir', 'block', 'brace', 'settle'], color: '#4aa3c7',
   },
 };
 // a Roller's hero and class together: 'Owl the Hustler'
+// the reward stat for a primary action stat
+export const C_OF = { trickery: 'charisma', ingenuity: 'cunning', proficiency: 'conviction' };
+export const primaryC = (cls) => C_OF[CLASSES[cls]?.primary] || 'charisma';
+// what sets a class apart, written from its numbers: the per-turn action it has most of, the position stat it leans on,
+// where it deploys from (its words for the table are its flavour line)
+export function classRule(cls) {
+  const K = CLASSES[cls]; if (!K) return '';
+  const top = (group, k) => Object.values(CLASSES).every((x) => (x[group]?.[k] ?? 0) <= (K[group]?.[k] ?? 0));
+  const most = { trickery: 'draws the most tricks', ingenuity: 'bids the most', proficiency: 'rolls the most dice' }, shape = { balance: 'stacks chips tallest', versatility: 'has the deepest Bet', depth: 'has the deepest Stake' };
+  const a = Object.keys(most).filter((k) => top('tip', k)).map((k) => `${most[k]} (${STATS[k].short} ${K.tip[k]})`), b = Object.keys(shape).filter((k) => top('bvd', k) && K.bvd[k] > 0).map((k) => shape[k]);
+  const from = { start: 'the front', center: 'the centre', end: 'the back' }[K.deploy] || K.deploy;
+  const body = [...a, ...b].join(' and ');
+  return `${body ? body.charAt(0).toUpperCase() + body.slice(1) + '. ' : ''}Deploys from ${from}.`;
+}
 export const heroName = (cls) => (CLASSES[cls].hero ? `${CLASSES[cls].hero} the ${CLASSES[cls].name}` : CLASSES[cls].name);
 export const BASE_DIMS = { cols: 5, stackMax: 3, meterRows: 2, barRows: 3 };
 
 // `per`: what each point does, for hover text that says what a +1 or −1 actually changes
 export const STATS = {
   trickery: { name: 'Trickery', short: 'Draw', text: 'Tricks you may draw from your Book each turn.', per: (n) => `draw ${n} more trick${n === 1 ? '' : 's'} from your Book each turn, so more tricks are on your Run to roll onto and bid on` },
-  ingenuity: { name: 'Ingenuity', short: 'Bid', text: 'Chips you may bid on shown tricks each turn.', per: (n) => `bid ${n} more chip${n === 1 ? '' : 's'} each turn, so more tricks play (or linger) each turn` },
+  ingenuity: { name: 'Ingenuity', short: 'Bid', text: 'Chips you may bid on shown tricks each turn. A trick plays only once bid on, and each chip bid adds its value to the effect.', per: (n) => `bid ${n} more chip${n === 1 ? '' : 's'} each turn, so more tricks play, or bigger effects (each chip bid adds its value)` },
   proficiency: { name: 'Proficiency', short: 'Roll', text: 'Dice you may roll each turn. A die shows its value first; you then choose which shown trick it goes on.', per: (n) => `roll ${n} more ${n === 1 ? 'die' : 'dice'} (or flip ${n === 1 ? 'a chip' : 'chips'}) each turn, so bigger totals and more bonuses` },
-  charisma: { name: 'Charisma', short: 'Steal', text: 'For each draw you leave unused, a Steal chip on your Bet steals this many ¢ from the Stage in the House phase.', per: (n) => `steal ${n} more ¢ from the Stage for every draw you leave unused` },
-  cunning: { name: 'Cunning', short: 'Opportunity', text: 'For each bid you leave unused, gain this many Opportunity chips on your Bet.', per: (n) => `gain ${n} more Opportunity chip${n === 1 ? '' : 's'} for every bid you leave unused` },
-  conviction: { name: 'Conviction', short: 'Power', text: 'For each roll you leave unused, gain this many Power chips on your Bet: each adds +1 to your roll effects this turn.', per: (n) => `gain ${n} more Power chip${n === 1 ? '' : 's'} for every roll you leave unused` },
+  charisma: { name: 'Charisma', short: 'Steal', text: 'For each draw you leave unused, the House steals this many ¢ from the Stage for you with the Expenses. Earned at the table: hold a chip in every Bet row (and, for a Hustler, every Stake row).', per: (n) => `steal ${n} more ¢ from the Stage for every draw you leave unused` },
+  cunning: { name: 'Cunning', short: 'Opportunity', text: 'For each bid you leave unused, the House puts this many Opportunity chips on your Bet with the Insurances. Earned at the table: hold a chip in every Bet row (and, for a Rascal, every Stake row).', per: (n) => `gain ${n} more Opportunity chip${n === 1 ? '' : 's'} for every bid you leave unused` },
+  conviction: { name: 'Conviction', short: 'Power', text: 'For each roll you leave unused, the House puts this many Power chips on your Bet with the Investments: each adds +1 to your roll effects this turn. Earned at the table: hold a chip in every Bet row (and, for a Technician, every Stake row).', per: (n) => `gain ${n} more Power chip${n === 1 ? '' : 's'} for every roll you leave unused` },
   balance: { name: 'Balance', short: 'Stack height', text: 'Extra chips each space can hold (base 3).', per: (n) => `every space in your position holds ${n} more chip${n === 1 ? '' : 's'} (taller stacks in the Bet and the Stake)` },
   versatility: { name: 'Versatility', short: 'Bet rows', text: 'Extra Bet rows (base 2). The Bet sits in front and only holds chips gained during the bout.', per: (n) => `${n} more Bet row${n === 1 ? '' : 's'}: more room for Blocks, Opportunity and recovered chips, and more cover in front of your Stake` },
   depth: { name: 'Depth', short: 'Stake rows', text: 'Extra Stake rows (base 3). The Stake holds the chips you commit before the bout.', per: (n) => `${n} more Stake row${n === 1 ? '' : 's'}: room to put more chips on the table before the bout` },
@@ -83,14 +96,10 @@ export const upgradeText = (u) => { const t = DIE_UPGRADES[u].text; return typeo
 
 // ---------- Tricks ----------
 export const TYPES = {
-  investment: { name: 'Investment', order: 0, color: '#8a6fd1', text: 'Resolves first. Modifies every other effect played this turn.',
-    trait: 'Gain Power', traitText: (m) => `Gain ${m} Power (added to your next roll effect).` },
-  insurance: { name: 'Insurance', order: 1, color: '#4aa3c7', text: 'Resolves second. Prevents, reduces or mitigates expenses.',
-    trait: 'Block chip', traitText: (m) => `Add ${m} Block chip${m > 1 ? 's' : ''} to your Bet.` },
-  expense: { name: 'Expense', order: 2, color: '#d9564a', text: 'Resolves third. Charges fees that move chips from a position to the Stage.',
-    trait: 'Debt chip', traitText: (m) => `Place ${m}¢ of Debt on a random front stack of your opponent.` },
-  correction: { name: 'Correction', order: 3, color: '#5bb174', text: 'Resolves last. Adjusts the placement and state of chips.',
-    trait: 'Cleanse', traitText: (m) => `Remove ${m}¢ of Debt or ${m} hazard chip${m > 1 ? 's' : ''} from your position.` },
+  investment: { name: 'Investment', order: 0, color: '#8a6fd1', text: 'Resolves first. Modifies every other effect played this turn.' },
+  insurance: { name: 'Insurance', order: 1, color: '#4aa3c7', text: 'Resolves second. Prevents, reduces or mitigates expenses.' },
+  expense: { name: 'Expense', order: 2, color: '#d9564a', text: 'Resolves third. Charges fees that move chips from a position to the Stage.' },
+  correction: { name: 'Correction', order: 3, color: '#5bb174', text: 'Resolves last. Adjusts the placement and state of chips.' },
 };
 export const QMULT = [0, 1, 2, 3, 4];
 export const QNAME = ['', 'Common', 'Fine', 'Grand', 'Royal'];
@@ -117,15 +126,15 @@ export const FOIL = [null, { name: 'Foil', mult: 1.25 }, { name: 'Holo', mult: 1
 export const RARITY = {
   basic: { name: 'Basic', text: 'The plain print.' },
   foil: { name: 'Foil', text: 'A foil print multiplies the roll total: Foil ×1.25, Holo ×1.5, Prism ×2.' },
-  misprint: { name: 'Misprint', text: 'Printed with a changed value: its die or its Trait differs from the plain print.' },
+  misprint: { name: 'Misprint', text: 'Printed with a changed value: its die, or the value its effect adds, differs from the plain print.' },
   reprint: { name: 'Reprint', text: 'Printed with an older rule for its type.' },
 };
 // the older rule each type's Reprint plays
 export const REPRINT = {
-  expense: 'Older rule: the roll effect plays once for each die, each instance worth that die plus the Trait value.',
-  insurance: 'Older rule: the Trait plays once for each die on the trick.',
-  investment: 'Older rule: the Trait plays once for each die on the trick.',
-  correction: 'Older rule: the Trait plays once for each die on the trick.',
+  expense: 'Older rule: the roll effect plays once for each die, each instance worth that die (the bid joins the first).',
+  insurance: 'Older rule: the roll effect plays once for each die, each instance worth that die (the bid joins the first).',
+  investment: 'Older rule: the roll effect plays once for each die, each instance worth that die (the bid joins the first).',
+  correction: 'Older rule: the roll effect plays once for each die, each instance worth that die (the bid joins the first).',
 };
 export const rarityName = (t) => (t.foil ? FOIL[Math.min(3, t.foil)].name : t.rar && t.rar !== 'basic' ? RARITY[t.rar].name : '');
 // a trick's rules as printed on it: a Misprint's die differs from the plain print
@@ -134,7 +143,7 @@ export function defOf(t) {
   const d = t.mis?.die; if (!d) return TRICKS[t.id];
   const k = t.id + ':' + d; if (!printed.has(k)) printed.set(k, { ...TRICKS[t.id], die: d }); return printed.get(k);
 }
-export const misText = (t) => !t.mis ? '' : [t.mis.die && `prints ${t.mis.die} instead of ${TRICKS[t.id].die}`, t.mis.trait && `Trait ${t.mis.trait > 0 ? '+' : ''}${t.mis.trait}`].filter(Boolean).join(', ');
+export const misText = (t) => !t.mis ? '' : [t.mis.die && `prints ${t.mis.die} instead of ${TRICKS[t.id].die}`, t.mis.trait && `effect ${t.mis.trait > 0 ? '+' : ''}${t.mis.trait}`].filter(Boolean).join(', ');
 // Foil packs: five tricks of the set's quality, all Mint (each may be Gem Mint), one of them a rarer print.
 // Better sets cost more and open as the floors do: 200¢ × quality × floor, above what the five sell for at Mint.
 export const PACKS = [null,
@@ -533,15 +542,17 @@ export const SHOP_RENAMES = { bumper: 'reducer', mirror: 'rebound', fog: 'transp
 // down; then it drops a Bounty chip worth `bounty` (BOUNTY_PER_HIT a hit). `layer`: 'flying' or 'ground'.
 // `life`: turns it stays. A creature with no hits (the Ghost) cannot be damaged.
 export const BOUNTY_PER_HIT = 5;
+// `type`: the House phase the creature acts in, after both Rollers (what its action is: an Expense takes or burns
+// chips, a Correction changes them, an Insurance guards a row)
 export const CREATURES = {
-  ufo: { name: 'UFO', glyph: '🛸', hits: 1, life: 1, layer: 'flying', text: 'Flying. Abducts the top chip of a random stack, stays the turn, then flies home. Chips taken are lost.' },
-  fairy: { name: 'Fairy', glyph: '🧚', hits: 1, life: 2, layer: 'flying', text: 'Flying. Converts the top chip of a random stack into a random chip. Chaos reigns!' },
-  dragon: { name: 'Dragon', glyph: '🐉', hits: 50, life: 2, layer: 'flying', text: 'Flying. Breathes a Burning chip onto a random stack each turn.' },
-  mole: { name: 'Mole', glyph: '🐭', hits: 1, life: 2, layer: 'ground', text: 'Digs up a random empty space and leaves a Hole, then sits in it.' },
-  unicorn: { name: 'Unicorn', glyph: '🦄', hits: 1, life: 1, layer: 'ground', text: 'Converts every chip in a random stack into random chips. Chaos reigns!' },
-  mothership: { name: 'Mothership', glyph: '👾', hits: 10, life: 5, layer: 'flying', text: 'Flying. Hovers over one stack and beams up a chip every turn until the stack is gone. Chips taken are lost.' },
-  ghost: { name: 'Ghost', glyph: '👻', hits: 0, life: 3, layer: 'flying', text: 'Very spooky. Fear: no trick can aim at its row, only spreads reach it. It cannot be damaged, and no overkill passes into or through its row.' },
-  ghostship: { name: 'Ghost Ship', glyph: '🏴‍☠️', hits: 100, life: 6, layer: 'flying', text: 'A vehicle that sails across empty spaces to a stack with a Gold chip on top and steals it. Takes 100 fee instances to sink; sunk, it drops a Treasure chip with everything it stole.' },
+  ufo: { name: 'UFO', glyph: '🛸', type: 'expense', hits: 1, life: 1, layer: 'flying', text: 'Flying. Abducts the top chip of a random stack, stays the turn, then flies home. Chips taken are lost.' },
+  fairy: { name: 'Fairy', glyph: '🧚', type: 'correction', hits: 1, life: 2, layer: 'flying', text: 'Flying. Converts the top chip of a random stack into a random chip. Chaos reigns!' },
+  dragon: { name: 'Dragon', glyph: '🐉', type: 'expense', hits: 50, life: 2, layer: 'flying', text: 'Flying. Breathes a Burning chip onto a random stack each turn.' },
+  mole: { name: 'Mole', glyph: '🐭', type: 'correction', hits: 1, life: 2, layer: 'ground', text: 'Digs up a random empty space and leaves a Hole, then sits in it.' },
+  unicorn: { name: 'Unicorn', glyph: '🦄', type: 'correction', hits: 1, life: 1, layer: 'ground', text: 'Converts every chip in a random stack into random chips. Chaos reigns!' },
+  mothership: { name: 'Mothership', glyph: '👾', type: 'expense', hits: 10, life: 5, layer: 'flying', text: 'Flying. Hovers over one stack and beams up a chip every turn until the stack is gone. Chips taken are lost.' },
+  ghost: { name: 'Ghost', glyph: '👻', type: 'insurance', hits: 0, life: 3, layer: 'flying', text: 'Very spooky. Fear: no trick can aim at its row, only spreads reach it. It cannot be damaged, and no overkill passes into or through its row.' },
+  ghostship: { name: 'Ghost Ship', glyph: '🏴‍☠️', type: 'expense', hits: 100, life: 6, layer: 'flying', text: 'A vehicle that sails across empty spaces to a stack with a Gold chip on top and steals it. Takes 100 fee instances to sink; sunk, it drops a Treasure chip with everything it stole.' },
 };
 for (const C of Object.values(CREATURES)) C.bounty = C.hits * BOUNTY_PER_HIT;
 CREATURES.ghostship.bounty = 0; // it drops Treasure instead
@@ -687,21 +698,15 @@ export const CARDS = {
   discount_diesmith: { name: 'Discount Card: Diesmith', text: '10% off at the Diesmith.' },
   discount_trader: { name: 'Discount Card: Trick Trader', text: '10% off at the Trick Trader.' },
   discount_lounge: { name: 'Discount Card: Lounge', text: '10% off drinks at the Lounge.' },
-  business_trickery: { name: 'Business Card: Dealer', text: '+1 Trickery.', mods: { trickery: 1 } },
-  business_ingenuity: { name: 'Business Card: Broker', text: '+1 Ingenuity.', mods: { ingenuity: 1 } },
-  business_proficiency: { name: 'Business Card: Shooter', text: '+1 Proficiency.', mods: { proficiency: 1 } },
-  business_charisma: { name: 'Business Card: Agent', text: '+1 Charisma.', mods: { charisma: 1 } },
-  business_cunning: { name: 'Business Card: Fixer', text: '+1 Cunning.', mods: { cunning: 1 } },
-  business_conviction: { name: 'Business Card: Closer', text: '+1 Conviction.', mods: { conviction: 1 } },
   paradise: { name: 'Paradise Card', text: 'Earned by beating the last High Roller. It opens the Paradise Ascent.' },
   membership: { name: 'Membership Card', text: 'Earned by buying 5 tricks on one floor. Opens the Trick Trader\'s Secret Shelf and takes 10% off everything the Trader sells.' },
   suite: { name: 'Suite Key Card', text: 'Earned by winning a Double Down. Opens a Suite after you beat the High Roller.' },
-  resist_card: { name: 'Resist Card', text: 'Debt resistance. Each bout starts with a Resist chip (r = 2) at the base of one of your front Stake stacks: fees under 2¢ on that stack are deterred.', resist: 2 },
-  resist_card_plus: { name: 'Resist Card: Gold', text: 'Debt resistance. Each bout starts with a Resist chip (r = 3) at the base of one of your front Stake stacks: fees under 3¢ on that stack are deterred.', resist: 3 },
+  resist_card: { name: 'Resist Card', resist: 2 }, // its rule is written from `resist` (cardRule)
+  resist_card_plus: { name: 'Resist Card: Gold', resist: 3 },
   debit: { name: 'Debit Card', text: 'Found by searching the floor. Lets you use the ATM in the Gift Shop, which keeps chips between runs.' },
   punch: { name: 'Punch Card', text: 'One punch per drink bought. Five punches and the next drink is free.' },
-  note: { name: 'Note: on bidding', text: '"Small chips bid fast. Big chips linger. Keep a stack of 1¢ chips at the back."' },
-  note_dice: { name: 'Note: on dice', text: '"Roll, bid on what you rolled, then place in the Bluff. A low roll is not wasted: some bonuses want a small total, and a pair of anything is a match."' },
+  note: { name: 'Note: on bidding', text: '"Every chip you bid adds its worth to the trick. Two of the same trick, stacked, play twice for one bid."' },
+  note_dice: { name: 'Note: on dice', text: '"Roll, bid on what you rolled, then pile the dice on the bid tricks in the Bluff. Any die adds its value; the ones of the trick\'s own size make its Bonus."' },
   note_debt: { name: 'Note: on Debt', text: '"Debt only takes a chip it can cover. A 5¢ chip on top shrugs off a 4¢ fee, but the Debt stays and the next fee finishes it."' },
   note_house: { name: 'Note: on the House', text: '"Both arms move at once. What you play this phase cannot change what they play this phase. Insure a turn early, not the same turn."' },
   note_hold: { name: 'Note: on holding back', text: '"A turn with nothing worth playing still pays. Every draw, roll and bid you leave unused earns chips off the Stage, Power or Opportunity."' },
@@ -737,8 +742,9 @@ export const PASSES = [null,
   { name: 'Rollers Suite Pass', glyph: '3', color: '#ff86ea', text: 'Gets you onto the Rollers Suite, floor 3.' },
   { name: 'Royal Paradise Pass', glyph: '4', color: '#d4a52a', text: 'Gets you onto Royal Paradise, floor 4.' }];
 export const PURSE_LIMIT = 999e12;
-export const STARTER_CARDS = ['discount_diesmith', 'discount_trader', 'discount_lounge', 'business_trickery', 'business_ingenuity', 'business_proficiency',
-  'business_charisma', 'business_cunning', 'business_conviction'];
+export const STARTER_CARDS = ['discount_diesmith', 'discount_trader', 'discount_lounge'];
+// Business Cards no longer raise your attributes: each High Roller carries one, and it is their trait (BOSS_TRAITS).
+export const RETIRED_CARDS = ['business_trickery', 'business_ingenuity', 'business_proficiency', 'business_charisma', 'business_cunning', 'business_conviction'];
 export const FIND_CARDS = ['resist_card', 'resist_card_plus', 'debit', 'note', 'note_dice', 'note_debt', 'note_house', 'note_hold', 'note_flip', 'trading', 'punch'];
 export const WALLET_SLOTS = 4;
 
@@ -750,6 +756,12 @@ import { MADE_CHIPS } from './content/chipmaker.js';
 export { MADE_CHIPS };
 import { ROSTER, BEHAVE, DEFAULT_BEHAVE } from './content/roster.js';
 export { ROSTER, BEHAVE, DEFAULT_BEHAVE };
+import { BOSS_TRAITS } from './content/bosstraits.js';
+export { BOSS_TRAITS };
+import { FLAVOR } from './content/flavor.js';
+export { FLAVOR };
+// a thing's line of flavour (content/flavor.js), by the table it lives in and its id; '' when it has none
+export const flavorOf = (table, id) => FLAVOR[table]?.[id] || '';
 import { TUNING } from './content/tuning.js';
 export { TUNING };
 import { GUIDE } from './content/guidance.js';
@@ -759,7 +771,7 @@ import TEXT from './text/en.js';
 import { MATERIALS as _MAT, DICE_SHOP as _DS, BONE as _BONE, MELT as _MELT, CASTS as _CASTS, DYES as _DYES, DIAMOND as _DIA } from './content/dice.js';
 export const TABLES = { CLASSES, BASE_DIMS, STATS, DICE, MATERIALS: _MAT, DICE_SHOP: _DS, BONE: _BONE, MELT: _MELT, CASTS: _CASTS, DYES: _DYES, DIAMOND: _DIA, DIE_VARS,
   TYPES, TRICKS, CHIPS, SHOP_CHIPS, CHIP_TIERS, CREATURES, ORBITALS, CALAMITIES, TILTS, TILT_PRESSURE, FELTS, FLOORS, BOSSES, OPPONENTS, DRINKS, SPORTS, JACKETS, CARDS, WALLETS,
-  PASSES, CONDITIONS, PACKS, QDIE, PRIZES, GUIDE, TEXT, MADE_CHIPS, ROSTER, TUNING, ODDS, DENOMS, WEAR, IMAGES, ICONS, TEXTURES, NEON };
+  PASSES, CONDITIONS, PACKS, QDIE, PRIZES, GUIDE, TEXT, MADE_CHIPS, ROSTER, BOSS_TRAITS, FLAVOR, TUNING, ODDS, DENOMS, WEAR, IMAGES, ICONS, TEXTURES, NEON };
 const isObj = (x) => x && typeof x === 'object';
 // a path's steps: keys are joined by '.', and a '.' inside a key (as in text keys) is written '\\.'
 export const splitPath = (path) => path.split(/(?<!\\)\./).map((k) => k.replace(/\\\./g, '.'));

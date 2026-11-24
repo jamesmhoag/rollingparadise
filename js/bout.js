@@ -14,7 +14,7 @@ import { MADE_CHIPS, HEIGHT } from './content/chipmaker.js';
 import { TUNING } from './content/tuning.js';
 import { rollDie, boutCopy, facesOf, upgrade as upgradeFaces } from './dice.js';
 export { rollDie };
-import { CLASSES as CLASS_BASE, DEFAULT_MAT, DIE_UPGRADES, TRICKS, TYPES, QDIE, FOIL, WEAR, defOf, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, CREATURES, ORBITALS, FELTS, TILTS, TILT_PRESSURE, DENOM_VALUES, tiltChance, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS } from './data.js';
+import { CLASSES as CLASS_BASE, DEFAULT_MAT, DIE_UPGRADES, TRICKS, TYPES, QDIE, FOIL, WEAR, defOf, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, CREATURES, ORBITALS, FELTS, TILTS, TILT_PRESSURE, DENOM_VALUES, tiltChance, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS, primaryC, BOSS_TRAITS } from './data.js';
 import { t as tx } from './text.js';
 
 // The turn: Draw tricks; Roll (pick the dice; they are thrown as the Bid opens); Bid on tricks, seeing both rolls;
@@ -29,7 +29,8 @@ export const trickMult = (t) => QMULT[t.q] * (FOIL[foilTier(t)]?.mult || 1);
 const investMult = (t) => 1 + (t.q - 1) * 0.5 + 0.25 * foilTier(t);
 // the multiplier a trick applies to its roll total, and the size of its Trait
 export const multOf = (t) => (TRICKS[t.id].type === 'investment' ? investMult(t) : trickMult(t));
-export const traitOf = (t) => Math.max(1, Math.round(trickMult(t)) + (t.mis?.trait || 0)); // a Misprint's Trait differs
+// a Misprint printed with a changed effect value adds (or takes) this much from every roll effect it plays
+export const misPlus = (t) => t?.mis?.trait || 0;
 // a Grand or Royal trick's quality die, rolled when it is drawn: 'dud', 'hot' or null
 export const qState = (e) => { const Q = QDIE[e.trick.q]; if (!Q || e.qroll == null) return null; return e.qroll <= Q.dud ? 'dud' : e.qroll >= Q.hot ? 'hot' : null; };
 // a trick as it plays: one foil tier higher for each Upgrade chip bid on it; Common strength on a dud quality die
@@ -173,7 +174,8 @@ export const sunny = (s) => (s.sky || []).some((o) => o.kind === 'sun');
 // a Ghost haunts a row: no trick aims at it and no overkill passes into or through it
 export const haunted = (b, side) => new Set((b.creatures || []).filter((cr) => cr.kind === 'ghost' && cr.side === side.idx && !cr.gone && cr.arrive <= b.turn && cr.r >= 0).map((cr) => cr.r));
 export const tipOf = (s, k) => Math.max(0, s.tip[k] + (s.turnBonus[k] || 0));
-export const cOf = (s, k) => Math.max(0, s.c[k] + (s.turnBonus[k] || 0));
+// Charisma, Cunning and Conviction: what occupying rows earns (occBonus) plus gear (a jacket: s.c) and food or a sip
+export const cOf = (s, k) => Math.max(0, (occBonus(s)[k] || 0) + (s.c[k] || 0) + (s.turnBonus[k] || 0));
 
 function mkChip(b, kind, value = 0, extra = {}) { return { id: b.nextId++, kind, value, ...extra }; }
 const HAZARD_LIFE = { burn: 3, shock: 2, corrupt: 3, boom: 2, acid: 99, poison: 99, frost: 2, lava: 2, hard: 3 };
@@ -333,10 +335,10 @@ export const barCapacity = (dims, holes = 0) => (dims.barRows * dims.cols - hole
 function mkSide(b, spec, idx) {
   const d = spec.dims, rows = d.meterRows + d.barRows;
   const s = {
-    idx, name: spec.name, cls: spec.cls, ai: !!spec.ai, title: spec.title || '', deploy: spec.deploy, why: spec.why || null,
+    idx, name: spec.name, cls: spec.cls, ai: !!spec.ai, trait: spec.trait && BOSS_TRAITS[spec.trait] ? spec.trait : null, boss: !!spec.boss, sign: spec.sign || null, title: spec.title || '', deploy: spec.deploy, why: spec.why || null,
     tip: { ...spec.tip }, c: { ...spec.c }, dims: { ...d }, rows,
     grid: Array.from({ length: rows }, () => Array.from({ length: d.cols }, () => ({ chips: [], hole: false, hard: 0 }))),
-    book: spec.tricks.map((t) => ({ ...t })), run: [], pouch: spec.dice.map(boutCopy), tapped: { tricks: [], dice: [] }, turnSrc: [], fullBet: false,
+    book: spec.tricks.map((t) => ({ ...t })), run: [], pouch: spec.dice.map(boutCopy), tapped: { tricks: [], dice: [] }, turnSrc: [], held: [],
     tray: [], used: { draw: 0, roll: 0, bid: 0 }, turnBonus: {}, rolled: {},
     status: { resist: 0, resistNext: 0, evade: null, evadeNext: null, reflect: 0, reflectAll: false, enfeebleNext: 0 },
     mods: { boost: 0, enfeeble: 0, press: 0, bend: null, mul: 1, pierce: false },
@@ -435,13 +437,13 @@ export function createBout(opts) {
       if (top?.shop === 'seed' && solidCount(cell) >= 2) { top.kind = 'flower'; top.value = 0; top.hits = 1; delete top.resist; }
       mergeSeq(b, cell);
     }
+    traitStart(b, s);
     s.startWorth = worth(s);
     for (let k = 0; k < s.hatsDue; k++) { const st = allCells(s).filter((x) => x.r >= s.dims.meterRows && solidCount(x.cell) && capacityLeft(s, x.cell) > 0 && !x.cell.link && !x.cell.anchor && !x.cell.chips.some((ch) => ch.kind === 'hat'));
       if (st.length) b.rng.pick(st).cell.chips.unshift(mkChip(b, 'hat', 0, { owner: null })); }
     for (let k = 0; k < (spec.shields || 0); k++) addToMeter(b, s, Array.from({ length: s.dims.stackMax }, () => mkChip(b, 'block')));
     for (let k = 0; k < (spec.creatures || 0); k++) b.creatures.push(mkCreature(b, i, b.rng.range(1, 5)));
   });
-  for (const s of b.sides) s.fullBet = occupancy(s).full;
   startTurn(b);
   return b;
 }
@@ -468,20 +470,17 @@ function hurt(b, def, cr, notes) {
 }
 function startTurn(b) {
   for (const s of b.sides) {
-    s.used = { draw: 0, roll: 0, bid: 0 }; s.turnBonus = {}; s.rolled = {}; s.thrown = false; s.pick = { dice: [], flips: [] }; s.heat = heat(b.turn);
+    s.used = { draw: 0, roll: 0, bid: 0 }; s.held = []; s.turnBonus = {}; s.rolled = {}; s.thrown = false; s.pick = { dice: [], flips: [] }; s.heat = heat(b.turn);
     s.turnSrc = []; const temp = (k, n, from) => { if (!n) return; s.turnBonus[k] = (s.turnBonus[k] || 0) + n; s.turnSrc.push({ k, n, from }); };
     for (const f of s.food || []) { for (const [k, v] of Object.entries(f.mods)) temp(k, v, f.label || 'Food'); f.turns--; } // food and drink still working
-    s.fullTurn = null;
-    if (s.fullBet) { // the Bet was Fully Occupied at the end of last turn: restore everything, +1 Draw, Roll and Bid per Bet column
-      const n = s.dims.meterRows, got = restoreAll(s);
-      for (const k of ['trickery', 'proficiency', 'ingenuity']) temp(k, n, 'Full Bet');
-      s.fullTurn = { n, ...got };
-    }
     s.food = (s.food || []).filter((f) => f.turns > 0);
     s.mods = { boost: 0, enfeeble: s.status.enfeebleNext, press: 0, bend: null, mul: 1, pierce: false }; s.wardUsed = 0; for (const x of powerChips(s)) delete x.ch.on;
     s.paidLast = s.paidTurn || 0; s.paidTurn = 0; // fees paid last turn, for Vengeance
     s.status.enfeebleNext = 0; s.absorbUsed = {}; s.forgotUsed = {};
     const curses = allCells(s).reduce((n, x) => n + x.cell.chips.filter((ch) => ch.cursed).length, 0); s.cursed = curses; // a Cursed chip in your pile: Draw, Roll or Bid 1 lower
+    const T = bossTrait(s); // a High Roller's trait, turn by turn
+    if (T?.k === 'tempo' && b.turn % Math.max(2, T.vars.every || 3) === 0) for (const k of ['trickery', 'proficiency', 'ingenuity']) temp(k, 1, T.name);
+    if (T?.k === 'resist') s.status.resist = Math.max(s.status.resist || 0, T.vars.n || 1);
     for (let k = 0; k < curses; k++) { const can = ['trickery', 'proficiency', 'ingenuity'].filter((x) => tipOf(s, x) > 1); if (can.length) temp(b.rng.pick(can), -1, 'Curse'); }
   }
   b.creatures = b.creatures.filter((cr) => !cr.gone);
@@ -494,15 +493,16 @@ function openPhase(b) { for (const s of b.sides) { snapshot(s); s.pub = clone({ 
 
 // ---------- phases ----------
 const loose = (e) => e.state !== 'play'; // shown or bid this turn: can still take dice (shown) or bids
-const realTypeOf = (e) => e.dice.find((d) => !d.chip)?.type;
-const roomOn = (e) => e.state !== 'play' && e.dice.length < TRICKS[e.trick.id].count; // shown or bid this turn
-const fitsOn = (d, e) => roomOn(e) && (d.chip || !realTypeOf(e) || realTypeOf(e) === d.type);
+// Dice go only on a trick bid on this turn, any number and any size; the first `count` dice of the trick's own die
+// size (flipped chips count as any size) are its Bonus dice (bonusDice).
+const roomOn = (e) => e.state !== 'play'; // shown or bid this turn: could still be bid, then take dice
+const fitsOn = (d, e) => e.state === 'bid';
 const spare = (s, ch) => worth(s) - ch.value > 0; // spending this chip does not leave you broke
 export function flippable(s) { const out = []; for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const ch = bidChip(s, r, c); if (ch?.kind === 'std' && spare(s, ch)) out.push({ r, c, ch }); } return out; }
 export function biddable(s) { const out = []; for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const ch = bidChip(s, r, c); if (ch && spare(s, ch)) out.push({ r, c, ch }); } return out; }
 // Is the phase's one required action possible at all? If not, the phase can be closed without it.
 export function canAct(b, s, phase = b.phase) {
-  if (phase === 'aim') return trayPlaceable(s) || s.tray.length > 0 && s.run.some(roomOn) || s.run.some((e) => e.state === 'bid' && (needsTarget(e) || TRICKS[e.trick.id].approach !== 'none') && validTargets(b, s, e).length > 1);
+  if (phase === 'aim') return trayPlaceable(s) || s.run.some((e) => e.state === 'bid' && (needsTarget(e) || TRICKS[e.trick.id].approach !== 'none') && validTargets(b, s, e).length > 1);
   if (phase === 'draw') return s.book.length > 0 && tipOf(s, 'trickery') > 0;
   if (phase === 'roll') return canThrowAny(s);
   if (phase === 'bid') return s.run.some(loose) && biddable(s).length > 0;
@@ -512,9 +512,11 @@ export const placedThisTurn = (b, s) => s.run.some((e) => e.dice.some((d) => d.t
 // Dice in the roll are kept: each Bluff you put at least one on a trick (when one fits), and the rest stay in the
 // roll, keeping their values, turn after turn, to pick from later, like tricks waiting on your Run (never rerolled).
 export const trayPlaceable = (s) => s.tray.some((d) => s.run.some((e) => fitsOn(d, e)));
-export const canThrowAny = (s) => !s.thrown && tipOf(s, 'proficiency') > 0 && s.run.some(roomOn) && (flippable(s).length > 0 || s.pouch.some((d) => s.run.some((e) => fitsOn(d, e))));
-// The most a trick holds: its dice count. Room left on it now.
-export const diceRoom = (e) => Math.max(0, TRICKS[e.trick.id].count - e.dice.length);
+export const canThrowAny = (s) => !s.thrown && tipOf(s, 'proficiency') > 0 && s.run.some(roomOn) && (flippable(s).length > 0 || s.pouch.length > 0);
+// The dice a trick's Bonus reads: the first `count` on it of its own die size (a flipped chip counts as any size).
+export function bonusDice(e) { const def = defOf(e.trick), out = []; for (const d of e.dice) if (out.length < def.count && (d.chip || d.type === def.die)) out.push(d); return out; }
+// Bonus dice still wanted on a trick
+export const bonusRoom = (e) => Math.max(0, defOf(e.trick).count - bonusDice(e).length);
 // What still stops this Roller closing the current phase, or null.
 export function needOf(b, s) {
   if (b.phase === 'draw') return s.used.draw > 0 || !canAct(b, s) ? null : tx('feed.draw-at-least-one');
@@ -539,22 +541,37 @@ export function advance(b, force = false) {
 // Draws, rolls and bids left unused pay as soon as their phase is passed, as chips on the Bet at random spaces with
 // room: unused draws make a Steal chip (Charisma) that steals from the Stage in the House phase, unused rolls Power
 // chips (Conviction) for the turn, unused bids Opportunity chips (Cunning). What has no room is lost, like overkill.
-export const REWARD = { draw: { stat: 'trickery', c: 'charisma', what: 'Steal' }, roll: { stat: 'proficiency', c: 'conviction', what: 'Power' }, bid: { stat: 'ingenuity', c: 'cunning', what: 'Opportunity' } };
+// `deploy`: the House phase the chips go out in (Power is an Investment, Opportunity an Insurance, Steal an Expense)
+export const REWARD = { draw: { stat: 'trickery', c: 'charisma', what: 'Steal', deploy: 'expense' }, roll: { stat: 'proficiency', c: 'conviction', what: 'Power', deploy: 'investment' }, bid: { stat: 'ingenuity', c: 'cunning', what: 'Opportunity', deploy: 'insurance' } };
 export function rewardOf(s, phase) {
   const R = REWARD[phase]; if (!R) return null;
   const used = s.used[phase] + (phase === 'roll' && !s.thrown && s.pick ? s.pick.dice.length + s.pick.flips.length : 0); // dice picked count before they are thrown
-  const unused = Math.max(0, tipOf(s, R.stat) - used), gated = !occupancy(s).stakeCovered, n = gated ? 0 : cOf(s, R.c) * unused;
-  return { phase, unused, n, what: R.what, total: tipOf(s, R.stat), gated };
+  const unused = Math.max(0, tipOf(s, R.stat) - used), n = cOf(s, R.c) * unused;
+  return { phase, unused, n, what: R.what, total: tipOf(s, R.stat), deploy: R.deploy };
 }
+// Passing a phase with actions left unused only records them (`held`): the chips are not on the table yet. The House
+// deploys them in their own phase, at what Charisma, Cunning or Conviction is worth then: Power chips with the
+// Investments, Opportunity chips with the Insurances, and the Steal with the Expenses.
 function phaseRewards(b, phase) {
+  for (const s of b.sides) { const w = rewardOf(s, phase); if (!w || !w.unused) continue; (s.held ||= []).push({ phase, unused: w.unused, turn: b.turn }); }
+}
+export const heldIn = (s, type) => (s.held || []).filter((x) => REWARD[x.phase].deploy === type);
+// what the held actions would deploy as the table stands now
+export const heldAmount = (s, phase) => sum((s.held || []).filter((x) => x.phase === phase), (x) => x.unused) * cOf(s, REWARD[phase].c);
+function* deployHeld(b, s, type) {
   b.rewards = b.rewards || [];
-  for (const s of b.sides) {
-    const w = rewardOf(s, phase); if (!w || !w.n) continue;
-    const chips = w.what === 'Power' ? Array.from({ length: w.n }, () => powerChip(b)) : w.what === 'Opportunity' ? Array.from({ length: w.n }, () => mkChip(b, 'opp', 1)) : [mkChip(b, 'fx', 0, { shop: 'steal', resist: 'steal', life: 99, amt: w.n })];
-    const { left, at } = toMeterAtRandom(b, s, chips), got = w.n - left.length;
-    const u = tx('feed.unused', { unused: w.unused, phase });
-    const text = w.what === 'Steal' ? tx('feed.a-steal-chip-from', { u, n: w.n }) : tx('feed.on-the-bet', { u, got, what: w.what });
-    b.rewards.push({ side: s.idx, phase, turn: b.turn, text: `${text}${left.length ? tx('feed.had-no-room-and', { leftN: left.length }) : ''}.`, cells: at.map((x) => ref(s, x.r, x.c)) });
+  for (const x of heldIn(s, type)) {
+    const R = REWARD[x.phase], n = cOf(s, R.c) * x.unused; s.held.splice(s.held.indexOf(x), 1);
+    const u = tx('feed.unused', { unused: x.unused, phase: x.phase });
+    if (!n) { yield step(b, tx('feed.held-nothing', { name: s.name, u, what: R.what }), [], 'miss'); continue; }
+    if (R.what === 'Steal') { const stolen = recoup(b, s, n, true);
+      yield step(b, tx('feed.s-steal', { name: s.name, stN: 1, v: stolen ? tx('feed.stolen-from-the-stage', { stolen }) : 'nothing on the Stage to steal', v2: stolen < n && stolen ? tx('feed.of', { want: n }) : '' }), [], 'bonus'); continue; }
+    const chips = R.what === 'Power' ? Array.from({ length: n }, () => powerChip(b)) : Array.from({ length: n }, () => mkChip(b, 'opp', 1));
+    const { left, at } = toMeterAtRandom(b, s, chips), got = n - left.length;
+    if (R.what === 'Power') { for (const ch of chips) if (!left.includes(ch)) ch.on = true; s.mods.boost += got * (shopVars('power').boost || 1); }
+    const text = `${tx('feed.on-the-bet', { u, got, what: R.what })}${left.length ? tx('feed.had-no-room-and', { leftN: left.length }) : ''}.`;
+    b.rewards.push({ side: s.idx, phase: x.phase, turn: b.turn, text, cells: at.map((y) => ref(s, y.r, y.c)) });
+    yield step(b, `${s.name}: ${text}`, at.map((y) => ref(s, y.r, y.c)), 'bonus');
   }
 }
 // chips onto the Bet, each at a random space with room
@@ -575,6 +592,8 @@ const powerChip = (b) => mkChip(b, 'fx', 0, { shop: 'power', resist: 'power', li
 export const powerChips = (s) => allCells(s).flatMap((x) => x.cell.chips.filter((ch) => ch.resist === 'power').map((ch) => ({ ...x, ch })));
 // Power still to join this turn's roll effects (shown on the cards while you plan)
 export const powerOf = (s) => sum(powerChips(s), (x) => (x.ch.on ? 0 : shopVars('power').boost || 1));
+// Power a trick will get this turn: chips on the Bet still to add, and unused rolls the House will deploy as Power
+export const powerAhead = (s) => powerOf(s) + heldAmount(s, 'roll') * (shopVars('power').boost || 1);
 export function addPower(b, s, n) {
   if (n <= 0) return 0;
   const { at } = toMeterAtRandom(b, s, Array.from({ length: n }, () => powerChip(b)));
@@ -596,10 +615,24 @@ export const spaceOccupied = (s, r, c) => { const h0 = homeOf(s, r, c); return s
 export function occupancy(s) {
   const m = s.dims.meterRows, cols = s.dims.cols, betCols = [], stakeCols = [], stakeRows = [];
   for (let r = 0; r < s.rows; r++) { let n = 0, of = 0; for (let c = 0; c < cols; c++) { if (holds(s, r, c)) of++; if (spaceOccupied(s, r, c)) n++; } (r < m ? betCols : stakeCols).push({ r, n, of }); }
-  for (let c = 0; c < cols; c++) { let n = 0; for (let r = m; r < s.rows; r++) if (spaceOccupied(s, r, c)) n++; stakeRows.push({ c, n }); }
+  const betRows = [];
+  for (let c = 0; c < cols; c++) { let n = 0, nb = 0; for (let r = 0; r < s.rows; r++) if (spaceOccupied(s, r, c)) { if (r < m) nb++; else n++; } stakeRows.push({ c, n }); betRows.push({ c, n: nb }); }
   const betSpaces = sum(betCols, (x) => x.n), betTotal = sum(betCols, (x) => x.of);
-  return { betCols, stakeCols, stakeRows, betSpaces, betTotal, betColsOcc: betCols.filter((x) => x.n > 0).length, stakeColsOcc: stakeCols.filter((x) => x.n > 0).length,
-    stakeCovered: stakeRows.every((x) => x.n > 0), full: betTotal > 0 && betSpaces >= betTotal };
+  // aligned: one column holds a chip in every row
+  const aligned = (list) => list.find((x) => x.n >= cols)?.r ?? -1;
+  return { betCols, stakeCols, stakeRows, betRows, betSpaces, betTotal, betColsOcc: betCols.filter((x) => x.n > 0).length, stakeColsOcc: stakeCols.filter((x) => x.n > 0).length,
+    stakeCovered: stakeRows.every((x) => x.n > 0), betCovered: betRows.every((x) => x.n > 0), stakeAligned: aligned(stakeCols), betAligned: aligned(betCols),
+    full: betTotal > 0 && betSpaces >= betTotal };
+}
+// What occupying rows earns. Every row (lane) of the Stake holding a chip: +1 to your class's own reward stat; every
+// row of the Bet holding a chip: +1 to Charisma, Cunning and Conviction. If one column holds all of them, +2 instead.
+// Both, lined up: +4 / +2 / +2. Otherwise they are 0, apart from food, a sip and a jacket. Amounts: TUNING.occupancy.
+export const CCC = ['charisma', 'cunning', 'conviction'];
+export function occBonus(s, o = occupancy(s)) {
+  const T = TUNING.occupancy || { covered: 1, aligned: 2 }, out = { charisma: 0, cunning: 0, conviction: 0, parts: [] };
+  if (o.stakeCovered) { const n = o.stakeAligned >= 0 ? T.aligned : T.covered, k = primaryC(s.cls); out[k] += n; out.parts.push({ zone: 'stake', n, aligned: o.stakeAligned >= 0, keys: [k] }); }
+  if (o.betCovered) { const n = o.betAligned >= 0 ? T.aligned : T.covered; for (const k of CCC) out[k] += n; out.parts.push({ zone: 'bet', n, aligned: o.betAligned >= 0, keys: CCC }); }
+  return out;
 }
 // Restore order: tapped longest first. Ties: tricks by the phase they belong to, worse quality, basic before exotic
 // prints; dice smaller before larger, plain before fancy; then the one you got first.
@@ -614,7 +647,7 @@ export const tappedInOrder = (s) => ({ tricks: s.tapped.tricks.slice().sort((a, 
 // occupied Stake column. The UI calls this after every action, so it follows the board as effects change it.
 export function restorePlan(b, s) {
   const o = occupancy(s), q = tappedInOrder(s);
-  return { o, nTricks: o.betColsOcc, nDice: o.stakeColsOcc, tricks: q.tricks.slice(0, o.betColsOcc).map((x) => x.trick.uid), dice: q.dice.slice(0, o.stakeColsOcc).map((x) => x.die.id), fullNext: o.full };
+  return { o, nTricks: o.betColsOcc, nDice: o.stakeColsOcc, tricks: q.tricks.slice(0, o.betColsOcc).map((x) => x.trick.uid), dice: q.dice.slice(0, o.stakeColsOcc).map((x) => x.die.id) };
 }
 function untap(s, plan) {
   const tr = s.tapped.tricks.filter((x) => plan.tricks.includes(x.trick.uid)), di = s.tapped.dice.filter((x) => plan.dice.includes(x.die.id));
@@ -623,24 +656,23 @@ function untap(s, plan) {
   return { tricks: tr.length, dice: di.length };
 }
 const tappedSort = (list, key) => list.slice().sort((a, b) => cmp(key(a), key(b)));
-function restoreAll(s) { return untap(s, { tricks: s.tapped.tricks.map((x) => x.trick.uid), dice: s.tapped.dice.map((x) => x.die.id) }); }
 // End of turn: restore by column, then note whether the Bet is Fully Occupied for the start of the next turn.
 function* restorePhase(b) {
   const cxs = b.sides.map((s) => ({ phase: 'house', who: s.idx }));
   yield* zip(b, b.sides.map((s) => (function* () {
-    const plan = restorePlan(b, s), got = untap(s, plan); s.fullBet = plan.o.full;
+    const plan = restorePlan(b, s), got = untap(s, plan);
     const left = s.tapped.tricks.length + s.tapped.dice.length;
-    if (!got.tricks && !got.dice && !s.fullBet && !left) return;
+    if (!got.tricks && !got.dice && !left) return;
     const cells = []; for (const col of [...plan.o.betCols, ...plan.o.stakeCols]) if (col.n) for (let c = 0; c < s.dims.cols; c++) if (spaceOccupied(s, col.r, c)) cells.push(ref(s, col.r, c));
     yield step(b, tx('feed.restores', { name: s.name, tricks: got.tricks, dice: got.dice, bet: plan.o.betColsOcc, betOf: plan.o.betCols.length, stake: plan.o.stakeColsOcc, stakeOf: plan.o.stakeCols.length })
-      + (s.fullBet ? tx('feed.full-bet-next', { name: s.name, n: s.dims.meterRows }) : ''), cells, 'bonus');
+, cells, 'bonus');
   })()), cxs);
 }
 // A stat as it stands this turn: the class's base, what gear and the run add (jacket, cards, rest, floor), and each
 // temporary change with where it came from (food, drink, Full Bet, Curse).
 export function statParts(s, k) {
-  const inTip = k in s.tip, base = (inTip ? CLASS_BASE[s.cls]?.tip?.[k] : CLASS_BASE[s.cls]?.c?.[k]) ?? (inTip ? s.tip[k] : s.c[k]);
-  const own = inTip ? s.tip[k] : s.c[k], temp = (s.turnSrc || []).filter((x) => x.k === k);
+  const inTip = k in s.tip, base = inTip ? CLASS_BASE[s.cls]?.tip?.[k] ?? s.tip[k] : occBonus(s)[k] || 0; // CCC: what occupying rows earns now
+  const own = inTip ? s.tip[k] : base + (s.c[k] || 0), temp = (s.turnSrc || []).filter((x) => x.k === k);
   return { k, base, gear: own - base, temp, tempN: sum(temp, (x) => x.n), total: inTip ? tipOf(s, k) : cOf(s, k) };
 }
 
@@ -695,10 +727,17 @@ export function canDraw(b, s, uid) {
   if (!s.book.some((t) => t.uid === uid)) return tx('feed.that-trick-is-in');
   return null;
 }
-export function draw(b, s, uid) {
+// Copies of one trick (the same trick at the same quality; any print or condition) can be drawn onto each other on
+// the Run. A stack plays with one bid: the top copy this turn, the next one the turn after with the same roll and
+// target, and so on, each copy playing with its own print. That is how a trick lingers.
+export const canStackOn = (s, t, e) => !!e && !!t && e.state === 'shown' && !e.dice.length && e.trick.id === t.id && (e.trick.q || 1) === (t.q || 1);
+export function draw(b, s, uid, ontoUid = null) {
   if (canDraw(b, s, uid)) return null;
+  const onto = ontoUid != null ? s.run.find((x) => x.uid === ontoUid) : null, t0 = s.book.find((t) => t.uid === uid);
+  if (ontoUid != null && !canStackOn(s, t0, onto)) return null;
   const i = s.book.findIndex((t) => t.uid === uid), trick = s.book.splice(i, 1)[0];
-  const e = { uid, trick, dice: [], bid: [], bidValue: 0, target: null, state: 'shown', lingerLeft: 0, lingerTotal: 0, drawn: b.turn, bookAt: i };
+  if (onto) { (onto.stack ||= []).unshift(onto.trick); (onto.layers ||= [{ drawn: onto.drawn, bookAt: onto.bookAt }]).unshift({ drawn: b.turn, bookAt: i }); onto.trick = trick; s.used.draw++; return onto; }
+  const e = { uid, trick, dice: [], bid: [], bidValue: 0, target: null, state: 'shown', stack: [], lingerLeft: 0, drawn: b.turn, bookAt: i };
   const Q = QDIE[trick.q]; if (Q) e.qroll = s.rolled['q' + uid] ?? (s.rolled['q' + uid] = 1 + b.rng.int(Q.faces)); // the same roll if drawn again this turn
   s.run.push(e); s.used.draw++;
   return e;
@@ -707,12 +746,14 @@ export function draw(b, s, uid) {
 export function canUndraw(b, s, uid) {
   if (b.phase !== 'draw') return tx('feed.tricks-go-back-to');
   const e = s.run.find((x) => x.uid === uid);
-  if (!e || e.drawn !== b.turn) return 'Only a trick drawn this turn can go back to the Book.';
+  if (!e || (e.layers?.[0]?.drawn ?? e.drawn) !== b.turn) return 'Only a trick drawn this turn can go back to the Book.';
   if (e.dice.length || e.state !== 'shown') return tx('feed.that-trick-has-dice');
   return null;
 }
 export function undraw(b, s, uid) {
   if (canUndraw(b, s, uid)) return null;
+  const top = s.run.find((x) => x.uid === uid);
+  if (top.stack?.length) { const L = top.layers.shift(); s.book.splice(Math.min(L.bookAt ?? s.book.length, s.book.length), 0, top.trick); top.trick = top.stack.shift(); s.used.draw--; return top; } // the top copy goes back
   const e = s.run.splice(s.run.findIndex((x) => x.uid === uid), 1)[0];
   s.book.splice(Math.min(e.bookAt ?? s.book.length, s.book.length), 0, e.trick); s.used.draw--;
   return e;
@@ -792,7 +833,6 @@ export function flip(b, s, r, c) {
   s.tray.push(d); s.used.roll++;
   return d;
 }
-const realType = realTypeOf;
 export const holderOf = (s, dieId) => s.run.find((e) => e.dice.some((d) => d.id === dieId)) || null;
 // a die on a trick can still be moved while the Roll phase is open, if it was rolled this turn
 // Dice rolled this turn are put on tricks, and can be moved between them, in the Bluff.
@@ -803,9 +843,8 @@ export function canPlace(b, s, dieId, e) {
   const def = TRICKS[e.trick.id], d = s.tray.find((x) => x.id === dieId) || (canMove(b, s, dieId) ? holderOf(s, dieId).dice.find((x) => x.id === dieId) : null);
   if (!d) return s.pouch.some((x) => x.id === dieId) ? tx('feed.roll-the-die-first') : tx('feed.that-die-is-committed');
   if (e.state === 'play') return tx('table.that-trick-is-already');
+  if (e.state !== 'bid') return tx('feed.bid-before-dice', { name: def.name });
   if (e.dice.some((x) => x.id === dieId)) return tx('feed.that-die-is-already');
-  if (e.dice.length >= def.count) return tx('feed.holds-at-most-dice', { name: def.name, count: def.count });
-  if (!d.chip && realType(e) && realType(e) !== d.type) return tx('feed.all-dice-on-a');
   return null;
 }
 function takeLoose(s, dieId) {
@@ -815,7 +854,7 @@ function takeLoose(s, dieId) {
 export function place(b, s, dieId, e) {
   if (canPlace(b, s, dieId, e)) return null;
   const d = takeLoose(s, dieId); e.dice.push(d); d.t = b.turn;
-  const type = realType(e) || defOf(e.trick).die; for (const x of e.dice) if (x.chip) x.type = type; // a flipped chip takes the type of the dice it joins
+  if (d.chip) d.type = defOf(e.trick).die; // a flipped chip counts as the trick's own die size
   return d;
 }
 export function unplace(b, s, dieId) { if (!canMove(b, s, dieId)) return null; const d = takeLoose(s, dieId); s.tray.push(d); return d; }
@@ -824,7 +863,7 @@ export function bidChip(s, r, c) {
   const top = lifted(cell) ? cell.chips.find((ch) => !isHazard(ch)) : cell.chips[cell.chips.length - 1]; // a lifted stack bids from the bottom
   return top && isPayable(top) && !top.gold && !stuckIce(top, cell) ? top : null;
 }
-// A trick can take any number of bids this turn (one chip per bid); each 1¢ over the first adds a turn of linger.
+// A trick can take any number of bids this turn (one chip per bid); their value adds to its effect.
 export function canBid(b, s, e, r, c) {
   const gate = phaseGate(b, 'bid'); if (gate) return gate;
   if (e.state === 'play') return tx('table.that-trick-is-already');
@@ -886,7 +925,7 @@ export function resetPlan(b, s) {
   const snap = clone(s.snap);
   s.grid = snap.grid; s.run = snap.run; s.book = snap.book; s.pouch = snap.pouch; s.tray = snap.tray; s.used = snap.used; s.thrown = snap.thrown; s.pick = snap.pick || { dice: [], flips: [] }; s.turnBonus = snap.turnBonus; s.food = snap.food;
 }
-export const needsTarget = (e) => TRICKS[e.trick.id].approach !== 'none' && e.dice.length > 0;
+export const needsTarget = (e) => TRICKS[e.trick.id].approach !== 'none' && (e.dice.length > 0 || e.state !== 'shown');
 export function targetSide(b, s, def) { return def.side === 'opp' ? b.sides[1 - s.idx] : def.side === 'self' ? s : null; }
 // the sides a trick can aim at: its own zone, or both for a trick that plays on either side
 const aimSides = (b, s, def) => (def.side === 'any' ? [b.sides[1 - s.idx], s] : [targetSide(b, s, def)].filter(Boolean));
@@ -948,8 +987,8 @@ export function bonusMet(s, e) {
   const def = defOf(e.trick); if (!e.dice.length) return false;
   if (def.cls && def.cls !== s.cls) return false;
   if (qState(e) === 'hot') return true; // a hot quality die sets off the Bonus whatever the dice
-  if (e.dice.length !== def.count || !e.dice.some((d) => d.type === def.die) || !e.dice.every((d) => d.type === def.die)) return false;
-  const vals = e.dice.map((d) => d.value), total = sum(vals), cond = def.bonus.cond;
+  const bd = bonusDice(e); if (bd.length < def.count || !bd.some((d) => !d.chip)) return false;
+  const vals = bd.map((d) => d.value), total = sum(vals), cond = def.bonus.cond;
   if (cond === 'match') return vals.some((v, i) => vals.indexOf(v) !== i);
   if (cond === 'evens') return vals.every((v) => v % 2 === 0);
   if (cond === 'odds') return vals.every((v) => v % 2 === 1);
@@ -957,22 +996,21 @@ export function bonusMet(s, e) {
   if (cond.startsWith('under:')) return total <= +cond.slice(6);
   return false;
 }
-// What a trick's total is made of: dice, linger from the bid, Power, Vengeance, the multiplier, Last call, a
-// doubling bonus. Boost and Enfeeble join when the trick plays, so the card shows them as they stand now.
+// What a trick's total is made of: the dice, the value of the chips bid on it, Power, Vengeance, a Misprint's
+// changed value, the multiplier (quality and print), Last call, a doubling bonus. Boost and Enfeeble join when the
+// trick plays, so the card shows them as they stand now.
+const bidOf = (e) => (e.state === 'play' ? sum(e.paid || []) : e.bidValue) || 0;
 export function totalParts(s, e) {
   const def = TRICKS[e.trick.id], inv = def.type === 'investment';
-  const dice = sum(e.dice, (d) => d.value), turns = e.state === 'play' ? e.lingerTotal : clamp(e.bidValue - 1, 0, 20);
-  const linger = turns * e.dice.length, power = inv ? 0 : powerOf(s), venge = def.vengeance ? s.paidLast || 0 : 0;
+  const dice = sum(e.dice, (d) => d.value), bid = bidOf(e), power = inv ? 0 : powerAhead(s), venge = def.vengeance ? s.paidLast || 0 : 0;
   const mult = inv ? investMult(effTrick(e)) : trickMult(effTrick(e)), heatX = def.type === 'expense' ? s.heat || 1 : 1, double = bonusMet(s, e) && def.bonus.k === 'double';
-  return { dice: e.dice.map((d) => d.value), diceSum: dice, turns, linger, power, venge, plus: reprintPlus(e), mult, heat: heatX, double, total: previewTotal(s, e) };
+  return { dice: e.dice.map((d) => d.value), diceSum: dice, bid, power, venge, plus: misPlus(e.trick), mult, heat: heatX, double, total: previewTotal(s, e),
+    turns: (e.stack || []).length, stack: 1 + (e.stack || []).length };
 }
-// what a Reprint Expense adds: the Trait value on each die's instance
-const reprintPlus = (e) => (e.trick.rar === 'reprint' && TRICKS[e.trick.id].type === 'expense' ? traitOf(effTrick(e)) * e.dice.length : 0);
-// what a shown trick would do right now (for previews and the AI)
+// what a shown trick would do right now (for previews and the AI): nothing until it is bid on
 export function previewTotal(s, e) {
-  const def = TRICKS[e.trick.id]; if (!e.dice.length) return 0;
-  const linger = e.state === 'play' ? e.lingerTotal : clamp(e.bidValue - 1, 0, 20);
-  const raw = sum(e.dice, (d) => d.value) + linger * e.dice.length + (def.type === 'investment' ? 0 : powerOf(s)) + (def.vengeance ? s.paidLast || 0 : 0) + reprintPlus(e);
+  const def = TRICKS[e.trick.id]; if (!e.dice.length && !bidOf(e)) return 0;
+  const raw = sum(e.dice, (d) => d.value) + bidOf(e) + (def.type === 'investment' ? 0 : powerAhead(s)) + (def.vengeance ? s.paidLast || 0 : 0) + misPlus(e.trick);
   const m = def.type === 'investment' ? investMult(effTrick(e)) : trickMult(effTrick(e));
   return Math.max(0, Math.round(raw * m * (def.type === 'expense' ? s.heat || 1 : 1))) * (bonusMet(s, e) && def.bonus.k === 'double' ? 2 : 1);
 }
@@ -1369,49 +1407,35 @@ function* playChips(b, s, e, def, x) {
     return { made, fees: 0, lost, cells: [...hit.values()], pulled: sum(got, (ch) => ch.value) - 0 }; };
   const main = makeKind(R.chip) === 'pit' ? fromPit(R.chip) : make(R.chip, inst);
   let extra = null; if (x.bonus === 'extra') extra = make(def.bonus.chip || 'block', Array.from({ length: def.bonus.n || 1 }, () => 1));
-  if (x.bonus === 'linger' && !x.again && x.total > 0) s.echoes.push({ from: b.turn, e: { ...e, dice: e.dice.map((d) => ({ ...d })), lingerLeft: 0, lingerTotal: 0 }, left: def.bonus.turns || 2, phase: phaseOf(e.trick.id) });
+  if (x.bonus === 'linger' && !x.again && x.total > 0) s.echoes.push({ from: b.turn, e: { ...e, dice: e.dice.map((d) => ({ ...d })), lingerLeft: 0 }, left: def.bonus.turns || 2, phase: phaseOf(e.trick.id) });
   const kind = makeKind(R.chip), refs = [...main.cells, ...(extra?.cells || [])].map((p) => ref(t, p.r, p.c));
   const said = kind === 'pit' ? tx('feed.back-out-of-the', { made: main.made }) : kind === 'fee' ? tx('feed.of-debt-on', { fees: main.fees, cellN: main.cells.length }) : tx('feed.made', { made: main.made });
   yield step(b, `${x.tag}: ${inst.length ? said : 'nothing to make'}${extra ? tx('feed.and-extra', { made: extra.made }) : ''}${main.lost ? tx('feed.had-no-room', { lost: main.lost }) : ''}${x.bonus === 'linger' && !x.again ? tx('feed.it-will-play-again', { v: def.bonus.turns || 2 }) : ''}.`, refs, main.made || main.fees || extra?.made ? 'play' : 'miss');
 }
+// A trick plays its roll effect: the dice plus the value bid on it, and whatever adds to them. A Reprint plays its
+// older rule: the roll effect once for each die, each worth that die (the bid's value joins the first).
 function* play(b, s, e, opt = {}) {
   const def = TRICKS[e.trick.id], o = b.sides[1 - s.idx], inv = def.type === 'investment', reprint = e.trick.rar === 'reprint';
-  // a Reprint's older rule: an Expense plays its roll effect once per die (each die plus the Trait value); the
-  // other types play the Trait once per die on the trick
-  const m = traitOf(effTrick(e)) * (reprint && def.type !== 'expense' ? Math.max(1, e.dice.length) : 1);
-  // Trait effect: every turn the trick is in play
-  if (opt.again || opt.instance) { /* the roll effect only */ } else if (def.type === 'expense') {
-    const cols = [...Array(o.dims.cols).keys()].filter((c) => frontRow(o, c) >= 0);
-    if (cols.length) { const c = b.rng.pick(cols), r = frontRow(o, c), g = engage(b, s, o, r, c, m, {});
-      yield step(b, tx('feed.plays', { name: s.name, name2: def.name, v: g.placed ? tx('feed.of-debt-on-a', { placed: g.placed }) : tx('feed.the-trait-fee-is', { m, v: g.notes.join(', ') || 'lost' }) }), [ref(o, r, c)], 'play'); }
-  } else if (def.type === 'insurance') {
-    const left = addToMeter(b, s, Array.from({ length: m }, () => mkChip(b, 'block')), null, 'spawn');
-    yield step(b, tx('feed.plays-block-to-the', { name: s.name, name2: def.name, m, overText: overText(left) }), [], 'play');
-  } else if (inv) {
-    const n = addPower(b, s, m); yield step(b, tx('feed.plays-power-on-the', { name: s.name, name2: def.name, n, v: n < m ? tx('feed.had-no-room-and-2', { m: m - n }) : '' }), [], 'play');
-  } else {
-    const n = cleanse(b, s, m); yield step(b, tx('feed.plays-2', { name: s.name, name2: def.name, v: n ? tx('feed.debt-or-hazard-cleansed', { n }) : '' }), [], 'play');
-  }
-  if (e.lingerLeft > 0 || !e.dice.length) return;
-  if (opt.forgotten) { yield step(b, tx('feed.s-is-forgotten-s', { name: s.name, name2: def.name, join: e.dice.map((d) => d.value).join('+'), name3: o.name }), [], 'miss'); return; }
-  if (reprint && def.type === 'expense' && !opt.instance && e.dice.length > 1) {
-    const bonus = bonusMet(s, e) ? def.bonus.k : null, plus = traitOf(effTrick(e));
-    for (const d of e.dice) yield* play(b, s, { ...e, dice: [d] }, { ...opt, instance: true, plus, bonus });
+  if (!e.dice.length && !bidOf(e) && !opt.instance) return;
+  if (opt.forgotten) { yield step(b, tx('feed.s-is-forgotten-s', { name: s.name, name2: def.name, join: e.dice.map((d) => d.value).join('+') || '0', name3: o.name }), [], 'miss'); return; }
+  if (reprint && !opt.instance && e.dice.length > 1) {
+    const bonus = bonusMet(s, e) ? def.bonus.k : null;
+    for (const [i, d] of e.dice.entries()) yield* play(b, s, { ...e, dice: [d] }, { ...opt, instance: true, bonus, bid: i === 0 ? bidOf(e) : 0 });
     return;
   }
 
-  // Roll effect: on the last turn of the linger
+  // Roll effect
   const own = def.roll.k === 'bend' || def.roll.k === 'parlay';
   const fz = s.fz || s.mods; // mods as they stood when the phase was called
   const vals = e.dice.map((d) => (!own && fz.bend != null ? fz.bend : d.value));
   const bonus = opt.bonus !== undefined ? opt.bonus : bonusMet(s, e) ? def.bonus.k : null;
-  let total = sum(vals) + e.lingerTotal * e.dice.length + (opt.plus || (reprint && def.type === 'expense' ? traitOf(effTrick(e)) : 0));
+  const bidV = opt.bid ?? bidOf(e);
+  let total = sum(vals) + bidV + misPlus(e.trick);
   if (!inv) { total += fz.boost - fz.enfeeble + 0 + (def.type === 'expense' ? fz.press : 0) + (def.vengeance ? s.paidLast || 0 : 0); }
   total = Math.max(0, Math.round(total * (inv ? investMult(effTrick(e)) : trickMult(effTrick(e)) * fz.mul) * (def.type === 'expense' ? heat(b.turn) : 1)));
   if (bonus === 'double') total *= 2;
   if (bonus === 'bidmult') total *= Math.max(1, sum(e.paid || []) || e.bidValue || 1);
-  const plusT = opt.plus || (reprint && def.type === 'expense' ? traitOf(effTrick(e)) : 0);
-  const tag = `${opt.again ? `${opt.again}: ` : ''}${s.name}'s ${def.name} (${vals.join('+')}${plusT ? tx('feed.trait', { plusT }) : ''}${bonus ? tx('feed.bonus') : ''})`;
+  const tag = `${opt.again ? `${opt.again}: ` : ''}${s.name}'s ${def.name} (${[...vals, ...(bidV ? [tx('feed.bid-part', { n: bidV })] : [])].join('+') || '0'}${bonus ? tx('feed.bonus') : ''})`;
   if (total >= 10 && !opt.again) for (const { cell } of allCells(s)) if (cell.roost) for (const egg of cell.chips.filter((ch) => ch.kind === 'egg')) { // a big trick hatches the eggs on your Roost
     cell.chips.splice(cell.chips.indexOf(egg), 1); b.fx[egg.id] = 'void'; b.creatures.push(newCreature(b, 'dragon', o.idx, b.turn + 1));
     yield step(b, tx('feed.hatches-an-egg-on', { tag, name: s.name, name2: o.name }), [], 'bonus'); }
@@ -1476,11 +1500,11 @@ function* play(b, s, e, opt = {}) {
       yield step(b, tx('feed.other-roll-effects-gain', { tag, total }), [], 'play'); return;
     case 'enfeeble': o.mods.enfeeble += total; if (bonus === 'extend') o.status.enfeebleNext = Math.floor(total / 2);
       yield step(b, tx('feed.s-roll-effects-lose', { tag, name: o.name, total }), [], 'play'); return;
-    case 'bend': { const v = e.dice[0].value; if (bonus === 'bendopp') o.mods.bend = v; else s.mods.bend = v;
+    case 'bend': { const v = e.dice[0]?.value ?? total; // no die on it: the total stands in if (bonus === 'bendopp') o.mods.bend = v; else s.mods.bend = v;
       yield step(b, tx('feed.every-die-in-play', { tag, v: bonus === 'bendopp' ? o.name + ' has' : 'they have', v2: v }), [], 'play'); return; }
     case 'press': s.mods.press += total; s.mods.pierce = true; if (bonus === 'extend') addPower(b, s, Math.floor(total / 2));
       yield step(b, tx('feed.expenses-gain-and-pierce', { tag, total }), [], 'play'); return;
-    case 'parlay': { const even = e.dice[0].value % 2 === 0; s.mods.mul *= even ? 2 : 0.5;
+    case 'parlay': { const even = (e.dice[0]?.value ?? total) % 2 === 0; s.mods.mul *= even ? 2 : 0.5;
       yield step(b, `${tag}: ${even ? tx('feed.even-effects-doubled') : tx('feed.odd-effects-halved')}.`, [], 'play'); return; }
     case 'freeze': { let n = 0;
       for (const { r, c } of cells) { const st = s.grid[r][c].chips, take = [];
@@ -1684,6 +1708,68 @@ function* sky(b, s) {
   if (!s.sky.some((o) => o.kind === 'blizzard') && ((b.weather.includes('blizzard') && b.rng.chance(0.2)) || (s.calamities.includes('blizzard') && b.turn % 4 === 3)))
     { s.sky.push({ id: b.nextId++, kind: 'blizzard', r: -1, c: -1, str: str() }); yield step(b, tx('feed.a-blizzard-rolls-in', { name: s.name }), [], 'weather'); }
 }
+// ---------- High Roller traits (content/bosstraits.js) ----------
+export const bossTrait = (s) => (s?.trait && BOSS_TRAITS[s.trait]) || null;
+const fireproof = (s) => bossTrait(s)?.k === 'fireproof';
+// what a trait does, written from its rule and numbers
+export const traitRule = (T) => (T ? tx(`trait.${T.k}`, { ...T.vars }) : '');
+function traitStart(b, s) {
+  const T = bossTrait(s); if (!T) return;
+  if (T.k === 'fireproof') for (const { cell } of allCells(s)) if (solidCount(cell) && !cell.chips.some((ch) => ch.kind === 'burn')) cell.chips.push(mkHazard(b, 'burn', 99));
+  if (T.k === 'wet') for (const { cell } of allCells(s)) for (const ch of cell.chips) if (!isHazard(ch)) ch.wet = 99;
+  if (T.k === 'hardened') for (let c = 0; c < s.dims.cols; c++) { const r = frontRow(s, c); if (r >= 0) setHard(b, s.grid[r][c], T.vars.turns || 3); }
+}
+function* traitTurn(b, s) {
+  const T = bossTrait(s); if (!T || worth(s) <= 0) return;
+  if (T.k === 'pitback') { const back = pullPit(b, s.idx, T.vars.n || 1, { bids: true }), left = addToMeter(b, s, back, null, 'from-pit'); backToPit(b, s.idx, left); // fees or bids, its own
+    const got = sum(back.filter((ch) => !left.includes(ch)), (ch) => ch.value); if (got) yield step(b, tx('feed.trait-pitback', { name: s.name, trait: T.name, n: got }), [], 'bonus'); }
+  if (T.k === 'interest') { const n = Math.min(T.vars.max || 3, Math.floor(worth(s) / Math.max(1, T.vars.per || 20)));
+    const { at } = n ? toMeterAtRandom(b, s, Array.from({ length: n }, () => mkChip(b, 'std', 1))) : { at: [] };
+    if (at.length) yield step(b, tx('feed.trait-interest', { name: s.name, trait: T.name, n: at.length }), at.map((x) => ref(s, x.r, x.c)), 'bonus'); }
+}
+
+// ---------- creatures: a third hand in each House phase ----------
+// A creature acts in the House phase of its type (CREATURES[kind].type: what its action is, an Investment, Insurance,
+// Expense or Correction), after both Rollers have played theirs, so a trick aimed at it or its stack lands first and
+// what it does is something you answer in the next turn's plays.
+export const creatureType = (kind) => CREATURES[kind]?.type || 'expense';
+const actingIn = (b, type) => (b.creatures || []).filter((x) => !x.gone && x.arrive <= b.turn && x.acted !== b.turn && creatureType(x.kind) === type);
+function* creaturePhase(b, type) {
+  for (const cr of actingIn(b, type)) { const s = b.sides[cr.side]; b.ctx = { phase: type, who: cr.side, creature: true }; cr.acted = b.turn; yield* creatureAct(b, s, cr); }
+}
+function* creatureAct(b, s, cr) {
+  let text = '', at = null;
+    if (cr.kind === 'mole') { // digs up an empty space
+      const free = allCells(s).filter((x) => !x.cell.hole && !x.cell.chips.length && !x.cell.link && !x.cell.roost);
+      if (free.length) { at = b.rng.pick(free); at.cell.hole = true; delete at.cell.puddle; text = tx('feed.a-mole-digs-a'); } else text = tx('feed.a-mole-finds-nowhere');
+    } else if (cr.kind === 'ghost') { // haunts a row with stacks in it
+      if (cr.r < 0) { const rows = [...new Set(allCells(s).filter((x) => solidCount(x.cell)).map((x) => x.r))]; cr.r = rows.length ? b.rng.pick(rows) : 0; cr.c = Math.floor(s.dims.cols / 2); }
+      at = { r: cr.r, c: cr.c }; text = tx('feed.a-ghost-haunts-a');
+    } else if (cr.kind === 'ghostship') { // sails across empty spaces to a Gold-topped stack and steals the Gold
+      const gold = allCells(s).filter((x) => { const i = topSolid(x.cell); return i >= 0 && x.cell.chips[i].gold && !x.cell.chips[i].treasure; });
+      const empty = allCells(s).filter((x) => !x.cell.chips.length && !x.cell.hole && !x.cell.link && !x.cell.roost);
+      if (cr.r < 0) { const st = b.rng.pick(empty.length ? empty : allCells(s)); cr.r = st.r; cr.c = st.c; }
+      const d = (x, y) => Math.max(Math.abs(x.r - y.r), Math.abs(x.c - y.c)), goal = gold.sort((x, y) => d(x, cr) - d(y, cr))[0];
+      if (goal && d(goal, cr) <= 1) { const i = topSolid(goal.cell), v = goal.cell.chips.splice(i, 1)[0]; cr.hold.push(v); b.fx[v.id] = 'abduct'; s.destroyed += v.value; emptyOut(b, goal.cell); text = tx('feed.the-ghost-ship-steals', { value: v.value }); at = { r: cr.r, c: cr.c }; }
+      else { const step1 = empty.filter((x) => d(x, cr) === 1).sort((x, y) => (goal ? d(x, goal) - d(y, goal) : b.rng.next() - 0.5))[0];
+        if (step1) { cr.r = step1.r; cr.c = step1.c; } at = { r: cr.r, c: cr.c }; text = goal ? tx('feed.the-ghost-ship-sails') : tx('feed.the-ghost-ship-drifts'); }
+    } else {
+      const live = allCells(s).filter((x) => solidCount(x.cell) && (cr.kind === 'dragon' || !anchored(x.cell)));
+      if (!live.length) { cr.gone = true; return; }
+      const stay = cr.kind === 'mothership' && cr.r >= 0 && solidCount(s.grid[cr.r][cr.c]) && !anchored(s.grid[cr.r][cr.c]) ? { r: cr.r, c: cr.c, cell: s.grid[cr.r][cr.c] } : null;
+      at = stay || b.rng.pick(live); const i = topSolid(at.cell);
+      if (cr.kind === 'ufo' || cr.kind === 'mothership') { const v = at.cell.chips.splice(i, 1)[0]; b.fx[v.id] = 'abduct'; if (isPayable(v)) s.destroyed += v.value; text = cr.kind === 'ufo' ? tx('feed.a-ufo-abducts-a') : tx('feed.the-mothership-beams-up'); if (cr.kind === 'mothership' && !solidCount(at.cell)) cr.life = 1; }
+      else if (cr.kind === 'dragon') { if (!hasResist(at.cell, 'burn') && !at.cell.chips.some((ch) => ch.kind === 'burn')) at.cell.chips.push(mkHazard(b, 'burn')); text = tx('feed.a-dragon-breathes-fire'); }
+      else if (cr.kind === 'unicorn') { for (let k = at.cell.chips.length - 1; k >= 0; k--) if (!isHazard(at.cell.chips[k])) transform(b, at.cell, k); text = tx('feed.a-unicorn-transforms-a'); }
+      else { transform(b, at.cell, i); text = tx('feed.a-fairy-transforms-a'); }
+      emptyOut(b, at.cell);
+    }
+    if (at) { cr.r = at.r; cr.c = at.c; }
+    if (--cr.life <= 0) cr.gone = true;
+    const nest = cr.gone && cr.roost && !cr.bountied ? allCells(s).find((x) => x.cell.roost?.id === cr.roost) : null;
+    if (nest) { nest.cell.chips.push(mkChip(b, 'egg', 0, { shop: 'egg', hits: shopVars('egg').hits || 5, prog: 0, foe: s.idx })); text += tx('feed.nests-and-lays-an'); }
+    yield step(b, tx('feed.in-s-position', { text, name: s.name, v: cr.gone ? tx('feed.then-leaves') : '' }), at ? [ref(s, at.r, at.c)] : [], 'creature');
+}
 function* ticks(b) {
   for (const s of b.sides) {
     b.ctx = { phase: 'house', who: s.idx };
@@ -1692,7 +1778,8 @@ function* ticks(b) {
     for (const { r, c, cell } of allCells(s)) for (const h of cell.chips.filter((ch) => HZ.includes(ch.kind))) {
       if (!cell.chips.includes(h)) continue;
       const drop = () => { cell.chips.splice(cell.chips.indexOf(h), 1); b.fx[h.id] = 'void'; };
-      if (hasResist(cell, h.kind)) { drop(); touched.push(ref(s, r, c)); continue; }
+      if (fireproof(s) && (h.kind === 'burn' || h.kind === 'lava')) continue; // it burns, and burns nothing
+      if (hasResist(cell, h.kind) || (fireproof(s) && h.kind === 'acid')) { drop(); touched.push(ref(s, r, c)); continue; }
       if (iced(cell) && h.kind !== 'boom') { drop(); touched.push(ref(s, r, c)); continue; } // a Frozen chip shrugs it off
       touched.push(ref(s, r, c));
       if (h.kind === 'shock') { // 1¢ of Debt on two other stacks (one more next to a Battery, or from a wet stack); Absorption soaks instances
@@ -1751,39 +1838,6 @@ function* ticks(b) {
     for (const { cell } of allCells(s)) if (cell.roost && !cell.chips.some((ch) => ch.kind === 'egg') && b.turn % 3 === 0 && !b.creatures.some((x) => x.roost === cell.roost.id && !x.gone))
       b.creatures.push(newCreature(b, 'dragon', s.idx, b.turn, { roost: cell.roost.id }));
     if (s.sky.some((o) => o.kind === 'moon') && b.turn % 4 === 0) b.creatures.push(newCreature(b, 'ghost', s.idx, b.turn)); // the Moon brings Ghosts out
-    for (const cr of b.creatures.filter((x) => x.side === s.idx && !x.gone && x.arrive <= b.turn)) {
-      let text = '', at = null;
-      if (cr.kind === 'mole') { // digs up an empty space
-        const free = allCells(s).filter((x) => !x.cell.hole && !x.cell.chips.length && !x.cell.link && !x.cell.roost);
-        if (free.length) { at = b.rng.pick(free); at.cell.hole = true; delete at.cell.puddle; text = tx('feed.a-mole-digs-a'); } else text = tx('feed.a-mole-finds-nowhere');
-      } else if (cr.kind === 'ghost') { // haunts a row with stacks in it
-        if (cr.r < 0) { const rows = [...new Set(allCells(s).filter((x) => solidCount(x.cell)).map((x) => x.r))]; cr.r = rows.length ? b.rng.pick(rows) : 0; cr.c = Math.floor(s.dims.cols / 2); }
-        at = { r: cr.r, c: cr.c }; text = tx('feed.a-ghost-haunts-a');
-      } else if (cr.kind === 'ghostship') { // sails across empty spaces to a Gold-topped stack and steals the Gold
-        const gold = allCells(s).filter((x) => { const i = topSolid(x.cell); return i >= 0 && x.cell.chips[i].gold && !x.cell.chips[i].treasure; });
-        const empty = allCells(s).filter((x) => !x.cell.chips.length && !x.cell.hole && !x.cell.link && !x.cell.roost);
-        if (cr.r < 0) { const st = b.rng.pick(empty.length ? empty : allCells(s)); cr.r = st.r; cr.c = st.c; }
-        const d = (x, y) => Math.max(Math.abs(x.r - y.r), Math.abs(x.c - y.c)), goal = gold.sort((x, y) => d(x, cr) - d(y, cr))[0];
-        if (goal && d(goal, cr) <= 1) { const i = topSolid(goal.cell), v = goal.cell.chips.splice(i, 1)[0]; cr.hold.push(v); b.fx[v.id] = 'abduct'; s.destroyed += v.value; emptyOut(b, goal.cell); text = tx('feed.the-ghost-ship-steals', { value: v.value }); at = { r: cr.r, c: cr.c }; }
-        else { const step1 = empty.filter((x) => d(x, cr) === 1).sort((x, y) => (goal ? d(x, goal) - d(y, goal) : b.rng.next() - 0.5))[0];
-          if (step1) { cr.r = step1.r; cr.c = step1.c; } at = { r: cr.r, c: cr.c }; text = goal ? tx('feed.the-ghost-ship-sails') : tx('feed.the-ghost-ship-drifts'); }
-      } else {
-        const live = allCells(s).filter((x) => solidCount(x.cell) && (cr.kind === 'dragon' || !anchored(x.cell)));
-        if (!live.length) { cr.gone = true; continue; }
-        const stay = cr.kind === 'mothership' && cr.r >= 0 && solidCount(s.grid[cr.r][cr.c]) && !anchored(s.grid[cr.r][cr.c]) ? { r: cr.r, c: cr.c, cell: s.grid[cr.r][cr.c] } : null;
-        at = stay || b.rng.pick(live); const i = topSolid(at.cell);
-        if (cr.kind === 'ufo' || cr.kind === 'mothership') { const v = at.cell.chips.splice(i, 1)[0]; b.fx[v.id] = 'abduct'; if (isPayable(v)) s.destroyed += v.value; text = cr.kind === 'ufo' ? tx('feed.a-ufo-abducts-a') : tx('feed.the-mothership-beams-up'); if (cr.kind === 'mothership' && !solidCount(at.cell)) cr.life = 1; }
-        else if (cr.kind === 'dragon') { if (!hasResist(at.cell, 'burn') && !at.cell.chips.some((ch) => ch.kind === 'burn')) at.cell.chips.push(mkHazard(b, 'burn')); text = tx('feed.a-dragon-breathes-fire'); }
-        else if (cr.kind === 'unicorn') { for (let k = at.cell.chips.length - 1; k >= 0; k--) if (!isHazard(at.cell.chips[k])) transform(b, at.cell, k); text = tx('feed.a-unicorn-transforms-a'); }
-        else { transform(b, at.cell, i); text = tx('feed.a-fairy-transforms-a'); }
-        emptyOut(b, at.cell);
-      }
-      if (at) { cr.r = at.r; cr.c = at.c; }
-      if (--cr.life <= 0) cr.gone = true;
-      const nest = cr.gone && cr.roost && !cr.bountied ? allCells(s).find((x) => x.cell.roost?.id === cr.roost) : null;
-      if (nest) { nest.cell.chips.push(mkChip(b, 'egg', 0, { shop: 'egg', hits: shopVars('egg').hits || 5, prog: 0, foe: s.idx })); text += tx('feed.nests-and-lays-an'); }
-      yield step(b, tx('feed.in-s-position', { text, name: s.name, v: cr.gone ? tx('feed.then-leaves') : '' }), at ? [ref(s, at.r, at.c)] : [], 'creature');
-    }
     for (const { r, c, cell } of allCells(s)) if (cell.worm && cell.chips.length) { // pulled through to the other side
       const o = b.sides[1 - s.idx], free = allCells(o).filter((x) => !x.cell.hole && !x.cell.chips.length), moving = cell.chips.splice(0);
       if (free.length) { const x = b.rng.pick(free); x.cell.chips = moving; yield step(b, tx('feed.chip-pulled-through-to', { name: CALAMITIES.wormhole.name, movingN: moving.length, name2: o.name }), [ref(s, r, c), ref(o, x.r, x.c)], 'hazard'); }
@@ -1862,7 +1916,7 @@ function* bossPhase(b, s) {
   const got = [];
   if (P.cheat?.dice > 0 && s.pouch.length) { const best = s.pouch.slice().sort((x, y) => DICE[y.type].faces - DICE[x.type].faces)[0];
     for (let n = 0; n < P.cheat.dice; n++) s.pouch.push({ ...boutCopy(best), id: 9e6 + b.nextId++ }); got.push(tx('feed.extra', { dice: P.cheat.dice, type: best.type })); }
-  if (P.cheat?.tricks > 0) { let n = 0; for (; n < P.cheat.tricks && s.book.length; n++) { const t = s.book.shift(); s.run.push({ uid: t.uid, trick: t, dice: [], bid: [], bidValue: 0, target: null, state: 'shown', lingerLeft: 0, lingerTotal: 0, drawn: b.turn, bookAt: 0, cheat: true }); got.push(TRICKS[t.id].name); } }
+  if (P.cheat?.tricks > 0) { let n = 0; for (; n < P.cheat.tricks && s.book.length; n++) { const t = s.book.shift(); s.run.push({ uid: t.uid, trick: t, dice: [], bid: [], bidValue: 0, target: null, state: 'shown', stack: [], lingerLeft: 0, drawn: b.turn, bookAt: 0, cheat: true }); got.push(TRICKS[t.id].name); } }
   yield step(b, tx('feed.changes-tactics', { name: s.name, v: got.length ? tx('feed.and-cheats-revealed', { join: got.join(', ') }) : '' }), [], 'tilt');
 }
 
@@ -2032,16 +2086,29 @@ function* chipPhase(b, s, type) {
 export const phaseOf = (id) => TRICKS[id].early || TRICKS[id].type;
 // Each trick of this type plays. A Forgetter on the opponent negates a trick whose dice total its count; a Repeater
 // on your side plays a trick whose dice total its count again; each Mimic on top plays one of them again.
-function* sidePhase(b, s, type, cx) {
+// The spaces a play reaches, as { side, r, c } keys
+function reach(b, s, e) {
+  const def = TRICKS[e.trick.id]; if (!e.target || def.approach === 'none') return [];
+  const t = b.sides[e.target.side]; return affected(b, t, def, e.target, e.dice.length).map((x) => `${t.idx}:${x.r}:${x.c}`);
+}
+// Plays that reach a space the other Roller's play in the same phase also reaches, when the space is the player's own:
+// the owner of a contested space plays on it first.
+export function ownerFirst(b, plays) {
+  const out = new Set(), R = plays.map((p) => ({ ...p, keys: new Set(reach(b, p.s, p.e)) }));
+  for (const x of R) for (const y of R) if (x.s !== y.s) for (const k of x.keys) if (y.keys.has(k) && +k.split(':')[0] === x.s.idx) out.add(x.e);
+  return out;
+}
+function* sidePhase(b, s, type, cx, keep = () => true, firstPass = false) {
   const o = b.sides[1 - s.idx], done = [];
-  for (const e of s.run.filter((x) => x.state === 'play' && phaseOf(x.trick.id) === type)) {
-    cx.uid = e.uid; const roll = e.lingerLeft <= 0 && e.dice.length ? sum(e.dice, (d) => d.value) : null;
+  for (const e of s.run.filter((x) => x.state === 'play' && phaseOf(x.trick.id) === type && keep(x))) {
+    cx.uid = e.uid; const roll = e.dice.length ? sum(e.dice, (d) => d.value) : null;
     const fg = roll != null && tops(o, 'forgetter').find((x) => x.n === roll && (o.forgotUsed[x.ch.id] || 0) < 1 + x.charge);
     if (fg) o.forgotUsed[fg.ch.id] = (o.forgotUsed[fg.ch.id] || 0) + 1;
     yield* play(b, s, e, { forgotten: !!fg });
     if (roll == null || fg) continue; done.push(e);
     for (const rp of tops(s, 'repeater').filter((x) => x.n === roll)) for (let k = 0; k <= rp.charge; k++) yield* play(b, s, e, { again: 'Repeater' });
   }
+  if (firstPass) return; // Mimics and lingering made tricks play once, with the rest
   for (const mm of tops(s, 'mimic')) { void mm; if (!done.length) break; const e = b.rng.pick(done); cx.uid = e.uid; yield* play(b, s, e, { again: 'Mimic' }); }
   for (const ec of s.echoes.filter((x) => x.phase === type && x.from !== b.turn)) { // lingering made tricks play again with the same roll
     cx.uid = ec.e.uid; yield* play(b, s, ec.e, { again: 'Lingering' }); ec.left--; }
@@ -2049,10 +2116,10 @@ function* sidePhase(b, s, type, cx) {
 }
 export function* resolve(b) {
   b.phase = 'resolve';
-  // bids go to the House; a bid above 1¢ makes the trick linger
+  // bids go to the House; a stack of copies of a trick plays one copy a turn, so it lingers a turn per copy under the top
   let any = false;
   for (const s of b.sides) for (const e of s.run) if (e.state === 'bid') {
-    e.lingerTotal = clamp(e.bidValue - 1, 0, 20); e.lingerLeft = e.lingerTotal; e.state = 'play';
+    e.lingerLeft = (e.stack || []).length; e.state = 'play';
     e.trick.wear = Math.max(0, (e.trick.wear ?? WEAR.good) - 1); // each play wears the trick (its condition, not its power)
     for (const ch of e.bid) { b.fx[ch.id] = 'house'; delete ch.from; toPit(b, s.idx, ch, 'bid'); } e.paid = e.bid.map((ch) => ch.value); s.bidsPaid += e.bidValue; e.bid = []; any = true;
   }
@@ -2062,12 +2129,17 @@ export function* resolve(b) {
   // Each phase is played for both Rollers at once. What a trick is worth is read from the table as it
   // stood when the phase was called, so neither Roller's play changes the other's in the same phase.
   for (const type of Object.keys(TYPES).sort((x, y) => TYPES[x].order - TYPES[y].order)) {
-    if (!plays.some((p) => phaseOf(p.e.trick.id) === type) && !b.sides.some((s) => chipWorkIn(s, type))) continue;
+    if (!plays.some((p) => phaseOf(p.e.trick.id) === type) && !b.sides.some((s) => chipWorkIn(s, type) || heldIn(s, type).length) && !actingIn(b, type).length) continue;
     b.ctx = { phase: type }; yield step(b, tx('feed.the-house-calls-s', { name: TYPES[type].name }), [], 'phase');
+    if (b.sides.some((s) => heldIn(s, type).length)) yield* zip(b, b.sides.map((s) => deployHeld(b, s, type)), b.sides.map((s) => ({ phase: type, who: s.idx }))); // the held rewards go out
     if (b.sides.some((s) => chipWorkIn(s, type))) yield* zip(b, b.sides.map((s) => chipPhase(b, s, type)), b.sides.map((s) => ({ phase: type, who: s.idx })));
     for (const s of b.sides) s.fz = { ...s.mods };
+    // a space both Rollers' tricks reach: its owner's trick plays (and resolves) first, then the rest play together
+    const first = ownerFirst(b, plays.filter((p) => phaseOf(p.e.trick.id) === type));
+    if (first.size) { const c1 = b.sides.map((s) => ({ phase: type, who: s.idx, uid: null })); yield* zip(b, b.sides.map((s, i) => sidePhase(b, s, type, c1[i], (e) => first.has(e), true)), c1); }
     const cxs = b.sides.map((s) => ({ phase: type, who: s.idx, uid: null }));
-    yield* zip(b, b.sides.map((s, i) => sidePhase(b, s, type, cxs[i])), cxs);
+    yield* zip(b, b.sides.map((s, i) => sidePhase(b, s, type, cxs[i], (e) => !first.has(e))), cxs);
+    if (actingIn(b, type).length) yield* creaturePhase(b, type); // then the creatures whose action is of this type
     if (type === 'expense' && b.sides.some(anyDue)) { b.ctx = { phase: type }; yield step(b, tx('feed.the-house-settles-the'), [], 'settle'); yield* settleAll(b, type); }
     for (const s of b.sides) { b.ctx = { phase: type, who: s.idx }; yield* madeWork(b, s, type, plays.some((p) => p.s === s && phaseOf(p.e.trick.id) === type)); }
   }
@@ -2076,8 +2148,9 @@ export function* resolve(b) {
   // finished tricks and their dice tap: they wait in the tapped piles until restored (flipped chips still come home)
   let done = 0; const at = b.tapClock = (b.tapClock || 0) + 1; // one stamp for everything tapped in this action
   for (const { s, e } of plays) {
-    if (e.lingerLeft > 0) { e.lingerLeft--; continue; }
-    s.run.splice(s.run.indexOf(e), 1); s.tapped.tricks.push({ trick: e.trick, at }); done++;
+    s.tapped.tricks.push({ trick: e.trick, at }); done++; // the copy that played taps
+    if (e.stack?.length) { e.trick = e.stack.shift(); e.lingerLeft = e.stack.length; continue; } // the next copy plays next turn, with the same roll and target
+    s.run.splice(s.run.indexOf(e), 1);
     for (const d of e.dice) homeDie(b, s, d, at);
   }
   if (done) yield step(b, '', [], 'return');
@@ -2094,17 +2167,6 @@ export function* resolve(b) {
     b.stage.paid[s.idx] -= back;
     yield step(b, tx('feed.intervention-of-s-fees', { back, name: s.name }), [], 'bonus');
   }
-  // rewards for actions left unused, paid to both Rollers together
-  if (!b.sides.some((x) => worth(x) <= 0)) {
-    const cxs = b.sides.map((s) => ({ phase: 'house', who: s.idx }));
-    yield* zip(b, b.sides.map((s) => (function* () {
-      // Steal chips (from unused bids, made when the Bid phase was passed) steal from the Stage now
-      const st = allCells(s).flatMap((x) => x.cell.chips.filter((ch) => ch.shop === 'steal').map((ch) => ({ ...x, ch }))); if (!st.length) return;
-      let want = 0; for (const x of st) { want += x.ch.amt || 0; x.cell.chips.splice(x.cell.chips.indexOf(x.ch), 1); b.fx[x.ch.id] = 'void'; }
-      const stolen = recoup(b, s, want, true);
-      yield step(b, tx('feed.s-steal', { name: s.name, stN: st.length, v: stolen ? tx('feed.stolen-from-the-stage', { stolen }) : 'nothing on the Stage to steal', v2: stolen < want && stolen ? tx('feed.of', { want }) : '' }), st.map((x) => ref(s, x.r, x.c)), 'bonus');
-    })()), cxs);
-  }
   for (const s of b.sides) {
     tidyFeet(s); for (const { cell } of allCells(s)) bind(b, cell); // sticky chips bind to the chips they touch
     const st = s.status; st.resist = st.resistNext; st.resistNext = 0; st.evade = st.evadeNext; st.evadeNext = null; st.reflect = 0; st.reflectAll = false;
@@ -2118,6 +2180,7 @@ export function* resolve(b) {
   }
   b.ctx = { phase: 'house' };
   yield* restorePhase(b);
+  for (const s of b.sides) { b.ctx = { phase: 'house', who: s.idx }; yield* traitTurn(b, s); }
   b.ctx = { phase: 'house' };
   const w = b.sides.map(worth);
   if (!b.rules.sandbox && (w[0] <= 0 || w[1] <= 0 || b.turn >= b.rules.maxTurns)) { // a sandbox bout (test table) runs until you leave it
@@ -2186,4 +2249,4 @@ export function summary(b, idx) {
 }
 
 // internals the tests drive directly
-export const _test = { blockedBy, madeWork, placeMade, engage, settleAll, feeShares, setDebt, ticks, play, sidePhase, growth, strike, water, freezeTop, newCreature, setHard, arrange, chipPhase, placeFx, addToMeter };
+export const _test = { deployHeld, creaturePhase, blockedBy, madeWork, placeMade, engage, settleAll, feeShares, setDebt, ticks, play, sidePhase, growth, strike, water, freezeTop, newCreature, setHard, arrange, chipPhase, placeFx, addToMeter };

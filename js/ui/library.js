@@ -4,11 +4,11 @@
 import { h, openPanel, closePanel, btn } from './core.js';
 import { app } from './app.js';
 import { upgrade as upgradeFaces, suggestFace, dieName } from '../dice.js';
-import { chipEl, chipTip, dieEl, dieTip, faceStrip, trickTip, trickWords, trickLook, cardEl, cardTip, passEl, walletEl, jacketEl, jacketTip, drinkEl, feltEl } from './parts.js';
+import { cardRule, chipEl, chipTip, dieEl, dieTip, faceStrip, trickTip, trickWords, trickLook, cardEl, cardTip, passEl, walletEl, jacketEl, jacketTip, drinkEl, feltEl } from './parts.js';
 import * as D from '../data.js';
 import { CHIP_LIST } from '../chiplist.js';
 import { TRAITS, traitsOf, traitsHtml, flyerTraits } from '../traits.js';
-import { multOf, traitOf } from '../bout.js';
+import { multOf } from '../bout.js';
 import { cents } from '../util.js';
 import { passesOf } from '../run.js';
 import { t as tx } from '../text.js';
@@ -64,7 +64,7 @@ const BOUT_CHIPS = {
 function chipsTab(own) {
   const out = [sec(tx('library.royal-paradise-chips'), tx('library.the-basic-value-chips'))];
   for (const d of D.DENOMS) { const ch = { kind: 'std', value: d.value };
-    out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), D.denomName(d.value) + (d.name ? ` · ${cents(d.value)}` : ''), [d.floor >= D.ASCENT_FLOOR ? tx('floor.dealt-in-the-paradise') : tx('floor.dealt-from-floor', { floor: d.floor }), d.value > 1 ? tx('library.bid-it-and-the', { value: d.value - 1, v: d.value > 2 ? 's' : '' }) : tx('library.bids-without-lingering'), dim(d.value > 1 ? tx('library.a-fee-under-leaves', { value: d.value }) : tx('library.any-fee-of-1'))])); }
+    out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), D.denomName(d.value) + (d.name ? ` · ${cents(d.value)}` : ''), [d.floor >= D.ASCENT_FLOOR ? tx('floor.dealt-in-the-paradise') : tx('floor.dealt-from-floor', { floor: d.floor }), tx('library.bid-it-adds', { value: d.value }), dim(d.value > 1 ? tx('library.a-fee-under-leaves', { value: d.value }) : tx('library.any-fee-of-1'))])); }
   out.push(sec(tx('library.chip-upgrades'), tx('library.changes-made-to-a')));
   const gold = { kind: 'std', value: 5, gold: true };
   out.push(entry([chipEl({ kind: 'std', value: 5 }), h('span', { class: 'dim', text: '→' }), tipped(chipEl(gold), () => chipTip(gold))], 'Gold', [tx('library.made-by-gild-and'), tx('library.cannot-be-bid-pays')]));
@@ -99,7 +99,7 @@ function chipsTab(own) {
 function tricksTab(own) {
   const out = [];
   for (const [type, T] of Object.entries(D.TYPES)) {
-    out.push(sec(`${T.name}s`, tx('library.trait-when-bid-with', { text: T.text, traitText: T.traitText(1) })));
+    out.push(sec(`${T.name}s`, T.text));
     for (const [id, def] of Object.entries(D.TRICKS)) { if (def.type !== type) continue;
       const t = { id, q: 1 }, n = own.trick(id);
       out.push(entry(tipped(tagOf(t), () => trickTip(t, own.run?.cls)), def.name,
@@ -108,7 +108,7 @@ function tricksTab(own) {
   }
   out.push(sec('Quality', tx('library.quality-common-to-royal')));
   for (const q of [1, 2, 3, 4]) { const t = { id: 'charge', q };
-    out.push(entry(tipped(tagOf(t), () => trickTip(t, own.run?.cls)), D.QNAME[q], [tx('library.roll-total-trait', { fx: fx(multOf(t)), traitOf: traitOf(t) }), dim(tx('library.investments', { fx: fx(multOf({ ...t, id: 'stir' })), qdieText: D.qdieText(q) }))])); }
+    out.push(entry(tipped(tagOf(t), () => trickTip(t, own.run?.cls)), D.QNAME[q], [tx('library.roll-total-trait', { fx: fx(multOf(t)) }), dim(tx('library.investments', { fx: fx(multOf({ ...t, id: 'stir' })), qdieText: D.qdieText(q) }))])); }
   out.push(sec('Rarity', tx('library.how-a-trick-is')));
   const prints = [{ rar: 'basic' }, { rar: 'foil', foil: 1 }, { rar: 'foil', foil: 2 }, { rar: 'foil', foil: 3 }, { rar: 'misprint', mis: { die: 'd8' } }, { rar: 'misprint', mis: { trait: 2 } }, { rar: 'reprint' }].map((x) => ({ id: 'charge', q: 1, ...x }));
   for (const t of prints) out.push(entry(tipped(tagOf(t), () => trickTip(t, own.run?.cls)), t.foil ? D.FOIL[t.foil].name : D.RARITY[t.rar].name,
@@ -151,7 +151,7 @@ const shopFrom = (level) => (!level ? '' : level >= 4 ? tx('library.leaving-from
 const cardKind = (id) => (D.LANYARD_CARDS.includes(id) ? tx('library.lanyard-does-not-take') : D.STARTER_CARDS.includes(id) ? tx('library.starter-two-are-dealt') : D.FIND_CARDS.includes(id) ? tx('library.found-in-the-dodgy') : tx('library.takes-a-wallet-slot'));
 function cardsTab(own) {
   const out = [sec('Cards', tx('library.benefit-cards-ride-in'))];
-  for (const id of Object.keys(D.CARDS)) out.push(entry(tipped(cardEl(id), () => cardTip(id)), D.CARDS[id].name, [D.CARDS[id].text, dim(cardKind(id))], { own: own.card(id) ? tx('library.in-your-wallet') : null }));
+  for (const id of Object.keys(D.CARDS)) out.push(entry(tipped(cardEl(id), () => cardTip(id)), D.CARDS[id].name, [cardRule(id), dim(cardKind(id))], { own: own.card(id) ? tx('library.in-your-wallet') : null }));
   out.push(sec('Passes', tx('library.passes-are-not-cards')));
   for (let f = 1; f < D.PASSES.length; f++) out.push(entry(passEl(f), D.PASSES[f].name, [D.PASSES[f].text], { own: own.run && passesOf(own.run).includes(f) ? tx('library.in-your-wallet') : null }));
   out.push(noUpgrades('Cards'));
