@@ -374,6 +374,16 @@ what you own, carry or wear is marked.
 - Wager ×1.5 at tables, ×3 at the High Roller, capped at ×3. Double Down doubles it up to ×6, keeps the last
   bout's Challenge tilts, drops Cheat tilts, and on a win opens the High Roller and grants a Suite Key Card.
 
+### Neon signs
+Every seat at the table is a neon sign, and so is the House's (`js/ui/sign.js`). A sign has a tube and glow colour for
+its frame, name and class; a frame style (tube, double, dashed, dotted, bulbs, none) and corner rounding; a Unicode
+symbol at the corners or along the edge; a mount (a backing colour and an image, by URL or from a file); and one part
+that blinks (breathe, pulse, flicker or alternate). Every blink is slow and soft (well under three changes a second,
+never fully dark) and all of them, the House's bulbs included, stop under reduced motion. Build mode › Neon sets
+yours, the opponents' shared look and the House's (`D.NEON.you / them / house`); the Opponent maker gives any
+opponent its own (`ROSTER[id].sign`, laid over the shared look). The House's bulb flash was slowed to stay under three
+flashes a second.
+
 ### High Roller traits (business cards)
 Business Cards no longer raise your attributes (old saves drop them; the starter wallet gets the discount cards).
 Instead every High Roller hands you a business card at the table: a **trait** (`BOSS_TRAITS` in

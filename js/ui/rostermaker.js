@@ -7,6 +7,7 @@ import * as B from '../build/draft.js';
 import { t } from '../text.js';
 import { NEW_OPPONENT, NEW_BOSS } from '../content/roster.js';
 import { diceSummary } from './app.js';
+import { signEditor } from './neonmaker.js';
 
 const isObj = (x) => x && typeof x === 'object';
 // small form helpers bound to one entry's path
@@ -98,6 +99,9 @@ export function rosterMaker(id, redraw) {
     f.field(t('roster.layout'), layoutGrid(X, (v) => f.set(['layout'], v), redraw), ['layout']),
     h('span', { class: 'cap', text: t('roster.part.behave') }),
     ...Object.keys(D.BEHAVE).map((k) => f.field(t(`roster.beh.${k}`), f.select(['behave', k], opt(D.BEHAVE[k]), beh[k]), ['behave', k])),
+    // its neon sign at the table: laid over the opponents' shared look (Build mode › Neon)
+    h('span', { class: 'cap', text: t('roster.part.sign') }), h('p', { class: 'sub', text: t('roster.sign.note') }),
+    signEditor(D.subPath(D.subPath('ROSTER', id), 'sign'), 'them', X.sign, redraw, [X.name, X.boss ? t('run.high-roller') : X.cls ? D.CLASSES[X.cls].name : t('roster.randomClass')]),
   ];
   if (X.boss) {
     const phases = X.phases || [];

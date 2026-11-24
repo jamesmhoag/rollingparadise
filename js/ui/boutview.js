@@ -12,6 +12,7 @@ import { sum } from '../util.js';
 import { t as tt } from '../text.js';
 import { facesOf, faceValue, dieName } from '../dice.js';
 import { solidEl } from './solid.js';
+import { signOf, dressSign } from './sign.js';
 import { t as tx } from '../text.js';
 
 // the table: the House's phase track runs along the top edge (y 100-124), the positions below it, and between them
@@ -128,8 +129,15 @@ export function boutScene(root, bout, ctx, onDone) {
     return h('span', { class: 'gcard bizcard', guide: 'boss-trait', tip: () => tx('trait.card-tip', { name: s.name, title: T.title, trait: T.name, rule: B.traitRule(T), flavor: T.flavor }) },
       h('em', { text: tx('table.biz-card') }), h('b', { text: T.name })); };
   const nameSign = (name, cls, tipFn) => h('div', { class: 'name nsign', tip: tipFn }, h('b', { class: 'neon-name', text: name }), h('span', { class: 'neon-class', text: cls }));
-  function paintNeon() { for (const [who, N] of Object.entries(D.NEON)) for (const [part, pair] of Object.entries(N)) pair.forEach((c, i) => root.style.setProperty(`--${who}-${part}${i + 1}`, c));
-    root.style.setProperty('--you', D.NEON.you.name[0]); root.style.setProperty('--them', D.NEON.them.name[0]); }
+  // the signs: yours, theirs (their own if their roster entry has one) and the House's, all built the same way (sign.js)
+  const signs = { you: () => signOf('you'), them: () => signOf('them', opp.sign), house: () => signOf('house') };
+  function paintNeon() {
+    const S = { you: signs.you(), them: signs.them(), house: signs.house() };
+    for (const [who, N] of Object.entries(S)) for (const part of ['border', 'name', 'cls']) N[part].forEach((c, i) => root.style.setProperty(`--${who}-${part}${i + 1}`, c));
+    root.style.setProperty('--you', S.you.name[0]); root.style.setProperty('--them', S.them.name[0]);
+    const [mine, theirs] = [root.querySelector('.who.me'), root.querySelector('.who.them')];
+    if (mine) dressSign(mine, S.you, 'you'); if (theirs) dressSign(theirs, S.them, 'them'); if (houseSign) dressSign(houseSign, S.house, 'house');
+    marquee.style.display = S.house.frame === 'bulbs' ? '' : 'none'; }
   const header = h('div', { class: 'bout-head' },
     h('div', { class: 'who me' }, nameSign(D.CLASSES[me.cls].hero || D.CLASSES[me.cls].name, D.CLASSES[me.cls].name, () => tx('table.sign-tip', { name: D.heroName(me.cls), cls: D.CLASSES[me.cls].name })),
       h('div', { class: 'worth', tip: worthTip(me) }, 'Worth ', worthEl[0], '¢', owesEl[0]),
