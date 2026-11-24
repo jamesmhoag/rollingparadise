@@ -488,6 +488,17 @@ flashes a second.
 - **Business cards**: clearing a High Roller hands you its card (`run.bizCards`). You play by one at a time
   (`run.trait`, the first you win, changed from your inventory on the floor), with the same rule it played against you.
 
+### Starting positions (the miniature Stake)
+- Build mode's Roller and Opponent makers lay a position out on a miniature of its Stake: red-checkered spaces, rows
+  from the Bet back, sized from the class, jacket and (for a High Roller) rank (`R.posDims`), so it resizes when any
+  of them change. Pick a chip from the rack and click a space to set it down (hold or sweep to keep going);
+  right-click or the eraser takes the top chip off. Chips laid where the position no longer reaches are kept in the
+  data but left out at the table, and the editor says how many.
+- A Roller's position (`ROLLERS[id].layout`) is the run's first plan. Before each bout the player changes it from
+  there in the position planner. When the purse cannot cover all of it, it is built from the bottom up: every
+  stack's first chip front to back, then every second chip, for as long as the next chip can be afforded
+  (`R.fitLayout`). An opponent's (`ROSTER[id].layout`) is fitted to its own position the same way.
+
 ### Build mode lists are linked, not typed
 - No Build-mode field takes a comma-separated list any more. A list of things the game defines (tricks, materials,
   dyes, chips, weather, immunities, face effects, floors) is edited by picking each item from that table, by name,
