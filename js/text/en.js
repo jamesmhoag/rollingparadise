@@ -68,6 +68,7 @@ export default {
   "select.hero.the": "the {cls}",
   "select.eachTurn": "Each turn",
   "select.unused": "For each one left unused",
+  "select.unused.rows": "Earned at the table: a chip in every Stake row gives +1 {stat}, in every Bet row +1 to all three; lined up in one column, +2.",
   "select.position": "Position bonus",
   "select.pouch": "Pouch",
   "select.book": "Book",
