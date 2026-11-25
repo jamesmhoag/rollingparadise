@@ -160,7 +160,7 @@ export const GUIDE = {
     how: ['Click the aim to choose the space it hits, before the Bluff ends.'] },
   'trick-dice': { name: 'Bonus dice', def: 'The dice a trick\'s Bonus reads: a pip for each, lit as they go on.',
     how: ['Put dice of the trick\'s own size on it to light the pips: those are its Bonus dice.', 'Other dice still add their value; they just do not count for the Bonus.'] },
-  music: { name: 'Music', def: 'The lounge band, playing quietly under the game; at a table, a loop for that floor, which tightens as a Roller runs low on Worth.', how: ['Click to cycle the band, its chiptune version and off; the hover names the tune.', 'The ⏭ beside it skips to the next tune, or at a table to the next loop.'] },
+  music: { name: 'The band', def: 'The lounge band, playing quietly under the game; at a table, a loop for that floor, which tightens as a Roller runs low on Worth. They take requests, for a price, paid from your purse.', how: ['♥ hearts the tune playing; favorites top the setlist.', '♫ tips the band to play a tune you pick.', '⇄ pays them to swap their instruments for 8-bit chips, or back.', '✕ pays them to stop; they stay quiet until you tip again.'] },
   sfx: { name: 'Sound effects', def: 'Sounds for the table and for each kind of effect the House plays.', how: ['Click to turn them on or off.', 'Listen to the House: each type of effect, and each element, has its own sound.'] },
   sign: { name: 'Neon sign', def: 'A Roller\'s name in lights, with their class (or title) under it.',
     how: ['Hover it for who they are; each opponent can have a sign of their own, set in Build mode.'] },
@@ -271,7 +271,7 @@ export const GUIDE_BY_CLASS = [
   ['gcard.gpass', 'pass'], ['gcard.lanyard', 'lanyard'], ['gcard', 'card'], ['gjacket', 'jacket'],
   ['box.row', 'denom'], ['dye', 'dye'],
   ['tilt.challenge', 'tilt:challenge'], ['tilt.cheat', 'tilt:cheat'], ['ocell', 'opp-stack'],
-  ['music-btn', 'music'], ['skip-btn', 'music'], ['pmeter', 'prep:meters'], ['bookcard', 'trick'], ['mcell', 'cell'], ['bonus-req', 'trick-dice'], ['nsign', 'sign'], ['house-sign', 'house'], ['pot', 'pit'], ['ledger', 'ledger'], ['phases', 'phase-track'], ['orbital', 'weather'], ['sfx-btn', 'sfx'], ['qd', 'quality'], ['tgt', 'aim'], ['bonus', 'trick-dice'], ['c-stack', 'trick-stack'], ['zone-title', 'zone'], ['zone-label', 'position-label'], ['b-lab', 'build-option'], ['glyph', 'sign-glyph'], ['stakeboard', 'layout-space'], ['bidslot', 'bid-space'],
+  ['band-btn', 'music'], ['pmeter', 'prep:meters'], ['bookcard', 'trick'], ['mcell', 'cell'], ['bonus-req', 'trick-dice'], ['nsign', 'sign'], ['house-sign', 'house'], ['pot', 'pit'], ['ledger', 'ledger'], ['phases', 'phase-track'], ['orbital', 'weather'], ['sfx-btn', 'sfx'], ['qd', 'quality'], ['tgt', 'aim'], ['bonus', 'trick-dice'], ['c-stack', 'trick-stack'], ['zone-title', 'zone'], ['zone-label', 'position-label'], ['b-lab', 'build-option'], ['glyph', 'sign-glyph'], ['stakeboard', 'layout-space'], ['bidslot', 'bid-space'],
   ['worth', 'worth'], ['weather', 'weather'], ['table-felt', 'felt'], ['turn', 'turn'], ['house', 'house'], ['pit', 'pit'],
   ['stage-strip', 'stage'], ['run-empty', 'run'], ['okit', 'opp-kit'], ['spine.book', 'spine:book'], ['spine.dice', 'spine:dice'],
 ];

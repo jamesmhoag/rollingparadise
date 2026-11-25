@@ -314,6 +314,8 @@ export function buyShopChip(run, id) {
 export const buyResist = buyShopChip;
 
 // ---------- lounge ----------
+// tipping the band (the music buttons): what is 'request', 'swap' or 'stop'; paid from the purse, in the ledger
+export const tipBand = (run, what, title = '') => spend(run, D.TUNING.band[what], tx(`run.band.${what}`, { title }));
 function drinkMods(run, d) {
   const all = ['trickery', 'ingenuity', 'proficiency', 'charisma', 'cunning', 'conviction'], rng = run.rng;
   if (d.stat === 'random') return { [rng.pick(all)]: d.amt };

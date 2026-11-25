@@ -1,5 +1,7 @@
 // The bout music: how tense a bout reads from the Rollers' Worth, how that sets the four layers, and which loop plays.
-import { tensionOf, layerMix, loopFor, srcOf, MODES } from '../js/ui/music.js';
+import { tensionOf, layerMix, loopFor, srcOf, bandOf, setlist } from '../js/ui/music.js';
+import { tipBand } from '../js/run.js';
+import { TUNING } from '../js/content/tuning.js';
 import { LOOPS, MUSIC } from '../js/content/assets.js';
 import { worth } from '../js/bout.js';
 
@@ -21,7 +23,13 @@ ok(mid.drive === 1 && mid.peril === 0, 'halfway: the drive, not the peril yet');
 for (let x = 0; x < 1; x += 0.05) { const a = layerMix(x), b = layerMix(x + 0.05); ok(b.drive >= a.drive && b.peril >= a.peril, `the layers only build as tension rises (${x.toFixed(2)})`); }
 for (let f = 1; f <= 5; f++) { ok(loopFor(f, false)?.kind === 'bout' && loopFor(f, false).floor === f, `floor ${f}: a table loop`); ok(loopFor(f, true)?.kind === 'boss' && loopFor(f, true).floor === f, `floor ${f}: a High Roller loop`); }
 ok(new Set(LOOPS.map((L) => L.title)).size === LOOPS.length, 'every loop has its own title');
-ok(MODES.join() === 'band,chip,off', 'the button cycles band, chiptune, off');
+// tipping the band: priced from the purse, refused when it is short, in the ledger; the band's state is the run's
+const P = TUNING.band, tipper = (purse) => ({ purse, stats: { spent: 0 }, ledger: [], floor: 1 });
+ok(P.request === 20 && P.swap === 50 && P.stop === 100, 'a request 20¢, a swap 50¢, silence 100¢');
+{ const r = tipper(60); ok(tipBand(r, 'swap') && r.purse === 10 && r.ledger.length === 1 && r.ledger[0].amt === -50, 'a swap is paid from the purse and ledgered');
+  ok(!tipBand(r, 'request', 'Neon Strip') && r.purse === 10, 'a tip the purse cannot cover is refused'); }
+{ const r = {}; ok(bandOf(r).mode === 'band' && !bandOf(r).silent && bandOf(r) === r.band, 'a run starts with the band playing'); ok(bandOf(null).mode === 'band', 'no run: the band'); }
+{ const list = [{ title: 'A' }, { title: 'B' }, { title: 'C' }]; ok(setlist(list, new Set(['C'])).map((x) => x.title).join() === 'C,A,B', 'favorites top the setlist'); }
 for (const M of MUSIC) ok(srcOf(M, 'band') === M.src && srcOf(M, 'chip') === M.chip && M.chip !== M.src, `${M.title}: a band and a chiptune file`);
 ok(srcOf({ src: 'a.mp3' }, 'chip') === 'a.mp3', 'a tune with no chiptune version plays the band');
 if (fail) process.exit(1);

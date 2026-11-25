@@ -24,6 +24,8 @@ export const TUNING = {
     packPrice: 200, packSize: 5, packFoil: 0.2, gemChance: 0.08, // foil packs: price × quality × floor
     freeDrinkPunches: 5, // Lounge punches for a free drink
   },
+  // tipping the lounge band (the music buttons): a request from the setlist, a swap to 8-bit chips and back, silence
+  band: { request: 20, swap: 50, stop: 100 },
   // which floors each room appears on
   rooms: { smith: [1, 2, 3, 4], dice: [1, 2, 3, 4], trader: [1, 2, 3, 4], exchange: [1, 2, 3, 4], lounge: [1, 2, 3, 4], book: [1, 2, 3, 4], search: [1, 2, 3, 4] },
   // the tables' size

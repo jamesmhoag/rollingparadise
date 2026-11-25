@@ -39,5 +39,7 @@ export function hud(place, sub) {
     tween(purse, run.purse, cents);
   }
   update();
+  const paid = () => { if (!el.isConnected) return document.removeEventListener('rp:purse', paid); update(); }; // a tip to the band
+  document.addEventListener('rp:purse', paid);
   return { el, update };
 }

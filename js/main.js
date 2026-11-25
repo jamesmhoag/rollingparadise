@@ -127,7 +127,7 @@ function selectScene(root) {
 
 window.addEventListener('resize', fit);
 loadDraft(); // your build-mode changes, live in this browser
-fit(); initTips(); initSpin(); initMusic(document.getElementById('stage')); initSfx(document.getElementById('stage'));
+fit(); initTips(); initSpin(); initMusic(document.getElementById('stage'), { run: () => app.run, tip: (what, title) => R.tipBand(app.run, what, title) }); initSfx(document.getElementById('stage'));
 app.meta = R.loadMeta();
 nav.title();
 if (new URLSearchParams(location.search).has('debug')) window.RP = { app, R, D, nav };

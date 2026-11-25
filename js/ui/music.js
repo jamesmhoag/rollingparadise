@@ -1,30 +1,41 @@
 // The lounge's music: the band's set list (content/music.js, eight kinds of jazz, three tunes each), quietly under
 // the game. The set is shuffled so no two tunes of the same kind play back to back, and loops. Browsers only let
-// sound start after the player touches the page, so it begins on the first click. The ♪ button in the corner
-// cycles the band, its chiptune version (every tune and loop again on 8-bit voices, tools/jazz/chiptune.py) and
-// off, remembered in this browser; switching between the two keeps the place in the tune. Its hover names the tune.
-// The ⏭ beside it skips to the next tune (or, at a table, the next loop).
-// The tune's key is shared (musicKey), so the table's sounds play in the key the band is in.
+// sound start after the player touches the page, so it begins on the first click. The tune's key is shared
+// (musicKey), so the table's sounds play in the key the band is in.
+//
+// The band takes requests, for a price, from the buttons at the foot of the screen, paid from the purse (greyed
+// when it cannot cover them): ♥ hearts the tune playing (free; favorites top the setlist), ♫ tips for a request
+// from the setlist, ⇄ pays them to swap their instruments for 8-bit chips and back (every tune and loop again on
+// chip voices, tools/jazz/chiptune.py; the place in the tune is kept), ✕ pays them to stop, and they stay quiet
+// until the next tip. What the band is doing belongs to the run (run.band); the favorites to this browser.
 //
 // At a table the band plays the floor's bout loop instead (content/loops.js; the High Roller and the Ascent's last
 // climb have their own). A loop is four layers played together through Web Audio, sample for sample: the groove and
 // the tune always, then the drive and the peril, faded in as either Roller's Worth runs down (tensionOf), so the
 // music tightens as the bout does. When the bout is over the loop fades and the lounge band comes back.
 import { MUSIC, LOOPS } from '../content/assets.js';
-import { btn } from './core.js';
+import { btn, h, toast, openPanel, closePanel, setOn } from './core.js';
 import { t } from '../text.js';
 import { worth } from '../bout.js';
+import { TUNING } from '../content/tuning.js';
+import { cents } from '../util.js';
 
-const KEY = 'rollingparadise.music', VOL = 0.3, LOOP_VOL = 0.36, LAYERS = ['base', 'theme', 'drive', 'peril'];
-// the sound: 'band', 'chip' (the chiptune versions) or 'off'; older saves said 'on'
-export const MODES = ['band', 'chip', 'off'];
-const saved = () => { try { const m = localStorage.getItem(KEY); return MODES.includes(m) ? m : m === 'off' ? 'off' : 'band'; } catch { return 'band'; } };
-const keep = (m) => { try { localStorage.setItem(KEY, m); } catch { /* storage unavailable */ } };
-let current = null, playing = false, loop = null, mode = 'band';
+const FAVS = 'rollingparadise.favorites', VOL = 0.3, LOOP_VOL = 0.36, LAYERS = ['base', 'theme', 'drive', 'peril'];
+let current = null, playing = false, loop = null;
 const lounge = { play: () => {}, pause: () => {}, on: () => false, touched: false };
-// a tune's or a loop layer's file in the current sound
-export const srcOf = (tune, m = mode) => (m === 'chip' && tune.chip ? tune.chip : tune.src);
-const layerSrc = (L, k, m = mode) => (m === 'chip' && L.chip ? L.chip[k] : L.layers[k]);
+// the game's side: the run (whose purse pays and whose band this is) and how to take a tip from it
+const game = { run: () => null, tip: () => false };
+// what the band is doing: playing on its instruments ('band') or chips ('chip'), or silent
+export const bandOf = (run) => (run ? (run.band ||= { mode: 'band', silent: false }) : { mode: 'band', silent: false });
+const mode = () => { const b = bandOf(game.run()); return b.silent ? 'off' : b.mode; };
+// a tune's or a loop layer's file in a sound
+export const srcOf = (tune, m = mode()) => (m === 'chip' && tune.chip ? tune.chip : tune.src);
+const layerSrc = (L, k, m = mode()) => (m === 'chip' && L.chip ? L.chip[k] : L.layers[k]);
+// favorites, by title (tunes and loops alike), kept in this browser
+export const favorites = () => { try { return new Set(JSON.parse(localStorage.getItem(FAVS) || '[]')); } catch { return new Set(); } };
+const setFavorite = (title, on) => { const f = favorites(); if (on) f.add(title); else f.delete(title); try { localStorage.setItem(FAVS, JSON.stringify([...f])); } catch { /* storage unavailable */ } };
+// the setlist for a request: favorites first, then the rest, each in its listed order
+export const setlist = (list, favs = favorites()) => [...list.filter((x) => favs.has(x.title)), ...list.filter((x) => !favs.has(x.title))];
 // the key the band is playing in (0 = C ... 11 = B), or C when it is quiet
 export const musicKey = () => (loop?.live ? loop.L.key : playing && current ? current.key || 0 : 0);
 
@@ -69,8 +80,8 @@ export function endBoutMusic() { endLoop(2.5, true); }
 
 async function startLoop(lp, at = 0) {  // at: where in the loop to come in, in seconds (a switch of sound keeps its place)
   const a = audioCtx(); if (a.state === 'suspended') a.resume().catch(() => {});
-  const m = mode, bufs = await Promise.all(LAYERS.map((k) => decode(layerSrc(lp.L, k, m)))).catch(() => null);
-  if (!bufs || loop !== lp || lp.live || !lounge.on() || mode !== m) return;
+  const m = mode(), bufs = await Promise.all(LAYERS.map((k) => decode(layerSrc(lp.L, k, m)))).catch(() => null);
+  if (!bufs || loop !== lp || lp.live || !lounge.on() || mode() !== m) return;
   lounge.pause();
   const master = a.createGain(), when = a.currentTime + 0.08, mix = layerMix(lp.x);
   master.gain.value = 0; master.connect(a.destination); master.gain.setTargetAtTime(LOOP_VOL, when, at ? 0.15 : 0.6);
@@ -98,48 +109,81 @@ function silence(lp, secs) {
 }
 function endLoop(secs, back) { const lp = loop; loop = null; if (lp) silence(lp, secs); if (back && lp && lounge.on()) lounge.play(); }
 
-// ---------- the lounge band, and the button ----------
-export function initMusic(stage) {
+// ---------- the lounge band, and the tip buttons ----------
+// run: () => the run in play (or null); tip: (what, title) => true if the purse paid for it
+export function initMusic(stage, { run = () => null, tip = () => false } = {}) {
   if (!MUSIC.length || typeof Audio === 'undefined') return;
-  let order = setOrder(), at = 0, audio = null; mode = saved();
-  const on = () => mode !== 'off', now = () => order[at];
+  Object.assign(game, { run, tip });
+  let order = setOrder(), at = 0, audio = null, sounding = null;
+  const on = () => mode() !== 'off', now = () => order[at];
   const next = () => { at++; if (at >= order.length) { order = setOrder(); at = 0; } current = now(); audio.src = srcOf(current); audio.play().catch(() => {}); };
   function play() {
     if (!audio) { audio = new Audio(); audio.volume = VOL; audio.preload = 'auto'; audio.addEventListener('ended', next);
       audio.addEventListener('playing', () => { playing = true; }); audio.addEventListener('pause', () => { playing = false; }); }
     current = now(); const src = srcOf(current);
     if (!audio.src.endsWith(src)) {  // a new tune, or the same one in the other sound: carry on from the same place
-      const pos = audio.src ? audio.currentTime : 0; audio.src = src;
+      const pos = audio.src && audio.src.split('/').pop().replace('.mp3', '') === src.split('/').pop().replace('.mp3', '') ? audio.currentTime : 0; audio.src = src;
       if (pos) audio.addEventListener('loadedmetadata', () => { audio.currentTime = Math.min(pos, (audio.duration || pos) - 0.5); }, { once: true });
     }
     audio.play().catch(() => {});
   }
   Object.assign(lounge, { play, pause: () => audio?.pause(), on });
   const start = () => (loop ? startLoop(loop) : play()); // whatever should be playing: the bout's loop, or the band
-  const tip = () => {
-    if (!on()) return t('music.off');
-    const chip = mode === 'chip' ? t('music.chipNote') : '', next = mode === 'chip' ? t('music.toOff') : t('music.toChip');
-    if (loop) return t('music.bout', { title: loop.L.title, where: loop.where || '', chip, next });
-    return t('music.playing', { title: now().title, style: now().by, chip, next });
-  };
-  const turn = () => {  // band -> chiptune -> off -> band
-    mode = MODES[(MODES.indexOf(mode) + 1) % MODES.length]; keep(mode);
-    if (!on()) { audio?.pause(); if (loop) silence(loop, 0.4); }
-    else if (loop) { const pos = loop.live ? ac.currentTime - loop.began : 0; silence(loop, 0.15); startLoop(loop, Math.max(0, pos)); }
+  // make what is sounding match what the band is doing (after a tip, or when a new run brings a fresh band)
+  function sync() {
+    if (!lounge.touched) return mark();
+    const m = mode(); if (m === sounding) return mark();
+    const was = sounding; sounding = m;
+    if (m === 'off') { audio?.pause(); if (loop) silence(loop, 0.4); }
+    else if (loop) { const pos = loop.live ? ac.currentTime - loop.began : 0; silence(loop, 0.15); startLoop(loop, was === 'off' ? 0 : Math.max(0, pos)); }
     else play();
     mark();
-  };
-  // skip: in the lounge, on to the next tune; at a table, on to the next loop of its kind (tables' or High Rollers')
-  const nextLoop = () => { const same = LOOPS.filter((L) => L.kind === loop.L.kind); return same[(same.indexOf(loop.L) + 1) % same.length]; };
-  const skip = () => {
-    if (!on()) return;
-    if (loop) { const lp = { ...loop, L: nextLoop(), live: false }; silence(loop, 0.3); loop = lp; startLoop(lp); }
-    else if (audio) next(); else { at = (at + 1) % order.length; play(); }
-  };
-  const skipTip = () => (!on() ? t('music.skipOff') : t('music.skip', { title: loop ? nextLoop().title : order[(at + 1) % order.length].title }));
-  const button = btn('♪', turn, tip, 'small music-btn'), skipper = btn('⏭', skip, skipTip, 'small skip-btn');
-  const mark = () => { for (const b of [button, skipper]) b.classList.toggle('muted', !on()); button.classList.toggle('chiptune', mode === 'chip'); };
-  mark(); stage.append(skipper, button);
-  const first = () => { document.removeEventListener('pointerdown', first, true); lounge.touched = true; if (on()) start(); };
+  }
+  setInterval(sync, 1000);
+
+  // the buttons: what each costs, greyed when the purse cannot cover it (or there is no run to pay from)
+  const P = TUNING.band, purse = () => game.run()?.purse ?? -1;
+  const nowTitle = () => (loop ? loop.L.title : now().title);
+  const playingLine = () => (!on() ? t('music.silent') : (loop ? t('music.bout', { title: loop.L.title, where: loop.where || '' }) : t('music.playing', { title: now().title, style: now().by })) + (mode() === 'chip' ? t('music.chipNote') : ''));
+  const why = (price) => (!game.run() ? t('music.noRun') : purse() < price ? t('music.broke') : '');
+  function pay(what, title) {
+    if (!game.run() || purse() < P[what] || !game.tip(what, title)) { toast(t('music.cantTip'), 'warn'); return false; }
+    document.dispatchEvent(new Event('rp:purse')); return true;
+  }
+  const fav = btn('♡', () => { const ti = nowTitle(); setFavorite(ti, !favorites().has(ti)); mark(); },
+    () => t(favorites().has(nowTitle()) ? 'music.unfav' : 'music.fav', { title: nowTitle(), playing: playingLine() }), 'small band-btn fav-btn');
+  const req = btn(`♫ ${cents(P.request)}`, () => openSetlist(), () => t('music.request', { price: cents(P.request), playing: playingLine() }) + why(P.request), 'small band-btn');
+  const swap = btn(`⇄ ${cents(P.swap)}`, () => {
+    if (!pay('swap', '')) return; const b = bandOf(game.run()); b.mode = b.mode === 'chip' ? 'band' : 'chip'; b.silent = false;
+    toast(t(b.mode === 'chip' ? 'music.toChips' : 'music.toBand')); sync();
+  }, () => t(bandOf(game.run()).mode === 'chip' ? 'music.swapToBand' : 'music.swapToChip', { price: cents(P.swap) }) + why(P.swap), 'small band-btn');
+  const stop = btn(`✕ ${cents(P.stop)}`, () => {
+    if (!on()) return; if (!pay('stop', '')) return; bandOf(game.run()).silent = true; toast(t('music.hushed')); sync();
+  }, () => (on() ? t('music.stop', { price: cents(P.stop) }) + why(P.stop) : t('music.stopped')), 'small band-btn');
+  function mark() {
+    setOn(req, purse() >= P.request); setOn(swap, purse() >= P.swap); setOn(stop, on() && purse() >= P.stop);
+    const f = favorites().has(nowTitle()); fav.textContent = f ? '♥' : '♡'; fav.classList.toggle('on', f);
+    swap.classList.toggle('chiptune', bandOf(game.run()).mode === 'chip');
+  }
+  // a request: the setlist (the lounge band's tunes, or at a table the bout loops), favorites first
+  function openSetlist() {
+    if (!game.run() || purse() < P.request) return toast(t('music.cantTip'), 'warn');
+    const list = setlist(loop ? LOOPS : MUSIC), favs = favorites();
+    const rowOf = (x) => h('div', { class: 'row between setlist-row' },
+      btn(favs.has(x.title) ? '♥' : '♡', (e) => { const f = !favorites().has(x.title); setFavorite(x.title, f); e.currentTarget.textContent = f ? '♥' : '♡'; mark(); }, null, 'small fav-btn' + (favs.has(x.title) ? ' on' : '')),
+      btn(h('span', {}, h('b', { text: x.title }), ' ', h('span', { class: 'dim', text: loop ? t(x.kind === 'boss' ? 'music.kindBoss' : 'music.kindBout') : x.by })), () => request(x), null, 'setlist-pick'));
+    openPanel(h('div', {}, h('h2', { text: t('music.setlist') }), h('p', { class: 'sub', text: t('music.setlistSub', { price: cents(P.request) }) }),
+      h('div', { class: 'col setlist' }, ...list.map(rowOf))));
+  }
+  function request(x) {
+    if (!pay('request', x.title)) return; closePanel(); bandOf(game.run()).silent = false; sounding = mode();
+    if (loop) { const lp = { ...loop, L: x, live: false }; silence(loop, 0.3); loop = lp; startLoop(lp); }
+    else { order.splice(at + 1, 0, x); if (!audio) { at++; play(); } else next(); }
+    toast(t('music.tipped', { title: x.title })); mark();
+  }
+  const group = h('div', { class: 'band-btns' }, fav, req, swap, stop);
+  mark(); stage.append(group);
+  document.addEventListener('rp:purse', mark);
+  const first = () => { document.removeEventListener('pointerdown', first, true); lounge.touched = true; sounding = mode(); if (on()) start(); mark(); };
   document.addEventListener('pointerdown', first, true);
 }
