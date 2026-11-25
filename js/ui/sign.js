@@ -18,6 +18,9 @@
 //   crown            { level 1-4 } (set by the table, not stored): a High Roller's crown, tilted off the first letter,
 //                    grander floor by floor; also the crown you wear once you have claimed one
 //   name, cls        [tube, glow] for the script name and the class under it
+//   nameFont, clsFont which of the game's three faces each line wears (SIGN_FONTS): script, display (capitals) or
+//                    lines (capitals in parallel lines, like ROLLING on the title sign). Name in script and class in
+//                    display unless set; either can wear any of them
 //   blinks           { part: { on, pattern } } for the name, class, border, edge, symbol and crown: each part can
 //                    blink on its own, in its own pattern (BLINKS)
 //   mount            what the sign hangs on: a backing colour and an optional image (any URL or data: URL)
@@ -35,6 +38,8 @@ export const FRAMES = [...TUBES, ...STRIPS, ...LAMPS, 'none'];
 export const MOTIONS = ['chase', 'breathe', 'swap', 'twinkle', 'still'];
 export const EDGE_AT = ['none', 'corners', 'top', 'bottom', 'edge']; // edge: the top and the bottom
 export const CLS_ALIGN = ['right', 'left', 'center'];
+export const SIGN_FONTS = ['script', 'display', 'lines']; // --script, --display, --lines in style.css
+export const FONT_DEFAULT = { nameFont: 'script', clsFont: 'display' };
 export const BLINK_PARTS = ['name', 'cls', 'border', 'edge', 'symbol', 'crown'];
 export const BLINKS = ['breathe', 'pulse', 'flicker', 'alternate'];
 export const MAX_PAIRS = 3;
@@ -51,6 +56,7 @@ export function signOf(who, own) {
   for (const p of PARTS) out[p] = (own?.[p] || side[p] || D.NEON.them[p]).slice(0, 2);
   // signs saved before: double and triple tubes are more tube pairs now, a rope is a twist, one blinking part is a toggle
   if (OLD_FRAMES[out.frame]) { const [f, extra] = OLD_FRAMES[out.frame]; out.frame = f; if (!(own?.more || side.more)?.length) out.more = Array.from({ length: extra }, (_, i) => (i % 2 ? out.border : [out.border[1], out.border[0]])); }
+  for (const k of ['nameFont', 'clsFont']) if (!SIGN_FONTS.includes(out[k])) out[k] = FONT_DEFAULT[k];
   if (!FRAMES.includes(out.frame)) out.frame = 'plain'; if (!MOTIONS.includes(out.motion)) out.motion = 'chase';
   out.more = (out.more || []).filter((p) => Array.isArray(p) && p.length === 2).slice(0, MAX_PAIRS - 1);
   out.blinks = { ...(side.blinks || {}), ...(own?.blinks || {}) };
@@ -238,11 +244,11 @@ function drawFrame(svg, spec, w, h, who) {
 // ---------- the name's decorations: the large symbol after it and the crown off its first letter ----------
 function letterBoxes(nameEl, origin, fs, k = 1) { // k: how much the page is scaled (the stage fits the window)
   const node = [...nameEl.childNodes].find((n) => n.nodeType === 3) || nameEl.firstChild; if (!node?.textContent) return [];
-  const out = [], range = document.createRange();
+  const out = [], range = document.createRange(), caps = getComputedStyle(nameEl).textTransform === 'uppercase'; // a capitals face: every letter is a capital
   for (let i = 0; i < node.textContent.length; i++) { if (/\s/.test(node.textContent[i])) continue; range.setStart(node, i); range.setEnd(node, i + 1); const r = range.getBoundingClientRect(); if (!r.width) continue;
     // the ink, not the font's whole line: estimated from the letter's shape (capitals and tall letters reach about
     // 0.72em over the baseline, the rest about 0.48em; g, j, p, q, y hang below it)
-    const ch = node.textContent[i], base = (r.bottom - origin.top) / k - fs * 0.24, top = /[A-Z0-9bdfhklt]/.test(ch) ? 0.72 : 0.48, low = /[gjpqyf]/.test(ch) ? 0.2 : 0.02;
+    const ch = node.textContent[i], base = (r.bottom - origin.top) / k - fs * 0.24, top = caps || /[A-Z0-9bdfhklt]/.test(ch) ? 0.72 : 0.48, low = !caps && /[gjpqyf]/.test(ch) ? 0.2 : 0.02;
     out.push({ l: (r.left - origin.left) / k + fs * 0.05, r: (r.right - origin.left) / k - fs * 0.05, t: base - fs * top, b: base + fs * low, i, cap: top > 0.6 }); }
   return out;
 }
@@ -279,7 +285,7 @@ function inkOf(svg, el) {
   const sv = svg.getBoundingClientRect(), kk = sv.width / (svg.clientWidth || sv.width || 1) || 1, cs = getComputedStyle(nameEl), fs = parseFloat(cs.fontSize) || 27;
   const cv = document.createElement('canvas'), W = Math.ceil(r.width / kk + fs * 1.6), H = Math.ceil(fs * 2.4); cv.width = W; cv.height = H;
   const c = cv.getContext('2d', { willReadFrequently: true }); c.font = `${cs.fontStyle} ${cs.fontWeight} ${fs}px ${cs.fontFamily}`;
-  const ch = node.textContent[i], mt = c.measureText(ch), asc = mt.fontBoundingBoxAscent || fs * 0.9, x0 = fs * 0.6, y0 = asc + fs * 0.3; c.fillText(ch, x0, y0);
+  const ch = cs.textTransform === 'uppercase' ? node.textContent[i].toUpperCase() : node.textContent[i], mt = c.measureText(ch), asc = mt.fontBoundingBoxAscent || fs * 0.9, x0 = fs * 0.6, y0 = asc + fs * 0.3; c.fillText(ch, x0, y0);
   const px = c.getImageData(0, 0, W, H).data, tops = new Array(W).fill(null); let l = Infinity, rr = -Infinity;
   for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) if (px[(y * W + x) * 4 + 3] > 110) { tops[x] = y; l = Math.min(l, x); rr = Math.max(rr, x); break; }
   if (rr < l) return null;
@@ -375,7 +381,8 @@ export function dressSign(el, spec, who) {
   clearCut(el);
   el.style.setProperty('--sign-room', `${frameRoom(spec)}px`);
   el._signObs?.disconnect();
-  const nsign = el.querySelector('.nsign'); if (nsign) { nsign.classList.toggle('has-symbol', !!spec.symbol?.on); nsign.classList.toggle('has-crown', !!spec.crown?.level); nsign.classList.remove(...CLS_ALIGN.map((a) => `cls-${a}`)); nsign.classList.add(`cls-${CLS_ALIGN.includes(spec.clsAlign) ? spec.clsAlign : 'right'}`); }
+  const nsign = el.querySelector('.nsign'); if (nsign) { nsign.classList.toggle('has-symbol', !!spec.symbol?.on); nsign.classList.toggle('has-crown', !!spec.crown?.level); nsign.classList.remove(...CLS_ALIGN.map((a) => `cls-${a}`)); nsign.classList.add(`cls-${CLS_ALIGN.includes(spec.clsAlign) ? spec.clsAlign : 'right'}`);
+    nsign.classList.remove(...SIGN_FONTS.flatMap((f) => [`nf-${f}`, `cf-${f}`])); nsign.classList.add(`nf-${SIGN_FONTS.includes(spec.nameFont) ? spec.nameFont : 'script'}`, `cf-${SIGN_FONTS.includes(spec.clsFont) ? spec.clsFont : 'display'}`); }
   const svg = spec.frame === 'none' && spec.edgeAt === 'none' ? null : mk('svg', { class: 'sign-frame', 'aria-hidden': 'true' }); if (svg) el.append(svg);
   const deco = nsign && spec.symbol?.on ? mk('svg', { class: 'sign-deco', 'aria-hidden': 'true' }) : null; if (deco) nsign.append(deco);
   const crown = nsign && spec.crown?.level ? mk('svg', { class: 'sign-crown', 'aria-hidden': 'true' }) : null; if (crown) el.append(crown);

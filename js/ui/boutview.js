@@ -30,7 +30,7 @@ const fmtX = (m) => '×' + (m % 1 ? m.toFixed(2).replace(/0$/, '') : m);
 export function boutScene(root, bout, ctx, onDone) {
   const [me, opp] = bout.sides;
   const cw = bout.sides.map((s) => Math.min(SPACE, Math.floor((PX - 30) / s.rows))), ck = cw.map((w) => w / SPACE_REF); // column width, chip scale
-  const ui = { held: [], cursor: null, peek: null, peekPhase: null, handAim: new Set(), mode: null, die: null, entry: null, locked: false, speed: globalThis.RP_FAST || 1, first: true, sel: new Set(), flips: [], hand: [], card: null, point: null }; // RP_FAST: set by automated playthroughs
+  const ui = { held: [], cursor: null, peek: null, peekPhase: null, handAim: new Set(), mode: null, die: null, entry: null, locked: false, speed: globalThis.RP_FAST || 1, first: true, sel: new Set(), flips: [], hand: [], card: null, point: null, spent: new Set() }; // RP_FAST: set by automated playthroughs
   // sel: Pouch dice picked for the throw · flips: stacks whose top chip is picked to flip · hand: the bid chips picked up, one {r,c} per chip (a stack picked twice gives its top two) · card: trick under the pointer · point: the chip under the pointer in a stack
   const els = { chips: new Map(), dice: new Map(), cards: new Map(), cells: [[], []], creatures: new Map(), stage: new Map() };
   const layer = h('div', { class: 'bout-layer' });
@@ -136,7 +136,7 @@ export function boutScene(root, bout, ctx, onDone) {
   // a seat's sign has a fixed slot: if its name (with its crown, symbol and frame) doesn't fit, the name is set smaller
   function fitSeat(el) {
     const fit = () => { el.style.removeProperty('--name-fs'); const n = el.querySelector('.neon-name'); if (!n) return;
-      let fs = parseFloat(getComputedStyle(n).fontSize) || 27;
+      const cs = getComputedStyle(n), nk = parseFloat(cs.getPropertyValue('--nk')) || 1; let fs = (parseFloat(cs.fontSize) || 27) / nk; // in the slot's own size, before the face's scale
       // spilling over the slot either way (content is centred in it, so it can spill upward as well as down)
       const spills = () => { const R0 = el.getBoundingClientRect(); return [...el.children].filter((c) => !c.matches('svg, .badges')).some((c) => { const q = c.getBoundingClientRect(); return q.height && (q.top < R0.top - 1 || q.bottom > R0.bottom + 1); }); };
       while (fs > 16 && spills()) { fs -= 1; el.style.setProperty('--name-fs', `${fs}px`); }
@@ -470,6 +470,36 @@ export function boutScene(root, bout, ctx, onDone) {
     if (delay) setTimeout(() => { el.style.transitionDelay = ''; }, delay + 700);
   }
 
+  // ---------- lit and spent ----------
+  // A spent piece leaving the table (their tricks and dice, a played copy of a stack) slides to where it is kept,
+  // shrinking and fading on the way, then goes. Yours stay on the table as tapped pieces and simply move there.
+  function toPile(el, pile) {
+    const L = layer.getBoundingClientRect(), r = pile?.getBoundingClientRect(), k = L.width / (layer.offsetWidth || L.width || 1) || 1;
+    if (r?.width) { el.style.transition = 'transform .75s var(--ease), opacity .55s ease-in .25s'; place(el, (r.left - L.left) / k, (r.top - L.top) / k, 'scale(.3)'); }
+    el.style.pointerEvents = 'none'; el.style.opacity = '0'; setTimeout(() => el.remove(), 900);
+  }
+  // sparks off a box (a card's edge, a die): a white flash, then streaks thrown outward from points round its edge
+  function sparks(x, y, w, hgt, color, n, r = 9) {
+    const out = [h('div', { class: 'spark-flash', style: { width: w + 'px', height: hgt + 'px', transform: `translate(${x}px, ${y}px)`, '--sc': color, '--r': r + 'px' } })];
+    for (let i = 0; i < n; i++) {
+      const per = 2 * (w + hgt), p = Math.random() * per; let px, py, nx, ny; // a point on the edge and its outward direction
+      if (p < w) { px = x + p; py = y; nx = 0; ny = -1; } else if (p < w + hgt) { px = x + w; py = y + p - w; nx = 1; ny = 0; } else if (p < 2 * w + hgt) { px = x + w - (p - w - hgt); py = y + hgt; nx = 0; ny = 1; } else { px = x; py = y + hgt - (p - 2 * w - hgt); nx = -1; ny = 0; }
+      const a = Math.atan2(ny, nx) + (Math.random() - 0.5) * 1.6, d = 22 + Math.random() * 46, dx = Math.cos(a) * d, dy = Math.sin(a) * d + 10 + Math.random() * 16; // thrown out, then falling
+      out.push(h('i', { class: 'spark', style: { '--x': px + 'px', '--y': py + 'px', '--dx': dx.toFixed(1) + 'px', '--dy': dy.toFixed(1) + 'px', '--rot': `${(Math.atan2(dy, dx) * 180 / Math.PI - 90).toFixed(0)}deg`,
+        '--len': `${7 + Math.random() * 10}px`, '--t': `${0.45 + Math.random() * 0.35}s`, '--w': `${(Math.random() * 0.18).toFixed(2)}s`, '--sc': color } }));
+    }
+    layer.append(...out); setTimeout(() => out.forEach((s) => s.remove()), 1300);
+  }
+  // a trick that has played goes out: sparks off its edge and its dice, its tube buzzes out and it greys (style.css
+  // .spent), and it waits so until the House taps it, when it slides to the tapped pile
+  function spend(k) {
+    const el = els.cards.get(k), si = k === String(k) && k.startsWith('o') ? 1 : 0, e = sideOf(si).run.find((x) => ckey(si, x.uid) === k); if (!el || !e || ui.spent.has(k)) return false;
+    ui.spent.add(k); const cl = cardLayout().get(k), color = D.TYPES[D.defOf(e.trick).type]?.color || '#fff';
+    if (cl && !cl.folded) sparks(cl.x, cl.y - 12, cl.w, cl.h, color, 24); // (a card in play stands 12px forward)
+    for (const d of e.dice) { const de = els.dice.get(dkey(si, d.id)), m = de && /translate\(([-\d.]+)px, ([-\d.]+)px\)/.exec(de.style.transform); if (m) sparks(+m[1] + 3, +m[2] + 3, 26, 26, color, 6, 4); }
+    return true;
+  }
+
   // ---------- sync: make the screen match the state ----------
   // Effect chips: laid out per side, biggest first; chips of one size stack on one anchor, sizes never overlap.
   const fxEls = new Map(); let fxAt = new Map();
@@ -535,12 +565,16 @@ export function boutScene(root, bout, ctx, onDone) {
     // trick cards
     for (const [uid, cl] of cards) {
       const t = cl.e ? cl.e.trick : cl.t, s = sideOf(cl.si), mine = cl.si === 0; let el = els.cards.get(uid);
-      if (el && cl.e && el._tuid !== t.uid) { el.remove(); els.cards.delete(uid); el = null; } // the next copy of a stack is on top: its own print
+      if (el && cl.e && el._tuid !== t.uid) { if (el.classList.contains('spent')) toPile(el, cl.si ? them.bspine : spines.book); else el.remove(); els.cards.delete(uid); el = null; } // the next copy of a stack is on top: its own print
       if (!el) { el = mkCard(t, cl.si); els.cards.set(uid, el); spawn(el, cl.x, cl.y + 20, ''); el.style.width = cl.w + 'px'; el.style.height = cl.h + 'px'; void el.offsetWidth; }
       el.style.opacity = cl.folded ? '0' : '1'; el.style.pointerEvents = cl.folded ? 'none' : ''; place(el, cl.x, cl.y); el.style.width = cl.w + 'px'; el.style.height = cl.h + 'px';
       el.classList.toggle('open', cl.open); el.style.zIndex = cl.peek ? 9 : cl.open ? 3 : 2;
       const e = cl.e; el.classList.toggle('narrow', cl.open && cl.w < 104);
       el.classList.toggle('bid', !!e && e.state === 'bid'); el.classList.toggle('inplay', !!e && e.state === 'play');
+      // lit: bid on, so it is going to play (a neon tube round it); spent: it has played and gone out (see spend)
+      const spent = !!e && ui.spent.has(uid), lit = !!e && !spent && (e.state === 'bid' || e.state === 'play');
+      if (lit && !el.classList.contains('lit') && !ui.first) sfx('lit', 0, { pan: cl.si ? 0.5 : -0.3 });
+      el.classList.toggle('lit', lit); el.classList.toggle('spent', spent);
       if (mine) {
         el.classList.toggle('can', !e ? !ui.locked && !B.canDraw(bout, me, uid) : false);
         const tapped = !e && !me.book.some((x) => x.uid === uid); el.classList.toggle('tapped', tapped); el.classList.toggle('restoring', tapped && plan.tricks.includes(uid));
@@ -566,21 +600,23 @@ export function boutScene(root, bout, ctx, onDone) {
         const nb = B.bonusDice(e).length; [...el.querySelectorAll('.c-need .need')].forEach((x, i) => x.classList.toggle('full', i < nb)); // the Bonus dice in, one pip each
       }
     }
-    for (const [uid, el] of els.cards) if (!cards.has(uid)) { el.style.opacity = '0'; els.cards.delete(uid); setTimeout(() => el.remove(), 500); }
+    for (const [uid, el] of els.cards) if (!cards.has(uid)) { els.cards.delete(uid); if (el.classList.contains('spent')) toPile(el, them.bspine); else { el.style.opacity = '0'; setTimeout(() => el.remove(), 500); } } // their spent tricks slide to their Book
 
     // dice: Pouch (unrolled), Rolled tray (value showing, not placed yet), or on a trick
     const wantDice = new Map(), tapD = B.tappedInOrder(me).dice.map((x) => x.die), nPD = me.pouch.length + tapD.length;
     me.pouch.forEach((d, i) => { const p = pouchSlot(i, nPD); wantDice.set(d.id, { ...p, y: p.y - (ui.sel.has(d.id) ? 7 : 0), d, picked: ui.sel.has(d.id) }); });
     tapD.forEach((d, i) => wantDice.set(d.id, { ...pouchSlot(me.pouch.length + i, nPD), d, tapped: true, restoring: plan.dice.includes(d.id) }));
     me.tray.forEach((d, i) => wantDice.set(d.id, { ...traySlot(i), d, value: d.value, rolled: true }));
-    for (const e of me.run) { const cl = cards.get(e.uid), bd = new Set(B.bonusDice(e).map((x) => x.id)); e.dice.forEach((d, i) => wantDice.set(d.id, { ...dieSlot(cl, i, e.dice.length), d, value: d.value, rolled: true, on: true, bonus: bd.has(d.id) })); }
+    const glow = (si, e) => { const k = ckey(si, e.uid), sp = ui.spent.has(k); return { spent: sp, lit: !sp && (e.state === 'bid' || e.state === 'play'), lc: D.TYPES[D.defOf(e.trick).type]?.color }; }; // dice on a trick light and go out with it
+    for (const e of me.run) { const cl = cards.get(e.uid), bd = new Set(B.bonusDice(e).map((x) => x.id)), g = glow(0, e); e.dice.forEach((d, i) => wantDice.set(d.id, { ...dieSlot(cl, i, e.dice.length), d, value: d.value, rolled: true, on: true, bonus: bd.has(d.id), ...g })); }
     opp.tray.forEach((d, i) => wantDice.set(dkey(1, d.id), { ...traySlot(i, 1), d, value: d.value, rolled: true, si: 1 })); // their roll lands as the Bid opens
-    for (const e of opp.run) { const cl = cards.get(ckey(1, e.uid)), bd = new Set(B.bonusDice(e).map((x) => x.id)); e.dice.forEach((d, i) => wantDice.set(dkey(1, d.id), { ...dieSlot(cl, i, e.dice.length), bonus: bd.has(d.id), d, value: d.value, rolled: true, on: true, si: 1 })); }
+    for (const e of opp.run) { const cl = cards.get(ckey(1, e.uid)), bd = new Set(B.bonusDice(e).map((x) => x.id)), g = glow(1, e); e.dice.forEach((d, i) => wantDice.set(dkey(1, d.id), { ...dieSlot(cl, i, e.dice.length), bonus: bd.has(d.id), d, value: d.value, rolled: true, on: true, si: 1, ...g })); }
     for (const [id, w] of wantDice) {
       let el = els.dice.get(id); if (!el) { el = mkDie(w.d, w.si); els.dice.set(id, el); const from = (w.d.chip && els.flipFrom?.get(id)) || { x: w.x, y: w.y - 16 }; spawn(el, from.x, from.y, 'scale(.4)'); }
       const from = /translate\(([-\d.]+)px, ([-\d.]+)px\)/.exec(el.style.transform);
       el.style.opacity = w.folded ? '0' : '1'; el.style.pointerEvents = w.folded ? 'none' : ''; place(el, w.x, w.y, w.folded ? 'scale(.5)' : ''); el.style.zIndex = w.on ? 6 : ui.peek === 'dice' ? 9 : 4; el.classList.toggle('on', !!w.on); el.classList.toggle('rolled', !!w.rolled); el.classList.toggle('sel', (ui.mode === 'die' && ui.die === id) || !!w.picked);
       el.classList.toggle('fixed', !!w.on && (!!w.si || !B.canMove(bout, me, id))); el.classList.toggle('tapped', !!w.tapped); el.classList.toggle('restoring', !!w.restoring); el.classList.toggle('bonusd', !!w.bonus);
+      el.classList.toggle('lit', !!w.lit); el.classList.toggle('spent', !!w.spent); if (w.lc) el.style.setProperty('--lc', w.lc);
       const label = el.firstChild, text = w.rolled ? String(w.value) : w.d.type.slice(1);
       if (!w.d.chip && el._text !== text) dress3d(el, w.d, w.rolled ? w.value : undefined);
       if (w.rolled && !el._rolled) { label.textContent = text; sfx('roll'); toss(el, w.d, w.value, from ? { x: +from[1], y: +from[2] } : { x: w.x, y: w.y + 90 }, { x: w.x, y: w.y }, tossN++); }
@@ -588,7 +624,7 @@ export function boutScene(root, bout, ctx, onDone) {
       el._text = text; el._rolled = !!w.rolled;
     }
     els.flipFrom = null;
-    for (const [id, el] of els.dice) if (!wantDice.has(id)) { el.style.opacity = '0'; els.dice.delete(id); setTimeout(() => el.remove(), 500); }
+    for (const [id, el] of els.dice) if (!wantDice.has(id)) { els.dice.delete(id); if (el.classList.contains('spent')) toPile(el, them.dspine.classList.contains('away') ? them.pouch : them.dspine); else { el.style.opacity = '0'; setTimeout(() => el.remove(), 500); } } // their spent dice slide to their Pouch
     trayBox.classList.toggle('has', me.tray.length > 0); trayBox.classList.toggle('ready', bout.phase === 'roll' && !me.thrown);
     swapText(trayBox, bout.phase === 'draw' ? (me.tray.length ? '' : tx('table.draw-then-press-roll')) : bout.phase === 'roll' && !me.thrown && !me.tray.length ? (selCount() ? tx('table.picked-press-bid', { selCount: selCount() }) : tx('table.pick-up-to-dice', { tipOf: B.tipOf(me, 'proficiency') })) : me.tray.length ? '' : bout.phase === 'aim' ? tx('table.all-placed') : tx('table.rolled-for-this-turn'));
     trayCap.textContent = `thrown ${me.used.roll}/${B.tipOf(me, 'proficiency')}${me.tray.length ? tx('table.in-the-roll', { trayN: me.tray.length }) : ''}`;
@@ -1065,10 +1101,14 @@ export function boutScene(root, bout, ctx, onDone) {
     const cellPoint = (x) => { const p = cellPos(x.side, x.r, x.c); return { x: p.x + p.w / 2, y: p.y + CH / 2 }; };
     const both = (fn) => arms.forEach(fn);
     const call = async (text, color) => { phaseCall.textContent = text; phaseCall.style.setProperty('--pc', color); phaseCall.classList.add('in'); await pace(620); both((a) => a.tap()); await pace(620); phaseCall.classList.remove('in'); await pace(260); };
+    // the tricks played in a phase go out together once it is over: before the next call, the settle or the tapping
+    const played = new Set();
+    const spendPlayed = async () => { const any = [...played].filter(spend).length; played.clear(); if (!any) return; sfx('spent'); sync(); await pace(760); };
     for (const st of B.resolve(bout)) { n++;
+      if (['phase', 'settle', 'return', 'turn', 'drink', 'over'].includes(st.kind)) await spendPlayed();
       if (st.kind === 'turn' || st.kind === 'drink') { sync(st.fx); break; }
       setPhase(st.phase);
-      if (st.kind === 'return') { setCalling([]); sync(st.fx); await pace(520); continue; }
+      if (st.kind === 'return') { setCalling([]); ui.spent.clear(); sync(st.fx); await pace(760); continue; } // the spent pieces slide to the tapped piles
       // a paired step carries one action from each Roller: both arms move and both lines are posted together
       const parts = st.kind === 'pair' ? st.parts : [st];
       setCalling(parts);
@@ -1086,10 +1126,12 @@ export function boutScene(root, bout, ctx, onDone) {
         else if (!tps[i] && p.who != null) { armOf(p).to(p.who === 0 ? 190 : 1090, 78); moved = true; } });
       if (moved) await pace(560);
       sync(st.fx); parts.forEach(flash); bigLoss(); stepSound(st, parts);
+      for (const p of parts) if (p.kind === 'play' && p.uid != null) played.add(ckey(p.who ?? 0, p.uid));
       const fees = parts.filter((p) => p.kind === 'fee' && p.cells[0]);
       if (fees.length) { await pace(240); for (const p of fees) armOf(p).to(STAGE[p.cells[0].side].x + 16, STAGE[p.cells[0].side].y + 14); } // rake what was paid to the Stage
       await pace(st.kind === 'over' ? 1000 : parts.some((p) => p.text) ? (parts.length > 1 ? 980 : 780) : 340);
     }
+    await spendPlayed(); ui.spent.clear();
     setCalling([]); setPhase(null); both((a) => a.rest()); ui.playing = false; marquee.style.removeProperty('--lc');
     if (bout.over) return finish();
     ui.locked = false;

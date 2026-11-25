@@ -307,6 +307,22 @@ the rolled dice on tricks here; every bid trick that needs a target is **aimed a
 can see it). Tweak an aim by clicking the trick, or its marked target on the table (again to cycle when two share
 it), then a new space. Aims stay hidden until the House plays them. The button after Bid reads **Bluff**, and in the Bluff it reads **Play**.
 
+### Lit and spent
+A trick bid on is **lit**: it is going to play, so its edge becomes a neon tube in its type's colour, struck on with
+the signs' flicker (and a soft buzz), a brighter stretch chasing round it, its glow breathing; the dice on it glow in
+the same colour. When the phase it played in is over it is **spent**: its tube flares and throws sparks (off the card
+and each of its dice), buzzes out, and the card and its dice grey. They stay so until the House taps them, then slide
+to the tapped piles: yours to under the Book and after the Pouch, your opponent's to their Book and Pouch. A stack's
+played copy slides off the same way as the next copy lights on top. Nothing moves for reduced motion.
+
+### The title sign
+It lights one of two ways, by the flip of a chip: all at once, a tube at a time (the pink, the cyan, the dice), or a
+piece at a time: ROLLING letter by letter, one die then the other, Paradise's letters but the s, then the s with the
+swash and the palm's trunk as one stroke, then the fronds one by one. The pieces are cut from the sign's own three
+images by `tools/logo-parts.py` (every pixel, glow included, goes to exactly one piece, so the lit sign is the same
+picture either way). Whichever did not open the title plays once when the title has sat idle for 40 seconds (the sign
+buzzes out first). `?title=parts` or `?title=whole` in the address picks the opening one.
+
 ### Reading a trick
 A trick in the Book shows the chip it makes (or what stands for its effect: Debt for a fee, the hazard an element fee
 leaves, the effect chip a maker places) beside its name, and its Bonus requirement as a gold ★ badge: how many dice of
@@ -494,6 +510,10 @@ Every seat at the table is a neon sign, and so is the House's (`js/ui/sign.js`, 
 - **The name's symbol**: an optional large symbol after the name, its last letter just over it, with its own motion.
 - **Edge symbols** go at the corners, along the top, along the bottom, or both.
 - **The class line** sits under the end of the name (the symbol's slot), at its start, or centred (`clsAlign`).
+- **Faces.** The name and the class line each wear any of the game's three faces (`nameFont`, `clsFont`): script
+  (Yellowtail, the name's default), capitals (Didact Gothic, the class's default) or lined capitals (Monoton, drawn in
+  parallel tubes like ROLLING on the title sign). Each face is scaled to sit in the same room, and the name is still
+  fitted to the seat; a crown finds a capital's real ink the same way it finds a script letter's.
 - **A seat's sign has a fixed slot at the table.** The frame's room (its nested tubes and any symbols along it) is
   reserved as padding, and the name is set smaller until everything (name, crown, symbol, business card, stats) fits,
   so no sign grows over the Book, the Run or the dice.

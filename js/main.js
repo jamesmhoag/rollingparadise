@@ -59,7 +59,11 @@ function titleScene(root) {
   const motes = Array.from({ length: 26 }, (_, i) => h('span', { class: 'mote', style: { left: `${(i * 37 + 11) % 100}%`, '--mc': i % 3 ? 'var(--gold)' : 'var(--pink)', '--d': `${7 + (i * 13) % 9}s`, '--w': `${-((i * 7) % 12)}s`, '--dx': `${((i * 29) % 120) - 60}px` } }));
   const sign = h('div', { class: 'sign', tip: t('title.sign.tip') }, h('div', { class: 'glow' }),
     h('img', { class: 'l-pink', src: D.IMAGES.logoPink, alt: '', draggable: 'false' }), h('img', { class: 'l-cyan', src: D.IMAGES.logoCyan, alt: 'Rolling Paradise', draggable: 'false' }), h('img', { class: 'l-dice', src: D.IMAGES.logoDice, alt: '', draggable: 'false' }));
-  root.append(h('div', { class: 'title' }, h('div', { class: 'sky' }), h('div', { class: 'gridfloor' }), ...motes, h('div', { class: 'inner' },
+  // the sign lights one of two ways, by the flip of a chip; whichever did not open the title plays once when it has
+  // sat idle a while (no pointer or key for TITLE_IDLE). ?title=parts or ?title=whole in the address picks one.
+  const asked = new URLSearchParams(location.search).get('title'), byParts = asked ? asked === 'parts' : Math.random() < 0.5;
+  if (byParts) lightByParts(sign);
+  const scene = h('div', { class: 'title' }, h('div', { class: 'sky' }), h('div', { class: 'gridfloor' }), ...motes, h('div', { class: 'inner' },
     h('div', { class: 'hotel neon-c', text: t('title.hotel') }), sign,
     h('p', { class: 'tagline neon-p', text: t('title.tagline') }),
     h('div', { class: 'menu' },
@@ -73,8 +77,34 @@ function titleScene(root) {
       btn(t('title.build'), () => nav.build(), t('title.build.tip'), 'sign-btn p')),
     h('div', { class: 'stats records' },
       [[t('title.rec.runs'), meta.runs, t('title.rec.runs.tip')], [t('title.rec.best'), meta.best > 4 ? t('title.rec.ascent') : meta.best || '—', t('title.rec.best.tip')], [t('title.rec.crowns'), meta.crowns, t('title.rec.crowns.tip')], [t('title.rec.jackets'), meta.jackets.length, t('title.rec.jackets.tip')], [t('title.rec.wallets'), (meta.wallets || []).length, t('title.rec.wallets.tip')], [t('title.rec.atm'), cents(meta.atm), t('title.rec.atm.tip')]]
-        .map(([a, b, t]) => h('span', { class: 'stat', tip: `<b>${a}</b><p>${t}</p>` }, h('em', { text: a }), h('b', { text: b })))))));
+        .map(([a, b, t]) => h('span', { class: 'stat', tip: `<b>${a}</b><p>${t}</p>` }, h('em', { text: a }), h('b', { text: b }))))));
+  root.append(scene);
+  let idle = 0; const wake = () => { clearTimeout(idle); idle = setTimeout(() => { if (!sign.isConnected) return; for (const ev of ['pointermove', 'pointerdown', 'keydown', 'wheel']) scene.removeEventListener(ev, wake);
+    byParts ? relight(sign) : switchOff(sign, () => lightByParts(sign)); }, TITLE_IDLE); };
+  for (const ev of ['pointermove', 'pointerdown', 'keydown', 'wheel']) scene.addEventListener(ev, wake, { passive: true });
+  wake();
 }
+// The title sign's two ways of lighting. All at once: the pink tube, then the cyan, then the dice strike on (style.css
+// .sign .l-*). A tube at a time: ROLLING letter by letter, one die then the other, Paradise's letters but the s, then
+// the s with the swash and the palm's trunk as one stroke, then the fronds one by one (D.TITLE_PARTS, cut from the
+// same three images, so the lit sign is the same picture either way).
+const TITLE_IDLE = 40000;
+function lightByParts(sign) {
+  sign.querySelector('.tparts')?.remove(); sign.classList.remove('lit', 'off'); sign.classList.add('by-parts');
+  // the pause before each part: a beat between the letters, longer where the sign moves on to the next piece
+  const gap = (p) => (p.layer === 'dice' ? 0.42 : p.part === 'P' ? 0.45 : p.part === 'trunk' ? 0.32 : p.part === 'leaf1' ? 0.55 : /^leaf/.test(p.part) ? 0.17 : 0.21);
+  const at = new Map(); let t = 0.3;
+  D.TITLE_PARTS.forEach((p, i) => { if (p.with) return; if (i) t += gap(p); at.set(p.part, t); });
+  const delay = (p) => at.get(p.with || p.part);
+  // stacked as the three images are (pink under cyan under the dice); each strikes on at its own moment
+  const order = ['pink', 'cyan', 'dice'], parts = [...D.TITLE_PARTS].sort((a, b) => order.indexOf(a.layer) - order.indexOf(b.layer));
+  sign.append(h('div', { class: 'tparts' }, ...parts.map((p) => h('img', { class: `tp tp-${p.layer}${p.part === 'trunk' ? ' tp-long' : ''}`, src: p.src, alt: '', draggable: 'false', style: { animationDelay: `${delay(p).toFixed(2)}s` } }))));
+  // once the last frond is on, the whole sign takes over (the same picture) and buzzes as it always does
+  setTimeout(() => { if (!sign.isConnected) return; sign.classList.add('lit'); requestAnimationFrame(() => { sign.classList.remove('by-parts'); sign.querySelector('.tparts')?.remove(); }); }, (t + 0.8) * 1000);
+}
+// the whole sign buzzes out, then the next way of lighting it starts
+function switchOff(sign, then) { sign.classList.add('off'); setTimeout(() => sign.isConnected && then(), 900); }
+function relight(sign) { switchOff(sign, () => { sign.classList.remove('off', 'lit'); for (const img of sign.querySelectorAll(':scope > img')) { img.style.animation = 'none'; void img.offsetWidth; img.style.animation = ''; } }); }
 
 function howTo() {
   const p = (t, s) => h('div', {}, h('h3', { text: t }), h('p', { class: 'sub', text: s }));
