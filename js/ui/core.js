@@ -51,12 +51,14 @@ export function setDetail(verbose) {
 // ---------- click and hold to paint ----------
 // Press to apply once, keep holding to apply again at a steady rate, and sweep to apply on each new target the
 // pointer crosses. targetAt(ev) gives the target under the pointer ({ key, ... }) or null.
-export function paint(el, targetAt, apply, ms = 170, onEnd) {
-  let timer = null, at = null;
+export function paint(el, targetAt, apply, ms = 170, onEnd, { right = false } = {}) {
+  // right: the right button paints in reverse (apply gets erase = true), held and swept just like the left
+  let timer = null, at = null, erase = false;
   const stop = () => { if (!timer) return; clearInterval(timer); timer = null; at = null; document.removeEventListener('pointerup', stop); onEnd?.(); };
-  el.addEventListener('pointerdown', (ev) => { if (ev.button !== 0) return; const t0 = targetAt(ev); if (!t0) return; ev.preventDefault(); at = t0; apply(at, true);
-    timer = setInterval(() => { if (at) apply(at, false); }, ms); document.addEventListener('pointerup', stop); });
-  el.addEventListener('pointermove', (ev) => { if (!timer) return; const t1 = targetAt(ev); if (t1 && t1.key !== at?.key) apply(t1, false); at = t1; });
+  el.addEventListener('pointerdown', (ev) => { if (ev.button !== 0 && !(right && ev.button === 2)) return; const t0 = targetAt(ev); if (!t0) return; ev.preventDefault(); erase = ev.button === 2; at = t0; apply(at, true, erase);
+    timer = setInterval(() => { if (at) apply(at, false, erase); }, ms); document.addEventListener('pointerup', stop); });
+  el.addEventListener('pointermove', (ev) => { if (!timer) return; const t1 = targetAt(ev); if (t1 && t1.key !== at?.key) apply(t1, false, erase); at = t1; });
+  if (right) el.addEventListener('contextmenu', (ev) => ev.preventDefault());
   return stop;
 }
 

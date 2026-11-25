@@ -108,7 +108,7 @@ export function rollerMaker(id, redraw) {
     f.field(lab('roster.worth'), f.number(['worth'], X.worth ?? 200, { min: 1 }), ['worth']),
     f.field(lab('roster.wallet'), f.select(['wallet'], optsOf(D.WALLETS), X.wallet || 'worn_cloth'), ['wallet']),
     f.field(lab('roster.jacket'), f.select(['jacket'], Object.entries(D.JACKETS).filter(([, J]) => !J.cls || J.cls === X.cls).map(([k, J]) => [k, J.name]), X.jacket || 'standard'), ['jacket']),
-    f.field(lab('roster.rollerLayout'), stakeBoard({ dims: R.posDims(X), layout: X.layout, set: (v) => B.setValue(D.subPath(D.subPath('ROLLERS', id), 'layout'), v), done: redraw, who: 'roller' }), ['layout']),
+    f.field(lab('roster.rollerLayout'), stakeBoard({ dims: R.posDims(X), layout: X.layout, set: (v) => B.setValue(D.subPath(D.subPath('ROLLERS', id), 'layout'), v), done: redraw, who: 'roller', cls: X.cls }), ['layout']),
     h('span', { class: 'cap', text: t('roster.part.sign') }), h('p', { class: 'sub', text: t('roster.sign.you') }),
     signEditor(D.subPath(D.subPath('ROLLERS', id), 'sign'), 'you', X.sign, redraw, [X.name, K?.name || ''])),
   h('div', {}, h('span', { class: 'cap', text: t('maker.preview') }), h('div', { class: 'b-card', style: { '--cc': K?.color } }, h('b', { text: D.heroName(X.cls, id) }), h('p', { text: D.classRule(X.cls) }),
@@ -170,7 +170,7 @@ export function rosterMaker(id, redraw) {
       f.select(null, [[null, t('chipmaker.add')], ...Object.entries(D.SHOP_CHIPS).filter(([k]) => !X.chips?.[k]).map(([k, v]) => [k, v.name])], null, (v) => v && f.set(['chips'], { ...(X.chips || {}), [v]: 1 }))), ['chips']),
     f.field(lab('roster.spacing'), f.select(['deploy', 'spacing'], [['row', t('roster.sp.row')], ['column', t('roster.sp.column')], ['random', t('roster.sp.random')]], X.deploy?.spacing || 'row'), ['deploy']),
     f.field(lab('roster.stacking'), f.select(['deploy', 'stacking'], [['maxed', t('roster.st.maxed')], ['balanced', t('roster.st.balanced')], ['random', t('roster.st.random')]], X.deploy?.stacking || 'maxed'), null),
-    f.field(lab('roster.layout'), stakeBoard({ dims: R.posDims(X), layout: X.layout, set: (v) => B.setValue(D.subPath(D.subPath('ROSTER', id), 'layout'), v), done: redraw, effects: true, who: 'opponent' }), ['layout']),
+    f.field(lab('roster.layout'), stakeBoard({ dims: R.posDims(X), layout: X.layout, set: (v) => B.setValue(D.subPath(D.subPath('ROSTER', id), 'layout'), v), done: redraw, effects: true, who: 'opponent', cls: X.cls }), ['layout']),
     h('span', { class: 'cap', text: t('roster.part.behave') }),
     ...Object.keys(D.BEHAVE).map((k) => f.field(lab(`roster.beh.${k}`), f.select(['behave', k], opt(D.BEHAVE[k]), beh[k]), ['behave', k])),
     // its neon sign at the table: laid over the opponents' shared look (the first entry in this list)

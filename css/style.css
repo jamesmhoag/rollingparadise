@@ -1063,3 +1063,11 @@ p.flavor { font-style: italic; color: var(--dim); }
 .die.r3d::before, .die.r3d::after { display: none; } .die.r3d > i { visibility: hidden; }
 .die.r3d { background: var(--r3d) center / 116% no-repeat; }
 .solid.r3d-on .solid-rot { visibility: hidden; } .solid .r3d-live { position: absolute; left: -15%; top: -15%; width: 130%; height: 130%; pointer-events: none; }
+/* the tilts beside the painter: two to a row, each on one line */
+.prep-page .tilts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 8px; } .prep-page .tilt { padding: 2px 6px; font-size: 12.5px; gap: 2px 5px; } .prep-page .tilt .small, .prep-page .tilt button { padding: 2px 7px; font-size: 11.5px; }
+.prep-page .prep-main .box:has(> .planner) { padding-bottom: 8px; } .prep-page .planner > .sub { font-size: 12px; }
+.prep-page .tilt > span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* the Roller's card in the Coat Check: a fixed column beside what you carry */
+.panel .roller-card { width: 330px; flex: none; cursor: default; } .panel .roller-card:hover { transform: none; }
+.planner .rack { flex-flow: column wrap; align-content: flex-start; flex: none; }
+.planner .rack.wide { flex-flow: row wrap; max-width: 100%; }

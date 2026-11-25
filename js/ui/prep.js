@@ -1,5 +1,6 @@
 // Commitment before a bout (wager, tilts, position) and the settlement after it.
 import { h, syncList, toast, btn, tween, wait, pulse, swapText, openPanel, closePanel, paint, guided } from './core.js';
+import { sfx } from './sfx.js';
 import { app, hud, oppTip, trickTag, diceSummary } from './app.js';
 import { chipEl, chipSig, chipGlyph, chipTip, dieEl, dieTip, statTip, trickTip, trickChip, trickLook, trickWord, jacketEl, drinkEl } from './parts.js';
 import { signOf, dressSign } from './sign.js';
@@ -11,117 +12,138 @@ import { cents, sum } from '../util.js';
 import { t } from '../text.js';
 
 // ---------- drawing a position ----------
-// A position drawn as it sits at the table: its spaces and real chip stacks (the same chips as the table, no numbers;
-// hover for what is in a stack). Yours faces the Stage on the right (Stake left, Bet right); theirs is mirrored.
-// Keeps its elements between draws so chips scale on and off as the position changes.
-export function positionView({ CH = 46, SZ = 24, maxW = 400, mirror = false, lift = 3 } = {}) {
-  let CW = 48, rows = 0, side = null;
-  const board = h('div', { class: `mboard ${mirror ? 'mirror' : ''}`, style: { transition: 'width .45s cubic-bezier(.22,.8,.24,1)', height: `${5 * CH + 16}px` } });
-  const chips = new Map(), cells = new Map(), labels = [h('div', { class: 'mlabel', text: t('prep.label.stake') }), h('div', { class: 'mlabel', text: t('prep.label.bet') })];
-  board.append(...labels); for (const l of labels) { l.style.top = `${5 * CH + 3}px`; l.style.transition = 'left .45s, width .45s'; }
+// A position drawn as it sits at the table: its spaces and real chip stacks (the same chips, sized and stacked as at the
+// table: a stack's first chip centred in its space, each one above it a little higher; no numbers, hover for what is
+// in a stack), and under each zone the same marks as at the table: which rows hold a chip (and what that earns in
+// Charisma, Cunning and Conviction, focus included) and which columns are held (what the end of a turn restores).
+// Yours faces the Stage on the right (Stake left, Bet right); theirs is mirrored. Keeps its elements between draws so
+// chips scale on and off as the position changes. Any side-like { rows, cls, dims, grid } can be drawn.
+export function positionView({ CH = 46, maxW = 400, mirror = false } = {}) {
+  let CW = 48, rows = 0, side = null, SZ = 30, lift = 4;
+  const board = h('div', { class: `mboard ${mirror ? 'mirror' : ''}`, style: { transition: 'width .45s cubic-bezier(.22,.8,.24,1)' } });
+  const chips = new Map(), cells = new Map();
+  const zone = (k) => { const z = { rows: h('span', { class: `zm-rows ${k}`, guide: k === 'bet' ? 'bet-meter' : 'stake-rows', tip: () => rowsTip(k) }), bonus: h('em', { class: 'zm-bonus' }),
+    cols: h('span', { class: `zm-cols ${k}`, guide: 'restore', tip: () => colsTip(k) }) };
+    z.el = h('div', { class: `zone-label ${k}` }, h('b', { text: t(`prep.label.${k}`), guide: 'position-label' }), z.rows, z.bonus, z.cols); z.el.style.transition = 'left .45s, width .45s'; return z; };
+  const Z = { stake: zone('stake'), bet: zone('bet') }; board.append(Z.stake.el, Z.bet.el);
   const xOf = (r) => (mirror ? r : rows - 1 - r) * CW;
+  const rowsTip = (k) => { if (!side) return ''; const o = B.occupancy(side), held = (k === 'bet' ? o.betRows : o.stakeRows).filter((x) => x.n > 0).length, pc = D.primaryC(side.cls);
+    return `${t(k === 'bet' ? 'prep.meter.bet.tip' : 'prep.meter.stake.tip', { stat: D.STATS[pc]?.name || '' })}<p class="v">${t('prep.meter.rows', { n: held, of: side.dims.cols })}</p>`; };
+  const colsTip = (k) => { if (!side) return ''; const o = B.occupancy(side); return t(k === 'bet' ? 'prep.meter.cols.bet' : 'prep.meter.cols.stake', { n: k === 'bet' ? o.betColsOcc : o.stakeColsOcc, of: (k === 'bet' ? o.betCols : o.stakeCols).length }); };
   function draw(sd) {
-    side = sd; rows = sd.rows; const m = sd.dims.meterRows, want = new Set(); CW = Math.max(30, Math.min(56, Math.floor(maxW / rows))); board.style.width = `${rows * CW}px`;
-    for (let r = 0; r < rows; r++) for (let col = 0; col < 5; col++) { const k = `${r}-${col}`; want.add(k); let ce = cells.get(k); const x = xOf(r), y = col * CH;
+    side = sd; rows = sd.rows; const m = sd.dims.meterRows, C = sd.dims.cols, want = new Set(); CW = Math.max(30, Math.min(56, Math.floor(maxW / rows)));
+    SZ = Math.round(Math.min((CW - 3) * 0.82, (CH - 3) * 0.74)); lift = Math.max(2, SZ / 8);
+    board.style.width = `${rows * CW}px`; board.style.height = `${C * CH + 18}px`;
+    for (let r = 0; r < rows; r++) for (let col = 0; col < C; col++) { const k = `${r}-${col}`; want.add(k); let ce = cells.get(k); const x = xOf(r), y = col * CH;
       if (!ce) { ce = h('div', { class: 'mcell', style: { height: `${CH - 3}px`, opacity: 0, transition: 'transform .45s cubic-bezier(.22,.8,.24,1), width .45s, opacity .4s, background-color .4s' } }); ce.style.transform = `translate(${x}px, ${y}px) scale(.6)`; board.prepend(ce); cells.set(k, ce); void ce.offsetWidth; }
       ce.classList.toggle('meter', r < m); ce.classList.toggle('alt', (r + col) % 2 === 1); ce.style.width = `${CW - 3}px`; ce.style.opacity = 1; ce.style.transform = `translate(${x}px, ${y}px)`;
       const stack = sd.grid[r][col].chips; ce._tip = stack.length ? () => t('prep.stack.tip', { n: stack.length, chips: stack.slice().reverse().map((ch) => chipGlyph(ch)).join(' · '), amt: cents(sum(stack, (ch) => (ch.kind === 'std' && !ch.resist ? ch.value : 0))) }) : null;
       ce.classList.toggle('has-tip', !!stack.length); }
     for (const [k, ce] of cells) if (!want.has(k)) { ce.style.opacity = 0; cells.delete(k); setTimeout(() => ce.remove(), 450); }
-    const sw = (rows - m) * CW, bw = m * CW;
-    labels[0].style.left = mirror ? `${bw}px` : '0px'; labels[0].style.width = `${sw}px`; labels[1].style.left = mirror ? '0px' : `${sw}px`; labels[1].style.width = `${bw}px`;
+    const sw = (rows - m) * CW, bw = m * CW, yl = C * CH + 2;
+    Object.assign(Z.stake.el.style, { left: mirror ? `${bw}px` : '0px', width: `${sw}px`, top: `${yl}px` }); Object.assign(Z.bet.el.style, { left: mirror ? '0px' : `${sw}px`, width: `${bw}px`, top: `${yl}px` });
     const seen = new Set();
-    for (let r = 0; r < rows; r++) for (let col = 0; col < 5; col++) sd.grid[r][col].chips.forEach((ch, lvl) => { const k = `${r}-${col}-${lvl}`, sig = chipSig(ch); seen.add(k); let e = chips.get(k);
-      const x = xOf(r) + (CW - 3 - SZ) / 2, y = col * CH + CH - 3 - SZ - 2 - lvl * lift;
-      if (!e) { e = h('div', { class: `chip ${SZ <= 18 ? 'xs' : 'sm'} ${sig}` }, h('i', { text: chipGlyph(ch) })); e.style.width = e.style.height = `${SZ}px`; e.style.opacity = 0; e.style.transform = `translate(${x}px, ${y - 14}px) scale(.3)`; board.append(e); chips.set(k, e); void e.offsetWidth; }
-      if (e._sig !== sig) { e._sig = sig; e.className = `chip ${SZ <= 18 ? 'xs' : 'sm'} ${sig}`; e.firstChild.textContent = chipGlyph(ch); }
+    for (let r = 0; r < rows; r++) for (let col = 0; col < C; col++) sd.grid[r][col].chips.forEach((ch, lvl) => { const k = `${r}-${col}-${lvl}`, sig = chipSig(ch); seen.add(k); let e = chips.get(k);
+      // as at the table: the first chip centred in its space, each one above it lifted a little
+      const x = xOf(r) + (CW - 3 - SZ) / 2, y = col * CH + (CH - 3 - SZ) / 2 - Math.min(lvl, 12) * lift;
+      if (!e) { e = h('div', { class: `chip ${SZ <= 20 ? 'xs' : 'sm'} ${sig}` }, h('i', { text: chipGlyph(ch) })); e.style.opacity = 0; e.style.transform = `translate(${x}px, ${y - 14}px) scale(.3)`; board.append(e); chips.set(k, e); void e.offsetWidth; }
+      if (e._sig !== sig || e._sz !== SZ) { e._sig = sig; e._sz = SZ; e.className = `chip ${SZ <= 20 ? 'xs' : 'sm'} ${sig}`; e.firstChild.textContent = chipGlyph(ch); e.style.width = e.style.height = `${SZ}px`; }
       e.style.zIndex = 10 + col * 20 + lvl; e.style.opacity = 1; e.style.transform = `translate(${x}px, ${y}px)`; });
     for (const [k, e] of chips) if (!seen.has(k)) { const tf = e.style.transform.replace(/ scale\([^)]*\)/, ''); e.style.opacity = 0; e.style.transform = `${tf} scale(.2)`; chips.delete(k); setTimeout(() => e.remove(), 450); }
+    // the marks under each zone, as at the table
+    const o = B.occupancy(sd), ob = B.occBonus(sd, o), focus = ob.parts.find((x) => x.zone === 'focus');
+    for (const k of ['bet', 'stake']) { const M = Z[k], rs = k === 'bet' ? o.betRows : o.stakeRows, cs = k === 'bet' ? o.betCols : o.stakeCols, al = k === 'bet' ? o.betAligned : o.stakeAligned, part = ob.parts.find((x) => x.zone === k);
+      M.rows.replaceChildren(...rs.map((x) => h('i', { class: x.n > 0 ? 'on' : '' }))); M.rows.classList.toggle('full', !!part); M.rows.classList.toggle('aligned', al >= 0);
+      swapText(M.bonus, part ? `+${part.n + (focus ? focus.n : 0)} ${part.keys.length > 1 ? t('table.zm-all') : D.STATS[part.keys[0]].name}` : '');
+      M.cols.replaceChildren(...(mirror ? cs : cs.slice().reverse()).map((x) => h('i', { class: `${x.n > 0 ? 'on' : ''}${x.r === al ? ' al' : ''}` }))); }
   }
   // the space under a pointer: { r, c } in the side's rows, or null
   const at = (ev) => { if (!side) return null; const rect = board.getBoundingClientRect(), k = rect.width / board.offsetWidth, x = (ev.clientX - rect.left) / k, y = (ev.clientY - rect.top) / k;
-    const i = Math.floor(x / CW), r = mirror ? i : rows - 1 - i, c = Math.floor(y / CH); return r < 0 || r >= rows || c < 0 || c > 4 ? null : { key: `${r}-${c}`, r, c }; };
+    const i = Math.floor(x / CW), r = mirror ? i : rows - 1 - i, c = Math.floor(y / CH); return r < 0 || r >= rows || c < 0 || c >= side.dims.cols ? null : { key: `${r}-${c}`, r, c }; };
   return { board, draw, at };
+}
+// A side to draw from a painted Stake layout ([{ r, c, chips }], r from the front of the Stake): the Bet's rows empty
+export function layoutSide(layout, dims, cls) {
+  const m = dims.meterRows, rows = m + dims.barRows, grid = Array.from({ length: rows }, () => Array.from({ length: dims.cols }, () => ({ chips: [] })));
+  for (const sp of layout || []) { if (sp.r < 0 || sp.r >= dims.barRows || sp.c < 0 || sp.c >= dims.cols) continue;
+    grid[m + sp.r][sp.c].chips = sp.chips.slice(0, dims.stackMax).map((it) => (typeof it === 'number' ? { kind: 'std', value: it } : { kind: 'std', value: 1, resist: it })); }
+  return { rows, cls, dims, grid };
+}
+
+// ---------- painting a Stake ----------
+// One painter for every Stake in the game and in Build mode: a rack of chips beside the position (click one to paint
+// with it), click a space to set it down (hold to stack, sweep to cover more), and the right button paints in
+// reverse: click, hold or sweep to take top chips off. Restore and Clear sit above it.
+// opts: items() the rack's chips (values, or effect chip ids) with left(it) how many are left (effect chips);
+// canAdd(L, sp, it) → null or a warning; set(L) store; head: extra header elements
+export function stakePainter({ dims, cls, layout, items, left = () => null, canAdd = () => null, set, done, onDraw, maxW = 400, CH = 46, title, head = [], pick }) {
+  const V = positionView({ maxW, CH }), rack = h('div', { class: 'col rack' });
+  let L = JSON.parse(JSON.stringify(layout || [])), warned = false;
+  const brush = { it: pick?.get?.() ?? null };
+  function drawRack() {
+    const list = items(); if (!list.includes(brush.it)) brush.it = list[0]; pick?.set?.(brush.it);
+    rack.replaceChildren(...list.map((it) => { const ch = typeof it === 'number' ? { kind: 'std', value: it } : { kind: 'std', value: 1, resist: it }, n = left(it);
+      const b = guided(btn('', () => { brush.it = it; drawRack(); }, () => (typeof it === 'number' ? t('prep.brush.tip', { amt: cents(it) }) : `${chipTip(ch)}${n != null ? t('prep.brush.effect', { n }) : ''}`), `rack-chip ${brush.it === it ? 'on' : ''}`), 'brush');
+      b.append(chipEl(ch)); if (n != null) b.append(h('small', { class: 'num', text: n })); return b; }));
+  }
+  const D0 = () => (typeof dims === 'function' ? dims() : dims);
+  function redraw() { const d = D0(); L = L.filter((sp) => sp.chips.length); V.draw(onDraw?.(L) || layoutSide(L, d, cls)); drawRack(); // a rack of up to three columns beside the board; a longer one runs in rows above it
+    const per = Math.max(1, Math.floor(parseFloat(V.board.style.height) / 46)), wide = rack.children.length > per * 3; rack.classList.toggle('wide', wide);
+    rack.style.maxHeight = wide ? '' : V.board.style.height; if (api.el && wide !== (rack.parentNode === api.el)) { if (wide) api.el.insertBefore(rack, main); else main.prepend(rack); } }
+  function apply(at, first, erase) {
+    if (first) warned = false; const d = D0(), m = d.meterRows, warn = (msg) => { if (msg && !warned) toast(msg, 'warn'); warned = true; };
+    if (at.r < m) return warn(t('prep.paint.bet'));
+    const br = at.r - m; let sp = L.find((x) => x.r === br && x.c === at.c);
+    if (erase) { if (!sp?.chips.length) return; sp.chips.pop(); sfx('undo'); }
+    else { if (!sp) { sp = { r: br, c: at.c, chips: [] }; L.push(sp); }
+      if (sp.chips.length >= d.stackMax) return warn(t('prep.stackFull'));
+      const why = canAdd(L, sp, brush.it); if (why) return warn(why);
+      sp.chips.push(brush.it); sfx('chip'); }
+    L = L.filter((x) => x.chips.length); set(L); redraw();
+  }
+  paint(V.board, V.at, apply, 170, () => done?.(), { right: true });
+  let main = null; const api = { get: () => L, put: (x) => { L = JSON.parse(JSON.stringify(x || [])); set(L); redraw(); done?.(); }, redraw };
+  const clearBtn = btn(t('prep.clear'), () => api.put([]), t('prep.clear.tip'), 'small');
+  main = h('div', { class: 'row', style: { alignItems: 'flex-start', gap: '12px' } }, rack, V.board);
+  api.el = h('div', { class: 'col planner' }, h('div', { class: 'row between' }, h('div', { class: 'row' }, title ? h('h3', { text: title }) : null, ...head, clearBtn)), main, h('span', { class: 'sub', text: t('prep.paint.how') }));
+  redraw(); return api;
 }
 
 // ---------- the position planner ----------
 // Your Stake, painted by hand: it starts from the position you had last (your Roller's own, the first time) and you
-// add to it or take from it before each bout. Pick a chip from the rack beside it and click a space (hold to stack,
-// sweep to cover more); right-click takes the top chip off. Restore puts back what you sat down with last time (as far
-// as your purse goes now: filled from the bottom of each stack up); Clear takes everything off.
+// add to it or take from it before each bout. Restore puts back what you sat down with last time (as far as your purse
+// goes now: filled from the bottom of each stack up); Clear takes everything off.
 let brushPick = null; // the chip you paint with, kept between visits
 export function planner(getExtra, onChange, { maxW = 400 } = {}) {
-  const run = app.run, V = positionView({ maxW });
-  const rack = h('div', { class: 'col rack' }), meters = h('div', { class: 'col pos-meters' });
-  const worthEl = h('b', { class: 'num gold-t' }), countEl = h('b', { class: 'num' });
+  const run = app.run, worthEl = h('b', { class: 'num gold-t' }), countEl = h('b', { class: 'num' });
   const K = D.CLASSES[run.cls], dims = () => R.rollerStats(run, getExtra()).dims;
-  const restoreBtn = btn(t('prep.restore'), () => { const from = run.plan.sat || D.ROLLERS[run.roller]?.layout || null; run.plan.layout = from ? JSON.parse(JSON.stringify(from)) : null; if (!from) run.plan.layout = autoLayout(); update(); toast(t('prep.restored')); }, () => t('prep.restore.tip'), 'small');
-  const clearBtn = btn(t('prep.clear'), () => { run.plan.layout = []; update(); }, t('prep.clear.tip'), 'small');
-  const el = h('div', { class: 'col planner' },
-    h('div', { class: 'row between' }, h('div', { class: 'row' }, h('h3', { text: t('prep.position') }), restoreBtn, clearBtn),
-      h('span', { class: 'cap', guide: 'prep:deploy', tip: t('prep.deploy.tip', { name: K.name, from: t(`prep.deploy.at.${K.deploy === 'start' || K.deploy === 'end' ? K.deploy : 'mid'}`) }), text: t(`prep.deploy.${K.deploy === 'start' || K.deploy === 'end' ? K.deploy : 'mid'}`) })),
-    h('div', { class: 'row', style: { alignItems: 'flex-start', gap: '12px' } }, rack, V.board, meters),
-    h('div', { class: 'row wrap' }, h('span', { class: 'stat', tip: t('prep.worth.tip') }, h('em', { text: t('prep.worth') }), worthEl), h('span', { class: 'stat', tip: t('prep.capacity.tip') }, h('em', { text: t('prep.capacity') }), countEl),
-      h('span', { class: 'sub', text: t('prep.paint.how') })));
-  let side = null, warned = false, warnedShort = false, erasing = false;
-  // the rack: every chip you can lay (your denominations, and the effect chips you own, with how many are left)
-  const items = () => [...D.DENOMS.filter((x) => x.floor <= R.chipFloor(run)).map((x) => x.value), ...Object.keys(D.SHOP_CHIPS).filter((k) => R.owned(run, k) > 0)];
-  const usedOf = (k) => sum(run.plan.layout || [], (sp) => sp.chips.filter((x) => x === k).length);
-  function drawRack() {
-    const list = items(); if (!list.includes(brushPick)) brushPick = list[0];
-    rack.replaceChildren(...list.map((it) => { const b = guided(btn('', () => { brushPick = it; drawRack(); }, () => (typeof it === 'number' ? t('prep.brush.tip', { amt: cents(it) }) : `${chipTip({ kind: 'std', value: 1, resist: it })}${t('prep.brush.effect', { n: R.owned(run, it) - usedOf(it) })}`), `rack-chip ${brushPick === it ? 'on' : ''}`), 'brush');
-      b.append(chipEl(typeof it === 'number' ? { kind: 'std', value: it } : { kind: 'std', value: 1, resist: it })); if (typeof it !== 'number') b.append(h('small', { class: 'num', text: R.owned(run, it) - usedOf(it) })); return b; }));
-  }
-  // the Stake as shown, as a painted layout (effect chips included)
-  const layoutNow = (sd) => { const m = sd.dims.meterRows, out = []; for (let r = m; r < sd.rows; r++) for (let c = 0; c < 5; c++) { const chips = sd.grid[r][c].chips.filter((ch) => ch.kind === 'std' || ch.resist).map((ch) => (ch.resist ? ch.resist : ch.value)); if (chips.length) out.push({ r: r - m, c, chips }); } return out; };
+  const usedOf = (L, k) => sum(L || [], (sp) => sp.chips.filter((x) => x === k).length);
+  let warnedShort = false, P = null;
   // the first time there is nothing to start from: the House's own suggestion, laid out
+  const layoutNow = (sd) => { const m = sd.dims.meterRows, out = []; for (let r = m; r < sd.rows; r++) for (let c = 0; c < sd.dims.cols; c++) { const chips = sd.grid[r][c].chips.filter((ch) => ch.kind === 'std' || ch.resist).map((ch) => (ch.resist ? ch.resist : ch.value)); if (chips.length) out.push({ r: r - m, c, chips }); } return out; };
   function autoLayout() { const d = dims(), saved = run.plan.layout; run.plan.layout = null; const sd = R.previewPosition(run, R.autoCounts(run, d), { position: getExtra().position, resist: {} }); run.plan.layout = saved; return layoutNow(sd); }
-  V.board.addEventListener('pointerdown', (ev) => { erasing = ev.button === 2; }, true);
-  V.board.addEventListener('contextmenu', (ev) => ev.preventDefault());
-  function paintAt(at, first) {
-    if (first) warned = false;
-    const d = dims(), m = d.meterRows, warn = (msg) => { if (!warned) toast(msg, 'warn'); warned = true; };
-    if (at.r < m) return warn(t('prep.paint.bet'));
-    run.plan.layout = layoutNow(side); // you change the position as it stands for this bout
-    const L = run.plan.layout, br = at.r - m; let sp = L.find((x) => x.r === br && x.c === at.c);
-    if (erasing) { if (!sp?.chips.length) return; sp.chips.pop(); }
-    else {
-      if (!sp) { sp = { r: br, c: at.c, chips: [] }; L.push(sp); }
-      const it = brushPick;
-      if (sp.chips.length >= d.stackMax) return warn(t('prep.stackFull'));
-      if (typeof it === 'number' && R.planWorth(R.layoutCounts(L)) + it > run.purse) return warn(t('prep.purseShort'));
-      if (typeof it !== 'number' && usedOf(it) >= R.owned(run, it)) return warn(t('prep.noMore'));
-      if (sum(L, (x) => x.chips.length) >= barCapacity(d)) return warn(t('prep.stakeFull'));
-      sp.chips.push(it);
-    }
-    run.plan.layout = L.filter((x) => x.chips.length);
-    update();
-  }
-  paint(V.board, V.at, paintAt);
-  // the meters: what the position holds of each zone's rows, and what that earns (as at the table)
-  function drawMeters(sd) {
-    const o = B.occupancy(sd), k = D.primaryC(run.cls), stakeAll = o.stakeRows.every((x) => x.n > 0), focus = o.stakeAligned >= 0;
-    const dots = (rows) => h('span', { class: 'rowdots' }, ...rows.map((x) => h('i', { class: x.n > 0 ? 'on' : '' })));
-    meters.replaceChildren(
-      h('div', { class: 'pmeter', tip: t('prep.meter.stake.tip', { stat: D.STATS[k].name }) }, h('span', { class: 'cap', text: t('prep.label.stake') }), dots(o.stakeRows),
-        h('b', { class: stakeAll ? 'good-t' : 'dim', text: stakeAll ? `+1 ${D.STATS[k].name}` : t('prep.meter.rows', { n: o.stakeRows.filter((x) => x.n > 0).length }) }),
-        h('small', { class: focus ? 'good-t' : 'dim', text: t(focus ? 'prep.meter.focus' : 'prep.meter.nofocus') })),
-      h('div', { class: 'pmeter', tip: t('prep.meter.bet.tip') }, h('span', { class: 'cap', text: t('prep.label.bet') }), dots(o.betRows), h('b', { class: 'dim', text: t('prep.meter.bet') })));
-  }
-  function update() {
-    const d = dims(), extra = getExtra();
-    for (const k of Object.keys(run.plan.resist || {})) run.plan.resist[k] = Math.min(run.plan.resist[k] || 0, R.owned(run, k));
-    if (!run.plan.layout) run.plan.layout = autoLayout();
-    const fitted = R.validLayout(run, d) || [];
-    if (R.layoutWorth(fitted) < R.layoutWorth(run.plan.layout) && !warnedShort) { warnedShort = true; toast(t('prep.paintShort'), 'warn'); }
-    run.plan.counts = R.layoutCounts(fitted);
-    run.plan.resist = {}; for (const sp of fitted) for (const x of sp.chips) if (typeof x !== 'number') run.plan.resist[x] = (run.plan.resist[x] || 0) + 1;
-    side = R.previewPosition(run, run.plan.counts, { position: extra.position, resist: run.plan.resist });
-    V.draw(side); drawMeters(side); drawRack();
-    tween(worthEl, R.planWorth(run.plan.counts), cents, 300); tween(countEl, sum(fitted, (sp) => sp.chips.length), (n) => `${Math.round(n)}/${barCapacity(d)}`, 300);
-    onChange?.();
-  }
-  return { el, update, worth: () => R.planWorth(run.plan.counts) };
+  if (!run.plan.layout) run.plan.layout = autoLayout();
+  const restoreBtn = btn(t('prep.restore'), () => { const from = run.plan.sat || D.ROLLERS[run.roller]?.layout || null; P.put(from || autoLayout()); toast(t('prep.restored')); }, () => t('prep.restore.tip'), 'small');
+  P = stakePainter({ dims, cls: run.cls, layout: run.plan.layout, maxW, title: t('prep.position'), head: [restoreBtn],
+    pick: { get: () => brushPick, set: (v) => { brushPick = v; } },
+    items: () => [...D.DENOMS.filter((x) => x.floor <= R.chipFloor(run)).map((x) => x.value), ...Object.keys(D.SHOP_CHIPS).filter((k) => R.owned(run, k) > 0)],
+    left: (it) => (typeof it === 'number' ? null : R.owned(run, it) - usedOf(run.plan.layout, it)),
+    canAdd: (L, sp, it) => { const d = dims(); if (typeof it === 'number' && R.planWorth(R.layoutCounts(L)) + it > run.purse) return t('prep.purseShort');
+      if (typeof it !== 'number' && usedOf(L, it) >= R.owned(run, it)) return t('prep.noMore'); if (sum(L, (x) => x.chips.length) >= barCapacity(d)) return t('prep.stakeFull'); return null; },
+    set: (L) => { run.plan.layout = L; },
+    // what is drawn is the position as it will sit down: fitted to your purse and position, effect chips included
+    onDraw: () => { const d = dims(), extra = getExtra();
+      for (const k of Object.keys(run.plan.resist || {})) run.plan.resist[k] = Math.min(run.plan.resist[k] || 0, R.owned(run, k));
+      const fitted = R.validLayout(run, d) || [];
+      if (R.layoutWorth(fitted) < R.layoutWorth(run.plan.layout) && !warnedShort) { warnedShort = true; toast(t('prep.paintShort'), 'warn'); }
+      run.plan.counts = R.layoutCounts(fitted);
+      run.plan.resist = {}; for (const sp of fitted) for (const x of sp.chips) if (typeof x !== 'number') run.plan.resist[x] = (run.plan.resist[x] || 0) + 1;
+      const side = R.previewPosition(run, run.plan.counts, { position: extra.position, resist: run.plan.resist });
+      tween(worthEl, R.planWorth(run.plan.counts), cents, 300); tween(countEl, sum(fitted, (sp) => sp.chips.length), (n) => `${Math.round(n)}/${barCapacity(d)}`, 300);
+      queueMicrotask(() => onChange?.()); return side; } });
+  P.el.firstChild.append(h('span', { class: 'cap', guide: 'prep:deploy', tip: t('prep.deploy.tip', { name: K.name, from: t(`prep.deploy.at.${K.deploy === 'start' || K.deploy === 'end' ? K.deploy : 'mid'}`) }), text: t(`prep.deploy.${K.deploy === 'start' || K.deploy === 'end' ? K.deploy : 'mid'}`) }));
+  P.el.append(h('div', { class: 'row wrap' }, h('span', { class: 'stat', tip: t('prep.worth.tip') }, h('em', { text: t('prep.worth') }), worthEl), h('span', { class: 'stat', tip: t('prep.capacity.tip') }, h('em', { text: t('prep.capacity') }), countEl)));
+  return { el: P.el, update: () => P.redraw(), worth: () => R.planWorth(run.plan.counts) };
 }
 
 // ---------- the opponent, as they will sit down ----------
@@ -137,7 +159,7 @@ function oppPanel(opp) {
     opp.drink ? drinkEl(opp.drink) : h('span', { class: 'gear-none', text: t('prep.opp.nodrink') }),
     T ? h('span', { class: 'gcard bizcard', guide: 'boss-trait', tip: () => t('trait.card-tip', { name: opp.name, title: T.title, trait: T.name, rule: B.traitRule(T), flavor: T.flavor }) }, h('em', { text: t('table.biz-card') }), h('b', { text: T.name })) : null);
   let sd = null; try { sd = R.previewOpponent(opp); } catch { sd = null; }
-  const V = positionView({ CH: 30, SZ: 19, maxW: 380, mirror: true, lift: 2 }); if (sd) V.draw(sd);
+  const V = positionView({ CH: 34, maxW: 380, mirror: true }); if (sd) V.draw(sd);
   return h('div', { class: 'box col opp-panel', guide: 'opponent' },
     h('div', { class: 'row between' }, h('span', { class: 'cap', text: t('prep.across') }), h('span', { class: 'sub', guide: 'opponent', tip: () => oppTip(opp), text: `${opp.title ? opp.title + ' · ' : ''}${t('prep.opp.line', { cls: D.CLASSES[opp.cls].name, amt: cents(opp.worth) })}` })),
     h('div', { class: 'row', style: { alignItems: 'center', gap: '14px' } }, sign, gear),

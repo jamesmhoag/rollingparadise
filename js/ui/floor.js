@@ -8,6 +8,7 @@ import * as D from '../data.js';
 import * as R from '../run.js';
 import { traitRule } from '../bout.js';
 import { planner } from './prep.js';
+import { rollerCard } from './rollercard.js';
 import { cents } from '../util.js';
 import { t } from '../text.js';
 import { iconKids } from './icons.js';
@@ -286,9 +287,10 @@ function bookPanel() {
 
 function kitPanel() {
   const run = app.run, st = R.rollerStats(run);
-  openPanel(h('div', {}, head(D.heroName(run.cls, run.roller), D.classRule(run.cls)),
-    h('div', { class: 'col' }, h('span', { class: 'cap', text: tx('select.book') }), h('div', { class: 'inv' }, run.tricks.map((t) => trickTag(t, run.cls))),
-      h('span', { class: 'cap', text: tx('select.pouch') }), h('div', { class: 'dicebox' }, run.dice.map((d) => { const el = dieEl(d); el._tip = () => dieTip(d); el.classList.add('has-tip'); return el; })),
+  // your Roller's card, with the run's own numbers (gear included) and what you hold now
+  openPanel(h('div', {}, head(tx('floor.coat-check'), tx('floor.coat-check.sub')),
+    h('div', { class: 'row', style: { alignItems: 'flex-start', gap: '18px' } }, rollerCard({ rid: run.roller || D.rollerOf(run.cls), v: st.v, dice: run.dice, tricks: run.tricks, crown: R.crownWorn(run) }),
+    h('div', { class: 'col', style: { minWidth: 0, flex: 1 } },
       h('span', { class: 'cap', text: tx('floor.wallet-slots-plus-one', { name: R.walletOf(run).name, walletCardN: R.walletCards(run).length, slots: R.walletOf(run).slots }) }),
       h('div', { class: 'row wrap', style: { alignItems: 'flex-end' } }, walletEl(run.wallet), ...R.passesOf(run).map((f) => passEl(f)), jacketEl(run.jacket), run.drink ? drinkEl(run.drink, run.drink.sips, run.drink.max) : null,
         h('div', { class: 'inv', style: { alignItems: 'flex-end' } }, run.cards.map((c) => { const pass = D.LANYARD_CARDS.includes(c); const el = cardEl(c); el.style.cursor = pass ? '' : 'pointer'; el._tip = () => cardTip(c, R.rollerStats(run).v) + (pass ? tx('floor.clipped-to-your-lanyard') : tx('floor.takes-a-wallet-slot')); el.classList.add('has-tip');
@@ -296,7 +298,7 @@ function kitPanel() {
       ...bizCards(run, () => { closePanel(); rerender(); }),
       h('span', { class: 'cap', text: tx('floor.position') }), h('p', { class: 'sub', text: tx('floor.bet-rows-and-stake', { meterRows: st.dims.meterRows, barRows: st.dims.barRows, stackMax: st.dims.stackMax, barRows2: st.dims.barRows * 5 * st.dims.stackMax }) }),
       // your starting position, changed here as well as before each bout (it is the one every table starts from)
-      (() => { const P = planner(() => ({}), null, { maxW: 300 }); P.update(); return h('div', { class: 'box' }, P.el); })())));
+      (() => { const P = planner(() => ({}), null, { maxW: 300 }); P.update(); return h('div', { class: 'box' }, P.el); })()))));
 }
 
 // the High Rollers' business cards you have won: pick the one you play by
