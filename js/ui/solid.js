@@ -37,7 +37,8 @@ function d10() {
     if (dot(n, c) < 0) { n = n.map((x) => -x); pts = [...pts].reverse(); } return { n, pts }; });
 }
 const GEO = {};
-function geometry(type) {
+// a die type's faces ({ n: outward normal, pts: corners in order }), unit circumradius, in CSS's axes (x right, y down, z toward you)
+export function geometry(type) {
   if (GEO[type]) return GEO[type];
   const tet = [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]];
   const ico = uniq(cyc(0, 1, PHI)), dod = uniq([...signs([1, 1, 1]), ...cyc(0, 1 / PHI, PHI)]);
@@ -74,9 +75,10 @@ export function solidEl(d, size = 120, values) {
     fe._n = n; fe._v = v; rot.append(fe); return fe;
   });
   const light = norm([-0.45, -0.65, 0.75]);
-  let m = new DOMMatrix();
+  let m = new DOMMatrix(), live = null; // the die drawn for real (dice3d.js) over the CSS faces, once the renderer is up
+  if (typeof document !== 'undefined') import('./dice3d.js').then((M3) => { live = M3.live(el, d, labels, size); live.draw(m); }).catch(() => {});
   function setRotation(next) {
-    m = next; rot.style.transform = m.toString();
+    m = next; rot.style.transform = m.toString(); live?.draw(m);
     for (const fe of faceEls) { const n = fe._n, p = m.transformPoint(new DOMPoint(n[0], n[1], n[2], 0)); fe.style.filter = `brightness(${(0.62 + 0.5 * Math.max(0, dot([p.x, p.y, p.z], light))).toFixed(3)})`; }
   }
   // the rotation that turns face i toward the viewer, upright

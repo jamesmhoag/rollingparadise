@@ -1,7 +1,7 @@
 // The table. Every chip, die, trick card and creature is one persistent element that is
 // moved, faded or flipped to follow the bout state, so nothing ever pops between states.
 import { h, tip, wait, tween, swapText, setOn, pulse, syncList, toast, btn, refreshTip, redrawTip, box, vc, detail, paint, guided, stagePoint, rightClick } from './core.js';
-import { chipSig, chipGlyph, chipName, chipText, chipTip, dieTip, trickTip, trickWord, trickWords, statTip, drinkTip, dieMarks, dieDyes, dieStyle, dieClass, trickLook, feltStyle, seenAs, traitsOf, traitsHtml, dieEl, chipEl, trickChip, flavorP } from './parts.js';
+import { chipSig, chipGlyph, chipName, chipText, chipTip, dieTip, trickTip, trickWord, trickWords, statTip, drinkTip, dieMarks, dieDyes, dieStyle, dieClass, trickLook, feltStyle, seenAs, traitsOf, traitsHtml, dieEl, dress3d, chipEl, trickChip, flavorP } from './parts.js';
 import { iconKids, iconFill } from './icons.js';
 import { flyerTraits } from '../traits.js';
 import { openLibrary } from './library.js';
@@ -581,6 +581,7 @@ export function boutScene(root, bout, ctx, onDone) {
       el.style.opacity = w.folded ? '0' : '1'; el.style.pointerEvents = w.folded ? 'none' : ''; place(el, w.x, w.y, w.folded ? 'scale(.5)' : ''); el.style.zIndex = w.on ? 6 : ui.peek === 'dice' ? 9 : 4; el.classList.toggle('on', !!w.on); el.classList.toggle('rolled', !!w.rolled); el.classList.toggle('sel', (ui.mode === 'die' && ui.die === id) || !!w.picked);
       el.classList.toggle('fixed', !!w.on && (!!w.si || !B.canMove(bout, me, id))); el.classList.toggle('tapped', !!w.tapped); el.classList.toggle('restoring', !!w.restoring); el.classList.toggle('bonusd', !!w.bonus);
       const label = el.firstChild, text = w.rolled ? String(w.value) : w.d.type.slice(1);
+      if (!w.d.chip && el._text !== text) dress3d(el, w.d, w.rolled ? w.value : undefined);
       if (w.rolled && !el._rolled) { label.textContent = text; sfx('roll'); toss(el, w.d, w.value, from ? { x: +from[1], y: +from[2] } : { x: w.x, y: w.y + 90 }, { x: w.x, y: w.y }, tossN++); }
       else if (label.textContent !== text && !el.classList.contains('rolling')) label.textContent = text;
       el._text = text; el._rolled = !!w.rolled;

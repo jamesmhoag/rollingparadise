@@ -640,6 +640,19 @@ soaked), `interest` (a 1¢ chip on its Bet each turn per so many ¢ of Worth, ca
 
 What is needed to build these is listed in `docs/OPEN-QUESTIONS.md`.
 
+## Dice models
+
+Every die is one 3D model (`js/ui/dice3d.js`, three.js r169 vendored under `js/vendor/three/`, loaded only in the
+browser): a rounded solid made as the hull of spheres at the corners, with each type rounded its own amount and each
+material scaling that (diamond sharpest, bone softest). Pips and numbers are always sunk into the face, through a
+height map turned into a normal map, with a frosted recess and an ink fill. Materials are physical: plastic is
+clear-coated and glossy, bone has an ivory sheen, metal reflects a lit room (a soft box, a window and pink, cyan and
+gold neon), glass and glimmering transmit with depth and a mirrored inner shell, swirling is clear resin with
+coloured ribbons inside, diamond has the index of real diamond with dispersion and iridescence, and sparkling is
+metal flake under a clear coat. The same model is drawn everywhere: still dice (Pouch, tray, Run, spines, cards) are
+rendered once per type, material, faces and value and cached as images; tossed dice are drawn live each frame. Without
+WebGL the older flat dice show.
+
 ## Basic chips
 
 Fifteen value chips: 1, 2, 5, 10, 25 (floor 1 to 3), 50, 100, 250 (floor 4) and 500 to 50,000 (the Paradise

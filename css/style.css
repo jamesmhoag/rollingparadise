@@ -1047,3 +1047,7 @@ p.flavor { font-style: italic; color: var(--dim); }
 .bookcards { display: flex; flex-wrap: wrap; gap: 5px; }
 .bookcard { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px 4px 6px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, .1); border-left: 4px solid var(--tc); background: linear-gradient(90deg, color-mix(in srgb, var(--tc) 16%, #120c2a), #0e0a22); font-size: 12px; }
 .bookcard .q { font-size: 10px; color: var(--gold); } .bookcard .req { display: inline-flex; align-items: center; gap: 2px; font-size: 10px; color: var(--gold); margin-left: 2px; } .bookcard .req em { font-style: normal; }
+/* dice rendered in 3D (dice3d.js): the picture replaces the CSS skin; dyes, upgrades and marks stay drawn over it */
+.die.r3d::before, .die.r3d::after { display: none; } .die.r3d > i { visibility: hidden; }
+.die.r3d { background: var(--r3d) center / 116% no-repeat; }
+.solid.r3d-on .solid-rot { visibility: hidden; } .solid .r3d-live { position: absolute; left: -15%; top: -15%; width: 130%; height: 130%; pointer-events: none; }

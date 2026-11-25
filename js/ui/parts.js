@@ -124,7 +124,9 @@ export const dieClass = (d) => `m-${matOf(d)} ${(d.up || []).length ? 'upg' : ''
 // A die's look comes from its material (MATERIALS in content/dice.js): the material's colour, set here from the
 // table, and its finish (css .m-*). Its shape alone tells its size. `_die` lets any die be grabbed and spun (spin.js).
 export const dieStyle = (d) => ({ '--dc': D.MATERIALS[matOf(d)]?.color || '#e8e2d4' });
-export const dieEl = (d, value, cls = '') => { const el = h('span', { class: `die static ${d.type} ${dieClass(d)} ${cls}`, style: dieStyle(d) }, h('i', { text: value ?? d.type.slice(1) }), dieMarks(d), dieDyes(d)); el._die = d; return el; };
+// the die's picture is rendered in 3D (dice3d.js) once the renderer is up; the CSS die shows until then
+export const dress3d = (el, d, value) => { if (typeof document !== 'undefined' && !d.chip) import('./dice3d.js').then((m) => m.dress(el, d, value)).catch(() => {}); };
+export const dieEl = (d, value, cls = '') => { const el = h('span', { class: `die static ${d.type} ${dieClass(d)} ${cls}`, style: dieStyle(d) }, h('i', { text: value ?? d.type.slice(1) }), dieMarks(d), dieDyes(d)); el._die = d; dress3d(el, d, value); return el; };
 
 const fx = (m) => '×' + (m % 1 ? m.toFixed(2).replace(/0$/, '') : m);
 // what a trick's quality, print and condition do, spelled out
