@@ -6,6 +6,7 @@
 export const FONTS = {
   display: { family: "Didact Gothic", files: ["assets/fonts/didact-gothic-latin-400-normal.woff2", "assets/fonts/didact-gothic-latin-ext-400-normal.woff2"], license: "assets/fonts/OFL-didact-gothic.txt" },
   script: { family: "Yellowtail", files: ["assets/fonts/yellowtail-latin-400-normal.woff2"], license: "assets/fonts/OFL-yellowtail.txt" },
+  lines: { family: "Monoton", files: ["assets/fonts/monoton-latin-400-normal.woff2", "assets/fonts/monoton-latin-ext-400-normal.woff2"], license: "assets/fonts/OFL-monoton.txt" },
 };
 
 // Each Roller's neon sign at the table, and the House's, set in Build mode (Neon): a pair of colours for each part (the
@@ -24,8 +25,21 @@ export const NEON = {
 export { MUSIC } from './music.js'; // the lounge band's set list (written by tools/jazz/render.py)
 export { LOOPS } from './loops.js'; // the bout music: each floor's table and High Roller loops, in layers (written by tools/jazz/loops.py)
 
+// The title sign's other way of lighting: one tube at a time. tools/logo-parts.py cuts the three layers above into
+// these parts (each part a full-size PNG holding only its own pixels, glow included), in the order they light:
+// ROLLING letter by letter, one die then the other, Paradise's letters but the s, the s with the swash and the palm's
+// trunk as one stroke, then the fronds one at a time. `shade` is the cyan layer's dark backing behind the palm
+// and the script, put up with the last frond (before then it would show as a ghost of the palm).
+export const TITLE_PARTS = [
+  ...["R", "O", "L1", "L2", "I", "N", "G"].map((p) => ({ layer: "cyan", part: p })), 
+  ...["die1", "die2"].map((p) => ({ layer: "dice", part: p })),
+  ...["P", "a1", "r", "a2", "d", "i", "e", "trunk", "leaf1", "leaf2", "leaf3", "leaf4", "leaf5", "leaf6", "leaf7"].map((p) => ({ layer: "pink", part: p })),
+  { layer: "cyan", part: "shade", with: "leaf7" },
+].map((x) => ({ ...x, src: `assets/logo-parts/${x.layer}-${x.part}.png` }));
+
 export const IMAGES = {
   logoPink: "assets/logo-pink.png", logoCyan: "assets/logo-cyan.png", logoDice: "assets/logo-dice.png",
+  ...Object.fromEntries(TITLE_PARTS.map((x) => [`title:${x.layer}-${x.part}`, x.src])),
 };
 
 // icons: { src: a file in assets/icons (png, svg or webp), or null } and, for things with no table of their own, the

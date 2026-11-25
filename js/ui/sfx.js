@@ -93,6 +93,8 @@ export const SOUNDS = {
   expense: (o) => { note('muted', 7, { ...o, gain: 0.32, len: 0.16 }); note('muted', 4, { ...o, gain: 0.3, at: 0.16, len: 0.3 }); hit('triangle', { ...o, gain: 0.12 }); }, // the fee is called
   correction: (o) => { chord('nylon', [12, 7, 4, 0], { ...o, gain: 0.25, roll: 0.03 }); hit('swish', { ...o, gain: 0.2 }); }, // a strum across the table
   miss: (o) => { note('bass', 0, { ...o, gain: 0.3, len: 0.25, oct: -1 }); }, // nothing landed
+  lit: (o) => { noise(0.04, { ...o, freq: 3200, gain: 0.06 }); noise(0.05, { ...o, at: 0.1, freq: 3600, gain: 0.07 }); hit('triangle', { ...o, at: 0.2, gain: 0.07, rate: 1.6 }); }, // a bid trick's tube strikes on
+  spent: (o) => { for (let i = 0; i < 7; i++) noise(0.025, { ...o, at: rnd(0, 0.28), freq: rnd(2500, 6500), gain: rnd(0.05, 0.12) }); noise(0.3, { ...o, at: 0.22, freq: 320, filter: 'lowpass', gain: 0.07 }); }, // a played trick sparks and goes out
   bonus: (o) => { note('piano', 14, { ...o, gain: 0.3 }); note('piano', 7, { ...o, gain: 0.28, at: 0.09, oct: 1 }); hit('chimes', { ...o, gain: 0.12, at: 0.05 }); },
   settle: (o) => SOUNDS.pay(o),
   // the elements: a texture and an instrument

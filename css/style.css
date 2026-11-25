@@ -5,6 +5,7 @@
   --gold: #7df3ff; --gold-2: #2aa7c4; --cream: #eefbff; --dim: #93a3c8; --line: rgba(150, 215, 255, .16);
   --coral: #ff86ea; --pink: #ff86ea; --amber: #ffd76a; --good: #7dffb5; --bad: #ff7096; --violet: #b08cff; --sky: #63c4ff;
   --ease: cubic-bezier(.22, .8, .24, 1); --display: 'Didact Gothic', 'Century Gothic', 'Avant Garde', Futura, 'Avenir Next', 'Trebuchet MS', system-ui, sans-serif; --script: 'Yellowtail', 'Brush Script MT', 'Segoe Script', 'Snell Roundhand', 'Apple Chancery', cursive;
+  --lines: 'Monoton', 'Didact Gothic', 'Century Gothic', system-ui, sans-serif; /* capitals in parallel lines, like ROLLING on the title sign */
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; background: radial-gradient(ellipse at 50% 30%, #150a2e, #020106 75%); overflow: hidden; }
@@ -266,6 +267,21 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 @keyframes strike { 0% { opacity: 0; } 8% { opacity: .9; } 14% { opacity: .1; } 26% { opacity: .8; } 32% { opacity: 0; } 46% { opacity: 1; } 52% { opacity: .35; } 60%, 100% { opacity: 1; } }
 @keyframes buzzP { 0%, 100% { opacity: 1; } 41% { opacity: 1; } 42% { opacity: .55; } 43% { opacity: 1; } 44.5% { opacity: .3; } 46% { opacity: 1; } 83% { opacity: 1; } 83.6% { opacity: .7; } 84.2% { opacity: 1; } }
 @keyframes buzzC { 0%, 100% { opacity: 1; } 17% { opacity: 1; } 17.5% { opacity: .5; } 18.4% { opacity: 1; } 66% { opacity: 1; } 66.6% { opacity: .2; } 67.5% { opacity: .9; } 68.3% { opacity: .45; } 69.5% { opacity: 1; } }
+/* the other way of lighting (main.js lightByParts): a tube at a time, each striking on at its own delay; then the
+   whole sign (the same picture) takes over, already on, and buzzes as above. .off buzzes the whole sign out. */
+.sign .tparts { position: absolute; inset: 0; pointer-events: none; }
+.sign .tparts .tp { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; animation: strikePart .55s steps(1, end) both; }
+.sign .tparts .tp.tp-long { animation-duration: .8s; }
+.sign .tp-pink { filter: drop-shadow(0 0 9px rgba(255, 110, 220, .9)) drop-shadow(0 0 26px rgba(255, 110, 220, .5)); }
+.sign .tp-cyan { filter: drop-shadow(0 0 9px rgba(110, 240, 255, .9)) drop-shadow(0 0 28px rgba(110, 240, 255, .5)); }
+.sign .tp-dice { filter: drop-shadow(0 0 10px rgba(110, 240, 255, .95)) drop-shadow(0 0 30px rgba(110, 240, 255, .6)); }
+@keyframes strikePart { 0% { opacity: 0; } 12% { opacity: .9; } 24% { opacity: .15; } 40% { opacity: .85; } 52% { opacity: .3; } 66%, 100% { opacity: 1; } }
+.sign.by-parts > img { animation: none; opacity: 0; } .sign.by-parts .glow { animation: none; opacity: 0; }
+.sign.lit > img { opacity: 1; } .sign.lit .glow { opacity: 1; animation: breatheSky 4.2s ease-in-out infinite; }
+.sign.lit .l-pink { animation: buzzP 6.3s linear infinite; } .sign.lit .l-cyan { animation: buzzC 8.7s linear infinite; } .sign.lit .l-dice { animation: diceGlow 3.4s ease-in-out infinite; }
+.sign.off > img, .sign.off .glow { animation: signOff .85s steps(1, end) forwards !important; }
+@keyframes signOff { 0% { opacity: 1; } 10% { opacity: .2; } 20% { opacity: .9; } 34% { opacity: .1; } 44% { opacity: .6; } 56%, 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .sign .tparts .tp { animation: none; opacity: 1; } }
 @keyframes diceGlow { 0%, 100% { opacity: 1; transform: rotate(0deg) translateY(0); } 50% { opacity: .82; transform: rotate(-3.5deg) translateY(-6px); } }
 .title .hotel { font-family: var(--display); font-size: 13px; letter-spacing: .62em; margin-bottom: 6px; opacity: 0; animation: fadeUp 1s 2.1s forwards; }
 .title .tagline { font-family: var(--script); font-size: 30px; margin: 2px 0 24px; opacity: 0; animation: fadeUp 1s 2.4s forwards; }
@@ -878,8 +894,14 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 .who.seat { width: 424px; top: 368px; align-items: center; row-gap: 4px; }
 .who.seat.me { left: 10px; } /* its frame is its sign's (.neonsign.frame-*) */
 .who .name.nsign { display: inline-grid; justify-items: start; line-height: 1; cursor: help; } .who.them .name.nsign { justify-items: end; }
-.neon-name { font-family: var(--script) !important; font-weight: 400; font-size: var(--name-fs, 27px) !important; line-height: 26px; letter-spacing: .01em; }
-.neon-class { font-family: var(--display); font-size: 9.5px; font-weight: 700; letter-spacing: .32em; text-transform: uppercase; margin-top: 1px; padding-left: 2px; }
+.neon-name { font-family: var(--script) !important; font-weight: 400; font-size: calc(var(--name-fs, 27px) * var(--nk, 1)) !important; line-height: 26px; letter-spacing: .01em; }
+.neon-class { font-family: var(--display); font-size: calc(9.5px * var(--ck, 1)); font-weight: 700; letter-spacing: .32em; text-transform: uppercase; margin-top: 1px; padding-left: 2px; }
+/* each line's face (sign.js nameFont, clsFont): any of the three. --nk and --ck scale a face to sit in the same room:
+   the script is drawn small for its size, capitals large, and Monoton's lines need size to read as lines */
+.nsign.nf-display .neon-name { --nk: .74; font-family: var(--display) !important; text-transform: uppercase; letter-spacing: .08em; line-height: 1.05; }
+.nsign.nf-lines .neon-name { --nk: .82; font-family: var(--lines) !important; text-transform: uppercase; letter-spacing: .03em; line-height: 1.1; }
+.nsign.cf-script .neon-class { --ck: 1.75; font-family: var(--script); font-weight: 400; text-transform: none; letter-spacing: .02em; line-height: 1; padding-left: 0; }
+.nsign.cf-lines .neon-class { --ck: 1.3; font-family: var(--lines); font-weight: 400; letter-spacing: .14em; line-height: 1.15; }
 .who.me .neon-name { color: color-mix(in srgb, var(--you-name1) 28%, #fff) !important; text-shadow: 0 0 2px #fff, 0 0 7px var(--you-name1), 0 0 16px var(--you-name1), 0 0 28px var(--you-name2), 0 0 44px var(--you-name2) !important; }
 .who.them .neon-name { color: color-mix(in srgb, var(--them-name1) 28%, #fff) !important; text-shadow: 0 0 2px #fff, 0 0 7px var(--them-name1), 0 0 16px var(--them-name1), 0 0 28px var(--them-name2), 0 0 44px var(--them-name2) !important; }
 .who.me .neon-class { color: color-mix(in srgb, var(--you-cls1) 70%, #fff); text-shadow: 0 0 4px var(--you-cls1), 0 0 10px var(--you-cls2); }
@@ -903,8 +925,8 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 .who.seat .badges { min-height: 0; }
 
 /* ---------- High Rollers: a bigger sign, and the business card with their trait ---------- */
-.who.them.boss .neon-name { font-size: var(--name-fs, 38px) !important; line-height: .95; }
-.who.them.boss .neon-class { font-size: 13px; letter-spacing: .36em; }
+.who.them.boss .neon-name { font-size: calc(var(--name-fs, 38px) * var(--nk, 1)) !important; line-height: .95; }
+.who.them.boss .neon-class { font-size: calc(13px * var(--ck, 1)); letter-spacing: .36em; } .who.them.boss .cf-script .neon-class { letter-spacing: .02em; }
 .who.them.boss.seat { padding: 10px 14px; }
 .gcard.bizcard { --gc: #f3ead2; --ink: #2a1c0a; display: inline-grid; align-content: center; justify-items: start; gap: 1px; width: auto; min-width: 96px; height: 40px; padding: 3px 9px;
   border-radius: 4px; background: linear-gradient(160deg, #fbf5e4, #e3d6b3); color: #2a1c0a; box-shadow: 0 2px 6px rgba(0, 0, 0, .45); cursor: help; transform: rotate(-2deg); align-self: center; }
@@ -1137,3 +1159,40 @@ table.b-shop { border-collapse: collapse; width: 100%; font-size: 12px; margin-t
 .b-states { display: grid; gap: 6px; justify-items: start; } .b-states .tk-card { width: 280px; }
 .btn.pat { padding: 4px 6px; } .btn.pat.on { box-shadow: 0 0 0 2px var(--gold); }
 .c-compact .req.bonus-req { background: none; box-shadow: none; padding: 0; border: 0; } .c-compact .tk-dice.mini .tk-slot { width: 12px; height: 12px; font-size: 7px; }
+
+/* ---------- lit and spent: a trick that is going to play, and one that has ----------
+   Bid on, a trick lights up: its edge becomes a neon tube in its type's colour, struck on with the name signs'
+   flicker, a brighter stretch of light chasing round it and its glow breathing; the dice on it glow in the same
+   colour. Once it has played it is spent: it throws sparks, its tube buzzes out, the card and its dice grey, and
+   when the House taps them they slide to the tapped piles (yours under the Book and after the Pouch, theirs to their
+   Book and Pouch). All of it holds still for players who ask for reduced motion. */
+@property --lit-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.tcard.lit { filter: none; outline-color: transparent;
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--tc) 70%, #fff), 0 0 9px var(--tc), 0 0 22px color-mix(in srgb, var(--tc) 55%, transparent), 0 8px 18px rgba(0, 0, 0, .5);
+  animation: litOn .7s steps(1) both, litBreathe 3.2s ease-in-out .7s infinite; }
+.tcard.lit::before { content: ''; position: absolute; inset: 0; z-index: 6; border-radius: inherit; padding: 2px; pointer-events: none;
+  background: conic-gradient(from var(--lit-a), transparent 0 60%, color-mix(in srgb, var(--tc) 55%, #fff) 72%, #fff 77%, color-mix(in srgb, var(--tc) 55%, #fff) 82%, transparent 95%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: litChase 2.8s linear infinite, litOn .7s steps(1) both; }
+@keyframes litChase { to { --lit-a: 360deg; } }
+@keyframes litOn { 0% { filter: brightness(.55); } 12% { filter: brightness(1.45); } 22% { filter: brightness(.65); } 34% { filter: brightness(1.3); } 46% { filter: brightness(.85); } 58%, 100% { filter: none; } }
+@keyframes litBreathe { 50% { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--tc) 55%, #fff), 0 0 6px var(--tc), 0 0 14px color-mix(in srgb, var(--tc) 35%, transparent), 0 8px 18px rgba(0, 0, 0, .5); } }
+.die.on.lit { --ring: drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 6px var(--lc, var(--gold))); animation: dieLit 3.2s ease-in-out infinite; }
+@property --br { syntax: '<number>'; inherits: false; initial-value: 1; } /* a die's brightness (style.css .die), registered so it can breathe */
+@keyframes dieLit { 0%, 100% { --br: 1.12; } 50% { --br: .9; } }
+/* spent: the tube buzzes out (the brightness flickers down), the colour drains, and it stays grey until it is tapped */
+.tcard.spent { outline-color: color-mix(in srgb, var(--tc) 25%, transparent); box-shadow: 0 5px 14px rgba(0, 0, 0, .4); filter: grayscale(.85) brightness(.7); animation: spentOff .9s linear both; transition: transform .7s var(--ease), width .5s var(--ease), height .5s var(--ease), opacity .5s, box-shadow .3s, filter .3s, translate .5s var(--ease); }
+.tcard.spent::before { content: none; }
+@keyframes spentOff { 0% { filter: brightness(1.9) saturate(1.3); } 9% { filter: brightness(.55); } 17% { filter: brightness(1.45); } 27% { filter: brightness(.5); } 36% { filter: brightness(1.15); } 48% { filter: grayscale(.4) brightness(.6); } 60% { filter: grayscale(.6) brightness(.85); } 100% { filter: grayscale(.85) brightness(.7); } }
+.die.spent { filter: drop-shadow(0 3px 2px rgba(0, 0, 0, .55)) grayscale(.85) brightness(.6); animation: spentOff .9s linear both; transition: transform .7s var(--ease), opacity .5s, filter .3s; }
+/* the sparks: short white-hot streaks in the tube's colour, thrown off the card's edge, falling as they fade */
+.spark { position: absolute; left: 0; top: 0; width: 2px; height: var(--len, 9px); border-radius: 2px; pointer-events: none; z-index: 1300;
+  background: linear-gradient(#fff, var(--sc, #fff) 45%, transparent); box-shadow: 0 0 4px var(--sc, #fff), 0 0 9px var(--sc, #fff);
+  transform: translate(var(--x), var(--y)) rotate(var(--rot)); animation: sparkFly var(--t, .6s) cubic-bezier(.2, .7, .4, 1) var(--w, 0s) both; }
+@keyframes sparkFly { 0% { opacity: 1; transform: translate(var(--x), var(--y)) rotate(var(--rot)) scaleY(.4); }
+  70% { opacity: .9; } 100% { opacity: 0; transform: translate(calc(var(--x) + var(--dx)), calc(var(--y) + var(--dy))) rotate(var(--rot)) scaleY(1); } }
+.spark-flash { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 1299; border-radius: var(--r, 10px);
+  box-shadow: 0 0 0 2px #fff, 0 0 10px 3px var(--sc, #fff), 0 0 28px 8px color-mix(in srgb, var(--sc, #fff) 60%, transparent), inset 0 0 18px color-mix(in srgb, var(--sc, #fff) 70%, transparent);
+  animation: sparkFlash .7s ease-out both; } /* the tube flares as it blows */
+@keyframes sparkFlash { 0% { opacity: 1; } 12% { opacity: .35; } 22% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .tcard.lit, .tcard.lit::before, .die.on.lit, .tcard.spent, .die.spent { animation: none !important; } .spark, .spark-flash { display: none; } }
