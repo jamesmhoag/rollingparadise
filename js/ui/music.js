@@ -3,6 +3,7 @@
 // sound start after the player touches the page, so it begins on the first click. The ♪ button in the corner
 // cycles the band, its chiptune version (every tune and loop again on 8-bit voices, tools/jazz/chiptune.py) and
 // off, remembered in this browser; switching between the two keeps the place in the tune. Its hover names the tune.
+// The ⏭ beside it skips to the next tune (or, at a table, the next loop).
 // The tune's key is shared (musicKey), so the table's sounds play in the key the band is in.
 //
 // At a table the band plays the floor's bout loop instead (content/loops.js; the High Roller and the Ascent's last
@@ -128,9 +129,17 @@ export function initMusic(stage) {
     else play();
     mark();
   };
-  const button = btn('♪', turn, tip, 'small music-btn');
-  const mark = () => { button.classList.toggle('muted', !on()); button.classList.toggle('chip', mode === 'chip'); };
-  mark(); stage.append(button);
+  // skip: in the lounge, on to the next tune; at a table, on to the next loop of its kind (tables' or High Rollers')
+  const nextLoop = () => { const same = LOOPS.filter((L) => L.kind === loop.L.kind); return same[(same.indexOf(loop.L) + 1) % same.length]; };
+  const skip = () => {
+    if (!on()) return;
+    if (loop) { const lp = { ...loop, L: nextLoop(), live: false }; silence(loop, 0.3); loop = lp; startLoop(lp); }
+    else if (audio) next(); else { at = (at + 1) % order.length; play(); }
+  };
+  const skipTip = () => (!on() ? t('music.skipOff') : t('music.skip', { title: loop ? nextLoop().title : order[(at + 1) % order.length].title }));
+  const button = btn('♪', turn, tip, 'small music-btn'), skipper = btn('⏭', skip, skipTip, 'small skip-btn');
+  const mark = () => { for (const b of [button, skipper]) b.classList.toggle('muted', !on()); button.classList.toggle('chiptune', mode === 'chip'); };
+  mark(); stage.append(skipper, button);
   const first = () => { document.removeEventListener('pointerdown', first, true); lounge.touched = true; if (on()) start(); };
   document.addEventListener('pointerdown', first, true);
 }

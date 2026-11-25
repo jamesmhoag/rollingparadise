@@ -1085,6 +1085,8 @@ export default {
   "sfx.off": "<b>Sound effects off</b><p>Click to turn them on.</p>",
   "music.off": "<b>Music</b><p>Off. Click to bring the lounge band back.</p>",
   "music.chipNote": " On 8-bit chips tonight.",
+  "music.skip": "<b>Skip</b><p>On to the next one: {title}.</p>",
+  "music.skipOff": "<b>Skip</b><p>The music is off.</p>",
   "music.toChip": "the chiptune version",
   "music.toOff": "silence",
   "music.bout": "<b>Music</b><p>The band plays {title}, for {where}. It tightens as either Roller runs low on Worth.{chip} Click for {next}.</p>",
