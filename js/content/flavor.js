@@ -187,8 +187,10 @@ export const FLAVOR = {
   },
   CARDS: {
     discount_diesmith: 'A soot-smudged card from the smithy.', discount_trader: 'Dog-eared, signed by the Trader.', discount_lounge: 'Smells faintly of lime and bitters.',
-    paradise: 'Embossed in gold: you made it to the top.', membership: 'A plastic card with your name spelled almost right.', suite: 'A key card for a door upstairs.',
-    resist_card: 'A laminated card that says you are covered.', resist_card_plus: 'The gold version. Better coverage, better laminate.', debit: 'An old bank card, found between the cushions.',
+    discount_dice: 'Rattles when you shake it. Nobody knows why.', discount_exchange: 'Printed on the back of an old chip voucher.',
+    membership: 'A plastic card with your name spelled almost right.', suite_1: 'A key card for a door off the basement stairs.', suite_2: 'A key card that smells of hotel soap.',
+    suite_3: 'A key card with a velvet sleeve.', suite_4: 'A gold key card. The door it opens has a doorman of its own.',
+    debit: 'An old bank card, found between the cushions.',
     punch: 'Five holes and the next one is on the house.', note: 'A napkin with handwriting on it.', note_dice: 'Scribbled on the back of a betting slip.',
     note_debt: 'Torn from somebody\'s ledger.', note_house: 'Folded small and passed under the table.', note_hold: 'Written in a careful, patient hand.',
     note_flip: 'Coffee-stained and hard to read.', trading: 'Holographic, mint condition, completely useless here.',

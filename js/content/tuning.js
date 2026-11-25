@@ -15,12 +15,11 @@ export const TUNING = {
     interventionShare: 0.5, // the share of your wager an Intervention takes
     barLossPaysDrink: true, // losing a bar bout buys your opponent the drink
   },
-  // the shops (prices and stock floor by floor are in content/shops.js: Build mode's Shops section)
+  // the shops (prices and stock floor by floor are in content/shops.js: Build mode's Shops section; discounts, punches
+  // and memberships are on their cards: content/cards.js)
   shops: {
-    discount: 0.9, // price with a discount card (and a Membership at the Trick Trader)
     shelfUp: 0.2, shelfDown: 0.25, // chance a shelf trick is one quality above / below the floor's
     packSize: 5, packFoil: 0.2, gemChance: 0.08, // foil packs: tricks in one, the chance each is foil, the chance of Gem Mint
-    freeDrinkPunches: 5, // Lounge punches for a free drink
   },
   // tipping the lounge band (the music buttons): a skip, a request from the setlist, a swap to 8-bit chips and back,
   // and stopping or starting them

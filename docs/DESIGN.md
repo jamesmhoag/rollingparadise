@@ -179,8 +179,9 @@ The chip list from the workbook is kept in `docs/CHIP-LIST.tsv`; chips built fro
 is additive: chips the game had that are not on it stay in the game.
 The Library's **Chip list** tab shows all 97 rows with a status (built, partly built, needs detail) and, for
 the ones that cannot be built yet, what is missing; `docs/CHIP-STATUS.md` is the same list as a document.
-- **Resist chips** come from Resist Cards (found in the dodgy corner, r 2 or 3): one sits at the base of a front
-  Stake stack each bout and deters fees under r¢ on it — debt resistance, the way a Red chip resists fire.
+- **Resist chips**: a card with `resist` lays one at the base of a front Stake stack each bout and it deters fees
+  under r¢ on it. The Resist Cards themselves are retired; this kind of feature is to come from High Roller
+  business cards.
 - **Food** (Chocolate, Chip Chip with Dip, Fish 'n Chip, Hamburger and Bun) is sold at the Chip Exchange and goes on
   top of a stack; Honey (from Bumble Bees) and Eggs (from a Roost) are food made in the match. In the **Drink phase** that closes each round you may sip your drink once and eat one
   food chip (double-click it on top of one of your stacks); both work from the next turn. Food
@@ -409,6 +410,22 @@ what you own, carry or wear is marked.
 - Diesmith: forge (dice plus chips, with the workbook's costs and floor gates), sell, upgrade.
 - Trick Trader: one trick per class plus one generic (Excellent condition), restock, foil packs, sell (or trash a
   Poor trick), Membership Card after five purchases, Secret Shelf. Tricks are no longer upgraded.
+- **Prices and stock, floor by floor** (`content/shops.js`, Build mode's **Shops** section): every shop has a stock
+  for each thing it sells on each floor, in a run (chips, dice, shelf tricks, foil packs, drinks); what you buy is gone
+  until the next floor. Prices are set per floor too (a multiplier, or the price itself), and any shop chip can set
+  its own price and stock for a floor. The Shops section shows what each shop sells on each floor, at what price and
+  how many. The **Casino door** page sets the door bout (your chips, the Doorman's) and the welcome stake: the
+  starting worth for any Roller that does not set its own, and whether the Doorman's fees are added to it.
+- **Cards** (`content/cards.js`, Build mode's **Cards** section) are kinds with numbers, and their rule is written
+  from them: **discount** (a percent off at one shop), **punch** (a punch per purchase or per floor you buy there; a
+  full card makes the next item, or a named one, free), **membership** (a shop's stock opens floors early, its
+  members-only items appear (chips, drinks, the Trader's secret shelf), a percent off; earned by buying a number of
+  things there on one floor), **Suite Keys** (one per floor, won with a Double Down, clipped to the lanyard like a
+  pass), **notes**, **trading cards** and others. Each is printed from its `look`: two background colours, a
+  pattern, a border, edge symbols, a big symbol, ink and font, the neon signs' options as print. The Dodgy Corner
+  finds one card you don't hold by each card's weight (and a weight for nothing). The Paradise Card is gone (beating
+  the last High Roller is the way into the Paradise Ascent) and so are the Resist Cards. The High Rollers' business
+  cards (their traits) are listed in the Cards section too.
 - Lounge: the drink list with sips; buy, or play the barfly for it once per floor.
 - Sports Book: the seven sports, the odds table, one bet per game, settled while you are at the table.
 - Commitment: Challenge and Cheat tilts switched on or off (each adds or takes its share of the multiplier, and on a
@@ -530,10 +547,12 @@ for players who ask their system for reduced motion.
 - The same planner sits in your Coat Check panel on the floor, so you can set your position between tables too.
 
 ### Starting positions (the miniature Stake)
-- Build mode's Roller and Opponent makers lay a position out on a miniature of its Stake: red-checkered spaces, rows
-  from the Bet back, sized from the class, jacket and (for a High Roller) rank (`R.posDims`), so it resizes when any
-  of them change. Pick a chip from the rack and click a space to set it down (hold or sweep to keep going);
-  right-click or the eraser takes the top chip off. Chips laid where the position no longer reaches are kept in the
+- One stake painter everywhere (before a bout, the Coat Check, and Build mode's Roller and Opponent makers): the
+  position drawn as at the table (chips sized and centred in their spaces, stacks lifting as they grow), the rack of
+  chips beside it (click one to paint with it), click to set a chip down (hold to stack, sweep to cover more), and
+  the right button paints in reverse (click, hold or sweep to take top chips off). Under each zone, the table's own
+  marks: rows held (with what they earn, focus included) and columns held (what a turn's end restores). Sized from
+  the class, jacket and (for a High Roller) rank (`R.posDims`), so it resizes when any of them change. Chips laid where the position no longer reaches are kept in the
   data but left out at the table, and the editor says how many.
 - A Roller's position (`ROLLERS[id].layout`) is the run's first plan. Before each bout the player changes it from
   there in the position planner. When the purse cannot cover all of it, it is built from the bottom up: every
@@ -622,8 +641,8 @@ soaked), `interest` (a 1¢ chip on its Bet each turn per so many ¢ of Worth, ca
 | How a bout ends if neither side breaks | "Last call" is an addition: from turn 9 every Expense is multiplied by a factor that grows each turn. At turn 40 the most Worth wins. |
 | Debt (the **Debt** tab's five concepts) | "Knocked out by debt": reaching zero Worth loses the bout. |
 | Dice upgrades | All 22 from the workbook. They are permanent, including faces that change with use (Rig, Enchant, Encase); only Upgrade chip effects are for one roll. Readings: "fill" moves value into the target (Divide: 1 from every face; Gift: half the highest; Devour: all of the lowest), Boost/Bonk ±2, Rig/Enchant/Encase change with use and reset each bout, Gamble ×2 and Curse ×3 on a random face each roll. Numbers in `DIE_VARS`. |
-| Which cards take a wallet slot | Benefit cards do. Membership, Suite Key, Punch and Paradise clip to the lanyard and do not. Passes are not cards: each wallet holds one in its own slot (round 17; the Royal Card is now the Casino Pass). Cards can be dropped from the kit at any time, except the Royal Card before floor 1. |
-| Membership Card discount | "Also gives the discount": 10% off at the Trick Trader, not stacking with a Trader Discount Card. |
+| Which cards take a wallet slot | Benefit cards do. Memberships, Suite Keys and punch cards clip to the lanyard and do not. Passes are not cards: each wallet holds one in its own slot (round 17; the Royal Card is now the Casino Pass). Cards can be dropped from the kit at any time, except the Royal Card before floor 1. |
+| Membership Card discount | "Also gives the discount": its own percent off at its shop, not stacking with a Discount Card there (the best counts). |
 | Debt chip values | One Debt marker per stack showing the exact amount owed (it used to be split into 5, 2 and 1¢ chips, which read like money). |
 | Which dice make the alley roll ("2dn") | Your two largest dice. Big dice are worth keeping for it. |
 | Wallet prices | Stats come from the **Gear** tab and prices from the **Gift Shop** tab, matched in order where the names differ. |

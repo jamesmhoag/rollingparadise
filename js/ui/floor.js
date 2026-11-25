@@ -86,13 +86,13 @@ export function hubScene(root) {
       on: () => { if (!fs.bossOpen) return toast(t('floor.boss.notYet'), 'warn'); if (run.purse < MIN_BUYIN) return buyin(); app.nav.prep('boss', 0); } });
     out.push({ k: 'smith', ico: '⚒️', name: t('floor.smith.name'), sub: t('floor.smith.sub'), tip: t('floor.smith.tip'), on: () => smithPanel() });
     out.push({ k: 'dice', ico: '🎲', name: t('floor.dice.name'), sub: t('floor.dice.sub', { n: R.diceShop(run).length }), tip: t('floor.dice.tip'), on: () => diceShopPanel() });
-    out.push({ k: 'trader', ico: '🃏', name: t('floor.trader.name'), sub: t('floor.trader.sub', { n: fs.shop.length }), tag: R.hasCard(run, 'membership') ? t('floor.trader.member') : null, tip: t('floor.trader.tip'), on: () => traderPanel() });
+    out.push({ k: 'trader', ico: '🃏', name: t('floor.trader.name'), sub: t('floor.trader.sub', { n: fs.shop.length }), tag: R.memberOf(run, 'trader') ? t('floor.trader.member') : null, tip: t('floor.trader.tip'), on: () => traderPanel() });
     out.push({ k: 'exchange', ico: '🪙', name: t('floor.exchange.name'), sub: t('floor.exchange.sub', { max: R.maxDenom(run.floor) }), tip: t('floor.exchange.tip'), on: () => exchangePanel() });
     out.push({ k: 'lounge', ico: '🍹', name: t('floor.lounge.name'), sub: t(fs.lounge.happy ? 'floor.lounge.happy' : 'floor.lounge.sub'), tag: run.drink ? `${run.drink.name}` : null, tip: t('floor.lounge.tip'), on: () => loungePanel() });
     const open = fs.book.events.filter((e) => e.bet && !e.done).length;
     out.push({ k: 'book', ico: '🏇', name: t('floor.book.name'), sub: open ? t('floor.book.riding', { n: open }) : t('floor.book.sub'), tip: t('floor.book.tip'), on: () => bookPanel() });
     out.push({ k: 'search', cls: fs.searched ? 'done' : '', ico: '🔎', name: t('floor.search.name'), sub: t(fs.searched ? 'floor.search.done' : 'floor.search.sub'), tip: t('floor.search.tip'),
-      on: () => { const id = R.searchFloor(run); if (!id) return toast(t('floor.search.again')); if (run.pendingCard) { render(); return walletFullPanel(); } toast(t('floor.search.found', { card: D.CARDS[id].name })); render(); } });
+      on: () => { const id = R.searchFloor(run); if (!id) return toast(t('floor.search.again')); if (id === 'none') { render(); return toast(t('floor.search.nothing')); } if (run.pendingCard) { render(); return walletFullPanel(); } toast(t('floor.search.found', { card: D.CARDS[id].name })); render(); } });
     out.push({ k: 'kit', ico: '🎒', name: t('floor.kit.name'), sub: t('floor.kit.sub', { dice: run.dice.length, tricks: run.tricks.length, cards: run.cards.length }), tip: t('floor.kit.tip'), on: () => kitPanel() });
     out.push({ k: 'exit', cls: 'exit', ico: '🚪', name: t('floor.exit.name'), sub: t('floor.exit.sub'), tip: t('floor.exit.tip'), on: () => exitPanel() });
     const up = t(run.floor < 4 ? 'floor.stairs.up' : 'floor.stairs.lift');
@@ -219,7 +219,7 @@ function traderPanel() {
     pulledWrap.classList.toggle('gone', !got.length);
     syncList(pulled, got, (t) => t.uid, (t) => { const el = trickItem(run, (e) => e._t); return el; },
       (el, t) => { el._t = t; el.style.setProperty('--tc', D.TYPES[D.TRICKS[t.id].type].color); const [n, s] = trickLine(t); setItem(el, n, s, D.CONDITIONS[D.condOf(t)].name); });
-    const member = R.hasCard(run, 'membership'); secretWrap.classList.toggle('gone', !member);
+    const member = R.memberOf(run, 'trader'); secretWrap.classList.toggle('gone', !member);
     if (member) syncList(secret, R.secretShelf(run), (it) => it.key, (it) => { const el = item(); el.append(btn(tx('shop.buy'), () => { tryDo(R.buySecret(run, it.key), el); done(); }, null, 'small')); if (it.trick) { el._tip = () => trickTip(it.trick, run.cls); el.classList.add('has-tip'); } return el; },
       (el, it) => { if (it.die) setItem(el, `1${it.die}`, 'A rare die.', cents(it.cost)); else { const [n, s] = trickLine(it.trick); setItem(el, n, s, cents(it.cost)); } el.lastChild.classList.toggle('off', run.purse < it.cost); });
     swapText(restockBtn, tx('floor.restock', { restockCost: cents(R.restockCost(run)) })); restockBtn.classList.toggle('off', run.purse < R.restockCost(run));
@@ -237,7 +237,7 @@ function exchangePanel() {
     syncList(list, ids, (k) => k, (k) => { const el = item(); el.prepend(chipEl({ kind: 'std', value: 1, resist: k })); el.append(btn(tx('shop.buy'), () => { tryDo(R.buyShopChip(run, k), el, !R.shopChipOpen(run, k) ? tx('floor.sold-from-floor-2', { shopFloor: D.shopFloor(k) }) : null); done(); }, null, 'small')); el._tip = () => chipTip({ kind: 'std', value: 1, resist: k }) + (R.shopChipOpen(run, k) ? '' : tx('floor.sold-from-floor-3', { shopFloor: D.shopFloor(k) })); el.classList.add('has-tip'); return el; },
       (el, k) => { const X = D.SHOP_CHIPS[k], T = D.CHIP_TIERS[X.tier], open = R.shopChipOpen(run, k);
         const n = R.chipLeft(run, k), cost = R.chipCost(run, k);
-        setItem(el, `${X.name} <span class="tier" style="--tc:${T.color}">${T.name}</span> <span class="dim">· you own ${R.owned(run, k)}</span>${open ? ` ${`<span class="left dim">${tx('shop.left', { n: n })}</span>`}` : ''}`, D.shopText(k), !open ? `floor ${D.shopFloor(k)}` : n > 0 ? cents(cost) : tx('shop.soldOut'));
+        setItem(el, `${X.name} <span class="tier" style="--tc:${T.color}">${T.name}</span> <span class="dim">· you own ${R.owned(run, k)}</span>${open ? ` ${`<span class="left dim">${tx('shop.left', { n: n })}</span>`}` : ''}`, D.shopText(k), !open ? (X.members && !R.memberOf(run, 'exchange') ? tx('shop.membersOnly') : `floor ${Math.max(1, D.shopFloor(k) - R.earlyAt(run, 'exchange'))}`) : n > 0 ? cents(cost) : tx('shop.soldOut'));
         el.classList.toggle('locked', !open || n <= 0); el.lastChild.classList.toggle('off', !open || n <= 0 || run.purse < cost); });
   }
   render();
@@ -256,8 +256,8 @@ function loungePanel() {
       el.append(btn(tx('shop.buy'), () => { tryDo(R.buyDrink(run, d.id), el); done(); }, null, 'small'),
         btn(tx('floor.play-for-it'), () => { if (L.challenged) return toast(tx('floor.the-barfly-has-had'), 'warn'); if (run.purse < R.price(run, 'lounge', d.cost)) return toast(tx('floor.you-must-be-able'), 'warn'); closePanel(true); app.nav.lounge(d.id); },
           () => tx('floor.bar-bout-against-a', { name: L.challenger.name, oppTip: oppTip(L.challenger) }), 'small')); return el; },
-      (el, d) => { const cost = R.drinkCost(run, d), n = R.drinkLeft(run, d); setItem(el, `${d.name} <span class="dim">${d.verb}</span> ${`<span class="left dim">${tx('shop.left', { n: n })}</span>`}`, `${Object.entries(d.mods).map(([k, n]) => `+${n} ${D.STATS[k].name}`).join(', ')} per sip · ${d.sips} sips`, cost ? cents(cost) : tx('floor.free-punch-card'));
-        el.children[2].classList.toggle('off', n <= 0 || run.purse < cost); el.children[3].classList.toggle('off', L.challenged); });
+      (el, d) => { const cost = R.drinkCost(run, d), n = R.drinkLeft(run, d); setItem(el, `${d.name} <span class="dim">${d.verb}</span> ${`<span class="left dim">${tx('shop.left', { n: n })}</span>`}`, `${Object.entries(d.mods).map(([k, n]) => `+${n} ${D.STATS[k].name}`).join(', ')} per sip · ${d.sips} sips`, !R.drinkOpen(run, d) ? tx('shop.membersOnly') : cost ? cents(cost) : tx('floor.free-punch-card'));
+        el.children[2].classList.toggle('off', !R.drinkOpen(run, d) || n <= 0 || run.purse < cost); el.children[3].classList.toggle('off', L.challenged); });
     swapText(mine, run.drink ? tx('floor.in-your-hand-left', { name: run.drink.name, sips: run.drink.sips }) : tx('floor.you-are-not-carrying'));
   }
   render();

@@ -7,6 +7,7 @@ import { multOf } from '../bout.js';
 import { facesOf, faceValue, matOf, dieName } from '../dice.js';
 import { traitsOf, traitsHtml } from '../traits.js';
 import { iconStyle, textureOf } from './icons.js';
+import { SYMBOLS as SYM, symbolOf } from './symbols.js';
 import { t as tx } from '../text.js';
 
 const GLYPH = { puddle: '💧', opp: '★', block: '▣', counter: '✸', burn: '🔥', acid: '☣', shock: '⚡', corrupt: '☠', poison: '☘', boom: '💣', frost: '❄', lava: '🌋', flower: '✿', petal: '❀', clay: '▤', brick: '▦', dynamite: '🧨', tree: '🌳', wood: '▥', hard: '⛊', sticky: '◍', hive: '⬢', little: '•', egg: '🥚', hat: '🎩', doom: '☠', volcano: '🌋' };
@@ -175,7 +176,21 @@ export function drinkTip(d) {
 }
 // v: your current attributes (rollerStats(run).v), so a +1 can say what it changes
 // a card's rule: written from its numbers where it has them (a Resist Card's r), else its text
-export const cardRule = (id) => { const c = D.CARDS[id]; return c?.resist ? tx('parts.resist-card', { r: c.resist }) : c?.text || ''; };
+const SHOP_ROOM = { diesmith: 'smith', trader: 'trader', lounge: 'lounge', dice: 'dice', exchange: 'exchange' };
+export const shopName = (shop) => tx(`tuner.rooms.${SHOP_ROOM[shop] || shop}`);
+// what a punch card's free item is, in words: the next anything, or the item it names (a drink, a chip, a die size, a trick)
+const freeName = (c) => { const f = c.free; if (!f || f === 'any') return tx('card.free.any'); const dr = D.DRINKS.find((d) => d.id === f);
+  return dr?.name || D.SHOP_CHIPS[f]?.name || D.TRICKS[f]?.name || (D.DICE[f] ? tx('card.free.die', { type: f }) : f); };
+// a card's rule, written from its numbers (content/cards.js), so the words always match what it does
+export const cardRule = (id) => { const c = D.CARDS[id]; if (!c) return '';
+  const shop = c.shop ? shopName(c.shop) : '';
+  switch (c.kind) {
+    case 'discount': return tx('card.rule.discount', { pct: c.pct || 0, shop });
+    case 'punch': return tx(c.per === 'visit' ? 'card.rule.punch.visit' : 'card.rule.punch', { n: c.punches || 5, shop, free: freeName(c) });
+    case 'membership': return [c.early ? tx('card.rule.member.early', { n: c.early, shop }) : tx('card.rule.member', { shop }), tx('card.rule.member.only', { shop }), c.pct ? tx('card.rule.member.pct', { pct: c.pct }) : '', c.earn?.buys ? tx('card.rule.member.earn', { n: c.earn.buys, shop }) : ''].filter(Boolean).join(' ');
+    case 'key': return tx('card.rule.key', { floor: D.FLOORS[c.floor]?.name || c.floor });
+    default: return c.resist ? tx('parts.resist-card', { r: c.resist }) : c.text || '';
+  } };
 export function cardTip(id, v) {
   const c = D.CARDS[id];
   const rule = cardRule(id);
@@ -188,15 +203,48 @@ export function jacketTip(id, v) {
 
 // ---------- gear visuals ----------
 // Each kind of gear has a small drawn piece. The library and the coat check show them.
-const CARD_LOOK = (id) => {
-  if (id.startsWith('discount_')) return { c: '#2aa7c4', g: '%', k: 'Discount' };
-  if (id.startsWith('note')) return { c: '#f4efe2', g: '✉', k: 'Note', ink: '#3a2c14' };
-  const m = { paradise: ['#d4a52a', '✺', 'Paradise'], membership: ['#b08cff', 'M', 'Member'], suite: ['#ff86ea', '⚿', 'Key'], punch: ['#ff9f3a', '●●', 'Punch'], debit: ['#3c7fc4', '$', 'Debit'], trading: ['#7dffb5', '✧', 'Trading'] }[id] || ['#93a3c8', '?', 'Card'];
-  return { c: m[0], g: m[1], k: m[2] };
-};
+// A card is printed from its `look` (content/cards.js): a background in two colours with a pattern over it, a border,
+// symbols along its edge (or at its corners), a big symbol in the middle, its ink and its font. Like a neon sign's
+// options, but printed: no glow, no motion. The symbols are the signs' own tube shapes (symbols.js), drawn as ink.
+const SVGNS = 'http://www.w3.org/2000/svg';
+const sv = (tag, attrs = {}, kids = []) => { const e = document.createElementNS(SVGNS, tag); for (const [k, v] of Object.entries(attrs)) if (v != null) e.setAttribute(k, v); for (const k of kids) e.append(k); return e; };
+let artN = 0;
+const KIND_GLYPH = { discount: '%', punch: '●●', membership: 'M', key: '⚿', note: '✉', trading: '✧', other: '?' };
+export function cardArt(look = {}, W = 52, H = 72) {
+  const id = `ca${++artN}`, L = { bg: ['#93a3c8', '#3a4a6a'], pattern: 'plain', border: 'plain', borderColor: '#ffffff', symColor: '#ffffff', edgeAt: 'none', edgeColor: '#ffffff', ...look };
+  const svg = sv('svg', { class: 'card-art', viewBox: `0 0 ${W} ${H}`, width: W, height: H, 'aria-hidden': 'true' });
+  const defs = sv('defs', {}, [sv('linearGradient', { id: `${id}g`, x1: 0, y1: 0, x2: 0.6, y2: 1 }, [sv('stop', { offset: 0, 'stop-color': L.bg[0] }), sv('stop', { offset: 1, 'stop-color': L.bg[1] || L.bg[0] })])]);
+  const pat = { stripes: () => sv('pattern', { id: `${id}p`, width: 6, height: 6, patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(35)' }, [sv('rect', { width: 3, height: 6, fill: '#fff', opacity: 0.12 })]),
+    checks: () => sv('pattern', { id: `${id}p`, width: 8, height: 8, patternUnits: 'userSpaceOnUse' }, [sv('rect', { width: 4, height: 4, fill: '#fff', opacity: 0.1 }), sv('rect', { x: 4, y: 4, width: 4, height: 4, fill: '#fff', opacity: 0.1 })]),
+    dots: () => sv('pattern', { id: `${id}p`, width: 6, height: 6, patternUnits: 'userSpaceOnUse' }, [sv('circle', { cx: 3, cy: 3, r: 1, fill: '#fff', opacity: 0.18 })]),
+    grain: () => sv('pattern', { id: `${id}p`, width: 7, height: 5, patternUnits: 'userSpaceOnUse' }, [sv('path', { d: 'M0 2.5Q1.75 1 3.5 2.5T7 2.5', stroke: '#fff', 'stroke-width': 0.5, fill: 'none', opacity: 0.15 })]) }[L.pattern];
+  if (pat) defs.append(pat()); svg.append(defs, sv('rect', { width: W, height: H, rx: 5, fill: `url(#${id}g)` }));
+  if (pat) svg.append(sv('rect', { width: W, height: H, rx: 5, fill: `url(#${id}p)` }));
+  if (L.pattern === 'rays') for (let i = 0; i < 16; i++) { const a = (i / 16) * Math.PI * 2; svg.append(sv('path', { d: `M${W / 2} ${H * 0.48}L${W / 2 + Math.cos(a) * W} ${H * 0.48 + Math.sin(a) * W}L${W / 2 + Math.cos(a + 0.12) * W} ${H * 0.48 + Math.sin(a + 0.12) * W}Z`, fill: '#fff', opacity: 0.08 })); }
+  // the border
+  const bc = L.borderColor, inset = 2.5, r = (k) => sv('rect', { x: k, y: k, width: W - 2 * k, height: H - 2 * k, rx: Math.max(1, 4 - k / 2), fill: 'none', stroke: bc });
+  const B = { plain: () => [Object.assign(r(inset), {}), null], double: () => [r(inset), r(inset + 2.5)], dashed: () => [r(inset), null], dotted: () => [r(inset), null], stripes: () => [r(inset), r(inset)], notched: () => [sv('path', { d: `M${inset + 5} ${inset}H${W - inset - 5}L${W - inset} ${inset + 5}V${H - inset - 5}L${W - inset - 5} ${H - inset}H${inset + 5}L${inset} ${H - inset - 5}V${inset + 5}Z`, fill: 'none', stroke: bc }), null] }[L.border];
+  if (B) { const [a, b2] = B(); a.setAttribute('stroke-width', L.border === 'dotted' ? 1.6 : L.border === 'stripes' ? 2.2 : 1.2); if (L.border === 'dashed') a.setAttribute('stroke-dasharray', '4 2.5'); if (L.border === 'dotted') { a.setAttribute('stroke-dasharray', '0.1 3'); a.setAttribute('stroke-linecap', 'round'); }
+    svg.append(a); if (b2) { b2.setAttribute('stroke-width', L.border === 'stripes' ? 2.2 : 0.8); if (L.border === 'stripes') { b2.setAttribute('stroke', L.bg[1] || '#000'); b2.setAttribute('stroke-dasharray', '3 3'); } svg.append(b2); } }
+  // a symbol: a sign symbol's tube shape as ink, or a character
+  const sym = (key, x, y, size, col, w = 2) => { const S = SYM[symbolOf(key)]; if (!S) return sv('text', { x, y: y + size * 0.36, 'text-anchor': 'middle', 'font-size': size, fill: col, 'font-weight': 700 }, [document.createTextNode(key || '')]);
+    const g = sv('g', { transform: `translate(${x - size / 2} ${y - size / 2}) scale(${size / 24})`, fill: 'none', stroke: col, 'stroke-width': (w * 24) / size, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, [sv('path', { d: S.d })]);
+    for (const [dx, dy] of S.dots || []) g.append(sv('circle', { cx: dx, cy: dy, r: 1.6, fill: col, stroke: 'none' })); return g; };
+  if (L.edge && L.edgeAt !== 'none') { const s7 = 6.5, pts = [];
+    const cornersAt = [[7, 7], [W - 7, 7], [7, H - 7], [W - 7, H - 7]];
+    if (L.edgeAt === 'corners') pts.push(...cornersAt);
+    if (L.edgeAt === 'top' || L.edgeAt === 'edge') for (let i = 0; i < 4; i++) pts.push([7 + (i * (W - 14)) / 3, 7]);
+    if (L.edgeAt === 'bottom' || L.edgeAt === 'edge') for (let i = 0; i < 4; i++) pts.push([7 + (i * (W - 14)) / 3, H - 7]);
+    for (const [x, y] of pts) svg.append(sym(L.edge, x, y, s7, L.edgeColor, 0.9)); }
+  if (L.symbol) svg.append(sym(L.symbol, W / 2, H * 0.47, Math.min(W, H) * 0.42, L.symColor, 2));
+  return svg;
+}
 export function cardEl(id, cls = '') {
-  const L = CARD_LOOK(id), lanyard = D.LANYARD_CARDS.includes(id);
-  return h('span', { class: `gcard ${lanyard ? 'lanyard' : ''} ${cls}`, style: { '--gc': L.c, '--ink': L.ink || '#fff' } }, h('em', { text: L.k }), h('b', { text: L.g }), h('small', { text: D.CARDS[id].name.replace(/^.*?: /, '') }));
+  const c = D.CARDS[id] || {}, L = c.look || {}, lanyard = D.LANYARD_CARDS.includes(id);
+  const ea = L.edgeAt || 'none', el = h('span', { class: `gcard art ${lanyard ? 'lanyard' : ''} ${ea === 'top' || ea === 'edge' ? 'edge-top' : ''} ${ea === 'bottom' || ea === 'edge' ? 'edge-bottom' : ''} ${cls}`, style: { '--ink': L.ink || '#fff', '--cfont': L.font === 'script' ? 'var(--script, "Yellowtail")' : L.font === 'body' ? 'inherit' : 'var(--display)' } },
+    h('em', { text: tx(`card.kind.${c.kind || 'other'}`) }), h('b', {}), h('small', { text: (c.name || id).replace(/^.*?: /, '') }));
+  el.prepend(cardArt({ symbol: KIND_GLYPH[c.kind] || '?', ...L }));
+  return el;
 }
 // a pass: not a card, it rides in the wallet's own pass slot
 export const passTip = (f) => tx('parts.every-wallet-holds-one', { name: D.PASSES[f].name, text: D.PASSES[f].text }) + flavorP('PASSES', f);

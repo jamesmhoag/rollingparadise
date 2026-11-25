@@ -1077,3 +1077,10 @@ table.b-shop { border-collapse: collapse; width: 100%; font-size: 12px; margin-t
 .b-shop td { padding: 3px 6px; border-top: 1px solid rgba(255,255,255,.06); vertical-align: middle; } .b-shop tr.ch td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
 .b-shop .b-cell { gap: 2px; } .b-shop .b-cell label { gap: 3px; } .b-shop input::placeholder { color: rgba(255,255,255,.35); }
 .b-shop .tier { background: var(--tc); color: #120c22; font-size: 10px; padding: 0 6px; border-radius: 6px; width: auto; height: auto; }
+/* a printed card: its art behind, its words over it */
+.gcard.art { background: none; overflow: hidden; } .gcard.art > .card-art { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; border-radius: inherit; }
+.gcard.art > em, .gcard.art > b, .gcard.art > small { position: relative; z-index: 1; } .gcard.art > small { font-family: var(--cfont); font-size: 8px; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
+.gcard.art.lanyard::before { z-index: 2; }
+.card-preview { padding: 18px; display: flex; justify-content: center; } .card-preview .gcard.big { transform: scale(2.4); transform-origin: center top; margin-bottom: 110px; }
+.card-preview .gcard.bizcard.big { transform: scale(1.8); margin-bottom: 40px; }
+.gcard.art.edge-top { padding-top: 12px; } .gcard.art.edge-bottom { padding-bottom: 11px; }

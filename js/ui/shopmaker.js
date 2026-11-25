@@ -14,6 +14,7 @@ const FLOORS = [1, 2, 3, 4];
 
 export function shopMaker(page, redraw, openTable) {
   const base = D.subPath('SHOPS', page), S = D.SHOPS[page] || {};
+  const relBtn = (tb) => btn(t(`build.table.${tb}`), () => openTable(tb), t('shops.related.tip'), 'small');
   const P = (...ks) => ks.reduce((p, k) => D.subPath(p, k), base);
   const revert = (path) => (path in B.draft.changes ? btn('↺', () => { B.revert(path); redraw(); }, t('build.revert.tip', { was: JSON.stringify(B.draft.orig[path]) ?? '—' }), 'small b-revert') : h('span'));
   const num = (v, on, ph = '', w = '64px') => h('input', { type: 'number', step: 'any', value: v ?? '', placeholder: ph, style: { width: w }, onchange: (e) => { const x = e.target.value.trim(); on(x === '' ? null : Number(x)); } });
@@ -44,5 +45,5 @@ export function shopMaker(page, redraw, openTable) {
   if (page === 'smith') rows = Object.entries(D.DICE).filter(([, X]) => X.forge).map(([k, X]) => h('tr', {}, h('td', { text: t('shops.smith.cast', { type: k }) }), ...FLOORS.map((f) => (f >= X.forge.floor ? h('td', { text: `${Math.round(X.forge.chips * D.perFloor(S.priceMult, f, 1))}¢` }) : h('td', { class: 'dim', text: '—' })))));
   if (page === 'door') rows = Object.entries(D.ROLLERS).map(([k, X]) => h('tr', {}, h('td', { text: X.name }), h('td', { colspan: 4, text: X.worth != null ? t('shops.door.own', { n: X.worth }) : t('shops.door.default', { n: S.welcome }) })));
   return h('div', { class: 'b-maker' }, h('div', {}, head, h('span', { class: 'cap', text: t('shops.preview') }), h('table', { class: 'b-shop' }, cols, ...rows)),
-    h('div', {}, h('span', { class: 'cap', text: t('tuner.related') }), h('div', { class: 'b-related' }, ...(RELATED[page] || []).filter((tb) => D.TABLES[tb]).map((tb) => guided(btn(t(`build.table.${tb}`), () => openTable(tb), t('shops.related.tip'), 'small'), 'build-option')))));
+    h('div', {}, h('span', { class: 'cap', text: t('tuner.related') }), h('div', { class: 'b-related' }, ...(RELATED[page] || []).filter((tb) => D.TABLES[tb]).map((tb) => guided(relBtn(tb), 'build-option')))));
 }

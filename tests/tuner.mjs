@@ -9,8 +9,8 @@ const m0 = R.multiplier(run, prep), r0 = R.restockCost(run), p0 = R.packCost(run
 Draft.setValue('TUNING.wager.base', 2.5); Draft.setValue('SHOPS.trader.restock', [600, 600, 600, 600]); Draft.setValue('SHOPS.trader.packPrice', [800, 800, 800, 800]);
 ok(m0 === 1.5 && R.multiplier(run, prep) === 2.5, 'the table wager multiplier is tuned');
 ok(R.restockCost(run) === r0 * 3 && R.packCost(run, 1) === p0 * 2, 'restock and pack prices are tuned');
-Draft.setValue('TUNING.shops.discount', 0.5); run.cards.push('discount_trader');
-ok(R.restockCost(run) === Math.round(r0 * 3 * 0.5), 'the discount card rate is tuned');
+Draft.setValue('CARDS.discount_trader.pct', 50); run.cards.push('discount_trader');
+ok(R.restockCost(run) === Math.round(r0 * 3 * 0.5), 'a discount card takes its own percentage off');
 Draft.setValue('TUNING.tables.barCols', 4); R.enterFloor(run, 2);
 ok(run.fs.lounge.challenger.dims.cols === 4, 'bar tables are as wide as tuned');
 { // sips a round

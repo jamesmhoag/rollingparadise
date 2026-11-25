@@ -709,25 +709,8 @@ export const JACKETS = {
   denim: { name: 'Denim', color: '#3c5f9e', effect: 'Unique · Convoluted', mods: { balance: 2, charisma: -1 }, price: 2000000, level: 2 },
   regal: { name: 'Regal', color: '#7a2d7a', effect: 'Royal · Privileged', mods: { balance: 2, versatility: 2, depth: 2 }, price: 20000000000, level: 4 },
 };
-export const CARDS = {
-  discount_diesmith: { name: 'Discount Card: Diesmith', text: '10% off at the Diesmith.' },
-  discount_trader: { name: 'Discount Card: Trick Trader', text: '10% off at the Trick Trader.' },
-  discount_lounge: { name: 'Discount Card: Lounge', text: '10% off drinks at the Lounge.' },
-  paradise: { name: 'Paradise Card', text: 'Earned by beating the last High Roller. It opens the Paradise Ascent.' },
-  membership: { name: 'Membership Card', text: 'Earned by buying 5 tricks on one floor. Opens the Trick Trader\'s Secret Shelf and takes 10% off everything the Trader sells.' },
-  suite: { name: 'Suite Key Card', text: 'Earned by winning a Double Down. Opens a Suite after you beat the High Roller.' },
-  resist_card: { name: 'Resist Card', resist: 2 }, // its rule is written from `resist` (cardRule)
-  resist_card_plus: { name: 'Resist Card: Gold', resist: 3 },
-  debit: { name: 'Debit Card', text: 'Found by searching the floor. Lets you use the ATM in the Gift Shop, which keeps chips between runs.' },
-  punch: { name: 'Punch Card', text: 'One punch per drink bought. Five punches and the next drink is free.' },
-  note: { name: 'Note: on bidding', text: '"Every chip you bid adds its worth to the trick. Two of the same trick, stacked, play twice for one bid."' },
-  note_dice: { name: 'Note: on dice', text: '"Roll, bid on what you rolled, then pile the dice on the bid tricks in the Bluff. Any die adds its value; the ones of the trick\'s own size make its Bonus."' },
-  note_debt: { name: 'Note: on Debt', text: '"Debt only takes a chip it can cover. A 5¢ chip on top shrugs off a 4¢ fee, but the Debt stays and the next fee finishes it."' },
-  note_house: { name: 'Note: on the House', text: '"Both arms move at once. What you play this phase cannot change what they play this phase. Insure a turn early, not the same turn."' },
-  note_hold: { name: 'Note: on holding back', text: '"A turn with nothing worth playing still pays. Every draw, roll and bid you leave unused earns chips off the Stage, Power or Opportunity."' },
-  note_flip: { name: 'Note: on flips', text: '"Out of dice? Flip a chip. It lands on nothing or its worth, fits any trick, and comes back to your Bet afterwards."' },
-  trading: { name: "Trading Card: Children of Ae'a", text: 'From a super popular card game. Does not seem to do anything here.' },
-};
+import { CARDS, SHADY, CARD_SHOPS, CARD_KINDS } from './content/cards.js';
+export { CARDS, SHADY, CARD_SHOPS, CARD_KINDS };
 // Wallets hold the cards that grant benefits. `slots`: cards it holds. `passes`: passes it holds, each in its own pass
 // slot (cards never use them). `keep` is the total two of your dice must reach in the alley to retain them.
 export const WALLETS = {
@@ -744,7 +727,9 @@ export const WALLETS = {
   royal_luxury: { name: 'Royal Luxury', color: '#ffd76a', slots: 4, keep: 7, passes: 1, price: 10000000, level: 4, crown: true },
 };
 // these cards are clipped to your lanyard and do not take a wallet slot
-export const LANYARD_CARDS = ['membership', 'suite', 'punch', 'paradise'];
+// clipped to the lanyard, not taking a wallet slot (worked out from CARDS: memberships, punch cards and keys, and any
+// card marked lanyard); dealt at the start (starter); found in the Shady Corner (corner > 0). Rebuilt after changes.
+export const LANYARD_CARDS = [];
 // Passes are not cards: every wallet holds one, in its own slot. The Casino Pass is won from the Doorman and each
 // floor has its own pass, given as you reach it (it takes the slot from the last). Once you are in, a pass is not
 // needed again unless you leave: coming back to a saved run, the pass for your floor (or a higher one) walks you
@@ -757,10 +742,10 @@ export const PASSES = [null,
   { name: 'Rollers Suite Pass', glyph: '3', color: '#ff86ea', text: 'Gets you onto the Rollers Suite, floor 3.' },
   { name: 'Royal Paradise Pass', glyph: '4', color: '#d4a52a', text: 'Gets you onto Royal Paradise, floor 4.' }];
 export const PURSE_LIMIT = 999e12;
-export const STARTER_CARDS = ['discount_diesmith', 'discount_trader', 'discount_lounge'];
+export const STARTER_CARDS = [];
 // Business Cards no longer raise your attributes: each High Roller carries one, and it is their trait (BOSS_TRAITS).
-export const RETIRED_CARDS = ['business_trickery', 'business_ingenuity', 'business_proficiency', 'business_charisma', 'business_cunning', 'business_conviction'];
-export const FIND_CARDS = ['resist_card', 'resist_card_plus', 'debit', 'note', 'note_dice', 'note_debt', 'note_house', 'note_hold', 'note_flip', 'trading', 'punch'];
+export const RETIRED_CARDS = ['business_trickery', 'business_ingenuity', 'business_proficiency', 'business_charisma', 'business_cunning', 'business_conviction', 'paradise', 'resist_card', 'resist_card_plus'];
+export const FIND_CARDS = [];
 export const WALLET_SLOTS = 4;
 
 // ---------- content you can edit ----------
@@ -787,7 +772,7 @@ import TEXT from './text/en.js';
 import { MATERIALS as _MAT, DICE_SHOP as _DS, BONE as _BONE, MELT as _MELT, CASTS as _CASTS, DYES as _DYES, DIAMOND as _DIA } from './content/dice.js';
 export const TABLES = { CLASSES, ROLLERS, BASE_DIMS, STATS, DICE, MATERIALS: _MAT, DICE_SHOP: _DS, BONE: _BONE, MELT: _MELT, CASTS: _CASTS, DYES: _DYES, DIAMOND: _DIA, DIE_VARS,
   TYPES, TRICKS, CHIPS, SHOP_CHIPS, CHIP_TIERS, CREATURES, ORBITALS, CALAMITIES, TILTS, TILT_PRESSURE, FELTS, FLOORS, DRINKS, SPORTS, JACKETS, CARDS, WALLETS,
-  PASSES, CONDITIONS, PACKS, QDIE, PRIZES, GUIDE, TEXT, MADE_CHIPS, ROSTER, BOSS_TRAITS, FLAVOR, TUNING, SHOPS, ODDS, DENOMS, WEAR, IMAGES, ICONS, TEXTURES, NEON };
+  PASSES, CONDITIONS, PACKS, QDIE, PRIZES, GUIDE, TEXT, MADE_CHIPS, ROSTER, BOSS_TRAITS, FLAVOR, TUNING, SHOPS, SHADY, ODDS, DENOMS, WEAR, IMAGES, ICONS, TEXTURES, NEON };
 const isObj = (x) => x && typeof x === 'object';
 // a path's steps: keys are joined by '.', and a '.' inside a key (as in text keys) is written '\\.'
 export const splitPath = (path) => path.split(/(?<!\\)\./).map((k) => k.replace(/\\\./g, '.'));
@@ -803,6 +788,10 @@ export function deletePath(path) { const ks = splitPath(path), last = ks.pop(); 
 // lists worked out from the tables when the game loads, rebuilt after changes
 export function refreshDerived() {
   TRICK_IDS.splice(0, TRICK_IDS.length, ...Object.keys(TRICKS));
+  const C0 = Object.entries(CARDS).filter(([, c]) => c);
+  LANYARD_CARDS.splice(0, LANYARD_CARDS.length, ...C0.filter(([, c]) => c.lanyard || ['membership', 'punch', 'key'].includes(c.kind)).map(([k]) => k));
+  STARTER_CARDS.splice(0, STARTER_CARDS.length, ...C0.filter(([, c]) => c.starter).map(([k]) => k));
+  FIND_CARDS.splice(0, FIND_CARDS.length, ...C0.filter(([, c]) => (c.corner || 0) > 0).map(([k]) => k));
   FELT_POOL.splice(0, FELT_POOL.length, ...Object.keys(FELTS).filter((k) => FELTS[k].pool !== false));
   const R0 = Object.values(ROSTER);
   OPPONENTS.splice(0, OPPONENTS.length, ...R0.filter((x) => !x.boss && x.name).map((x) => x.name));

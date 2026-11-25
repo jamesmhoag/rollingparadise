@@ -233,7 +233,7 @@ export const GUIDE = {
     how: ['Pick an amount, then a runner; bets settle as the games finish.'] },
   'btn:leave': { name: 'Leave', def: 'Closes this panel or tool.', labels: ['test.tools.leave', 'floor.done', 'library.close', 'prep.back', 'prep.getup'],
     how: ['Nothing is lost by leaving; come back any time.'] },
-  'btn:tools': { name: 'Build tools', def: 'An action in Build mode.', labels: ['build.export', 'maker.new', 'build.discard', 'build.import', 'maker.convertBtn', 'chipmaker.new', 'build.duplicate', 'chipmaker.copy'],
+  'btn:tools': { name: 'Build tools', def: 'An action in Build mode.', labels: ['build.export', 'maker.new', 'build.discard', 'build.import', 'maker.convertBtn', 'chipmaker.new', 'build.duplicate', 'chipmaker.copy', 'cards.new.discount', 'cards.new.punch', 'cards.new.membership', 'cards.new.note', 'cards.new.trading'],
     how: ['Export saves your changes to a file; Discard drops them; New starts a fresh entry.'] },
   'btn:take': { name: 'Take', def: 'Takes an item for yourself.', labels: ['suite.take', 'result.claim'],
     how: ['Take what fits your build.'] },

@@ -20,7 +20,9 @@ export const clearRun = () => { try { store()?.removeItem(RUN_KEY); } catch { /*
 function migrate(run) {
   if (run.pass == null) { // the Royal Card became the Casino Pass; a run already on a floor holds that floor's pass, unless the card was dropped
     run.pass = run.cards?.includes('royal') ? Math.max(1, run.floor || 0) : 0; if (run.cards) run.cards = run.cards.filter((c) => c !== 'royal'); }
-  if (run.cards) run.cards = run.cards.filter((c) => !D.RETIRED_CARDS.includes(c)); // Business Cards became High Roller traits
+  if (run.cards) run.cards = run.cards.filter((c) => !D.RETIRED_CARDS.includes(c)); // Business Cards became High Roller traits; Paradise and Resist cards are gone
+  if (run.cards?.includes('suite')) run.cards = run.cards.filter((c) => c !== 'suite'); // the one Suite Key became a key per floor (run.suiteKey still opens this floor's)
+  if (typeof run.punches === 'number') { run.punch = run.punches && D.CARDS.punch ? { punch: run.punches } : {}; delete run.punches; } // punch cards count their own punches
   if (!Array.isArray(run.passes)) run.passes = run.pass ? [run.pass] : []; // a wallet can hold more than one pass
   for (const t of run.tricks || []) { // Trick Trader upgrades are gone: an upgraded trick becomes the foil it played as
     if (t.wear == null) t.wear = D.WEAR.good;
@@ -55,7 +57,30 @@ export function resolvePending(run, dropId) {
 }
 export function dropCard(run, id) { if (!hasCard(run, id) || D.LANYARD_CARDS.includes(id)) return false; run.cards = run.cards.filter((x) => x !== id); return true; }
 // the Membership Card carries the Trader's discount as well; the two do not stack
-export const price = (run, shop, base) => Math.max(1, Math.round(base * (hasCard(run, `discount_${shop}`) || (shop === 'trader' && hasCard(run, 'membership')) ? D.TUNING.shops.discount : 1)));
+// ---------- shop cards ----------
+// the cards you hold of one kind for one shop (content/cards.js)
+const cardsFor = (run, kind, shop) => run.cards.filter((id) => D.CARDS[id]?.kind === kind && D.CARDS[id].shop === shop);
+export const memberOf = (run, shop) => cardsFor(run, 'membership', shop).length > 0;
+// how many floors early a membership opens that shop's items
+export const earlyAt = (run, shop) => Math.max(0, ...cardsFor(run, 'membership', shop).map((id) => D.CARDS[id].early || 0));
+// the best percentage off at a shop: a discount card, or a membership's own
+export const offAt = (run, shop) => Math.max(0, ...[...cardsFor(run, 'discount', shop), ...cardsFor(run, 'membership', shop)].map((id) => D.CARDS[id].pct || 0));
+// a full punch card for this shop whose free item this is (free 'any', or the item's id)
+const punchReady = (run, shop, item) => (item == null ? null : cardsFor(run, 'punch', shop).find((id) => { const c = D.CARDS[id]; return (run.punch?.[id] || 0) >= (c.punches || 5) && (c.free === 'any' || !c.free || c.free === item); }) || null);
+export const punchesOf = (run, id) => run.punch?.[id] || 0;
+// a price at a shop, with your cards: free on a full punch card, else the best discount. item: what is bought (for punches)
+export const price = (run, shop, base, item = null) => (punchReady(run, shop, item) ? 0 : Math.max(1, Math.round(base * (1 - offAt(run, shop) / 100))));
+// after buying at a shop: punch cards take their punch (or are spent on a free item), and memberships earned are given
+function bought(run, shop, item, cost) {
+  run.punch = run.punch || {}; const freeBy = cost === 0 ? punchReady(run, shop, item) : null;
+  for (const id of cardsFor(run, 'punch', shop)) { const c = D.CARDS[id];
+    if (id === freeBy) { run.punch[id] = 0; continue; }
+    if (c.per === 'visit') { run.fs.punched = run.fs.punched || {}; if (run.fs.punched[id]) continue; run.fs.punched[id] = true; }
+    run.punch[id] = Math.min(c.punches || 5, (run.punch[id] || 0) + 1); }
+  run.fs.boughtAt = run.fs.boughtAt || {}; const n = (run.fs.boughtAt[shop] = (run.fs.boughtAt[shop] || 0) + 1);
+  for (const [id, c] of Object.entries(D.CARDS)) if (c?.kind === 'membership' && c.shop === shop && c.earn?.buys && n >= c.earn.buys && !hasCard(run, id)) {
+    run.cards.push(id); run.news.push(tx('run.membership-earned', { name: c.name, n })); }
+}
 // what a shop has left of something on this floor (it restocks on the next): its stock less what you have bought here
 export const stockLeft = (run, key, max) => Math.max(0, max - (run.fs?.taken?.[key] || 0));
 const takeStock = (run, key) => { run.fs.taken = run.fs.taken || {}; run.fs.taken[key] = (run.fs.taken[key] || 0) + 1; };
@@ -67,7 +92,7 @@ export function newRun(who, jacketReq = 'standard', seed = (Date.now() ^ (Math.r
   const jacket = jacketFits(cls, jacketReq) ? jacketReq : 'standard'; // a level 0 jacket only fits the class it was cut for
   const kept = [].concat(gear.passes ?? gear.pass ?? []).filter((f) => f > 0);
   const run = { v: 1, rng: new RNG(seed), seed, cls, roller, worth0: Rl.worth ?? D.SHOPS.door.welcome ?? 200, bizCards: [], trait: null, crownCase: [], wearing: null, jacket, wallet: gear.wallet || 'worn_cloth', pass: 0, passes: [], pendingCard: null, floor: 0, purse: 0, nextId: 1, dice: [], tricks: [], chips: {},
-    drink: null, cards: [], punches: 0, rest: null, suiteKey: false, phase: 'intro', fs: null, bets: [], news: [], ledger: [], ascent: null,
+    drink: null, cards: [], punch: {}, rest: null, suiteKey: false, phase: 'intro', fs: null, bets: [], news: [], ledger: [], ascent: null,
     plan: { spacing: 'row', stacking: 'maxed', counts: null, resist: {}, layout: Rl.layout?.length ? JSON.parse(JSON.stringify(Rl.layout)) : null }, // your Roller's own position, to change before each bout
     stats: { bouts: 0, wins: 0, losses: 0, spent: 0, won: 0, turns: 0, dd: 0 } };
   for (const f of kept) addPass(run, f);
@@ -199,16 +224,16 @@ function genShelf(run) {
 export const restockCost = (run) => price(run, 'trader', D.perFloor(D.SHOPS.trader.restock, run.floor, 100) + (D.SHOPS.trader.restockStep ?? 100) * run.fs.restocks);
 export function restock(run) { if (!spend(run, restockCost(run), tx('run.trick-trader-restock'))) return false; run.fs.restocks++; run.fs.shop = genShelf(run); return true; }
 export function buyTrick(run, key) {
-  const it = run.fs.shop.find((x) => x.key === key); if (!it || !spend(run, price(run, 'trader', it.cost), tx('run.bought', { name: D.TRICKS[it.trick.id].name }))) return false;
+  const it = run.fs.shop.find((x) => x.key === key), cost = it && price(run, 'trader', it.cost, it.trick.id); if (!it || !spend(run, cost, tx('run.bought', { name: D.TRICKS[it.trick.id].name }))) return false;
   // the shelf has `left` of each: you take a copy (the last one off the shelf)
   it.left = (it.left ?? 1) - 1; run.tricks.push(it.left > 0 ? { ...it.trick, uid: run.nextId++ } : it.trick); if (it.left <= 0) run.fs.shop = run.fs.shop.filter((x) => x !== it); run.fs.bought++;
-  if (run.fs.bought >= 5 && !hasCard(run, 'membership')) { run.cards.push('membership'); run.news.push(tx('run.the-trick-trader-slides')); }
+  bought(run, 'trader', it.trick.id, cost);
   return true;
 }
 // Foil packs: no more upgrades at the Trader; better tricks come in better sets. Five tricks of the set's quality,
 // all Mint (each may be Gem Mint); four plain prints (some Foil) and one rarer: a Misprint, a Reprint or a high foil.
-export const packOpen = (run, q) => run.floor >= D.PACKS[q].floor;
-export const packCost = (run, q) => price(run, 'trader', D.perFloor(D.SHOPS.trader.packPrice, run.floor, 200) * q);
+export const packOpen = (run, q) => run.floor + earlyAt(run, 'trader') >= D.PACKS[q].floor;
+export const packCost = (run, q) => price(run, 'trader', D.perFloor(D.SHOPS.trader.packPrice, run.floor, 200) * q, `pack:${q}`);
 export const packLeft = (run, q) => stockLeft(run, `pack:${q}`, D.perFloor(D.SHOPS.trader.packStock, run.floor, 1));
 const STEP_DIE = ['d4', 'd6', 'd8'];
 function misprint(rng, id) {
@@ -227,8 +252,9 @@ export function rollPack(run, q) {
   });
 }
 export function buyPack(run, q) {
-  if (!D.PACKS[q] || !packOpen(run, q) || packLeft(run, q) <= 0 || !spend(run, packCost(run, q), tx('run.opened-a-foil-pack', { name: D.PACKS[q].name }))) return null;
-  takeStock(run, `pack:${q}`);
+  const cost = D.PACKS[q] && packCost(run, q);
+  if (!D.PACKS[q] || !packOpen(run, q) || packLeft(run, q) <= 0 || !spend(run, cost, tx('run.opened-a-foil-pack', { name: D.PACKS[q].name }))) return null;
+  takeStock(run, `pack:${q}`); bought(run, 'trader', `pack:${q}`, cost);
   const got = rollPack(run, q); run.tricks.push(...got); run.fs.pack = { q, uids: got.map((t) => t.uid) }; return got;
 }
 // what a trick sells for: its quality and the floor, times its condition (Poor does not sell)
@@ -250,14 +276,14 @@ export function secretShelf(run) {
   return run.fs.secret;
 }
 export function buySecret(run, key) {
-  const it = run.fs.secret?.find((x) => x.key === key); if (!it || !spend(run, it.cost, tx('run.secret-shelf'))) return false;
+  const it = run.fs.secret?.find((x) => x.key === key); if (!it || !memberOf(run, 'trader') || !spend(run, it.cost, tx('run.secret-shelf'))) return false;
   if (it.die) run.dice.push(mkDie(run, it.die)); else run.tricks.push(it.trick);
   run.fs.secret = run.fs.secret.filter((x) => x !== it); return true;
 }
 
 // Diesmith: melt dice and cast a new one (forge.js). The old upgrades are retired; they live on as Bone dice.
-export const forgeCost = (run, type, dyes = []) => price(run, 'diesmith', Math.round((D.DICE[type].forge.chips + dyePrice(dyes)) * D.perFloor(D.SHOPS.smith.priceMult, run.floor, 1)));
-export const forgeFloor = (type) => D.DICE[type].forge.floor;
+export const forgeCost = (run, type, dyes = []) => price(run, 'diesmith', Math.round((D.DICE[type].forge.chips + dyePrice(dyes)) * D.perFloor(D.SHOPS.smith.priceMult, run.floor, 1)), type);
+export const forgeFloor = (type, run = null) => D.DICE[type].forge.floor - (run ? earlyAt(run, 'diesmith') : 0);
 // the whole plan for a forge on this floor with this pouch (see forge.js forgePlan). melt: die ids
 export function forgePlanFor(run, type, melt, dyes = []) {
   const dice = melt.map((id) => run.dice.find((d) => d.id === id)).filter(Boolean);
@@ -267,7 +293,7 @@ export function forgePlanFor(run, type, melt, dyes = []) {
 export const castRollers = (run, type, melt, dyes = []) => forgePlanFor(run, type, melt, dyes).rolled.filter(Boolean);
 // why this forge cannot happen right now, or null. melt: die ids
 export function forgeWhy(run, type, melt, dyes = []) {
-  if (run.floor < forgeFloor(type)) return tx('run.the-diesmith-casts-s', { type, forgeFloor: forgeFloor(type) });
+  if (run.floor < forgeFloor(type, run)) return tx('run.the-diesmith-casts-s', { type, forgeFloor: forgeFloor(type, run) });
   if (melt.some((id) => !run.dice.some((d) => d.id === id))) return tx('run.pick-dice-from-your');
   const why = forgePlanFor(run, type, melt, dyes).why; if (why) return why;
   if (run.purse < forgeCost(run, type, dyes)) return tx('shop.cantAfford');
@@ -277,7 +303,7 @@ export function forgeWhy(run, type, melt, dyes = []) {
 export function forge(run, type, melt, dyes = []) {
   if (forgeWhy(run, type, melt, dyes)) return null;
   const P = forgePlanFor(run, type, melt, dyes), dice = melt.map((id) => run.dice.find((d) => d.id === id)), mat = castOut(P.castKey);
-  spend(run, forgeCost(run, type, dyes), tx('run.cast-a', { name: D.MATERIALS[mat].name, type }));
+  const cost = forgeCost(run, type, dyes); spend(run, cost, tx('run.cast-a', { name: D.MATERIALS[mat].name, type })); bought(run, 'diesmith', type, cost);
   const rolled = P.rolled.filter(Boolean);
   const { faces, log } = castFaces(run.rng, type, P.castKey, P.played, D.MELT.castFromPouch ? P.rolled : null);
   run.dice = run.dice.filter((d) => !dice.includes(d) && !rolled.includes(d));
@@ -295,7 +321,7 @@ export const upgradeDie = () => false;
 export const dieSellValue = (d) => Math.round(D.DICE[d.type].sell * (d.mat === 'bone' ? D.DICE_SHOP.boneMult / 2 : D.DICE_SHOP.mat[d.mat || D.DEFAULT_MAT] || 1));
 const diePrice = (floor, type, mat) => Math.round(D.DICE_SHOP.base[type] * (mat === 'bone' ? D.DICE_SHOP.boneMult : D.DICE_SHOP.mat[mat] || 1) * D.perFloor(D.SHOPS.dice.priceMult, floor, 1));
 export function genDiceShop(run, floor = run.floor) {
-  const rng = run.rng, S = D.DICE_SHOP, Z = D.SHOPS.dice, types = D.COMPLEXITY.filter((t) => (S.from[t] || 1) <= floor), left = D.perFloor(Z.stock, floor, 1);
+  const rng = run.rng, S = D.DICE_SHOP, Z = D.SHOPS.dice, types = D.COMPLEXITY.filter((t) => (S.from[t] || 1) <= floor + earlyAt(run, 'dice')), left = D.perFloor(Z.stock, floor, 1);
   const basic = Array.from({ length: D.perFloor(Z.plain, floor, 6) }, (_, i) => { const mat = D.BASIC_MATS[i % D.BASIC_MATS.length], type = rng.pick(types);
     return { key: run.nextId++, die: { type, mat, up: [] }, cost: diePrice(floor, type, mat), left }; });
   const bone = Array.from({ length: D.perFloor(Z.bone, floor, 2) }, () => { const type = rng.pick(types), id = rng.pick(Object.keys(D.BONE));
@@ -303,21 +329,23 @@ export function genDiceShop(run, floor = run.floor) {
   return basic.concat(bone).sort((a, b) => D.DICE[a.die.type].faces - D.DICE[b.die.type].faces || (a.die.mat === 'bone') - (b.die.mat === 'bone'));
 }
 export const diceShop = (run) => { if (!run.fs.dice) run.fs.dice = genDiceShop(run); return run.fs.dice; }; // stocked on the first visit to each floor's Dice Shop
-export const dieCost = (run, it) => price(run, 'dice', it.cost);
+export const dieCost = (run, it) => price(run, 'dice', it.cost, it.die.type);
 export function buyShopDie(run, key) {
-  const it = diceShop(run).find((x) => x.key === key); if (!it || !spend(run, dieCost(run, it), tx('run.bought-a', { dieName: dieName(it.die) }))) return false;
+  const it = diceShop(run).find((x) => x.key === key), cost = it && dieCost(run, it); if (!it || !spend(run, cost, tx('run.bought-a', { dieName: dieName(it.die) }))) return false; bought(run, 'dice', it.die.type, cost);
   run.dice.push({ ...it.die, id: run.nextId++, up: [...it.die.up], tgt: it.die.tgt && [...it.die.tgt], faces: it.die.faces?.map((f) => ({ ...f })) });
   it.left = (it.left ?? 1) - 1; if (it.left <= 0) run.fs.dice = run.fs.dice.filter((x) => x !== it); return true;
 }
 
 // Chip Exchange: shop chips are priced by their tier (D.CHIP_TIERS) and unlocked by the tier's floor
 export const owned = (run, id) => run.chips[id] || 0;
-export const shopChipOpen = (run, id) => run.floor >= D.shopFloor(id) && D.shopStock(id, run.floor) > 0;
-export const chipCost = (run, id) => price(run, 'exchange', D.shopPrice(id, run.floor));
+// a shop chip is on the counter from its floor (sooner with a membership) while in stock; members-only chips need one
+export const shopChipOpen = (run, id) => run.floor + earlyAt(run, 'exchange') >= D.shopFloor(id) && D.shopStock(id, run.floor) > 0 && (!D.SHOP_CHIPS[id].members || memberOf(run, 'exchange'));
+export const chipCost = (run, id) => price(run, 'exchange', D.shopPrice(id, run.floor), id);
 export const chipLeft = (run, id) => stockLeft(run, `chip:${id}`, D.shopStock(id, run.floor));
 export function buyShopChip(run, id) {
-  if (!D.soldInShop(id) || !shopChipOpen(run, id) || chipLeft(run, id) <= 0 || !spend(run, chipCost(run, id), tx('run.bought-a-2', { name: D.SHOP_CHIPS[id].name }))) return false; // chips a trick or the table makes are not sold
-  takeStock(run, `chip:${id}`); run.chips[id] = owned(run, id) + 1; return true;
+  const cost = D.soldInShop(id) && chipCost(run, id);
+  if (!D.soldInShop(id) || !shopChipOpen(run, id) || chipLeft(run, id) <= 0 || !spend(run, cost, tx('run.bought-a-2', { name: D.SHOP_CHIPS[id].name }))) return false; // chips a trick or the table makes are not sold
+  takeStock(run, `chip:${id}`); bought(run, 'exchange', id, cost); run.chips[id] = owned(run, id) + 1; return true;
 }
 export const buyResist = buyShopChip;
 
@@ -334,17 +362,18 @@ function drinkMods(run, d) {
 function genLounge(run, floor) {
   const rng = run.rng; const basic = rng.shuffle(D.DRINKS.slice(0, 6)); const list = [basic[0], basic[1]];
   list.push(floor >= 4 && rng.chance(0.5) ? D.DRINKS[8] : floor >= 2 ? rng.pick([D.DRINKS[6], D.DRINKS[7]]) : basic[2]);
+  for (const d of D.DRINKS) if (d.members && !list.includes(d)) list.push(d); // members-only drinks are always on the menu, for members
   const happy = rng.chance(0.2);
   return { happy, challenged: false, drinks: list.map((d) => ({ ...d, mods: drinkMods(run, d), cost: Math.round(d.cost * (happy ? 0.5 : 1) * D.perFloor(D.SHOPS.lounge.priceMult, floor, 1)) })),
     challenger: genOpponent(run, floor, D.TUNING.tables.barChallengerWorth * maxDenom(floor), { cols: D.TUNING.tables.barCols, name: rng.pick(D.OPPONENTS), title: 'Barfly', q: Math.max(1, Math.min(3, floor) - 1) }) };
 }
-export const drinkCost = (run, d) => (run.punches >= D.TUNING.shops.freeDrinkPunches ? 0 : price(run, 'lounge', d.cost));
+export const drinkCost = (run, d) => price(run, 'lounge', d.cost, d.id);
+export const drinkOpen = (run, d) => !d.members || memberOf(run, 'lounge');
 export const drinkLeft = (run, d) => stockLeft(run, `drink:${d.id}`, D.perFloor(D.SHOPS.lounge.stock, run.floor, 3));
 function pourDrink(run, d) { run.drink = { id: d.id, name: d.name, verb: d.verb, sips: d.sips, max: d.sips, mods: d.mods }; }
 export function buyDrink(run, id) {
-  const d = run.fs.lounge.drinks.find((x) => x.id === id); if (!d || drinkLeft(run, d) <= 0) return false; const cost = drinkCost(run, d);
-  if (!spend(run, cost, tx('run.bought-a-2', { name: d.name }))) return false; takeStock(run, `drink:${d.id}`);
-  if (cost === 0) run.punches = 0; else if (hasCard(run, 'punch')) run.punches++;
+  const d = run.fs.lounge.drinks.find((x) => x.id === id); if (!d || !drinkOpen(run, d) || drinkLeft(run, d) <= 0) return false; const cost = drinkCost(run, d);
+  if (!spend(run, cost, tx('run.bought-a-2', { name: d.name }))) return false; takeStock(run, `drink:${d.id}`); bought(run, 'lounge', d.id, cost);
   pourDrink(run, d); return true;
 }
 
@@ -377,7 +406,10 @@ export function resolveBets(run) {
 }
 export function searchFloor(run) {
   if (run.fs.searched) return null; run.fs.searched = true;
-  const pool = D.FIND_CARDS.filter((id) => !hasCard(run, id)); const id = run.rng.pick(pool.length ? pool : ['trading']);
+  // the Dodgy Corner: each card's chance weight against finding nothing (content/cards.js)
+  const pool = D.FIND_CARDS.filter((id) => !hasCard(run, id)), none = D.SHADY.nothing || 0;
+  const id = run.rng.weighted([...pool, '__none'], (x) => (x === '__none' ? none : D.CARDS[x].corner || 0));
+  if (!id || id === '__none') return 'none';
   addCard(run, id); return id;
 }
 
@@ -429,7 +461,7 @@ export function autoCounts(run, dims, purse = run.purse, reserve = 0) {
 export function validCounts(run, dims) {
   if (validLayout(run, dims)) return layoutCounts(run.plan.layout);
   const c = run.plan.counts, shop = sum(Object.entries(run.plan.resist || {}), ([k, n]) => Math.min(n, owned(run, k)) * (D.SHOP_CHIPS[k]?.place === 'space' ? dims.stackMax : D.SHOP_CHIPS[k]?.place === 'big' ? 3 * dims.stackMax + 1 : D.SHOP_CHIPS[k]?.place === 'sky' ? 0 : 1)) // a Tree needs a whole space, a Big chip four
-    + run.cards.filter((id) => D.CARDS[id]?.resist).length; // and room for Resist chips
+    + run.cards.filter((id) => D.CARDS[id]?.resist).length; // and room for Resist chips (a card that lays one)
   if (c && planWorth(c) <= run.purse && sum(Object.values(c)) + shop <= barCapacity(dims) && planWorth(c) > 0) return c;
   return autoCounts(run, dims, run.purse, shop);
 }
@@ -605,13 +637,13 @@ export function settle(run, ctx, bout) {
     if (tilt) lines.push([tilt > 0 ? tx('run.house-bounty-for-your') : tx('run.house-cut-for-your'), tilt]);
     lines.push([tx('run.bids-lost-to-the'), -(sm.bids - sm.pendingBids)]);
     if (sm.destroyed) lines.push([tx('run.chips-destroyed-by-hazards'), -sm.destroyed]);
-    entry.beaten = true; if (ctx.kind === 'boss' && run.floor >= 4 && !hasCard(run, 'paradise')) { run.cards.push('paradise'); res.news.push(tx('run.the-last-high-roller')); }
+    entry.beaten = true;
     if (ctx.kind === 'table' && ctx.idx === 0) { run.fs.tables[1].seen = run.fs.tables[2].seen = true; res.news.push(tx('run.table-1-is-closed')); }
     else if (ctx.kind === 'table') { const other = run.fs.tables[3 - ctx.idx]; other.passed = true; res.news.push(tx('run.you-chose-table-at', { idx: ctx.idx + 1, name: other.opp.name, v: 4 - ctx.idx })); }
     res.base = base; res.winnings = winnings;
     res.prizes = { dice: rng.shuffle(ctx.opp.dice).slice(0, 3).map((d) => ({ ...d })), tricks: rng.shuffle(ctx.opp.tricks).slice(0, 2).map((t) => ({ ...t })) };
     if (ctx.kind === 'table') {
-      if (ctx.prep.dd) { run.fs.ddStreak++; run.stats.dd++; run.fs.bossOpen = true; run.suiteKey = true; if (!hasCard(run, 'suite')) run.cards.push('suite'); res.news.push(tx('run.double-down-won-a')); }
+      if (ctx.prep.dd) { run.fs.ddStreak++; run.stats.dd++; run.fs.bossOpen = true; run.suiteKey = true; if (D.CARDS[`suite_${run.floor}`] && !hasCard(run, `suite_${run.floor}`)) run.cards.push(`suite_${run.floor}`); res.news.push(tx('run.double-down-won-a')); }
       run.fs.lastWin = { tilts: { ...ctx.prep.tilts }, mult: ctx.mult };
       if (!tablesLeft(run) && !run.fs.bossOpen) { run.fs.bossOpen = true; res.news.push(tx('run.the-high-roller-is')); }
     } else { res.news.push(tx('run.is-dethroned-the-stairs', { name: ctx.opp.name }));
@@ -654,7 +686,8 @@ export function suiteOffer(run) {
   return [mkTrick(run, rng.pick(pool), clamp(f, 1, 4)), mkTrick(run, rng.pick(pool), clamp(f, 1, 4), { foil: 1 })];
 }
 export function goToBed(run, penthouse) { run.rest = penthouse ? { bouts: 2, amt: 2 } : { bouts: 1, amt: 1 }; }
-export function nextAfterBoss(run) { return run.floor >= 4 ? 'penthouse' : run.suiteKey ? 'suite' : 'floor'; }
+// after a High Roller: the Penthouse at the top; a Suite when you hold this floor's Suite Key (won with a Double Down)
+export function nextAfterBoss(run) { return run.floor >= 4 ? 'penthouse' : run.suiteKey || hasCard(run, `suite_${run.floor}`) ? 'suite' : 'floor'; }
 
 export function netWorth(run) { return run.purse + sum(run.dice, (d) => D.DICE[d.type].sell) + sum(run.tricks, (t) => trickValue(run, t)); }
 export function buildAscent(run, meta) {
