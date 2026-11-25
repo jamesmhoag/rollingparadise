@@ -1,7 +1,8 @@
 // Commitment before a bout (wager, tilts, position) and the settlement after it.
 import { h, syncList, toast, btn, tween, wait, pulse, swapText, openPanel, closePanel, paint, guided } from './core.js';
 import { app, hud, oppTip, trickTag, diceSummary } from './app.js';
-import { chipEl, chipSig, chipGlyph, chipTip, dieEl, dieTip, statTip, trickTip } from './parts.js';
+import { chipEl, chipSig, chipGlyph, chipTip, dieEl, dieTip, statTip, trickTip, trickChip, trickLook, trickWord, jacketEl, drinkEl } from './parts.js';
+import { signOf, dressSign } from './sign.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
 import { barCapacity } from '../bout.js';
@@ -9,134 +10,139 @@ import * as B from '../bout.js';
 import { cents, sum } from '../util.js';
 import { t } from '../text.js';
 
-// ---------- position planner ----------
-// A live preview of the Stake. Chips scale on and off as the mix changes.
-export function planner(getExtra, onChange) {
-  const run = app.run, CH = 46, SZ = 24; let CW = 48;
-  const board = h('div', { class: 'mboard', style: { transition: 'width .45s cubic-bezier(.22,.8,.24,1)', height: `${5 * CH + 16}px` } });
+// ---------- drawing a position ----------
+// A position drawn as it sits at the table: its spaces and real chip stacks (the same chips as the table, no numbers;
+// hover for what is in a stack). Yours faces the Stage on the right (Stake left, Bet right); theirs is mirrored.
+// Keeps its elements between draws so chips scale on and off as the position changes.
+export function positionView({ CH = 46, SZ = 24, maxW = 400, mirror = false, lift = 3 } = {}) {
+  let CW = 48, rows = 0, side = null;
+  const board = h('div', { class: `mboard ${mirror ? 'mirror' : ''}`, style: { transition: 'width .45s cubic-bezier(.22,.8,.24,1)', height: `${5 * CH + 16}px` } });
   const chips = new Map(), cells = new Map(), labels = [h('div', { class: 'mlabel', text: t('prep.label.stake') }), h('div', { class: 'mlabel', text: t('prep.label.bet') })];
   board.append(...labels); for (const l of labels) { l.style.top = `${5 * CH + 3}px`; l.style.transition = 'left .45s, width .45s'; }
-  const info = h('div', { class: 'row wrap' }), denomBox = h('div', { class: 'col list' }), resistBox = h('div', { class: 'col list' });
-  const seg = (key, opts) => { const el = h('div', { class: 'seg' }, opts.map(([v, id]) => btn(t(`prep.${key}.${id}`), () => { run.plan[key] = v; update(); }, t(`prep.${key}.${id}.tip`)))); el._sync = () => [...el.children].forEach((b, i) => b.classList.toggle('on', run.plan[key] === opts[i][0])); return el; };
-  const spacing = seg('spacing', [['row', 'row'], ['column', 'column'], ['random', 'random']]);
-  const stacking = seg('stacking', [['maxed', 'maxed'], ['balanced', 'balanced'], ['random', 'random']]);
-  const worthEl = h('b', { class: 'num gold-t' }), countEl = h('b', { class: 'num' });
-  const brushBox = h('div', { class: 'seg brushes' });
-  const K = D.CLASSES[run.cls];
-  const el = h('div', { class: 'col' },
-    h('div', { class: 'row between' }, h('h3', { text: t('prep.position') }), h('span', { class: 'cap', guide: 'prep:deploy', tip: t('prep.deploy.tip', { name: K.name, from: t(`prep.deploy.at.${K.deploy === 'start' || K.deploy === 'end' ? K.deploy : 'mid'}`) }), text: t(`prep.deploy.${K.deploy === 'start' || K.deploy === 'end' ? K.deploy : 'mid'}`) })),
-    h('div', { class: 'row', style: { alignItems: 'flex-start', gap: '16px' } }, board, h('div', { class: 'col grow' }, denomBox, resistBox)),
-    h('div', { class: 'row wrap' }, h('span', { class: 'cap', text: t('prep.spacing') }), spacing, h('span', { class: 'cap', text: t('prep.stacking') }), stacking),
-    h('div', { class: 'row wrap' }, h('span', { class: 'cap', guide: 'prep:paint', text: t('prep.paint'), tip: t('prep.paint.tip') }), brushBox),
-    h('div', { class: 'row wrap' }, info, btn(t('prep.auto'), () => { run.plan.layout = null; run.plan.counts = R.autoCounts(run, dims()); update(); }, t('prep.auto.tip'), 'small'),
-      btn(t('prep.clear'), () => { run.plan.layout = null; run.plan.counts = R.noCounts(); update(); }, null, 'small')));
-  info.append(h('span', { class: 'stat', tip: t('prep.worth.tip') }, h('em', { text: t('prep.worth') }), worthEl),
-    h('span', { class: 'stat', tip: t('prep.capacity.tip') }, h('em', { text: t('prep.capacity') }), countEl));
-  const dims = () => R.rollerStats(run, getExtra()).dims;
-  // ---------- painting chips ----------
-  let brush = null, last = null, warned = false, warnedShort = false;
-  function drawBrushes() {
-    const denoms = D.DENOMS.filter((x) => x.floor <= R.chipFloor(run));
-    brushBox.replaceChildren(...denoms.map((x) => { const b = guided(btn('', () => { brush = brush === x.value ? null : x.value; drawBrushes(); }, t('prep.brush.tip', { amt: cents(x.value) }), `small ${brush === x.value ? 'on' : ''}`), 'brush');
-      b.append(chipEl({ kind: 'std', value: x.value }, 'sm')); return b; }),
-    guided(btn('⌫', () => { brush = brush === 'erase' ? null : 'erase'; drawBrushes(); }, t('prep.eraser.tip'), `small ${brush === 'erase' ? 'on' : ''}`), 'brush'));
-    board.classList.toggle('painting', brush != null);
+  const xOf = (r) => (mirror ? r : rows - 1 - r) * CW;
+  function draw(sd) {
+    side = sd; rows = sd.rows; const m = sd.dims.meterRows, want = new Set(); CW = Math.max(30, Math.min(56, Math.floor(maxW / rows))); board.style.width = `${rows * CW}px`;
+    for (let r = 0; r < rows; r++) for (let col = 0; col < 5; col++) { const k = `${r}-${col}`; want.add(k); let ce = cells.get(k); const x = xOf(r), y = col * CH;
+      if (!ce) { ce = h('div', { class: 'mcell', style: { height: `${CH - 3}px`, opacity: 0, transition: 'transform .45s cubic-bezier(.22,.8,.24,1), width .45s, opacity .4s, background-color .4s' } }); ce.style.transform = `translate(${x}px, ${y}px) scale(.6)`; board.prepend(ce); cells.set(k, ce); void ce.offsetWidth; }
+      ce.classList.toggle('meter', r < m); ce.classList.toggle('alt', (r + col) % 2 === 1); ce.style.width = `${CW - 3}px`; ce.style.opacity = 1; ce.style.transform = `translate(${x}px, ${y}px)`;
+      const stack = sd.grid[r][col].chips; ce._tip = stack.length ? () => t('prep.stack.tip', { n: stack.length, chips: stack.slice().reverse().map((ch) => chipGlyph(ch)).join(' · '), amt: cents(sum(stack, (ch) => (ch.kind === 'std' && !ch.resist ? ch.value : 0))) }) : null;
+      ce.classList.toggle('has-tip', !!stack.length); }
+    for (const [k, ce] of cells) if (!want.has(k)) { ce.style.opacity = 0; cells.delete(k); setTimeout(() => ce.remove(), 450); }
+    const sw = (rows - m) * CW, bw = m * CW;
+    labels[0].style.left = mirror ? `${bw}px` : '0px'; labels[0].style.width = `${sw}px`; labels[1].style.left = mirror ? '0px' : `${sw}px`; labels[1].style.width = `${bw}px`;
+    const seen = new Set();
+    for (let r = 0; r < rows; r++) for (let col = 0; col < 5; col++) sd.grid[r][col].chips.forEach((ch, lvl) => { const k = `${r}-${col}-${lvl}`, sig = chipSig(ch); seen.add(k); let e = chips.get(k);
+      const x = xOf(r) + (CW - 3 - SZ) / 2, y = col * CH + CH - 3 - SZ - 2 - lvl * lift;
+      if (!e) { e = h('div', { class: `chip ${SZ <= 18 ? 'xs' : 'sm'} ${sig}` }, h('i', { text: chipGlyph(ch) })); e.style.width = e.style.height = `${SZ}px`; e.style.opacity = 0; e.style.transform = `translate(${x}px, ${y - 14}px) scale(.3)`; board.append(e); chips.set(k, e); void e.offsetWidth; }
+      if (e._sig !== sig) { e._sig = sig; e.className = `chip ${SZ <= 18 ? 'xs' : 'sm'} ${sig}`; e.firstChild.textContent = chipGlyph(ch); }
+      e.style.zIndex = 10 + col * 20 + lvl; e.style.opacity = 1; e.style.transform = `translate(${x}px, ${y}px)`; });
+    for (const [k, e] of chips) if (!seen.has(k)) { const tf = e.style.transform.replace(/ scale\([^)]*\)/, ''); e.style.opacity = 0; e.style.transform = `${tf} scale(.2)`; chips.delete(k); setTimeout(() => e.remove(), 450); }
   }
-  // the Stake as shown, as a painted layout to start from
-  const layoutNow = () => { const m = last.dims.meterRows, out = []; for (let r = m; r < last.rows; r++) for (let c = 0; c < 5; c++) { const chips = last.grid[r][c].chips.filter((ch) => ch.kind === 'std' && !ch.resist).map((ch) => ch.value); if (chips.length) out.push({ r: r - m, c, chips }); } return out; };
-  const cellAt = (ev) => { const rect = board.getBoundingClientRect(), k = rect.width / board.offsetWidth, x = (ev.clientX - rect.left) / k, y = (ev.clientY - rect.top) / k, rows = last?.rows || 0;
-    const r = rows - 1 - Math.floor(x / CW), c = Math.floor(y / CH); return brush == null || r < 0 || r >= rows || c < 0 || c > 4 ? null : { key: `${r}-${c}`, r, c }; };
+  // the space under a pointer: { r, c } in the side's rows, or null
+  const at = (ev) => { if (!side) return null; const rect = board.getBoundingClientRect(), k = rect.width / board.offsetWidth, x = (ev.clientX - rect.left) / k, y = (ev.clientY - rect.top) / k;
+    const i = Math.floor(x / CW), r = mirror ? i : rows - 1 - i, c = Math.floor(y / CH); return r < 0 || r >= rows || c < 0 || c > 4 ? null : { key: `${r}-${c}`, r, c }; };
+  return { board, draw, at };
+}
+
+// ---------- the position planner ----------
+// Your Stake, painted by hand: it starts from the position you had last (your Roller's own, the first time) and you
+// add to it or take from it before each bout. Pick a chip from the rack beside it and click a space (hold to stack,
+// sweep to cover more); right-click takes the top chip off. Restore puts back what you sat down with last time (as far
+// as your purse goes now: filled from the bottom of each stack up); Clear takes everything off.
+let brushPick = null; // the chip you paint with, kept between visits
+export function planner(getExtra, onChange, { maxW = 400 } = {}) {
+  const run = app.run, V = positionView({ maxW });
+  const rack = h('div', { class: 'col rack' }), meters = h('div', { class: 'col pos-meters' });
+  const worthEl = h('b', { class: 'num gold-t' }), countEl = h('b', { class: 'num' });
+  const K = D.CLASSES[run.cls], dims = () => R.rollerStats(run, getExtra()).dims;
+  const restoreBtn = btn(t('prep.restore'), () => { const from = run.plan.sat || D.ROLLERS[run.roller]?.layout || null; run.plan.layout = from ? JSON.parse(JSON.stringify(from)) : null; if (!from) run.plan.layout = autoLayout(); update(); toast(t('prep.restored')); }, () => t('prep.restore.tip'), 'small');
+  const clearBtn = btn(t('prep.clear'), () => { run.plan.layout = []; update(); }, t('prep.clear.tip'), 'small');
+  const el = h('div', { class: 'col planner' },
+    h('div', { class: 'row between' }, h('div', { class: 'row' }, h('h3', { text: t('prep.position') }), restoreBtn, clearBtn),
+      h('span', { class: 'cap', guide: 'prep:deploy', tip: t('prep.deploy.tip', { name: K.name, from: t(`prep.deploy.at.${K.deploy === 'start' || K.deploy === 'end' ? K.deploy : 'mid'}`) }), text: t(`prep.deploy.${K.deploy === 'start' || K.deploy === 'end' ? K.deploy : 'mid'}`) })),
+    h('div', { class: 'row', style: { alignItems: 'flex-start', gap: '12px' } }, rack, V.board, meters),
+    h('div', { class: 'row wrap' }, h('span', { class: 'stat', tip: t('prep.worth.tip') }, h('em', { text: t('prep.worth') }), worthEl), h('span', { class: 'stat', tip: t('prep.capacity.tip') }, h('em', { text: t('prep.capacity') }), countEl),
+      h('span', { class: 'sub', text: t('prep.paint.how') })));
+  let side = null, warned = false, warnedShort = false, erasing = false;
+  // the rack: every chip you can lay (your denominations, and the effect chips you own, with how many are left)
+  const items = () => [...D.DENOMS.filter((x) => x.floor <= R.chipFloor(run)).map((x) => x.value), ...Object.keys(D.SHOP_CHIPS).filter((k) => R.owned(run, k) > 0)];
+  const usedOf = (k) => sum(run.plan.layout || [], (sp) => sp.chips.filter((x) => x === k).length);
+  function drawRack() {
+    const list = items(); if (!list.includes(brushPick)) brushPick = list[0];
+    rack.replaceChildren(...list.map((it) => { const b = guided(btn('', () => { brushPick = it; drawRack(); }, () => (typeof it === 'number' ? t('prep.brush.tip', { amt: cents(it) }) : `${chipTip({ kind: 'std', value: 1, resist: it })}${t('prep.brush.effect', { n: R.owned(run, it) - usedOf(it) })}`), `rack-chip ${brushPick === it ? 'on' : ''}`), 'brush');
+      b.append(chipEl(typeof it === 'number' ? { kind: 'std', value: it } : { kind: 'std', value: 1, resist: it })); if (typeof it !== 'number') b.append(h('small', { class: 'num', text: R.owned(run, it) - usedOf(it) })); return b; }));
+  }
+  // the Stake as shown, as a painted layout (effect chips included)
+  const layoutNow = (sd) => { const m = sd.dims.meterRows, out = []; for (let r = m; r < sd.rows; r++) for (let c = 0; c < 5; c++) { const chips = sd.grid[r][c].chips.filter((ch) => ch.kind === 'std' || ch.resist).map((ch) => (ch.resist ? ch.resist : ch.value)); if (chips.length) out.push({ r: r - m, c, chips }); } return out; };
+  // the first time there is nothing to start from: the House's own suggestion, laid out
+  function autoLayout() { const d = dims(), saved = run.plan.layout; run.plan.layout = null; const sd = R.previewPosition(run, R.autoCounts(run, d), { position: getExtra().position, resist: {} }); run.plan.layout = saved; return layoutNow(sd); }
+  V.board.addEventListener('pointerdown', (ev) => { erasing = ev.button === 2; }, true);
+  V.board.addEventListener('contextmenu', (ev) => ev.preventDefault());
   function paintAt(at, first) {
     if (first) warned = false;
     const d = dims(), m = d.meterRows, warn = (msg) => { if (!warned) toast(msg, 'warn'); warned = true; };
     if (at.r < m) return warn(t('prep.paint.bet'));
-    run.plan.layout = layoutNow(); // you change the position as it stands for this bout
+    run.plan.layout = layoutNow(side); // you change the position as it stands for this bout
     const L = run.plan.layout, br = at.r - m; let sp = L.find((x) => x.r === br && x.c === at.c);
-    if (brush === 'erase') { if (!sp?.chips.length) return; sp.chips.pop(); }
+    if (erasing) { if (!sp?.chips.length) return; sp.chips.pop(); }
     else {
       if (!sp) { sp = { r: br, c: at.c, chips: [] }; L.push(sp); }
+      const it = brushPick;
       if (sp.chips.length >= d.stackMax) return warn(t('prep.stackFull'));
-      if (R.planWorth(R.layoutCounts(L)) + brush > run.purse) return warn(t('prep.purseShort'));
-      if (R.planCount(R.layoutCounts(L), run.plan.resist) >= barCapacity(d)) return warn(t('prep.stakeFull'));
-      sp.chips.push(brush);
+      if (typeof it === 'number' && R.planWorth(R.layoutCounts(L)) + it > run.purse) return warn(t('prep.purseShort'));
+      if (typeof it !== 'number' && usedOf(it) >= R.owned(run, it)) return warn(t('prep.noMore'));
+      if (sum(L, (x) => x.chips.length) >= barCapacity(d)) return warn(t('prep.stakeFull'));
+      sp.chips.push(it);
     }
-    run.plan.layout = L.filter((x) => x.chips.length); if (!run.plan.layout.length) { run.plan.layout = null; run.plan.counts = R.noCounts(); }
+    run.plan.layout = L.filter((x) => x.chips.length);
     update();
   }
-  paint(board, cellAt, paintAt);
-  drawBrushes();
-  const total = () => R.planCount(run.plan.counts, run.plan.resist);
-  function change(fn) { fn(); update(); }
-  function bump(v, n, ev) { if (run.plan.layout) { run.plan.layout = null; toast(t('prep.backToAuto')); } const step = ev.shiftKey ? 10 : 1, c = run.plan.counts, cap = barCapacity(dims()); let k = step * n;
-    if (n > 0) k = Math.min(k, cap - total(), Math.floor((run.purse - R.planWorth(c)) / v)); else k = -Math.min(-k, c[v] || 0);
-    if (!k) { toast(t(n > 0 ? (cap - total() <= 0 ? 'prep.stakeFull' : 'prep.purseShort') : 'prep.noneToRemove'), 'warn'); return; }
-    change(() => { c[v] = (c[v] || 0) + k; }); }
+  paint(V.board, V.at, paintAt);
+  // the meters: what the position holds of each zone's rows, and what that earns (as at the table)
+  function drawMeters(sd) {
+    const o = B.occupancy(sd), k = D.primaryC(run.cls), stakeAll = o.stakeRows.every((x) => x.n > 0), focus = o.stakeAligned >= 0;
+    const dots = (rows) => h('span', { class: 'rowdots' }, ...rows.map((x) => h('i', { class: x.n > 0 ? 'on' : '' })));
+    meters.replaceChildren(
+      h('div', { class: 'pmeter', tip: t('prep.meter.stake.tip', { stat: D.STATS[k].name }) }, h('span', { class: 'cap', text: t('prep.label.stake') }), dots(o.stakeRows),
+        h('b', { class: stakeAll ? 'good-t' : 'dim', text: stakeAll ? `+1 ${D.STATS[k].name}` : t('prep.meter.rows', { n: o.stakeRows.filter((x) => x.n > 0).length }) }),
+        h('small', { class: focus ? 'good-t' : 'dim', text: t(focus ? 'prep.meter.focus' : 'prep.meter.nofocus') })),
+      h('div', { class: 'pmeter', tip: t('prep.meter.bet.tip') }, h('span', { class: 'cap', text: t('prep.label.bet') }), dots(o.betRows), h('b', { class: 'dim', text: t('prep.meter.bet') })));
+  }
   function update() {
-    const d = dims(), extra = getExtra(); let c = run.plan.counts;
-    for (const k of Object.keys(run.plan.resist)) run.plan.resist[k] = Math.min(run.plan.resist[k] || 0, R.owned(run, k));
-    if (!c || R.planWorth(c) > run.purse || total() > barCapacity(d)) { // a fresh mix that leaves room for the shop chips you placed
-      c = run.plan.counts = R.autoCounts(run, d);
-      for (const v of D.DENOM_VALUES) { const over = total() - barCapacity(d); if (over <= 0) break; c[v] -= Math.min(c[v] || 0, over); }
-      if (total() > barCapacity(d)) run.plan.resist = {}; }
-    const fitted = run.plan.layout ? R.validLayout(run, d) : null;
-    if (run.plan.layout && !fitted) { run.plan.layout = null; c = run.plan.counts = R.autoCounts(run, d); toast(t('prep.paintNoFit'), 'warn'); }
-    else if (fitted) { if (R.layoutWorth(fitted) < R.layoutWorth(run.plan.layout) && !warnedShort) { warnedShort = true; toast(t('prep.paintShort'), 'warn'); } c = run.plan.counts = R.layoutCounts(fitted); }
-    const side = R.previewPosition(run, c, { position: extra.position, resist: run.plan.resist }); last = side;
-    // cells
-    const rows = side.rows, m = side.dims.meterRows, want = new Set(); CW = Math.max(34, Math.min(56, Math.floor(400 / rows))); board.style.width = `${rows * CW}px`;
-    for (let r = 0; r < rows; r++) for (let col = 0; col < 5; col++) { const k = `${r}-${col}`; want.add(k); let ce = cells.get(k);
-      const x = (rows - 1 - r) * CW, y = col * CH;
-      if (!ce) { ce = h('div', { class: 'mcell', style: { height: `${CH - 3}px`, opacity: 0, transition: 'transform .45s cubic-bezier(.22,.8,.24,1), width .45s, opacity .4s, background-color .4s' } }); ce.style.transform = `translate(${x}px, ${y}px) scale(.6)`; board.prepend(ce); cells.set(k, ce); void ce.offsetWidth; }
-      ce.classList.toggle('meter', r < m); ce.classList.toggle('alt', (r + col) % 2 === 1); ce.style.width = `${CW - 3}px`; ce.style.opacity = 1; ce.style.transform = `translate(${x}px, ${y}px)`; }
-    for (const [k, ce] of cells) if (!want.has(k)) { ce.style.opacity = 0; cells.delete(k); setTimeout(() => ce.remove(), 450); }
-    labels[0].style.left = '0px'; labels[0].style.width = `${(rows - m) * CW}px`; labels[1].style.left = `${(rows - m) * CW}px`; labels[1].style.width = `${m * CW}px`;
-    // chips
-    const seen = new Set();
-    for (let r = 0; r < rows; r++) for (let col = 0; col < 5; col++) side.grid[r][col].chips.forEach((ch, lvl) => { const k = `${r}-${col}-${lvl}`, sig = chipSig(ch); seen.add(k); let e = chips.get(k);
-      const x = (rows - 1 - r) * CW + (CW - 3 - SZ) / 2, y = col * CH + CH - 3 - SZ - 2 - lvl * 3;
-      if (!e) { e = h('div', { class: `chip sm ${sig}` }, h('i', { text: chipGlyph(ch) })); e.style.opacity = 0; e.style.transform = `translate(${x}px, ${y - 14}px) scale(.3)`; board.append(e); chips.set(k, e); void e.offsetWidth; }
-      if (e._sig !== sig) { e._sig = sig; e.className = `chip sm ${sig}`; e.firstChild.textContent = chipGlyph(ch); }
-      e.style.zIndex = 10 + col * 20 + lvl; e.style.opacity = 1; e.style.transform = `translate(${x}px, ${y}px)`; });
-    for (const [k, e] of chips) if (!seen.has(k)) { const t = e.style.transform.replace(/ scale\([^)]*\)/, ''); e.style.opacity = 0; e.style.transform = `${t} scale(.2)`; chips.delete(k); setTimeout(() => e.remove(), 450); }
-    // controls
-    const denoms = D.DENOMS.filter((x) => x.floor <= R.chipFloor(run));
-    syncList(denomBox, denoms, (x) => x.value, (x) => { const n = h('b', { class: 'num' }); const row = h('div', { class: 'row', guide: 'denom' }, chipEl({ kind: 'std', value: x.value }), h('span', { class: 'grow', text: x.name ? t('prep.denom.named', { name: x.name, amt: cents(x.value) }) : t('prep.denom', { amt: cents(x.value) }) }),
-      h('div', { class: 'stepper' }, btn('−', (ev) => bump(x.value, -1, ev), null, 'small'), n, btn('+', (ev) => bump(x.value, 1, ev), null, 'small'))); row._n = n; row._tip = () => `${chipTip({ kind: 'std', value: x.value })}${t('prep.shift')}`; row.classList.add('has-tip'); return row; },
-    (row, x) => tween(row._n, c[x.value] || 0, undefined, 250));
-    const owned = Object.keys(D.SHOP_CHIPS).filter((k) => R.owned(run, k) > 0);
-    syncList(resistBox, owned, (k) => k, (k) => { const n = h('b', { class: 'num' }); const row = h('div', { class: 'row', guide: 'denom' }, chipEl({ kind: 'std', value: 1, resist: k }), h('span', { class: 'grow' }),
-      h('div', { class: 'stepper' }, btn('−', () => change(() => { run.plan.resist[k] = Math.max(0, (run.plan.resist[k] || 0) - 1); }), null, 'small'), n,
-        btn('+', () => { if ((run.plan.resist[k] || 0) >= R.owned(run, k)) return toast(t('prep.noMore'), 'warn'); if (total() >= barCapacity(dims())) return toast(t('prep.stakeFull'), 'warn'); change(() => { run.plan.resist[k] = (run.plan.resist[k] || 0) + 1; }); }, null, 'small'))); row._n = n; row._tip = () => chipTip({ kind: 'std', value: 1, resist: k }); row.classList.add('has-tip'); return row; },
-    (row, k) => { row.children[1].textContent = t('prep.owned', { name: D.SHOP_CHIPS[k].name, n: R.owned(run, k) }); tween(row._n, run.plan.resist[k] || 0, undefined, 250); });
-    spacing._sync(); stacking._sync();
-    tween(worthEl, R.planWorth(c), cents, 300); tween(countEl, total(), (n) => `${Math.round(n)}/${barCapacity(d)}`, 300);
+    const d = dims(), extra = getExtra();
+    for (const k of Object.keys(run.plan.resist || {})) run.plan.resist[k] = Math.min(run.plan.resist[k] || 0, R.owned(run, k));
+    if (!run.plan.layout) run.plan.layout = autoLayout();
+    const fitted = R.validLayout(run, d) || [];
+    if (R.layoutWorth(fitted) < R.layoutWorth(run.plan.layout) && !warnedShort) { warnedShort = true; toast(t('prep.paintShort'), 'warn'); }
+    run.plan.counts = R.layoutCounts(fitted);
+    run.plan.resist = {}; for (const sp of fitted) for (const x of sp.chips) if (typeof x !== 'number') run.plan.resist[x] = (run.plan.resist[x] || 0) + 1;
+    side = R.previewPosition(run, run.plan.counts, { position: extra.position, resist: run.plan.resist });
+    V.draw(side); drawMeters(side); drawRack();
+    tween(worthEl, R.planWorth(run.plan.counts), cents, 300); tween(countEl, sum(fitted, (sp) => sp.chips.length), (n) => `${Math.round(n)}/${barCapacity(d)}`, 300);
     onChange?.();
   }
   return { el, update, worth: () => R.planWorth(run.plan.counts) };
 }
 
-function oppBox(opp, label) {
-  return h('div', { class: 'box col', guide: 'opponent', tip: () => oppTip(opp) }, h('span', { class: 'cap', text: label }), h('h2', { text: opp.name }),
-    h('p', { class: 'sub', text: `${opp.title ? opp.title + ' · ' : ''}${t('prep.opp.line', { cls: D.CLASSES[opp.cls].name, amt: cents(opp.worth) })}` }),
-    h('div', { class: 'stats' }, ['trickery', 'ingenuity', 'proficiency'].map((k) => h('span', { class: 'stat', tip: () => statTip(k, opp.tip[k]) }, h('em', { text: D.STATS[k].name }), h('b', { text: opp.tip[k] })))),
-    h('p', { class: 'sub', text: diceSummary(opp.dice) }), h('div', { class: 'inv' }, opp.tricks.map((t) => trickTag(t, opp.cls))));
-}
-
-// The opponent's position as it will be laid out when you sit down, drawn as it faces you: their Bet toward the
-// Stage (on the left), their Stake behind it. Hover a stack for its chips.
-function oppBoard(opp) {
-  let side; try { side = R.previewOpponent(opp); } catch { return null; }
-  const rows = side.rows, m = side.dims.meterRows, CW = Math.max(16, Math.min(26, Math.floor(250 / rows))), CH = 24;
-  const board = h('div', { class: 'oppboard', style: { width: `${rows * CW}px`, height: `${5 * CH}px` } });
-  for (let r = 0; r < rows; r++) for (let c = 0; c < 5; c++) {
-    const chips = side.grid[r][c].chips, top = chips[chips.length - 1];
-    const cell = h('div', { class: `ocell ${r < m ? 'meter' : ''}`, style: { left: `${r * CW}px`, top: `${c * CH}px`, width: `${CW - 2}px`, height: `${CH - 2}px` } });
-    if (top) { cell.append(h('span', { class: `chip xs ${chipSig(top)}` }, h('i', { text: chipGlyph(top) }))); if (chips.length > 1) cell.append(h('b', { class: 'ocount', text: chips.length }));
-      cell._tip = () => t('prep.stack.tip', { n: chips.length, chips: chips.slice().reverse().map((ch) => `${chipGlyph(ch)}`).join(' · '), amt: cents(sum(chips, (ch) => (ch.kind === 'std' ? ch.value : 0))) }); cell.classList.add('has-tip'); }
-    board.append(cell);
-  }
-  return h('div', { class: 'box col' }, h('div', { class: 'row between' }, h('span', { class: 'cap', text: t('prep.theirs') }), h('span', { class: 'sub', text: t('prep.theirs.line', { amt: cents(B.worth(side)), bet: m, stake: side.dims.barRows, height: side.dims.stackMax }) })),
-    board, h('p', { class: 'sub', text: t('prep.theirs.sub') }));
+// ---------- the opponent, as they will sit down ----------
+const bookCard = (tr, cls) => { const def = D.defOf(tr), T = D.TYPES[def.type], ch = trickChip(def);
+  return h('div', { class: `bookcard ${trickLook(tr)}`, style: { '--tc': T.color }, tip: () => trickTip(tr, cls) }, ch ? chipEl(ch, 'mini') : null, h('b', { text: def.name }), h('span', { class: 'q', html: trickWord(tr) }),
+    h('span', { class: 'req' }, h('em', { text: '★' }), `${def.count}×`, dieEl({ type: def.die, up: [] }, '', 'mini'))); };
+function oppPanel(opp) {
+  const sign = h('div', { class: 'who them neon-sample prep-sign' }, h('div', { class: 'name nsign' }, h('b', { class: 'neon-name', text: opp.name }), h('span', { class: 'neon-class', text: D.CLASSES[opp.cls].name })));
+  requestAnimationFrame(() => dressSign(sign, { ...signOf('them', opp.sign), crown: opp.boss ? { level: Math.max(1, Math.min(4, opp.floor || 1)) } : null }, 'them'));
+  const T = opp.trait ? D.BOSS_TRAITS[opp.trait] : null;
+  const gear = h('div', { class: 'row wrap gear' },
+    opp.jacket && D.JACKETS[opp.jacket] ? jacketEl(opp.jacket) : h('span', { class: 'gear-none', text: t('prep.opp.nojacket') }),
+    opp.drink ? drinkEl(opp.drink) : h('span', { class: 'gear-none', text: t('prep.opp.nodrink') }),
+    T ? h('span', { class: 'gcard bizcard', guide: 'boss-trait', tip: () => t('trait.card-tip', { name: opp.name, title: T.title, trait: T.name, rule: B.traitRule(T), flavor: T.flavor }) }, h('em', { text: t('table.biz-card') }), h('b', { text: T.name })) : null);
+  let sd = null; try { sd = R.previewOpponent(opp); } catch { sd = null; }
+  const V = positionView({ CH: 30, SZ: 19, maxW: 380, mirror: true, lift: 2 }); if (sd) V.draw(sd);
+  return h('div', { class: 'box col opp-panel', guide: 'opponent' },
+    h('div', { class: 'row between' }, h('span', { class: 'cap', text: t('prep.across') }), h('span', { class: 'sub', tip: () => oppTip(opp), text: `${opp.title ? opp.title + ' · ' : ''}${t('prep.opp.line', { cls: D.CLASSES[opp.cls].name, amt: cents(opp.worth) })}` })),
+    h('div', { class: 'row', style: { alignItems: 'center', gap: '14px' } }, sign, gear),
+    h('span', { class: 'cap', text: t('prep.theirs') }), sd ? V.board : h('p', { class: 'sub', text: '—' }),
+    h('span', { class: 'cap', text: t('prep.theirBook', { dice: diceSummary(opp.dice) }) }), h('div', { class: 'bookcards' }, opp.tricks.map((tr) => bookCard(tr, opp.cls))));
 }
 
 // ---------- commitment ----------
@@ -145,10 +151,10 @@ export function prepScene(root, kind, idx) {
   entry.seen = true;
   const H = hud(D.FLOORS[run.floor].name, kind === 'boss' ? t('prep.sub.boss') : t('prep.sub.table', { n: idx + 1, felt: D.feltOf(entry.felt).name }));
   const multEl = h('div', { class: 'mult num' }), wagerEl = h('b', { class: 'num gold-t' }), winEl = h('b', { class: 'num good' }), posEl = h('b', { class: 'num' });
-  const tiltBox = h('div', { class: 'col' });
-  const P = planner(() => ({ position: prep.tilts.position }), sync);
+  const tiltBox = h('div', { class: 'tilts' });
+  const P = planner(() => ({ position: prep.tilts.position }), sync, { maxW: 360 });
   const ddBtn = btn(t('prep.dd'), () => { prep.dd = !prep.dd; if (prep.dd) for (const [k, T] of Object.entries(D.TILTS)) prep.tilts[k] = T.kind === 'challenge' && fs.lastWin.tilts[k] && R.tiltOpen(run, k) ? 1 : 0; P.update(); },
-    t('prep.dd.tip'));
+    t('prep.dd.tip'), 'small');
   // each tilt is on or off; while on, the House may play it during the bout
   const rows = Object.entries(D.TILTS).map(([k, T]) => {
     const tg = btn(t('prep.off'), () => { if (prep.dd) return toast(t('prep.dd.locked'), 'warn'); if (!R.setTilt(run, prep, k, !prep.tilts[k])) return toast(t('prep.tilt.opens', { floor: T.floor }), 'warn'); P.update(); }, null, 'small');
@@ -156,8 +162,9 @@ export function prepScene(root, kind, idx) {
       h('span', {}, `${T.kind === 'challenge' ? '⚠' : '✚'} ${T.name}`), h('span', { class: 'dim', text: `${T.kind === 'challenge' ? '+' : '−'}${T.mult}` }), tg);
     return { k, el, tg }; });
   tiltBox.append(...rows.map((r) => r.el));
-  const go = btn(t('prep.sit'), () => { if (P.worth() < 1) return toast(t('prep.needChip'), 'warn'); app.nav.bout(R.startTable(run, prep)); }, t('prep.sit.tip'), 'big go');
-
+  // sitting down starts the bout; getting up goes back to the floor (both always in view, at the foot of the page)
+  const go = btn(t('prep.sit'), () => { if (P.worth() < 1) return toast(t('prep.needChip'), 'warn'); R.rememberSeat(run); app.nav.bout(R.startTable(run, prep)); }, t('prep.sit.tip'), 'big go');
+  const up = btn(t('prep.getup'), () => app.nav.hub(), t('prep.back.tip'), 'big');
   function sync() {
     H.update();
     const m = R.multiplier(run, prep), worth = P.worth(), wager = Math.max(0, run.purse - worth);
@@ -166,16 +173,15 @@ export function prepScene(root, kind, idx) {
     for (const r of rows) { const on = !!prep.tilts[r.k]; swapText(r.tg, t(on ? 'prep.on' : 'prep.off')); r.tg.classList.toggle('on', on); r.tg.classList.toggle('off', prep.dd || !R.tiltOpen(run, r.k)); r.el.classList.toggle('lit', on); }
     ddBtn.classList.toggle('on', prep.dd); ddBtn.classList.toggle('gone', !(kind === 'table' && fs.lastWin));
   }
-  tiltBox.className = 'tilts';
-  root.append(H.el, h('div', { class: 'page', style: { display: 'grid', gridTemplateColumns: '1fr 290px', gap: '16px' } },
-    h('div', { class: 'col' }, h('div', { class: 'box' }, P.el),
-      h('div', { class: 'box col' }, h('div', { class: 'row between' }, h('span', { class: 'cap', guide: 'prep:tilts', tip: t('prep.tilts.tip'), text: t('prep.tilts') })), tiltBox)),
-    h('div', { class: 'col' }, oppBox(opp, t('prep.across')), oppBoard(opp),
-      h('div', { class: 'box col', guide: 'wager', tip: t('prep.wager.tip', { base: D.TUNING.wager.base, boss: D.TUNING.wager.boss }) },
-        h('div', { class: 'row between' }, h('span', { class: 'cap', text: t('prep.wager.mult') }), multEl),
-        h('div', { class: 'line' }, h('span', { text: t('prep.wager.pos') }), posEl), h('div', { class: 'line' }, h('span', { text: t('prep.wager.amt') }), wagerEl), h('div', { class: 'line' }, h('span', { text: t('prep.wager.pays') }), winEl)),
-      ddBtn, go, btn(t('prep.back'), () => app.nav.hub(), null, ''),
-      h('p', { class: 'sub', text: t('prep.lose') }))));
+  root.append(H.el, h('div', { class: 'page prep-page' },
+    h('div', { class: 'prep-main' },
+      h('div', { class: 'col' }, h('div', { class: 'box' }, P.el),
+        h('div', { class: 'box col' }, h('div', { class: 'row between' }, h('span', { class: 'cap', guide: 'prep:tilts', tip: t('prep.tilts.tip'), text: t('prep.tilts') }), ddBtn), tiltBox)),
+      h('div', { class: 'col' }, oppPanel(opp))),
+    h('div', { class: 'box prep-bar', guide: 'wager', tip: t('prep.wager.tip', { base: D.TUNING.wager.base, boss: D.TUNING.wager.boss }) },
+      h('div', { class: 'row', style: { gap: '22px', alignItems: 'baseline' } }, h('span', { class: 'cap', text: t('prep.wager.mult') }), multEl,
+        h('span', { class: 'line' }, h('span', { text: t('prep.wager.pos') }), posEl), h('span', { class: 'line' }, h('span', { text: t('prep.wager.amt') }), wagerEl), h('span', { class: 'line' }, h('span', { text: t('prep.wager.pays') }), winEl)),
+      h('div', { class: 'row' }, h('span', { class: 'sub', text: t('prep.lose') }), up, go))));
   P.update();
 }
 

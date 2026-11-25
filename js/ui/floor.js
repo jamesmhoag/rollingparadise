@@ -7,6 +7,7 @@ import { dieEl, dieTip, trickTip, trickWords, drinkTip, cardTip, chipEl, chipTip
 import * as D from '../data.js';
 import * as R from '../run.js';
 import { traitRule } from '../bout.js';
+import { planner } from './prep.js';
 import { cents } from '../util.js';
 import { t } from '../text.js';
 import { iconKids } from './icons.js';
@@ -293,7 +294,9 @@ function kitPanel() {
         h('div', { class: 'inv', style: { alignItems: 'flex-end' } }, run.cards.map((c) => { const pass = D.LANYARD_CARDS.includes(c); const el = cardEl(c); el.style.cursor = pass ? '' : 'pointer'; el._tip = () => cardTip(c, R.rollerStats(run).v) + (pass ? tx('floor.clipped-to-your-lanyard') : tx('floor.takes-a-wallet-slot')); el.classList.add('has-tip');
         el.onclick = () => { if (pass) return; if (!el._armed) { el._armed = true; el.classList.add('armed'); return toast(tx('floor.click-again-to-drop', { name: D.CARDS[c].name }), 'warn'); } if (!R.dropCard(run, c)) return toast(tx('floor.you-need-that-one'), 'warn'); closePanel(); rerender(); toast(tx('floor.dropped', { name: D.CARDS[c].name })); }; return el; }))),
       ...bizCards(run, () => { closePanel(); rerender(); }),
-      h('span', { class: 'cap', text: tx('floor.position') }), h('p', { class: 'sub', text: tx('floor.bet-rows-and-stake', { meterRows: st.dims.meterRows, barRows: st.dims.barRows, stackMax: st.dims.stackMax, barRows2: st.dims.barRows * 5 * st.dims.stackMax }) }))));
+      h('span', { class: 'cap', text: tx('floor.position') }), h('p', { class: 'sub', text: tx('floor.bet-rows-and-stake', { meterRows: st.dims.meterRows, barRows: st.dims.barRows, stackMax: st.dims.stackMax, barRows2: st.dims.barRows * 5 * st.dims.stackMax }) }),
+      // your starting position, changed here as well as before each bout (it is the one every table starts from)
+      (() => { const P = planner(() => ({}), null, { maxW: 300 }); P.update(); return h('div', { class: 'box' }, P.el); })())));
 }
 
 // the High Rollers' business cards you have won: pick the one you play by

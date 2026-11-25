@@ -506,6 +506,21 @@ for players who ask their system for reduced motion.
 - **Business cards**: clearing a High Roller hands you its card (`run.bizCards`). You play by one at a time
   (`run.trait`, the first you win, changed from your inventory on the floor), with the same rule it played against you.
 
+### Before a bout
+- The pre-bout page sets your position and the opponent's side by side, with the wager and **Sit down** / **Get
+  up** in a bar along the foot of the page, always in view.
+- **Your position is painted by hand**, nothing else: it starts from the position you had last (your Roller's own,
+  the first time) and you add to it or take from it. The rack beside the Stake holds every chip you can lay (your
+  denominations, and the effect chips you own, with how many are left); click one to paint with it, click a space to
+  set one down (hold to stack, sweep to cover more); right-click takes the top chip off. **Restore** puts back what
+  you sat down with last bout (`run.plan.sat`), filled from the bottom of each stack up if your purse falls short;
+  **Clear** takes everything off. There is no spacing, stacking or per-denomination count any more.
+- Beside it, the **Stake and Bet meters** as at the table: which rows are held, whether the Stake is focused, and
+  what that earns.
+- **The opponent** as they will sit down: their neon sign (with a High Roller's crown), their jacket, drink and
+  business card, their Stake drawn chip for chip, mirrored (hover a stack for what is in it), and their Book as cards.
+- The same planner sits in your Coat Check panel on the floor, so you can set your position between tables too.
+
 ### Starting positions (the miniature Stake)
 - Build mode's Roller and Opponent makers lay a position out on a miniature of its Stake: red-checkered spaces, rows
   from the Bet back, sized from the class, jacket and (for a High Roller) rank (`R.posDims`), so it resizes when any

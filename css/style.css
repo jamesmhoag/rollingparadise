@@ -176,7 +176,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .mcell.meter { background: rgba(110, 160, 255, .09); border-style: dashed; } .mboard .chip { transition: transform .45s var(--ease), opacity .35s, background-color .4s, border-color .4s; }
 .mlabel { position: absolute; font-size: 9px; letter-spacing: .14em; color: var(--dim); text-align: center; }
 .tilt { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; padding: 6px 10px; border-radius: 8px; background: rgba(9, 6, 24, .35); border: 1px solid var(--line); } .tilt small { grid-column: 1 / -1; color: var(--dim); font-size: 11px; }
-.tilts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; } .tilt small { display: none; }
+.tilts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; } .tilt { min-width: 0; } .tilt small { display: none; }
 .tilt.challenge { border-left: 3px solid var(--coral); } .tilt.cheat { border-left: 3px solid var(--sky); }
 .mult { font-family: var(--display); font-size: 34px; color: var(--gold); line-height: 1; }
 .line { display: flex; justify-content: space-between; gap: 20px; padding: 6px 2px; border-bottom: 1px dashed var(--line); } .line .amt { font-variant-numeric: tabular-nums; font-weight: 700; } .line .amt.pos { color: var(--good); } .line .amt.neg { color: var(--bad); }
@@ -1027,3 +1027,23 @@ p.flavor { font-style: italic; color: var(--dim); }
 .who.seat.neonsign { height: 88px; box-sizing: border-box; padding: var(--sign-room, 6px) calc(var(--sign-room, 6px) + 6px); align-content: center; }
 .who.them.boss.seat.neonsign { padding: var(--sign-room, 6px) calc(var(--sign-room, 6px) + 8px); }
 .who.seat .pills:not(.steps) { flex-wrap: nowrap; gap: 3px; } .who.seat .pills:not(.steps) .pill { white-space: nowrap; font-size: 9.5px; padding: 1px 4px; } .who.seat .pills:not(.steps) { justify-content: center; }
+/* ---------- the pre-bout page: your position and theirs side by side, the wager and Sit down / Get up always in view ---------- */
+.prep-page { display: flex; flex-direction: column; gap: 12px; }
+.prep-main { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr); gap: 14px; flex: 1; min-height: 0; }
+.prep-main > .col { min-height: 0; gap: 12px; }
+.prep-bar { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 8px 16px; flex: none; }
+.prep-bar .mult { font-size: 26px; } .prep-bar .line { display: inline-flex; gap: 8px; align-items: baseline; border: 0; padding: 0; white-space: nowrap; font-size: 13px; } .prep-bar .big { padding: 8px 22px; white-space: nowrap; }
+.prep-bar .sub { max-width: 230px; font-size: 10.5px; } .opp-panel { overflow: hidden; } .opp-panel .row.between .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.planner .mboard { cursor: crosshair; touch-action: none; } .planner .mboard .mcell:not(.meter):hover { outline: 2px solid var(--gold); outline-offset: -2px; }
+.rack { gap: 4px; } .rack-chip { position: relative; padding: 3px; border-radius: 50%; min-width: 0; background: transparent; border: 2px solid transparent; }
+.rack-chip.on { border-color: var(--gold); box-shadow: 0 0 10px rgba(255, 200, 90, .5); } .rack-chip:hover { border-color: rgba(255, 200, 90, .45); }
+.rack-chip small { position: absolute; right: -6px; bottom: -4px; font-size: 9px; background: #0b0720; border-radius: 6px; padding: 0 3px; }
+.pos-meters { gap: 10px; min-width: 120px; } .pmeter { display: flex; flex-direction: column; gap: 3px; }
+.rowdots { display: flex; gap: 3px; } .rowdots i { width: 9px; height: 9px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .25); } .rowdots i.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 6px rgba(255, 200, 90, .6); }
+.pmeter b { font-size: 12px; } .pmeter small { font-size: 10.5px; }
+.mboard.mirror .mlabel { text-align: center; }
+.opp-panel { gap: 10px; } .prep-sign { position: relative; padding: 6px 14px; flex: none; }
+.gear { gap: 8px; align-items: center; } .gear-none { font-size: 11px; color: var(--dim); font-style: italic; }
+.bookcards { display: flex; flex-wrap: wrap; gap: 5px; }
+.bookcard { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px 4px 6px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, .1); border-left: 4px solid var(--tc); background: linear-gradient(90deg, color-mix(in srgb, var(--tc) 16%, #120c2a), #0e0a22); font-size: 12px; }
+.bookcard .q { font-size: 10px; color: var(--gold); } .bookcard .req { display: inline-flex; align-items: center; gap: 2px; font-size: 10px; color: var(--gold); margin-left: 2px; } .bookcard .req em { font-style: normal; }

@@ -285,7 +285,9 @@ function deployLayout(b, s, plan) {
 // plan: { chips:[{value,count,resist?}], spacing:'row'|'column'|'random', stacking:'maxed'|'balanced'|'random' }
 export function deploy(b, s, plan) {
   if (plan.layout?.length) { // a painted layout, then any shop chips around it
-    const n = deployLayout(b, s, plan), rest = plan.chips.filter((g) => g.resist);
+    const n = deployLayout(b, s, plan), inLayout = {}; for (const sp of plan.layout) for (const x of sp.chips || []) if (typeof x !== 'number') inLayout[x] = (inLayout[x] || 0) + 1;
+    // shop chips laid in the layout itself are not laid again around it
+    const rest = plan.chips.filter((g) => g.resist).map((g) => ({ ...g, count: Math.max(0, g.count - (inLayout[g.resist] || 0)) })).filter((g) => g.count > 0);
     return n + (rest.length ? deploy(b, s, { ...plan, layout: null, chips: rest }) : 0);
   }
   const cells = barOrder(s, plan.spacing, b.rng);

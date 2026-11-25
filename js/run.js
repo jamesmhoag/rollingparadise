@@ -146,7 +146,7 @@ export function genOpponent(run, floor, worthTarget, o = {}) {
   return { name: o.name || rng.pick(D.OPPONENTS), title: o.title || '', cls, floor, ai: true, tip, c, dims, why, deploy: K.deploy, dice, tricks,
     plan: { chips: groups, spacing: X?.deploy?.spacing || 'row', stacking: X?.deploy?.stacking || 'maxed', ...(X?.layout?.length ? { layout: fitLayout(X.layout, dims) } : {}) },
     worth: X?.layout?.length ? layoutWorth(fitLayout(X.layout, dims)) : nBig * big + petty,
-    roster: o.roster || null, sign: X?.sign || null, trait: X?.boss || o.boss ? X?.trait || bossTraitByName(o.name) : null, boss: !!(o.boss || X?.boss), wallet: X?.wallet || null, drink: drink ? { ...drink } : null,
+    roster: o.roster || null, jacket: X?.jacket || null, sign: X?.sign || null, trait: X?.boss || o.boss ? X?.trait || bossTraitByName(o.name) : null, boss: !!(o.boss || X?.boss), wallet: X?.wallet || null, drink: drink ? { ...drink } : null,
     behave: { ...D.DEFAULT_BEHAVE, ...(X?.behave || {}) }, phases: X?.phases ? JSON.parse(JSON.stringify(X.phases)) : null };
 }
 
@@ -432,7 +432,7 @@ export function posDims({ cls, jacket, boss } = {}) {
   if (boss) bvd.balance++;
   const B0 = D.BASE_DIMS; return { cols: B0.cols, stackMax: Math.max(1, B0.stackMax + bvd.balance), meterRows: Math.max(1, B0.meterRows + bvd.versatility), barRows: Math.max(1, B0.barRows + bvd.depth) };
 }
-const itemWorth = (it) => (typeof it === 'number' ? it : 1);
+const itemWorth = (it) => (typeof it === 'number' ? it : 0); // effect chips are owned, not paid for from the purse
 export const layoutWorth = (layout) => sum(layout || [], (sp) => sum(sp.chips || [], itemWorth));
 // A laid-out position fitted to a position and a purse: spaces outside it and chips over a stack's height are left
 // out; and if the purse cannot cover all of it, it is built again from the bottom up (every stack's first chip, front
@@ -453,8 +453,9 @@ export const layoutCounts = (layout) => { const c = noCounts(); for (const sp of
 // the purse you have now (filled from the bottom up when the purse falls short). null when nothing of it is left.
 export function validLayout(run, dims) {
   const L = run.plan.layout; if (!L?.length) return null;
-  const F = fitLayout(L.map((sp) => ({ ...sp, chips: sp.chips.filter((v) => typeof v === 'number') })), dims, run.purse);
-  return planWorth(layoutCounts(F)) > 0 ? F : null;
+  const left = {}; // effect chips: as many as you own
+  const F = fitLayout(L.map((sp) => ({ ...sp, chips: sp.chips.filter((v) => typeof v === 'number' || (D.SHOP_CHIPS[v] && (left[v] = (left[v] ?? owned(run, v)) - 1) >= 0)) })), dims, run.purse);
+  return F.some((sp) => sp.chips.length) ? F : null;
 }
 export const planWorth = (counts) => sum(Object.entries(counts), ([v, n]) => v * n);
 export const planCount = (counts, resist) => sum(Object.values(counts)) + sum(Object.values(resist || {}));
@@ -500,6 +501,8 @@ export function startIntro(run) {
   const bout = createBout({ seed: run.rng.int(2 ** 31), a: playerSpec(run, { ...noCounts(), 1: n }), b: opp, rules: { maxDenom: 1 } });
   return { bout, ctx: { kind: 'intro', opp, felt: 'house', wager: 0, mult: 1, committed: n } };
 }
+// what you sat down with: Restore in the planner puts it back before the next bout
+export function rememberSeat(run) { const L = validLayout(run, rollerStats(run).dims); if (L) run.plan.sat = JSON.parse(JSON.stringify(L)); }
 export function startTable(run, prep) {
   const entry = prep.kind === 'boss' ? run.fs.boss : run.fs.tables[prep.idx], t = prep.tilts;
   const on = (k) => (t[k] ? 1 : 0); // a tilt that is on opens the bout once, then the House may play it again as the bout goes
