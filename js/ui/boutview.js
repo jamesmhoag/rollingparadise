@@ -127,10 +127,6 @@ export function boutScene(root, bout, ctx, onDone) {
   function lightsAt(base) { lightsBase = base; if (!flashing) marquee.className = `marquee ${base}`; }
   // each Roller's name as a neon sign: the name in script, their class (or title) in capitals under it. The colours
   // are D.NEON's, set in Build mode: a tube colour and a glow colour for the frame, the name and the class.
-  // a High Roller's business card: the trait that bends one rule of the bout their way
-  const bizCard = (s) => { const T = B.bossTrait(s); if (!T) return null;
-    return h('span', { class: 'gcard bizcard', guide: 'boss-trait', tip: () => tx('trait.card-tip', { name: s === me ? D.heroName(me.cls, me.roller) : s.name, title: T.title, trait: T.name, rule: B.traitRule(T), flavor: T.flavor }) },
-      h('em', { text: tx('table.biz-card') }), h('b', { text: T.name })); };
   const nameSign = (name, cls, tipFn) => h('div', { class: 'name nsign', tip: tipFn }, h('b', { class: 'neon-name', text: name }), h('span', { class: 'neon-class', text: cls }));
   // the signs: yours, theirs (their own if their roster entry has one) and the House's, all built the same way (sign.js)
   // a High Roller wears its floor's crown; you wear one you have claimed, in the colours of the sign it came off
@@ -158,7 +154,6 @@ export function boutScene(root, bout, ctx, onDone) {
   const header = h('div', { class: 'bout-head' },
     h('div', { class: 'who me' }, nameSign(D.ROLLERS[me.roller || D.rollerOf(me.cls)]?.name || D.CLASSES[me.cls].name, D.CLASSES[me.cls].name, () => tx('table.sign-tip', { name: D.heroName(me.cls, me.roller), cls: D.CLASSES[me.cls].name })),
       h('div', { class: 'worth', tip: worthTip(me) }, 'Worth ', worthEl[0], '¢', owesEl[0]),
-      bizCard(me),
       h('div', { class: 'pills steps' }, STEPS.map(([k, name, stat, reward, what], i) => (pillEl[k] = h('span', { class: 'pill step', tip: pillTip(stat, reward, what, k) },
         h('em', { text: String(i + 1) }), ` ${name} `, (pill[k] = h('span'))))))),
     h('div', { class: 'mid' }, (houseSign = h('div', { class: 'house-sign', tip: tx('table.the-house-every-chip') }, marquee,
@@ -166,7 +161,6 @@ export function boutScene(root, bout, ctx, onDone) {
       h('div', { class: 'turn', tip: () => tx('table.turn-both-rollers-plan', { turn: bout.turn, LASTCALL: B.LAST_CALL + 1, maxTurns: bout.rules.maxTurns }) }, 'Turn ', h('b', { class: 'num turn-n', text: '1' }))))),
     h('div', { class: `who them${opp.boss ? ' boss' : ''}` }, h('div', { class: 'worth', tip: worthTip(opp) }, 'Worth ', worthEl[1], '¢', owesEl[1]),
       nameSign(opp.name, D.CLASSES[opp.cls].name, () => tx('table.sign-tip', { name: opp.title ? `${opp.name}, ${opp.title}` : opp.name, cls: D.CLASSES[opp.cls].name })), // the class line names its class, High Rollers' too
-      bizCard(opp),
       (oppPills = h('div', { class: 'pills' }, ['trickery', 'proficiency', 'ingenuity', 'charisma', 'cunning', 'conviction'].map((k) =>
         h('span', { class: 'pill small', 'data-k': k, tip: () => statTip(k, k in opp.tip ? B.tipOf(opp, k) : B.cOf(opp, k)) + statSplit(B.statParts(opp, k)) + (k in opp.tip ? '' : cccGate(opp)) }, `${D.STATS[k].name} `, h('b', { text: k in opp.tip ? opp.tip[k] : B.cOf(opp, k) })))))));
   // the middle of the table: the Pit right under the House's arms, each Roller's pot under it, then a ledger per

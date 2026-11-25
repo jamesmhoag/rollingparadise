@@ -239,8 +239,10 @@ function letterBoxes(nameEl, origin, fs, k = 1) { // k: how much the page is sca
   const node = [...nameEl.childNodes].find((n) => n.nodeType === 3) || nameEl.firstChild; if (!node?.textContent) return [];
   const out = [], range = document.createRange();
   for (let i = 0; i < node.textContent.length; i++) { if (/\s/.test(node.textContent[i])) continue; range.setStart(node, i); range.setEnd(node, i + 1); const r = range.getBoundingClientRect(); if (!r.width) continue;
-    // the ink, not the font's whole line: script capitals reach about 0.7em over the baseline
-    out.push({ l: (r.left - origin.left) / k + fs * 0.04, r: (r.right - origin.left) / k - fs * 0.04, t: (r.top - origin.top) / k + fs * 0.16, b: (r.bottom - origin.top) / k - fs * 0.2, i }); }
+    // the ink, not the font's whole line: estimated from the letter's shape (capitals and tall letters reach about
+    // 0.72em over the baseline, the rest about 0.48em; g, j, p, q, y hang below it)
+    const ch = node.textContent[i], base = (r.bottom - origin.top) / k - fs * 0.24, top = /[A-Z0-9bdfhklt]/.test(ch) ? 0.72 : 0.48, low = /[gjpqyf]/.test(ch) ? 0.2 : 0.02;
+    out.push({ l: (r.left - origin.left) / k + fs * 0.05, r: (r.right - origin.left) / k - fs * 0.05, t: base - fs * top, b: base + fs * low, i, cap: top > 0.6 }); }
   return out;
 }
 // measure the name's letters in an svg's own coordinates
@@ -254,6 +256,9 @@ function drawDeco(svg, el, spec) {
   svg.replaceChildren(); const N = nameIn(svg, el); if (!N || !spec.symbol?.on || !SYMBOLS[spec.symbol.id]) return;
   const ctx = defsFor(svg); ctx.svg = svg; const { fs, boxes } = N, [core, glow] = spec.name;
   const avoid = boxes.map((b) => ({ l: b.l - 1.5, r: b.r + 1.5, t: b.t - 1.5, b: b.b + 1.5 }));
+  // and the class line under it: the symbol's tube stops short of its letters too
+  const clsEl = el.querySelector('.neon-class'); if (clsEl?.textContent) { const o = svg.getBoundingClientRect(), q = clsEl.getBoundingClientRect(), kk = o.width / (svg.clientWidth || o.width || 1) || 1;
+    avoid.push({ l: (q.left - o.left) / kk - 2, r: (q.right - o.left) / kk + 2, t: (q.top - o.top) / kk + q.height / kk * 0.12 - 1.5, b: (q.bottom - o.top) / kk - q.height / kk * 0.12 + 1.5 }); }
   const last = boxes[boxes.length - 1], size = fs * 1.15, x = last.r + size * 0.3, y = (last.t + last.b) / 2;
   const g = litSymbol(svg, ctx, spec.symbol.id, { x, y, k: size / 24 }, spec.symbol.colors?.[0] || core, spec.symbol.colors?.[1] || glow, { avoid, w: 2.4, cls: `name-sym motion-${spec.symbol.motion}` });
   if (spec.blinks?.symbol?.on) g.classList.add('bk', `bk-${spec.blinks.symbol.pattern || 'breathe'}`);
@@ -263,7 +268,7 @@ function drawDeco(svg, el, spec) {
 function drawCrown(svg, el, spec) {
   svg.replaceChildren(); const lvl = spec.crown?.level, N = nameIn(svg, el); if (!N || !CROWNS[lvl]) return;
   const ctx = defsFor(svg); ctx.svg = svg; const { fs, boxes } = N, first = boxes[0], hgt = fs * (0.5 + lvl * 0.06), k = hgt / 24, cc = spec.crown.colors || spec.border;
-  const g = litSymbol(svg, ctx, CROWNS[lvl], { x: first.l + (first.r - first.l) * 0.42, y: first.t + (first.b - first.t) * 0.24, k, deg: -17, cx: 14, cy: 21 }, cc[0], cc[1], { w: 2, sep: spec.mount.color || '#07040f', cls: `crown crown-${lvl}` });
+  const g = litSymbol(svg, ctx, CROWNS[lvl], { x: first.l + (first.r - first.l) * 0.18, y: first.t + fs * 0.1, k, deg: -24, cx: 14, cy: 21 }, cc[0], cc[1], { w: 2, sep: spec.mount.color || '#07040f', cls: `crown crown-${lvl}` });
   if (spec.blinks?.crown?.on) g.classList.add('bk', `bk-${spec.blinks.crown.pattern || 'breathe'}`);
 }
 // how much room the frame takes inside the sign's edge: its tubes (nested inward) and any symbols along it
