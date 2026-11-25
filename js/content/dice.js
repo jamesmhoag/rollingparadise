@@ -31,15 +31,12 @@ export const BASIC_MATS = ['glass', 'plastic', 'metal'];
 export const COMPLEXITY = ['d4', 'd6', 'd8', 'd12', 'd20'];
 
 // ---------- the Dice Shop ----------
-// price = base[type] × mat[material] × (floor multiplier). A die type is sold from its `from` floor.
-// `basic`: plain dice on the shelf each floor. `bone`: Bone dice on the shelf each floor, priced × boneMult.
+// price = base[type] × mat[material] × the floor's multiplier (content/shops.js, with how many are listed and in stock).
+// A die type is sold from its `from` floor. Bone dice are priced × boneMult.
 export const DICE_SHOP = {
   base: { d4: 30, d6: 45, d8: 70, d12: 160, d20: 320 },
   from: { d4: 1, d6: 1, d8: 1, d12: 2, d20: 3 },
   mat: { plastic: 1, glass: 1.25, metal: 1.5 },
-  floorMult: [1, 1, 1.5, 2.25, 3.5],
-  basic: 6,
-  bone: 2,
   boneMult: 4,
 };
 

@@ -105,14 +105,14 @@ export function rollerMaker(id, redraw) {
     h('span', { class: 'cap', text: t('roster.part.inventory') }),
     f.field(lab('roster.tricks'), trickPicker(X.tricks || [], (ids) => f.set(['tricks'], ids)), ['tricks']),
     diceField(f, X.dice),
-    f.field(lab('roster.worth'), f.number(['worth'], X.worth ?? 200, { min: 1 }), ['worth']),
+    f.field(lab('roster.worth'), f.number(['worth'], X.worth ?? D.SHOPS.door.welcome, { min: 1 }), ['worth']),
     f.field(lab('roster.wallet'), f.select(['wallet'], optsOf(D.WALLETS), X.wallet || 'worn_cloth'), ['wallet']),
     f.field(lab('roster.jacket'), f.select(['jacket'], Object.entries(D.JACKETS).filter(([, J]) => !J.cls || J.cls === X.cls).map(([k, J]) => [k, J.name]), X.jacket || 'standard'), ['jacket']),
     f.field(lab('roster.rollerLayout'), stakeBoard({ dims: R.posDims(X), layout: X.layout, set: (v) => B.setValue(D.subPath(D.subPath('ROLLERS', id), 'layout'), v), done: redraw, who: 'roller', cls: X.cls }), ['layout']),
     h('span', { class: 'cap', text: t('roster.part.sign') }), h('p', { class: 'sub', text: t('roster.sign.you') }),
     signEditor(D.subPath(D.subPath('ROLLERS', id), 'sign'), 'you', X.sign, redraw, [X.name, K?.name || ''])),
   h('div', {}, h('span', { class: 'cap', text: t('maker.preview') }), h('div', { class: 'b-card', style: { '--cc': K?.color } }, h('b', { text: D.heroName(X.cls, id) }), h('p', { text: D.classRule(X.cls) }),
-    h('p', { text: t('roster.roller.walksIn', { worth: X.worth ?? 200, wallet: D.WALLETS[X.wallet]?.name || '', jacket: D.JACKETS[X.jacket]?.name || '' }) }),
+    h('p', { text: t('roster.roller.walksIn', { worth: X.worth ?? D.SHOPS.door.welcome, wallet: D.WALLETS[X.wallet]?.name || '', jacket: D.JACKETS[X.jacket]?.name || '' }) }),
     h('div', { class: 'dicebox' }, dice.map((type) => dieEl({ type }, '', 'mini'))), h('div', { class: 'row wrap tags' }, ...(X.tricks || []).filter((k) => D.TRICKS[k]).map((k) => trickTag({ id: k, q: 1 }, X.cls)))),
   h('p', { class: 'sub', text: t('roster.roller.note') })));
 }

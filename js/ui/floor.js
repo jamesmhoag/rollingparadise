@@ -185,7 +185,7 @@ function diceShopPanel() {
     syncList(shelf, R.diceShop(run), (it) => it.key, (it) => { const el = item(it.die.mat === 'bone' ? 'bone' : '');
       el.append(btn(tx('shop.buy'), () => { tryDo(R.buyShopDie(run, it.key), el); done(); }, null, 'small')); el.prepend(dieEl(it.die)); el._tip = () => dieTip(it.die); el.classList.add('has-tip'); return el; },
     (el, it) => { const B = it.die.bone && D.BONE[it.die.bone];
-      setItem(el, dieName(it.die), B ? tx('floor.cannot-be-melted-or', { join: faceList(it.die).join(' '), upgradeText: D.upgradeText(B.up) }) : `${faceList(it.die).join(' ')} <span class="dim">${D.MATERIALS[it.die.mat].text}</span>`, cents(R.dieCost(run, it)));
+      setItem(el, `${dieName(it.die)} ${`<span class="left dim">${tx('shop.left', { n: it.left ?? 1 })}</span>`}`, B ? tx('floor.cannot-be-melted-or', { join: faceList(it.die).join(' '), upgradeText: D.upgradeText(B.up) }) : `${faceList(it.die).join(' ')} <span class="dim">${D.MATERIALS[it.die.mat].text}</span>`, cents(R.dieCost(run, it)));
       el.lastChild.classList.toggle('off', run.purse < R.dieCost(run, it)); });
     if (!R.diceShop(run).length) syncList(shelf, [{ k: 0 }], (x) => x.k, () => h('p', { class: 'sub', text: tx('floor.sold-out-until-the') }));
   }
@@ -205,7 +205,7 @@ function traderPanel() {
   const done = after(render);
   function render() {
     syncList(shelf, fs.shop, (it) => it.key, (it) => { const el = trickItem(run, (e) => e._t); el.append(btn(tx('shop.buy'), () => { tryDo(R.buyTrick(run, it.key), el); done(); }, null, 'small')); return el; },
-      (el, it) => { el._t = it.trick; el.style.setProperty('--tc', D.TYPES[D.TRICKS[it.trick.id].type].color); const [n, s] = trickLine(it.trick); setItem(el, n, s, cents(R.price(run, 'trader', it.cost))); el.lastChild.classList.toggle('off', run.purse < R.price(run, 'trader', it.cost)); });
+      (el, it) => { el._t = it.trick; el.style.setProperty('--tc', D.TYPES[D.TRICKS[it.trick.id].type].color); const [n, s] = trickLine(it.trick); setItem(el, `${n} ${`<span class="left dim">${tx('shop.left', { n: it.left ?? 1 })}</span>`}`, s, cents(R.price(run, 'trader', it.cost))); el.lastChild.classList.toggle('off', run.purse < R.price(run, 'trader', it.cost)); });
     syncList(mine, run.tricks, (t) => t.uid, (t) => { const el = trickItem(run, (e) => e._t);
       el.append(btn(tx('floor.sell'), () => { const poor = !R.canSell(el._t); tryDo(poor ? R.trashTrick(run, t.uid) : R.sellTrick(run, t.uid), el, tx('floor.keep-at-least-one-2')); done(); },
         () => (R.canSell(el._t) ? `<b>Sell</b><p>${cents(R.trickValue(run, el._t))}: ${D.CONDITIONS[D.condOf(el._t)].name} sells at ${Math.round(D.CONDITIONS[D.condOf(el._t)].sell * 100)}% of its price.</p>` : tx('floor.trash-poor-tricks-cannot')), 'small danger')); return el; },
@@ -213,8 +213,8 @@ function traderPanel() {
         setItem(el, n, s, sells ? `sells ${cents(R.trickValue(run, t))}` : 'Poor'); swapText(el.lastChild, sells ? 'Sell' : 'Trash'); el.lastChild.classList.toggle('off', run.tricks.length <= 1); });
     syncList(packs, D.PACKS.slice(1), (P) => P.q, (P) => { const el = item(); el.append(btn(tx('floor.open'), () => { tryDo(R.buyPack(run, P.q), el, !R.packOpen(run, P.q) ? tx('floor.sold-from-floor', { floor: P.floor }) : null); done(); }, null, 'small'));
       el._tip = () => tx('floor.foil-pack-five-tricks', { name: P.name, QNAME: D.QNAME[P.q], qdieText: D.qdieText(P.q) }); el.classList.add('has-tip'); return el; },
-      (el, P) => { const open = R.packOpen(run, P.q); setItem(el, `${P.name} <span class="dim">· foil pack</span>`, `Five ${D.QNAME[P.q]} tricks, Mint, one rarer`, open ? cents(R.packCost(run, P.q)) : `floor ${P.floor}`);
-        el.classList.toggle('locked', !open); el.lastChild.classList.toggle('off', !open || run.purse < R.packCost(run, P.q)); });
+      (el, P) => { const open = R.packOpen(run, P.q), n = R.packLeft(run, P.q); setItem(el, `${P.name} <span class="dim">· foil pack</span>${open ? ` ${`<span class="left dim">${tx('shop.left', { n: n })}</span>`}` : ''}`, `Five ${D.QNAME[P.q]} tricks, Mint, one rarer`, !open ? `floor ${P.floor}` : n > 0 ? cents(R.packCost(run, P.q)) : tx('shop.soldOut'));
+        el.classList.toggle('locked', !open || n <= 0); el.lastChild.classList.toggle('off', !open || n <= 0 || run.purse < R.packCost(run, P.q)); });
     const got = fs.pack ? fs.pack.uids.map((u) => run.tricks.find((t) => t.uid === u)).filter(Boolean) : [];
     pulledWrap.classList.toggle('gone', !got.length);
     syncList(pulled, got, (t) => t.uid, (t) => { const el = trickItem(run, (e) => e._t); return el; },
@@ -236,8 +236,9 @@ function exchangePanel() {
   function render() {
     syncList(list, ids, (k) => k, (k) => { const el = item(); el.prepend(chipEl({ kind: 'std', value: 1, resist: k })); el.append(btn(tx('shop.buy'), () => { tryDo(R.buyShopChip(run, k), el, !R.shopChipOpen(run, k) ? tx('floor.sold-from-floor-2', { shopFloor: D.shopFloor(k) }) : null); done(); }, null, 'small')); el._tip = () => chipTip({ kind: 'std', value: 1, resist: k }) + (R.shopChipOpen(run, k) ? '' : tx('floor.sold-from-floor-3', { shopFloor: D.shopFloor(k) })); el.classList.add('has-tip'); return el; },
       (el, k) => { const X = D.SHOP_CHIPS[k], T = D.CHIP_TIERS[X.tier], open = R.shopChipOpen(run, k);
-        setItem(el, `${X.name} <span class="tier" style="--tc:${T.color}">${T.name}</span> <span class="dim">· you own ${R.owned(run, k)}</span>`, D.shopText(k), open ? cents(D.shopPrice(k)) : `floor ${D.shopFloor(k)}`);
-        el.classList.toggle('locked', !open); el.lastChild.classList.toggle('off', !open || run.purse < D.shopPrice(k)); });
+        const n = R.chipLeft(run, k), cost = R.chipCost(run, k);
+        setItem(el, `${X.name} <span class="tier" style="--tc:${T.color}">${T.name}</span> <span class="dim">· you own ${R.owned(run, k)}</span>${open ? ` ${`<span class="left dim">${tx('shop.left', { n: n })}</span>`}` : ''}`, D.shopText(k), !open ? `floor ${D.shopFloor(k)}` : n > 0 ? cents(cost) : tx('shop.soldOut'));
+        el.classList.toggle('locked', !open || n <= 0); el.lastChild.classList.toggle('off', !open || n <= 0 || run.purse < cost); });
   }
   render();
   openPanel(h('div', {}, head(tx('tuner.rooms.exchange'), tx('floor.your-purse-is-changed')),
@@ -255,8 +256,8 @@ function loungePanel() {
       el.append(btn(tx('shop.buy'), () => { tryDo(R.buyDrink(run, d.id), el); done(); }, null, 'small'),
         btn(tx('floor.play-for-it'), () => { if (L.challenged) return toast(tx('floor.the-barfly-has-had'), 'warn'); if (run.purse < R.price(run, 'lounge', d.cost)) return toast(tx('floor.you-must-be-able'), 'warn'); closePanel(true); app.nav.lounge(d.id); },
           () => tx('floor.bar-bout-against-a', { name: L.challenger.name, oppTip: oppTip(L.challenger) }), 'small')); return el; },
-      (el, d) => { const cost = R.drinkCost(run, d); setItem(el, `${d.name} <span class="dim">${d.verb}</span>`, `${Object.entries(d.mods).map(([k, n]) => `+${n} ${D.STATS[k].name}`).join(', ')} per sip · ${d.sips} sips`, cost ? cents(cost) : tx('floor.free-punch-card'));
-        el.children[2].classList.toggle('off', run.purse < cost); el.children[3].classList.toggle('off', L.challenged); });
+      (el, d) => { const cost = R.drinkCost(run, d), n = R.drinkLeft(run, d); setItem(el, `${d.name} <span class="dim">${d.verb}</span> ${`<span class="left dim">${tx('shop.left', { n: n })}</span>`}`, `${Object.entries(d.mods).map(([k, n]) => `+${n} ${D.STATS[k].name}`).join(', ')} per sip · ${d.sips} sips`, cost ? cents(cost) : tx('floor.free-punch-card'));
+        el.children[2].classList.toggle('off', n <= 0 || run.purse < cost); el.children[3].classList.toggle('off', L.challenged); });
     swapText(mine, run.drink ? tx('floor.in-your-hand-left', { name: run.drink.name, sips: run.drink.sips }) : tx('floor.you-are-not-carrying'));
   }
   render();

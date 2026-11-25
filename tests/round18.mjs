@@ -29,7 +29,7 @@ assert(matOf({ type: 'd6', up: [] }) === 'plastic', 'old dice are Plastic');
 // the Dice Shop: plain dice of each material, Bone dice, floor gates
 const run = R.newRun('hustler', 'standard', 11); R.enterFloor(run, 1);
 const shop = R.diceShop(run);
-assert(shop.length === D.DICE_SHOP.basic + D.DICE_SHOP.bone, 'the shop is stocked');
+assert(shop.length === D.SHOPS.dice.plain[0] + D.SHOPS.dice.bone[0], 'the shop is stocked');
 assert(D.BASIC_MATS.every((m) => shop.some((x) => x.die.mat === m)), 'Glass, Plastic and Metal are all on the shelf');
 assert(shop.filter((x) => x.die.mat === 'bone').every((x) => x.die.bone && x.die.up.length === 1), 'Bone dice carry one trait');
 assert(shop.every((x) => (D.DICE_SHOP.from[x.die.type] || 1) <= 1), 'floor 1 sells only floor 1 dice');

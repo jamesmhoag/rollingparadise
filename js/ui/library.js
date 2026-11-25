@@ -117,7 +117,7 @@ function tricksTab(own) {
   out.push(sec('Condition', tx('library.condition-sets-only-what')));
   for (const [k, C] of Object.entries(D.CONDITIONS)) out.push(entry(h('b', { text: C.name }), C.sell ? `Sells at ${Math.round(C.sell * 100)}%` : tx('library.trash-only'),
     [k === 'gem' ? tx('library.only-out-of-foil') : k === 'mint' ? tx('library.every-trick-in-a') : k === 'excellent' ? tx('library.bought-off-the-trader') : k === 'good' ? tx('library.your-first-book-starts') : tx('library.wear-below-50')]));
-  out.push(sec(tx('build.table.PACKS'), tx('library.sold-at-the-trick', { packPrice: cents(D.TUNING.shops.packPrice), join: D.PACKS.slice(1).map((P) => tx('library.floor', { name: P.name, floor: P.floor })).join(' · ') })));
+  out.push(sec(tx('build.table.PACKS'), tx('library.sold-at-the-trick', { packPrice: cents(D.perFloor(D.SHOPS.trader.packPrice, 1, 200)), join: D.PACKS.slice(1).map((P) => tx('library.floor', { name: P.name, floor: P.floor })).join(' · ') })));
   return out;
 }
 

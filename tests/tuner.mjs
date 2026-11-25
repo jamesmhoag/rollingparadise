@@ -6,7 +6,7 @@ const fails = [], ok = (c, m) => { if (!c) fails.push(m); };
 const run = R.newRun('hustler', 'standard', 3); R.enterFloor(run, 2); run.purse = 1e6; run.cards = []; // no discount card to start
 const prep = R.newPrep(run, 'table', 0); for (const k of Object.keys(prep.tilts)) prep.tilts[k] = 0;
 const m0 = R.multiplier(run, prep), r0 = R.restockCost(run), p0 = R.packCost(run, 1);
-Draft.setValue('TUNING.wager.base', 2.5); Draft.setValue('TUNING.shops.restock', 300); Draft.setValue('TUNING.shops.packPrice', 400);
+Draft.setValue('TUNING.wager.base', 2.5); Draft.setValue('SHOPS.trader.restock', [600, 600, 600, 600]); Draft.setValue('SHOPS.trader.packPrice', [800, 800, 800, 800]);
 ok(m0 === 1.5 && R.multiplier(run, prep) === 2.5, 'the table wager multiplier is tuned');
 ok(R.restockCost(run) === r0 * 3 && R.packCost(run, 1) === p0 * 2, 'restock and pack prices are tuned');
 Draft.setValue('TUNING.shops.discount', 0.5); run.cards.push('discount_trader');

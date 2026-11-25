@@ -76,6 +76,7 @@ const entry = (trick, vals, extra = {}) => ({ uid: 'x' + trick.id, trick, dice: 
   for (const q of [1, 2]) assert(R.packCost(run, q) > 5 * R.trickValue(run, { id: 'charge', q, wear: 100 }), 'a pack costs more than its five tricks sell for at Mint');
   let rare = 0, gems = 0, all = 0;
   for (let k = 0; k < 40; k++) {
+    run.fs.taken = {}; // (a floor's packs are in stock: this test opens many)
     const got = R.buyPack(run, 1 + (k % 2));
     assert(got.length === 5 && got.every((t) => t.wear === 100 && t.q === 1 + (k % 2)), 'a pack holds five Mint tricks of its set\'s quality');
     assert(['misprint', 'reprint'].includes(got[4].rar) || got[4].foil >= 2, 'one of them is a rarer print');

@@ -543,7 +543,11 @@ export const resistsOf = (id) => { const X = SHOP_CHIPS[id]; return X?.resist ? 
 export const shopVars = (id) => SHOP_CHIPS[id].vars || {};
 export const shopText = (id) => { const X = SHOP_CHIPS[id]; return typeof X.text === 'function' ? X.text(shopVars(id)) : X.text; };
 export const SHOP_CHIP_STAKE = true;
-export const shopPrice = (id) => SHOP_CHIPS[id].price ?? CHIP_TIERS[SHOP_CHIPS[id].tier].price;
+// a shop chip's price: its own price or its tier's; on a floor, × the Exchange's multiplier, or the chip's own price for it
+export const shopPrice = (id, floor = 0) => { const own = SHOPS.exchange.chips?.[id], base = SHOP_CHIPS[id].price ?? CHIP_TIERS[SHOP_CHIPS[id].tier].price;
+  if (!floor) return base; const p = own?.price ? perFloor(own.price, floor, null) : null; return p != null ? p : Math.round(base * perFloor(SHOPS.exchange.priceMult, floor, 1)); };
+// how many of a shop chip the Exchange has on a floor
+export const shopStock = (id, floor) => { const own = SHOPS.exchange.chips?.[id], n = own?.stock ? perFloor(own.stock, floor, null) : null; return n != null ? n : perFloor(SHOPS.exchange.stock, floor, 0); };
 export const shopFloor = (id) => SHOP_CHIPS[id].floor ?? CHIP_TIERS[SHOP_CHIPS[id].tier].floor;
 // chips that lie over a stack rather than in it: they take no height, stay on top and are cleansed like hazards.
 // stray: a fee shown landing on nothing · hard: the Hardened chip · sticky: the Sticky chip
@@ -774,7 +778,8 @@ export { FLAVOR };
 // a thing's line of flavour (content/flavor.js), by the table it lives in and its id; '' when it has none
 export const flavorOf = (table, id) => FLAVOR[table]?.[id] || '';
 import { TUNING } from './content/tuning.js';
-export { TUNING };
+import { SHOPS, perFloor } from './content/shops.js';
+export { TUNING, SHOPS, perFloor };
 import { GUIDE } from './content/guidance.js';
 import { FONTS, IMAGES, ICONS, TEXTURES, NEON } from './content/assets.js';
 export { FONTS, IMAGES, ICONS, TEXTURES, NEON };
@@ -782,7 +787,7 @@ import TEXT from './text/en.js';
 import { MATERIALS as _MAT, DICE_SHOP as _DS, BONE as _BONE, MELT as _MELT, CASTS as _CASTS, DYES as _DYES, DIAMOND as _DIA } from './content/dice.js';
 export const TABLES = { CLASSES, ROLLERS, BASE_DIMS, STATS, DICE, MATERIALS: _MAT, DICE_SHOP: _DS, BONE: _BONE, MELT: _MELT, CASTS: _CASTS, DYES: _DYES, DIAMOND: _DIA, DIE_VARS,
   TYPES, TRICKS, CHIPS, SHOP_CHIPS, CHIP_TIERS, CREATURES, ORBITALS, CALAMITIES, TILTS, TILT_PRESSURE, FELTS, FLOORS, DRINKS, SPORTS, JACKETS, CARDS, WALLETS,
-  PASSES, CONDITIONS, PACKS, QDIE, PRIZES, GUIDE, TEXT, MADE_CHIPS, ROSTER, BOSS_TRAITS, FLAVOR, TUNING, ODDS, DENOMS, WEAR, IMAGES, ICONS, TEXTURES, NEON };
+  PASSES, CONDITIONS, PACKS, QDIE, PRIZES, GUIDE, TEXT, MADE_CHIPS, ROSTER, BOSS_TRAITS, FLAVOR, TUNING, SHOPS, ODDS, DENOMS, WEAR, IMAGES, ICONS, TEXTURES, NEON };
 const isObj = (x) => x && typeof x === 'object';
 // a path's steps: keys are joined by '.', and a '.' inside a key (as in text keys) is written '\\.'
 export const splitPath = (path) => path.split(/(?<!\\)\./).map((k) => k.replace(/\\\./g, '.'));
