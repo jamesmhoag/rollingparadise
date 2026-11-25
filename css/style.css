@@ -989,6 +989,7 @@ p.flavor { font-style: italic; color: var(--dim); }
 .sign-frame { z-index: 1; } .sign-deco { z-index: 0; } .sign-crown { z-index: 3; }
 .nsign { position: relative; } .nsign .neon-name, .nsign .neon-class { position: relative; z-index: 1; }
 .nsign.has-symbol .neon-name { padding-right: 1.05em; }
+.nsign .neon-name.crown-cut { padding: 46px; margin: -46px; } .nsign.has-symbol .neon-name.crown-cut { padding-right: calc(1.05em + 46px); }
 .lights, .lt, .lamp, .sym { transform-box: fill-box; }
 .spots { opacity: 0; } .swaps { opacity: 0; }
 /* chase: a brighter stretch of the same light runs round, lamps light in turn at the same pace, strips flow */
@@ -1014,6 +1015,15 @@ p.flavor { font-style: italic; color: var(--dim); }
 @keyframes ns-swap { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
 @keyframes ns-twinkle { 0%, 100% { opacity: 1; } 45% { opacity: 0.5; } 60% { opacity: 0.92; } }
 @keyframes ns-shimmer { 0%, 100% { opacity: 1; } 30% { opacity: 0.8; } 55% { opacity: 1; } 75% { opacity: 0.86; } }
+/* the crown: its tubes carry a light climbing the prongs and running the band; its jewels are bulbs, each twinkling and
+   catching the light on its own; the band breathes slowly under them */
+.crown-run path { animation: ns-run var(--d, 4s) linear infinite; } .crown-run { mix-blend-mode: screen; }
+.crown-band { animation: crown-band 6.5s ease-in-out infinite; }
+.crown-jewel { transform-origin: center; animation: crown-jewel 3.1s ease-in-out infinite; animation-delay: calc(var(--r) * -3.1s); }
+.crown-jewel .hot { animation: crown-glint 3.1s ease-in-out infinite; animation-delay: calc(var(--r) * -3.1s); }
+@keyframes crown-band { 0%, 100% { opacity: 1; } 50% { opacity: 0.78; } }
+@keyframes crown-jewel { 0%, 100% { opacity: 1; scale: 1; } 30% { opacity: 0.62; scale: 0.92; } 42% { opacity: 1; scale: 1.08; } 60% { opacity: 0.85; scale: 1; } }
+@keyframes crown-glint { 0%, 100% { opacity: 0.9; } 38% { opacity: 0.2; } 44% { opacity: 1; } }
 /* blinks: each part on its own, in its own pattern */
 .bk.bk-breathe, .neonsign.bk-name-breathe .neon-name, .neonsign.bk-name-breathe .hs-name, .neonsign.bk-cls-breathe .neon-class, .neonsign.bk-cls-breathe .turn { animation: sign-breathe 3.2s ease-in-out infinite; }
 .bk.bk-pulse, .neonsign.bk-name-pulse .neon-name, .neonsign.bk-name-pulse .hs-name, .neonsign.bk-cls-pulse .neon-class, .neonsign.bk-cls-pulse .turn { animation: sign-pulse 2.2s ease-in-out infinite; }

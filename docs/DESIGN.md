@@ -480,11 +480,19 @@ Every seat at the table is a neon sign, and so is the House's (`js/ui/sign.js`, 
 - **A seat's sign has a fixed slot at the table.** The frame's room (its nested tubes and any symbols along it) is
   reserved as padding, and the name is set smaller until everything (name, crown, symbol, business card, stats) fits,
   so no sign grows over the Book, the Run or the dice.
-- **Crowns**: a High Roller wears its floor's crown, set down on the first letter of its name and tilted, grander
-  floor by floor. It sits in front: where it crosses the letter or the frame it trims them (a dark gap under its tube).
-  Clearing one puts its crown in your crown case; wear it from your suite (it shows on your sign for the run, and does
-  nothing else). The name's symbol sits behind the letters: its tube stops short of them with a rounded end, as a
-  real sign's tube passes behind another.
+- **Crowns**: a High Roller wears its floor's crown, grander floor by floor, leaning well left and set down on the
+  first letter's real ink (the letter is drawn in the name's font to find its top), its band just touching it. A crown
+  is three parts, each in its own tube and glow colours, blending where they meet: the **band**, the **prongs** (tubes,
+  each with a brighter light climbing it) and the **jewels** (bulbs: a halo, a glass of their colour and a white-hot
+  heart, each twinkling and glinting on its own). Unset, a High Roller's crown takes its colours from their sign (band
+  from the frame, prongs from the name, jewels from a second frame colour, the symbol or the class line), so each is
+  their own; the roster editor can set each part, or all one colour. It sits in front: where it crosses the letter or
+  the frame they are cut away round its tubes and bulbs (a mask, not a drawn outline), so they end just short of it.
+  Clearing one puts that crown, in its colours, in your crown case; wear it from your suite (it shows on your sign for
+  the run, and does nothing else). The name's symbol sits behind the letters: its tube stops short of them with a
+  rounded end, as a real sign's tube passes behind another, and it is sized and placed to stay inside the frame.
+- **One chase per frame.** A strip's flowing bands and a gradient's turning colours are their own chase; the plain
+  chase light is not run over them.
 - **Blinks**: the name, class line, frame, edge symbols, name symbol and crown can each blink, each in its own pattern.
 - Signs saved before keep their look: double and triple tubes become two and three colour pairs, a rope a twist, the
   one blinking part its toggle, a symbol character its drawn symbol. The class line under a High Roller's name is its
@@ -649,7 +657,8 @@ height map turned into a normal map, with a frosted recess and an ink fill. Mate
 clear-coated and glossy, bone has an ivory sheen, metal reflects a lit room (a soft box, a window and pink, cyan and
 gold neon), glass and glimmering transmit with depth and a mirrored inner shell, swirling is clear resin with
 coloured ribbons inside, diamond has the index of real diamond with dispersion and iridescence, and sparkling is
-metal flake under a clear coat. The same model is drawn everywhere: still dice (Pouch, tray, Run, spines, cards) are
+metal flake under a clear coat. A d4 is read at its top point: each face has a number at each corner, pointing to
+it, and the roll is the number at the point standing up (the same on all three faces there). The same model is drawn everywhere: still dice (Pouch, tray, Run, spines, cards) are
 rendered once per type, material, faces and value and cached as images; tossed dice are drawn live each frame. Without
 WebGL the older flat dice show.
 

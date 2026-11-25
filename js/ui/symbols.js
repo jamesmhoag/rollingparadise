@@ -41,11 +41,15 @@ export const FROM_CHAR = { '★': 'star5', '☆': 'star5', '✦': 'sparkle', '�
   '☾': 'moon', '☽': 'moon', '⚡': 'bolt', '♛': 'crown', '♚': 'crown', '❖': 'gem', '¢': 'cent', '☠': 'crossbones', ':skull': 'skull', '⚀': 'die1', '⚁': 'die2', '⚂': 'die3', '⚃': 'die4', '⚄': 'die5', '⚅': 'die6', '♪': 'note', '♫': 'note' };
 export const symbolOf = (x) => (SYMBOLS[x] ? x : FROM_CHAR[x] || null);
 
-// The High Rollers' crowns, by floor: each floor's is grander than the last. In a 28 by 24 box.
+// The High Rollers' crowns, by floor: each floor's is grander than the last. In a 28 by 24 box, in three parts that
+// each take their own colour (sign.js): the band it sits on, the prongs rising off it, and the jewels (lamps) on both.
+// d and dots are the whole crown in one, for anything that lights it in one colour.
+const crown = (band, prongs, jewels) => ({ band, prongs, jewels, d: `${band}${prongs}`, dots: jewels });
 export const CROWNS = {
-  1: { d: 'M4 19H24M4 19L5 10L9.5 14.5L14 8L18.5 14.5L23 10L24 19', dots: [[14, 6.6]] },
-  2: { d: 'M3 19H25M3 19L3.5 8.5L8.2 13.4L10.6 6.2L14 12.2L17.4 6.2L19.8 13.4L24.5 8.5L25 19', dots: [[3.5, 7], [10.6, 4.7], [17.4, 4.7], [24.5, 7], [14, 16.2]] },
-  3: { d: 'M3 21H25M3 17.6H25M3 21L3 17.6L2.8 8L8 13L10.5 5.5L14 11L17.5 5.5L20 13L25.2 8L25 17.6V21', dots: [[2.8, 6.5], [10.5, 4], [17.5, 4], [25.2, 6.5], [8, 19.3], [14, 19.3], [20, 19.3]] },
-  4: { d: 'M3.5 22H24.5M3.5 18.6H24.5M3.5 22V18.6L3 10.5L7 13.6M24.5 22V18.6L25 10.5L21 13.6M6.5 18.6C6.5 11 9.8 7.6 14 7.6C18.2 7.6 21.5 11 21.5 18.6M14 7.6V18.6M14 7.6V2.2M11.8 4.2H16.2',
-    dots: [[3, 9], [25, 9], [8.5, 20.3], [14, 20.3], [19.5, 20.3], [10.2, 13.5], [17.8, 13.5]] },
+  1: crown('M4 19H24', 'M4 19L5 10L9.5 14.5L14 8L18.5 14.5L23 10L24 19', [[14, 6.6]]),
+  2: crown('M3 19H25', 'M3 19L3.5 8.5L8.2 13.4L10.6 6.2L14 12.2L17.4 6.2L19.8 13.4L24.5 8.5L25 19', [[3.5, 7], [10.6, 4.7], [17.4, 4.7], [24.5, 7], [14, 16.2]]),
+  3: crown('M3 21H25M3 17.6H25M3 21V17.6M25 21V17.6', 'M3 17.6L2.8 8L8 13L10.5 5.5L14 11L17.5 5.5L20 13L25.2 8L25 17.6',
+    [[2.8, 6.5], [10.5, 4], [17.5, 4], [25.2, 6.5], [8, 19.3], [14, 19.3], [20, 19.3]]),
+  4: crown('M3.5 22H24.5M3.5 18.6H24.5M3.5 22V18.6M24.5 22V18.6', 'M3.5 18.6L3 10.5L7 13.6M24.5 18.6L25 10.5L21 13.6M6.5 18.6C6.5 11 9.8 7.6 14 7.6C18.2 7.6 21.5 11 21.5 18.6M14 7.6V18.6M14 7.6V2.2M11.8 4.2H16.2',
+    [[3, 9], [25, 9], [8.5, 20.3], [14, 20.3], [19.5, 20.3], [10.2, 13.5], [17.8, 13.5]]),
 };

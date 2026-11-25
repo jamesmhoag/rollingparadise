@@ -8,7 +8,7 @@ import { h, lab, btn } from './core.js';
 import * as D from '../data.js';
 import * as B from '../build/draft.js';
 import { t } from '../text.js';
-import { signOf, dressSign, TUBES, STRIPS, LAMPS, MOTIONS, EDGE_AT, CLS_ALIGN, BLINK_PARTS, BLINKS, MAX_PAIRS, pairsOf } from './sign.js';
+import { signOf, dressSign, TUBES, STRIPS, LAMPS, MOTIONS, EDGE_AT, CLS_ALIGN, BLINK_PARTS, BLINKS, MAX_PAIRS, pairsOf, CROWN_PARTS, crownLookOf } from './sign.js';
 import { SYMBOLS, SYMBOL_GROUPS } from './symbols.js';
 
 const PARTS = ['border', 'name', 'cls'];
@@ -63,6 +63,10 @@ export function signEditor(base, who, own, redraw, sample, crown) {
     field(lab('neon.symbol'), h('div', { class: 'col' }, h('label', { class: 'row' }, h('input', { type: 'checkbox', ...(spec.symbol.on ? { checked: 'checked' } : {}), onchange: (e) => set(['symbol', 'on'], e.target.checked) }), h('span', { text: t('neon.symbol.on') })),
       spec.symbol.on ? h('div', { class: 'row' }, h('small', { text: t('neon.motion') }), select(['symbol', 'motion'], MOTIONS, spec.symbol.motion)) : null,
       spec.symbol.on ? symbolPicker(spec.symbol.id, (g) => set(['symbol', 'id'], g), false) : null), ['symbol']),
+    // a High Roller's crown: its band, prongs and jewels each in their own colours (the crown you take off them)
+    crown ? field(lab('neon.crown'), (() => { const look = crownLookOf(spec); return h('div', { class: 'col' },
+      ...CROWN_PARTS.map((part) => h('div', { class: 'row' }, pairEl(look[part], (pr) => set(['crownLook', part], pr)), h('small', { text: t(`neon.crown.${part}`) }))),
+      btn(t('neon.crown.same'), () => set(['crownLook'], { band: look.band, prongs: look.band, jewels: look.band }), null, 'small')); })(), ['crownLook']) : null,
     field(lab('neon.mount'), h('div', { class: 'row wrap' }, h('input', { type: 'color', value: spec.mount.color || '#07040f', onchange: (e) => set(['mount', 'color'], e.target.value) }),
       btn(t('neon.mount.none'), () => set(['mount', 'color'], ''), null, 'small')), ['mount', 'color']),
     field(lab('neon.image'), h('div', { class: 'row wrap' }, h('input', { type: 'text', value: spec.mount.image?.startsWith('data:') ? t('neon.image.file') : spec.mount.image || '', placeholder: t('neon.image.ph'), onchange: (e) => set(['mount', 'image'], e.target.value.trim()) }),

@@ -18,7 +18,7 @@
 //
 // Static dice (dieEl) are rendered once per look and size and cached as images; a die in motion (solidEl) is
 // rendered live each frame from the rotation the animation gives it. If WebGL isn't available the CSS dice stay.
-import { geometry } from './solid.js';
+import { geometry, d4Rest, d4Corners } from './solid.js';
 import { facesOf, faceValue, matOf } from '../dice.js';
 import * as D from '../data.js';
 
@@ -127,7 +127,12 @@ function faceMaps(type, mat, labels, F, atlas, base) {
   F.forEach((f, i) => {
     const [tu, tv] = atlas.tile(i), cx = (tu + 0.5) * tile, cy = (tv + 0.5) * tile, k = (tile * 0.98) / (2 * f.R) * f.ins * 0.8; // k: the face's inscribed radius in px, less the rounded rim
     const val = String(labels[i] ?? '');
-    if (type === 'd6' && PIPS[val]) for (const [px, py] of PIPS[val]) { hx.beginPath(); hx.arc(cx + px * k * 0.52, cy + py * k * 0.52, k * 0.17, 0, Math.PI * 2); hx.fill(); }
+    if (type === 'd4') { // a number at each corner, its top toward the corner: the one at the top point is the roll
+      const sc = (tile * 0.98) / (2 * f.R), fsz = k * 0.62; hx.font = `800 ${fsz}px "Rubik", "Inter", "Segoe UI", system-ui, sans-serif`; hx.textAlign = 'center'; hx.textBaseline = 'middle';
+      for (const { p, k: vi } of d4Corners(i)) { const la = dot(sub(p, f.c), f.u) * sc, lb = dot(sub(p, f.c), f.v) * sc, L0 = Math.hypot(la, lb) || 1, t = String(labels[vi] ?? '');
+        hx.save(); hx.translate(cx + la * 0.5, cy + lb * 0.5); hx.rotate(Math.atan2(la / L0, -lb / L0)); hx.fillText(t, 0, fsz * 0.04);
+        if (t === '6' || t === '9') hx.fillRect(-fsz * 0.22, fsz * 0.46, fsz * 0.44, fsz * 0.08); hx.restore(); }
+    } else if (type === 'd6' && PIPS[val]) for (const [px, py] of PIPS[val]) { hx.beginPath(); hx.arc(cx + px * k * 0.52, cy + py * k * 0.52, k * 0.17, 0, Math.PI * 2); hx.fill(); }
     else { const fsz = k * (val.length > 2 ? 0.62 : val.length > 1 ? 0.8 : 0.98) * (type === 'd4' ? 0.8 : 1); hx.font = `800 ${fsz}px "Rubik", "Inter", "Segoe UI", system-ui, sans-serif`; hx.textAlign = 'center'; hx.textBaseline = 'middle';
       hx.fillText(val, cx, cy + (type === 'd4' ? k * 0.12 : 0) + fsz * 0.04);
       if (val === '6' || val === '9') hx.fillRect(cx - fsz * 0.22, cy + fsz * 0.46, fsz * 0.44, fsz * 0.08); }
@@ -216,6 +221,7 @@ function render(d, labels, m, px, time = 0) {
 }
 // the turn that shows face i to you, upright (as solid.js), then a little tilt so the die reads as a solid
 function frontOf(type, i, tilt = true) {
+  if (type === 'd4') return d4Rest(i, tilt); // a d4 shows its roll at its top point
   const F = faceFrames(type), f = F[i % F.length];
   const turn = (a, b, fb = [0, 1, 0]) => { let axis = cross(a, b); const sn = Math.hypot(...axis), cs = dot(a, b);
     if (sn < 1e-6) return cs > 0 ? new DOMMatrix() : new DOMMatrix().rotateAxisAngleSelf(fb[0], fb[1], fb[2], 180);

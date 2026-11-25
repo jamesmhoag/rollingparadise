@@ -4,7 +4,7 @@ import { app, hud, oppTip, trickTag } from './app.js';
 import { jacketTip, trickTip, trickWords, cardTip, dieTip, dieEl, passEl } from './parts.js';
 import { planner } from './prep.js';
 import * as D from '../data.js';
-import { signOf, dressSign } from './sign.js';
+import { signOf, dressSign, crownLookOf } from './sign.js';
 import * as R from '../run.js';
 import { flavorP } from './parts.js';
 import { cents } from '../util.js';
@@ -46,7 +46,7 @@ export function suiteScene(root, penthouse) {
     const list = run.crownCase || [];
     crowns.replaceChildren(h('h2', { text: t('suite.crowns') }), h('p', { class: 'sub', text: t(list.length ? 'suite.crowns.sub' : 'suite.crowns.none') }),
       ...list.map((c, i) => { const prev = h('div', { class: 'who me neon-sample crown-sample' }, h('div', { class: 'name nsign' }, h('b', { class: 'neon-name', text: D.ROLLERS[run.roller]?.name || K.name }), h('span', { class: 'neon-class', text: t('suite.crown.from', { name: c.from }) })));
-        dressSign(prev, { ...signOf('you', D.ROLLERS[run.roller]?.sign), crown: { level: c.floor, colors: signOf('them', D.ROSTER[c.roster]?.sign).border } }, 'you');
+        dressSign(prev, { ...signOf('you', D.ROLLERS[run.roller]?.sign), crown: { level: c.floor, look: crownLookOf(signOf('them', D.ROSTER[c.roster]?.sign)) } }, 'you');
         return h('div', { class: 'row' }, prev, btn(t(run.wearing === i ? 'suite.crown.off' : 'suite.crown.wear'), () => { R.wearCrown(run, run.wearing === i ? null : i); renderCrowns(); }, null, `small ${run.wearing === i ? 'on' : 'go'}`)); }));
   }
   renderCrowns();

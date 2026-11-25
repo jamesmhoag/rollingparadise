@@ -39,6 +39,7 @@ export const BLINK_PARTS = ['name', 'cls', 'border', 'edge', 'symbol', 'crown'];
 export const BLINKS = ['breathe', 'pulse', 'flicker', 'alternate'];
 export const MAX_PAIRS = 3;
 const PARTS = ['border', 'name', 'cls'];
+const OWN_MOTION = ['striped', 'checkered', 'gradient']; // frames whose chase is their own pattern moving
 export const BASE_SIGN = { frame: 'plain', motion: 'chase', radius: 12, more: [], edge: 'star5', edgeAt: 'none', symbol: { on: false, id: 'star5', motion: 'breathe' }, mount: { color: '', image: '' }, blinks: {} };
 const OLD_FRAMES = { tube: ['plain', 0], double: ['plain', 1], triple: ['plain', 2], rope: ['twist', 1] };
 
@@ -216,7 +217,7 @@ function drawFrame(svg, spec, w, h, who) {
     g.classList.add('lamp'); g.style.setProperty('--i', i); g.style.setProperty('--n', marks.length); g.style.setProperty('--r', ((i * 7919) % 13) / 13); if (i % 2) g.classList.add('odd'); });
   // the chase: a brighter stretch of the same light running round each tube, seamlessly (its dash pattern is exactly
   // the loop's length, and each stretch between symbols starts where it falls in the loop)
-  if (spots.length) {
+  if (spots.length && !OWN_MOTION.includes(frame)) { // a strip's flow and a gradient's turn are their own chase: no second one over them
     const spotG = mk('g', { class: 'spots' }); body.append(spotG);
     const byTube = new Map(); for (const sp of spots) { if (!byTube.has(sp[3])) byTube.set(sp[3], []); byTube.get(sp[3]).push(sp); }
     for (const list of byTube.values()) {
@@ -259,18 +260,99 @@ function drawDeco(svg, el, spec) {
   // and the class line under it: the symbol's tube stops short of its letters too
   const clsEl = el.querySelector('.neon-class'); if (clsEl?.textContent) { const o = svg.getBoundingClientRect(), q = clsEl.getBoundingClientRect(), kk = o.width / (svg.clientWidth || o.width || 1) || 1;
     avoid.push({ l: (q.left - o.left) / kk - 2, r: (q.right - o.left) / kk + 2, t: (q.top - o.top) / kk + q.height / kk * 0.12 - 1.5, b: (q.bottom - o.top) / kk - q.height / kk * 0.12 + 1.5 }); }
-  const last = boxes[boxes.length - 1], size = fs * 1.15, x = last.r + size * 0.3, y = (last.t + last.b) / 2;
+  // it fits inside the frame, top and bottom: moved down a little first, then made smaller
+  const last = boxes[boxes.length - 1], sv = svg.getBoundingClientRect(), er = el.getBoundingClientRect(), kk = sv.width / (svg.clientWidth || sv.width || 1) || 1, room = frameRoom(spec) + 1.5;
+  const top = (er.top - sv.top) / kk + room, bot = (er.bottom - sv.top) / kk - room, half = (sz) => sz * 0.44 + 2.6; // the symbol's reach from its centre, glow and all
+  let size = fs * 1.15, y = (last.t + last.b) / 2;
+  if (y - half(size) < top) y = Math.min(top + half(size), Math.max(y, (top + bot) / 2));
+  size = Math.max(fs * 0.5, Math.min(size, ((y - top - 2.6) / 0.44), ((bot - y - 2.6) / 0.44)));
+  const x = last.r + size * 0.3;
   const g = litSymbol(svg, ctx, spec.symbol.id, { x, y, k: size / 24 }, spec.symbol.colors?.[0] || core, spec.symbol.colors?.[1] || glow, { avoid, w: 2.4, cls: `name-sym motion-${spec.symbol.motion}` });
   if (spec.blinks?.symbol?.on) g.classList.add('bk', `bk-${spec.blinks.symbol.pattern || 'breathe'}`);
 }
-// the crown: set down on the first letter, tilted, in front of the letter and the frame, which it trims where it
-// crosses them (a dark gap under its tube, as a tube in front of another on a real sign)
-function drawCrown(svg, el, spec) {
-  svg.replaceChildren(); const lvl = spec.crown?.level, N = nameIn(svg, el); if (!N || !CROWNS[lvl]) return;
-  const ctx = defsFor(svg); ctx.svg = svg; const { fs, boxes } = N, first = boxes[0], hgt = fs * (0.5 + lvl * 0.06), k = hgt / 24, cc = spec.crown.colors || spec.border;
-  const g = litSymbol(svg, ctx, CROWNS[lvl], { x: first.l + (first.r - first.l) * 0.18, y: first.t + fs * 0.1, k, deg: -24, cx: 14, cy: 21 }, cc[0], cc[1], { w: 2, sep: spec.mount.color || '#07040f', cls: `crown crown-${lvl}` });
-  if (spec.blinks?.crown?.on) g.classList.add('bk', `bk-${spec.blinks.crown.pattern || 'breathe'}`);
+// The first letter's ink, in an svg's coordinates: its left and right, and the top of the ink in each column (drawn
+// with the name's own font onto a canvas, so a script capital's real shape is used, not its box)
+function inkOf(svg, el) {
+  const nameEl = el.querySelector('.neon-name'), node = nameEl && ([...nameEl.childNodes].find((n) => n.nodeType === 3) || nameEl.firstChild); if (!node?.textContent) return null;
+  const i = [...node.textContent].findIndex((c) => !/\s/.test(c)); if (i < 0) return null;
+  const range = document.createRange(); range.setStart(node, i); range.setEnd(node, i + 1); const r = range.getBoundingClientRect(); if (!r.width) return null;
+  const sv = svg.getBoundingClientRect(), kk = sv.width / (svg.clientWidth || sv.width || 1) || 1, cs = getComputedStyle(nameEl), fs = parseFloat(cs.fontSize) || 27;
+  const cv = document.createElement('canvas'), W = Math.ceil(r.width / kk + fs * 1.6), H = Math.ceil(fs * 2.4); cv.width = W; cv.height = H;
+  const c = cv.getContext('2d', { willReadFrequently: true }); c.font = `${cs.fontStyle} ${cs.fontWeight} ${fs}px ${cs.fontFamily}`;
+  const ch = node.textContent[i], mt = c.measureText(ch), asc = mt.fontBoundingBoxAscent || fs * 0.9, x0 = fs * 0.6, y0 = asc + fs * 0.3; c.fillText(ch, x0, y0);
+  const px = c.getImageData(0, 0, W, H).data, tops = new Array(W).fill(null); let l = Infinity, rr = -Infinity;
+  for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) if (px[(y * W + x) * 4 + 3] > 110) { tops[x] = y; l = Math.min(l, x); rr = Math.max(rr, x); break; }
+  if (rr < l) return null;
+  const penX = (r.left - sv.left) / kk, topY = (r.top - sv.top) / kk - (y0 - asc), toSvg = (x) => penX + x - x0;
+  return { l: toSvg(l), r: toSvg(rr), top: (x) => { const col = Math.round(x - penX + x0); return tops[col] == null ? null : topY + tops[col]; } };
 }
+// The crown's colours: its band, its prongs and its jewels, each a [tube, glow] pair. A sign can set them
+// (crownLook); otherwise they come from the sign itself, so every High Roller's crown is their own, and it is the
+// one you take from them.
+export const CROWN_PARTS = ['band', 'prongs', 'jewels'];
+export function crownLookOf(spec) {
+  const own = spec?.crownLook || {}, ok = (p) => Array.isArray(p) && p.length === 2 && p.every((c) => /^#[0-9a-f]{6}$/i.test(c));
+  const from = { band: spec?.border, prongs: spec?.name, jewels: spec?.more?.[0] || spec?.symbol?.colors || spec?.cls };
+  return Object.fromEntries(CROWN_PARTS.map((k) => [k, ok(own[k]) ? own[k] : ok(from[k]) ? from[k] : ['#ffd76a', '#ff9a3c']]));
+}
+// The crown: set down on the first letter, leaning well left, in front of the letter and the frame. Its band and
+// prongs are tubes and its jewels are bulbs, each part in its own colours, blending where they meet. Where it
+// crosses the letter and the frame, they stop short of it (a mask cut round its tubes), as a tube behind another does.
+const CROWN_LEAN = -44;
+function drawCrown(svg, el, spec) {
+  svg.replaceChildren(); const lvl = spec.crown?.level, N = nameIn(svg, el), C = CROWNS[lvl]; if (!N || !C) return clearCut(el);
+  const ctx = defsFor(svg); ctx.svg = svg; const { fs, boxes } = N, first = boxes[0], hgt = fs * (0.5 + lvl * 0.06), k = hgt / 24;
+  // its glow blurs over a fixed region (a short straight tube's own box is too thin to hold its blur)
+  ctx.defs.append(mk('filter', { id: `${ctx.id}cb`, filterUnits: 'userSpaceOnUse', x: -400, y: -400, width: 3000, height: 1400 }, [mk('feGaussianBlur', { stdDeviation: '2.6' })])); ctx.blur = `url(#${ctx.id}cb)`;
+  const look = spec.crown.look || (spec.crown.colors ? { band: spec.crown.colors, prongs: spec.crown.colors, jewels: spec.crown.colors } : crownLookOf(spec));
+  // set down on the letter's ink: the band's underside just touching the top of the letter where it rests (so the
+  // cut round it trims the letter a little and no more), its middle over the letter's left third
+  const R0 = new DOMMatrix().rotate(CROWN_LEAN).scale(k).translate(-14, -21), w0 = Math.max(1.6, 2.1 * Math.min(1.2, k / 1.1));
+  const ink = inkOf(svg, el), band = C.band.split(/(?=M)/).filter(Boolean).flatMap((sub) => sampleSub(svg, sub)).map(([x, y]) => { const q = R0.transformPoint(new DOMPoint(x, y)); return [q.x, q.y]; });
+  let ax = first.l + (first.r - first.l) * 0.32, ay = first.t + fs * 0.04;
+  if (ink) { ax = ink.l + (ink.r - ink.l) * 0.3; let dy = Infinity; for (const [x, y] of band) { const top = ink.top(ax + x); if (top != null) dy = Math.min(dy, top - (y + w0 / 2) + 0.6); } if (dy < Infinity) ay = dy; }
+  const M = new DOMMatrix().translate(ax, ay).multiply(R0);
+  const P = (x, y) => { const q = M.transformPoint(new DOMPoint(x, y)); return [q.x, q.y]; };
+  const g = mk('g', { class: `crown crown-${lvl}` }); svg.append(g);
+  // the gradients: up the prongs (from the band's colour into theirs, touched by the jewels' at the tips), along the band
+  const lin = (id, a, b, stops) => { ctx.defs.append(mk('linearGradient', { id: `${ctx.id}${id}`, gradientUnits: 'userSpaceOnUse', x1: a[0].toFixed(2), y1: a[1].toFixed(2), x2: b[0].toFixed(2), y2: b[1].toFixed(2) },
+    stops.map(([o, c]) => mk('stop', { offset: o, 'stop-color': c })))); return `url(#${ctx.id}${id})`; };
+  const [bc, bg] = look.band, [pc, pg] = look.prongs, [jc, jg] = look.jewels, up = [P(14, 20), P(14, 3)], along = [P(2, 19), P(26, 19)];
+  const prongCore = lin('pc', ...up, [[0, mix(bc, pc, 0.25)], [0.3, pc], [0.8, pc], [1, mix(pc, jc, 0.35)]]), prongGlow = lin('pg', ...up, [[0, bg], [0.45, pg], [1, mix(pg, jg, 0.4)]]);
+  const bandCore = lin('bc', ...along, [[0, bc], [0.3, mix(bc, pc, 0.3)], [0.5, bc], [0.7, mix(bc, jc, 0.3)], [1, bc]]), bandGlow = lin('bg', ...along, [[0, bg], [0.5, mix(bg, pg, 0.35)], [1, bg]]);
+  const w = w0, runs = [];
+  const tube = (d, core, glow, cls) => { for (const sub of d.split(/(?=M)/).filter(Boolean)) { const pts = sampleSub(svg, sub).map(([x, y]) => P(x, y)); if (pts.length < 2) continue;
+    const pd = `M${pts.map((p) => `${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join('L')}`; runs.push(pd); light(g, ctx, pd, core, glow, { w, cls }); } };
+  tube(C.prongs, prongCore, prongGlow, 'crown-prongs');
+  tube(C.band, bandCore, bandGlow, 'crown-band');
+  // a brighter stretch of light climbing the prongs, and running along the band
+  const run = (d, col, dur) => { const p = mk('path', { d }); svg.append(p); let L = 0; try { L = p.getTotalLength(); } catch { L = 0; } p.remove(); if (L < 4) return;
+    const seg = Math.min(L * 0.18, 14); light(g, ctx, d, hot(col), col, { w: w * 1.15, cls: 'crown-run', dash: `${seg.toFixed(1)} ${(L - seg).toFixed(1)}`, offset: 0, style: { '--L': `${L.toFixed(1)}px`, '--s0': '0px', '--d': `${dur}s` } }); };
+  runs.forEach((d, i) => run(d, i < C.prongs.split(/(?=M)/).length ? pc : bc, 3.6 + (i % 3) * 0.7));
+  // the jewels: bulbs, a soft halo of their glow, a glass of their colour, a white-hot heart, each twinkling on its own
+  const r = Math.max(1.3, 1.45 * k), bulbs = [];
+  C.jewels.forEach(([x, y], i) => { const [cx, cy] = P(x, y), id = `${ctx.id}j${i}`;
+    ctx.defs.append(mk('radialGradient', { id, cx: '38%', cy: '35%', r: '70%' }, [mk('stop', { offset: 0, 'stop-color': '#ffffff' }), mk('stop', { offset: 0.35, 'stop-color': hot(jc) }), mk('stop', { offset: 0.75, 'stop-color': jc }), mk('stop', { offset: 1, 'stop-color': mix(jc, pc, 0.35) })]));
+    const b = mk('g', { class: 'lt crown-jewel' }); b.style.setProperty('--i', i); b.style.setProperty('--r', ((i * 7919) % 13) / 13);
+    b.append(mk('circle', { cx, cy, r: r * 2.6, fill: jg, opacity: 0.35, filter: ctx.blur, class: 'halo' }), mk('circle', { cx, cy, r: r * 1.5, fill: mix(jg, pg, 0.3), opacity: 0.55, filter: ctx.blur, class: 'halo' }),
+      mk('circle', { cx, cy, r, fill: `url(#${id})`, class: 'tube' }), mk('circle', { cx: cx - r * 0.28, cy: cy - r * 0.3, r: r * 0.3, fill: '#ffffff', opacity: 0.9, class: 'hot' }));
+    g.append(b); bulbs.push([cx, cy]); });
+  if (spec.blinks?.crown?.on) g.classList.add('bk', `bk-${spec.blinks.crown.pattern || 'breathe'}`);
+  cutUnder(el, svg, runs, w + 3.4, bulbs, r + 1.6);
+}
+// Cut the letters and the frame where the crown's tubes and bulbs pass in front of them: a mask, the same shape for each,
+// laid over the sign's box. The tubes behind end at the cut, a short way off the crown's own tube. (A mask clips to
+// the element's box, so the name is padded out, padding taken back by its margin, to keep its glow inside it.)
+function cutUnder(el, svg, runs, sw, bulbs, br) {
+  const W = el.offsetWidth, H = el.offsetHeight, m = 60, sv = svg.getBoundingClientRect(), kk = sv.width / (svg.clientWidth || sv.width || 1) || 1;
+  const img = `<svg xmlns="http://www.w3.org/2000/svg" width="${W + 2 * m}" height="${H + 2 * m}" viewBox="${-m} ${-m} ${W + 2 * m} ${H + 2 * m}"><defs><filter id="f" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="0.45"/></filter><mask id="c" maskUnits="userSpaceOnUse" x="${-m}" y="${-m}" width="${W + 2 * m}" height="${H + 2 * m}"><rect x="${-m}" y="${-m}" width="${W + 2 * m}" height="${H + 2 * m}" fill="#fff"/><g filter="url(#f)"><g fill="none" stroke="#000" stroke-width="${sw.toFixed(2)}" stroke-linecap="round" stroke-linejoin="round">${runs.map((d) => `<path d="${d}"/>`).join('')}</g>${bulbs.map(([x, y]) => `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${br.toFixed(2)}"/>`).join('')}</g></mask></defs><rect x="${-m}" y="${-m}" width="${W + 2 * m}" height="${H + 2 * m}" fill="#000" mask="url(#c)"/></svg>`;
+  const url = `url("data:image/svg+xml,${encodeURIComponent(img)}")`;
+  const lay = (node) => { if (!node) return; node.classList.add('crown-cut'); const r = node.getBoundingClientRect(), ox = (r.left - sv.left) / kk, oy = (r.top - sv.top) / kk;
+    Object.assign(node.style, { maskImage: url, webkitMaskImage: url, maskRepeat: 'no-repeat', webkitMaskRepeat: 'no-repeat', maskSize: `${W + 2 * m}px ${H + 2 * m}px`, webkitMaskSize: `${W + 2 * m}px ${H + 2 * m}px`,
+      maskPosition: `${(-m - ox).toFixed(2)}px ${(-m - oy).toFixed(2)}px`, webkitMaskPosition: `${(-m - ox).toFixed(2)}px ${(-m - oy).toFixed(2)}px`, }); };
+  lay(el.querySelector(':scope > .sign-frame')); lay(el.querySelector('.neon-name'));
+}
+function clearCut(el) { for (const n of el.querySelectorAll('.crown-cut')) { for (const p of ['maskImage', 'webkitMaskImage', 'maskRepeat', 'webkitMaskRepeat', 'maskSize', 'webkitMaskSize', 'maskPosition', 'webkitMaskPosition']) n.style[p] = ''; n.classList.remove('crown-cut'); } }
 // how much room the frame takes inside the sign's edge: its tubes (nested inward) and any symbols along it
 export function frameRoom(spec) {
   if (spec.frame === 'none') return 4;
@@ -290,6 +372,7 @@ export function dressSign(el, spec, who) {
   el.classList.add('neonsign', `frame-${spec.frame}`, `motion-${spec.motion}`);
   for (const part of ['name', 'cls']) { const b = spec.blinks?.[part]; if (b?.on) el.classList.add(`blink-${part}`, `bk-${part}-${BLINKS.includes(b.pattern) ? b.pattern : 'breathe'}`); }
   for (const old of el.querySelectorAll(':scope > .sign-frame, :scope > .sign-crown, .sign-deco')) old.remove();
+  clearCut(el);
   el.style.setProperty('--sign-room', `${frameRoom(spec)}px`);
   el._signObs?.disconnect();
   const nsign = el.querySelector('.nsign'); if (nsign) { nsign.classList.toggle('has-symbol', !!spec.symbol?.on); nsign.classList.toggle('has-crown', !!spec.crown?.level); nsign.classList.remove(...CLS_ALIGN.map((a) => `cls-${a}`)); nsign.classList.add(`cls-${CLS_ALIGN.includes(spec.clsAlign) ? spec.clsAlign : 'right'}`); }

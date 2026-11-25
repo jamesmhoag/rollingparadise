@@ -55,6 +55,25 @@ export function geometry(type) {
   return GEO[type];
 }
 
+// A d4 is read at its top point: each face carries a number at each corner, and the number at the point standing up
+// (the same on all three faces that meet there) is the roll. Vertex i stands opposite face i, so resting on face i
+// stands vertex i up, and face i's label is that vertex's number. The turn that rests it so, seen a little from above
+// and turned so two faces show.
+const tTurn = (a, b, fb = [0, 1, 0]) => { let axis = cross(a, b); const s = len(axis), cos = dot(a, b);
+  if (s < 1e-6) return cos > 0 ? new DOMMatrix() : new DOMMatrix().rotateAxisAngleSelf(fb[0], fb[1], fb[2], 180);
+  axis = norm(axis); return new DOMMatrix().rotateAxisAngleSelf(axis[0], axis[1], axis[2], Math.atan2(s, cos) * 180 / Math.PI); };
+const tApply = (M, a) => { const p = M.transformPoint(new DOMPoint(a[0], a[1], a[2], 0)); return [p.x, p.y, p.z]; };
+export function d4Rest(i, view = true) {
+  const geo = geometry('d4'), M1 = tTurn(geo[i % 4].n, [0, 1, 0], [1, 0, 0]); // the face it rests on, facing down (y is down)
+  const n = tApply(M1, geo[(i + 1) % 4].n), M2 = new DOMMatrix().rotateAxisAngleSelf(0, 1, 0, -Math.atan2(n[0], n[2]) * 180 / Math.PI).multiply(M1); // a face toward you
+  return view ? new DOMMatrix().rotateAxisAngleSelf(1, 0, 0, -26).multiply(new DOMMatrix().rotateAxisAngleSelf(0, 1, 0, 50)).multiply(M2) : M2;
+}
+// the d4's corner numbers: for face j, each corner's vertex (the face's label opposite it) and where it sits
+export function d4Corners(j) {
+  const geo = geometry('d4'), f = geo[j % 4];
+  return f.pts.map((p) => { let best = 0, k = 0; geo.forEach((g, gi) => { const d0 = -dot(p, g.n); if (d0 > best) { best = d0; k = gi; } }); return { p, k }; });
+}
+
 // Build a die's solid, `size` px across. Returns { el, setRotation(m), faceFront(i) } where m is a DOMMatrix.
 // `values` overrides the faces' labels (a thrown die whose roll changed its value shows that value).
 export function solidEl(d, size = 120, values) {
@@ -88,6 +107,7 @@ export function solidEl(d, size = 120, values) {
     axis = norm(axis); return new DOMMatrix().rotateAxisAngleSelf(axis[0], axis[1], axis[2], Math.atan2(s, cos) * 180 / Math.PI); };
   const apply = (M, a) => { const p = M.transformPoint(new DOMPoint(a[0], a[1], a[2], 0)); return [p.x, p.y, p.z]; };
   function faceFront(i) {
+    if (d.type === 'd4') return d4Rest(i, false);
     const fe = faceEls[i % faceEls.length], M = turn(fe._n, [0, 0, 1]), v = norm(apply(M, fe._v));
     return turn(v, [0, 1, 0], [0, 0, 1]).multiply(M); // then spin it about the view so its number stands upright
   }
