@@ -1,7 +1,7 @@
 // Build mode: the gameplay tuner (row 15). The numbers behind the game's systems, section by section, plus links to
 // the tables that tune the rest (drinks, wallets, jackets, sports, odds, chip tiers, floors). Edits go into the
 // build draft, and export with everything else.
-import { h, btn } from './core.js';
+import { h, btn, lab } from './core.js';
 import * as D from '../data.js';
 import * as B from '../build/draft.js';
 import { t } from '../text.js';
@@ -21,7 +21,7 @@ export const TUNER_SECTIONS = [...Object.keys(D.TUNING), 'gear'];
 export function tuner(section, redraw, openTable) {
   const T = D.TUNING[section] || {}, base = D.subPath('TUNING', section), P = (k) => D.subPath(base, k);
   const set = (k, v) => { B.setValue(P(k), v); redraw(); };
-  const row = (k, el) => h('div', { class: `b-field ${B.changed(P(k)) ? 'ch' : ''}` }, h('label', { text: t(`tuner.${section}.${k}`) }), el,
+  const row = (k, el) => h('div', { class: `b-field ${B.changed(P(k)) ? 'ch' : ''}` }, lab(`tuner.${section}.${k}`), el,
     P(k) in B.draft.changes ? btn('↺', () => { B.revert(P(k)); redraw(); }, t('build.revert.tip', { was: JSON.stringify(B.draft.orig[P(k)]) }), 'small b-revert') : h('span'));
   const input = (k, v) => {
     if (typeof v === 'boolean') return h('input', { type: 'checkbox', ...(v ? { checked: 'checked' } : {}), onchange: (e) => set(k, e.target.checked) });

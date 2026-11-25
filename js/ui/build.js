@@ -15,6 +15,7 @@ import { testTable } from './testtable.js';
 import { IMMUNE } from '../content/chipmaker.js';
 import { classMaker, newClass, rollerMaker, newRoller, rollerLabel, rollerSub, rosterMaker, newOpponent, rosterLabel, rosterSub, sharedSign, SHARED_SIGNS } from './rostermaker.js';
 import { isMade } from '../trickmaker.js';
+import { fieldHelp } from '../build/help.js';
 
 // the tables, grouped as the editor lists them
 const GROUPS = [
@@ -150,12 +151,14 @@ export function buildScene(root, opts = {}) {
       h('p', { class: 'sub mono', text: path }),
       h('div', { class: 'b-fields' }, fields(path, v, 0)));
   }
+  // a field's label, with its hover: what the value is for (build/help.js)
+  const fieldLabel = (path, k) => { const tipHtml = fieldHelp(path); return h('label', { text: k, class: tipHtml ? 'b-lab has-help' : '', ...(tipHtml ? { tip: tipHtml, guide: 'build-option' } : {}) }); };
   // one field per value: text, number, on/off, a list, or a group of fields
   function fields(path, v, depth) {
     if (typeof v === 'function') return h('p', { class: 'dim', text: t('build.inCode') });
     if (isObj(v) && depth < 4 && !(Array.isArray(v) && v.every((x) => !isObj(x)))) {
       return h('div', { class: 'b-group' }, Object.entries(v).map(([k, x]) => h('div', { class: `b-field ${B.changed(D.subPath(path, k)) ? 'ch' : ''}` },
-        h('label', { text: k }), fields(D.subPath(path, k), x, depth + 1), revertBtn(D.subPath(path, k)))));
+        fieldLabel(D.subPath(path, k), k), fields(D.subPath(path, k), x, depth + 1), revertBtn(D.subPath(path, k)))));
     }
     return input(path, v);
   }

@@ -559,6 +559,13 @@ for players who ask their system for reduced motion.
   stack's first chip front to back, then every second chip, for as long as the next chip can be afforded
   (`R.fitLayout`). An opponent's (`ROSTER[id].layout`) is fitted to its own position the same way.
 
+### Build mode hovers
+- Every setting in Build mode has a hover saying what it is for: the makers' fields (`help.<key>` text), every field
+  of every table (`content/fieldhelp.js`, looked up by table and path, with shared fields such as name, price and
+  floor), every Gameplay tuner setting (`help.tuner.*`), every text key (where its words show and how its {marks}
+  work) and the Guidance entries' parts. The Guidance side of each says how to try a change out (the Test table, the
+  makers' previews, the Shops section). `tests/fieldhelp.mjs` fails on any table field or tuner setting without one.
+
 ### Build mode lists are linked, not typed
 - No Build-mode field takes a comma-separated list any more. A list of things the game defines (tricks, materials,
   dyes, chips, weather, immunities, face effects, floors) is edited by picking each item from that table, by name,
