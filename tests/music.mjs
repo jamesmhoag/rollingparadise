@@ -1,6 +1,6 @@
 // The bout music: how tense a bout reads from the Rollers' Worth, how that sets the four layers, and which loop plays.
-import { tensionOf, layerMix, loopFor } from '../js/ui/music.js';
-import { LOOPS } from '../js/content/assets.js';
+import { tensionOf, layerMix, loopFor, srcOf, MODES } from '../js/ui/music.js';
+import { LOOPS, MUSIC } from '../js/content/assets.js';
 import { worth } from '../js/bout.js';
 
 let fail = 0;
@@ -21,5 +21,8 @@ ok(mid.drive === 1 && mid.peril === 0, 'halfway: the drive, not the peril yet');
 for (let x = 0; x < 1; x += 0.05) { const a = layerMix(x), b = layerMix(x + 0.05); ok(b.drive >= a.drive && b.peril >= a.peril, `the layers only build as tension rises (${x.toFixed(2)})`); }
 for (let f = 1; f <= 5; f++) { ok(loopFor(f, false)?.kind === 'bout' && loopFor(f, false).floor === f, `floor ${f}: a table loop`); ok(loopFor(f, true)?.kind === 'boss' && loopFor(f, true).floor === f, `floor ${f}: a High Roller loop`); }
 ok(new Set(LOOPS.map((L) => L.title)).size === LOOPS.length, 'every loop has its own title');
+ok(MODES.join() === 'band,chip,off', 'the button cycles band, chiptune, off');
+for (const M of MUSIC) ok(srcOf(M, 'band') === M.src && srcOf(M, 'chip') === M.chip && M.chip !== M.src, `${M.title}: a band and a chiptune file`);
+ok(srcOf({ src: 'a.mp3' }, 'chip') === 'a.mp3', 'a tune with no chiptune version plays the band');
 if (fail) process.exit(1);
 console.log(`ok, music: tension from Worth, four layers, ${LOOPS.length} loops`);

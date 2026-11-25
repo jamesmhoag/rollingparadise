@@ -365,7 +365,8 @@ def render_loop(L, ir):
     lufs = float([l for l in meas.splitlines() if l.strip().startswith('I:')][-1].split()[1])
     gain = 10 ** ((-18 - lufs) / 20); gain = min(gain, .89 / max(1e-6, np.abs(full).max()))
     os.makedirs(OUT, exist_ok=True); entry = {'slug': L['slug'], 'title': L['title'], 'floor': L['floor'], 'kind': L['kind'], 'key': L['key'], 'bpm': round(bpm_of(L), 2),
-                                              'start': PAD, 'length': round(secs, 6), 'layers': {}}
+                                              'start': PAD, 'length': round(secs, 6), 'layers': {},
+                                              'chip': {k: f'assets/music/chip/loops/{L["slug"]}-{k}.mp3' for k in ('base', 'theme', 'drive', 'peril')}}
     for layer, x in out.items():
         src = os.path.join(TMP, f'{L["slug"]}-{layer}.g32'); (x[:n] * gain).astype('<f4').tofile(src)
         mp3 = os.path.join(OUT, f'{L["slug"]}-{layer}.mp3')

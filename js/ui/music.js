@@ -1,8 +1,9 @@
 // The lounge's music: the band's set list (content/music.js, eight kinds of jazz, three tunes each), quietly under
 // the game. The set is shuffled so no two tunes of the same kind play back to back, and loops. Browsers only let
 // sound start after the player touches the page, so it begins on the first click. The ♪ button in the corner
-// turns it on or off (remembered in this browser); its hover names the tune. The tune's key is shared (musicKey),
-// so the table's sounds play in the key the band is in.
+// cycles the band, its chiptune version (every tune and loop again on 8-bit voices, tools/jazz/chiptune.py) and
+// off, remembered in this browser; switching between the two keeps the place in the tune. Its hover names the tune.
+// The tune's key is shared (musicKey), so the table's sounds play in the key the band is in.
 //
 // At a table the band plays the floor's bout loop instead (content/loops.js; the High Roller and the Ascent's last
 // climb have their own). A loop is four layers played together through Web Audio, sample for sample: the groove and
@@ -14,10 +15,15 @@ import { t } from '../text.js';
 import { worth } from '../bout.js';
 
 const KEY = 'rollingparadise.music', VOL = 0.3, LOOP_VOL = 0.36, LAYERS = ['base', 'theme', 'drive', 'peril'];
-const saved = () => { try { return localStorage.getItem(KEY) !== 'off'; } catch { return true; } };
-const keep = (on) => { try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch { /* storage unavailable */ } };
-let current = null, playing = false, loop = null;
+// the sound: 'band', 'chip' (the chiptune versions) or 'off'; older saves said 'on'
+export const MODES = ['band', 'chip', 'off'];
+const saved = () => { try { const m = localStorage.getItem(KEY); return MODES.includes(m) ? m : m === 'off' ? 'off' : 'band'; } catch { return 'band'; } };
+const keep = (m) => { try { localStorage.setItem(KEY, m); } catch { /* storage unavailable */ } };
+let current = null, playing = false, loop = null, mode = 'band';
 const lounge = { play: () => {}, pause: () => {}, on: () => false, touched: false };
+// a tune's or a loop layer's file in the current sound
+export const srcOf = (tune, m = mode) => (m === 'chip' && tune.chip ? tune.chip : tune.src);
+const layerSrc = (L, k, m = mode) => (m === 'chip' && L.chip ? L.chip[k] : L.layers[k]);
 // the key the band is playing in (0 = C ... 11 = B), or C when it is quiet
 export const musicKey = () => (loop?.live ? loop.L.key : playing && current ? current.key || 0 : 0);
 
@@ -60,19 +66,19 @@ export function boutMusic(bout, { floor, boss, where } = {}) {
 // the bout is over or left: the loop fades, and the lounge band comes back
 export function endBoutMusic() { endLoop(2.5, true); }
 
-async function startLoop(lp) {
+async function startLoop(lp, at = 0) {  // at: where in the loop to come in, in seconds (a switch of sound keeps its place)
   const a = audioCtx(); if (a.state === 'suspended') a.resume().catch(() => {});
-  const bufs = await Promise.all(LAYERS.map((k) => decode(lp.L.layers[k]))).catch(() => null);
-  if (!bufs || loop !== lp || lp.live || !lounge.on()) return;
+  const m = mode, bufs = await Promise.all(LAYERS.map((k) => decode(layerSrc(lp.L, k, m)))).catch(() => null);
+  if (!bufs || loop !== lp || lp.live || !lounge.on() || mode !== m) return;
   lounge.pause();
   const master = a.createGain(), when = a.currentTime + 0.08, mix = layerMix(lp.x);
-  master.gain.value = 0; master.connect(a.destination); master.gain.setTargetAtTime(LOOP_VOL, when, 0.6);
+  master.gain.value = 0; master.connect(a.destination); master.gain.setTargetAtTime(LOOP_VOL, when, at ? 0.15 : 0.6);
   lp.nodes = LAYERS.map((k, i) => {
     const g = a.createGain(), s = a.createBufferSource(); g.gain.value = mix[k]; g.connect(master);
-    s.buffer = bufs[i]; s.loop = true; s.loopStart = lp.L.start; s.loopEnd = lp.L.start + lp.L.length; s.connect(g); s.start(when, lp.L.start);
+    s.buffer = bufs[i]; s.loop = true; s.loopStart = lp.L.start; s.loopEnd = lp.L.start + lp.L.length; s.connect(g); s.start(when, lp.L.start + (at % lp.L.length));
     return { k, g, s };
   });
-  lp.master = master; lp.live = true;
+  lp.master = master; lp.live = true; lp.began = when - at;
   lp.timer = setInterval(() => follow(lp), 250);
 }
 // four times a second: ease toward the bout's tension (about two seconds to catch up) and set the layers
@@ -94,25 +100,37 @@ function endLoop(secs, back) { const lp = loop; loop = null; if (lp) silence(lp,
 // ---------- the lounge band, and the button ----------
 export function initMusic(stage) {
   if (!MUSIC.length || typeof Audio === 'undefined') return;
-  let on = saved(), order = setOrder(), at = 0, audio = null;
-  const now = () => order[at];
-  const next = () => { at++; if (at >= order.length) { order = setOrder(); at = 0; } current = now(); audio.src = current.src; audio.play().catch(() => {}); };
+  let order = setOrder(), at = 0, audio = null; mode = saved();
+  const on = () => mode !== 'off', now = () => order[at];
+  const next = () => { at++; if (at >= order.length) { order = setOrder(); at = 0; } current = now(); audio.src = srcOf(current); audio.play().catch(() => {}); };
   function play() {
     if (!audio) { audio = new Audio(); audio.volume = VOL; audio.preload = 'auto'; audio.addEventListener('ended', next);
       audio.addEventListener('playing', () => { playing = true; }); audio.addEventListener('pause', () => { playing = false; }); }
-    if (!audio.src) { current = now(); audio.src = current.src; }
+    current = now(); const src = srcOf(current);
+    if (!audio.src.endsWith(src)) {  // a new tune, or the same one in the other sound: carry on from the same place
+      const pos = audio.src ? audio.currentTime : 0; audio.src = src;
+      if (pos) audio.addEventListener('loadedmetadata', () => { audio.currentTime = Math.min(pos, (audio.duration || pos) - 0.5); }, { once: true });
+    }
     audio.play().catch(() => {});
   }
-  Object.assign(lounge, { play, pause: () => audio?.pause(), on: () => on });
+  Object.assign(lounge, { play, pause: () => audio?.pause(), on });
   const start = () => (loop ? startLoop(loop) : play()); // whatever should be playing: the bout's loop, or the band
   const tip = () => {
-    if (!on) return t('music.off');
-    if (loop) return t('music.bout', { title: loop.L.title, where: loop.where || '' });
-    return t('music.playing', { title: now().title, style: now().by });
+    if (!on()) return t('music.off');
+    const chip = mode === 'chip' ? t('music.chipNote') : '', next = mode === 'chip' ? t('music.toOff') : t('music.toChip');
+    if (loop) return t('music.bout', { title: loop.L.title, where: loop.where || '', chip, next });
+    return t('music.playing', { title: now().title, style: now().by, chip, next });
   };
-  const button = btn('♪', () => { on = !on; keep(on); if (on) start(); else { audio?.pause(); if (loop) silence(loop, 0.4); } mark(); }, tip, 'small music-btn');
-  const mark = () => button.classList.toggle('muted', !on);
+  const turn = () => {  // band -> chiptune -> off -> band
+    mode = MODES[(MODES.indexOf(mode) + 1) % MODES.length]; keep(mode);
+    if (!on()) { audio?.pause(); if (loop) silence(loop, 0.4); }
+    else if (loop) { const pos = loop.live ? ac.currentTime - loop.began : 0; silence(loop, 0.15); startLoop(loop, Math.max(0, pos)); }
+    else play();
+    mark();
+  };
+  const button = btn('♪', turn, tip, 'small music-btn');
+  const mark = () => { button.classList.toggle('muted', !on()); button.classList.toggle('chip', mode === 'chip'); };
   mark(); stage.append(button);
-  const first = () => { document.removeEventListener('pointerdown', first, true); lounge.touched = true; if (on) start(); };
+  const first = () => { document.removeEventListener('pointerdown', first, true); lounge.touched = true; if (on()) start(); };
   document.addEventListener('pointerdown', first, true);
 }

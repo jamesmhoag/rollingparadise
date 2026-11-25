@@ -16,6 +16,12 @@ export const LOOPS = [
    "theme": "assets/music/loops/basement-bout-theme.mp3",
    "drive": "assets/music/loops/basement-bout-drive.mp3",
    "peril": "assets/music/loops/basement-bout-peril.mp3"
+  },
+  "chip": {
+   "base": "assets/music/chip/loops/basement-bout-base.mp3",
+   "theme": "assets/music/chip/loops/basement-bout-theme.mp3",
+   "drive": "assets/music/chip/loops/basement-bout-drive.mp3",
+   "peril": "assets/music/chip/loops/basement-bout-peril.mp3"
   }
  },
  {
@@ -32,6 +38,12 @@ export const LOOPS = [
    "theme": "assets/music/loops/basement-boss-theme.mp3",
    "drive": "assets/music/loops/basement-boss-drive.mp3",
    "peril": "assets/music/loops/basement-boss-peril.mp3"
+  },
+  "chip": {
+   "base": "assets/music/chip/loops/basement-boss-base.mp3",
+   "theme": "assets/music/chip/loops/basement-boss-theme.mp3",
+   "drive": "assets/music/chip/loops/basement-boss-drive.mp3",
+   "peril": "assets/music/chip/loops/basement-boss-peril.mp3"
   }
  },
  {
@@ -48,6 +60,12 @@ export const LOOPS = [
    "theme": "assets/music/loops/haven-bout-theme.mp3",
    "drive": "assets/music/loops/haven-bout-drive.mp3",
    "peril": "assets/music/loops/haven-bout-peril.mp3"
+  },
+  "chip": {
+   "base": "assets/music/chip/loops/haven-bout-base.mp3",
+   "theme": "assets/music/chip/loops/haven-bout-theme.mp3",
+   "drive": "assets/music/chip/loops/haven-bout-drive.mp3",
+   "peril": "assets/music/chip/loops/haven-bout-peril.mp3"
   }
  },
  {
@@ -64,6 +82,12 @@ export const LOOPS = [
    "theme": "assets/music/loops/haven-boss-theme.mp3",
    "drive": "assets/music/loops/haven-boss-drive.mp3",
    "peril": "assets/music/loops/haven-boss-peril.mp3"
+  },
+  "chip": {
+   "base": "assets/music/chip/loops/haven-boss-base.mp3",
+   "theme": "assets/music/chip/loops/haven-boss-theme.mp3",
+   "drive": "assets/music/chip/loops/haven-boss-drive.mp3",
+   "peril": "assets/music/chip/loops/haven-boss-peril.mp3"
   }
  },
  {
@@ -80,6 +104,12 @@ export const LOOPS = [
    "theme": "assets/music/loops/suite-bout-theme.mp3",
    "drive": "assets/music/loops/suite-bout-drive.mp3",
    "peril": "assets/music/loops/suite-bout-peril.mp3"
+  },
+  "chip": {
+   "base": "assets/music/chip/loops/suite-bout-base.mp3",
+   "theme": "assets/music/chip/loops/suite-bout-theme.mp3",
+   "drive": "assets/music/chip/loops/suite-bout-drive.mp3",
+   "peril": "assets/music/chip/loops/suite-bout-peril.mp3"
   }
  },
  {
@@ -96,6 +126,12 @@ export const LOOPS = [
    "theme": "assets/music/loops/suite-boss-theme.mp3",
    "drive": "assets/music/loops/suite-boss-drive.mp3",
    "peril": "assets/music/loops/suite-boss-peril.mp3"
+  },
+  "chip": {
+   "base": "assets/music/chip/loops/suite-boss-base.mp3",
+   "theme": "assets/music/chip/loops/suite-boss-theme.mp3",
+   "drive": "assets/music/chip/loops/suite-boss-drive.mp3",
+   "peril": "assets/music/chip/loops/suite-boss-peril.mp3"
   }
  },
  {
@@ -112,6 +148,12 @@ export const LOOPS = [
    "theme": "assets/music/loops/paradise-bout-theme.mp3",
    "drive": "assets/music/loops/paradise-bout-drive.mp3",
    "peril": "assets/music/loops/paradise-bout-peril.mp3"
+  },
+  "chip": {
+   "base": "assets/music/chip/loops/paradise-bout-base.mp3",
+   "theme": "assets/music/chip/loops/paradise-bout-theme.mp3",
+   "drive": "assets/music/chip/loops/paradise-bout-drive.mp3",
+   "peril": "assets/music/chip/loops/paradise-bout-peril.mp3"
   }
  },
  {
@@ -128,6 +170,12 @@ export const LOOPS = [
    "theme": "assets/music/loops/paradise-boss-theme.mp3",
    "drive": "assets/music/loops/paradise-boss-drive.mp3",
    "peril": "assets/music/loops/paradise-boss-peril.mp3"
+  },
+  "chip": {
+   "base": "assets/music/chip/loops/paradise-boss-base.mp3",
+   "theme": "assets/music/chip/loops/paradise-boss-theme.mp3",
+   "drive": "assets/music/chip/loops/paradise-boss-drive.mp3",
+   "peril": "assets/music/chip/loops/paradise-boss-peril.mp3"
   }
  },
  {
@@ -144,6 +192,12 @@ export const LOOPS = [
    "theme": "assets/music/loops/ascent-bout-theme.mp3",
    "drive": "assets/music/loops/ascent-bout-drive.mp3",
    "peril": "assets/music/loops/ascent-bout-peril.mp3"
+  },
+  "chip": {
+   "base": "assets/music/chip/loops/ascent-bout-base.mp3",
+   "theme": "assets/music/chip/loops/ascent-bout-theme.mp3",
+   "drive": "assets/music/chip/loops/ascent-bout-drive.mp3",
+   "peril": "assets/music/chip/loops/ascent-bout-peril.mp3"
   }
  },
  {
@@ -160,6 +214,12 @@ export const LOOPS = [
    "theme": "assets/music/loops/ascent-boss-theme.mp3",
    "drive": "assets/music/loops/ascent-boss-drive.mp3",
    "peril": "assets/music/loops/ascent-boss-peril.mp3"
+  },
+  "chip": {
+   "base": "assets/music/chip/loops/ascent-boss-base.mp3",
+   "theme": "assets/music/chip/loops/ascent-boss-theme.mp3",
+   "drive": "assets/music/chip/loops/ascent-boss-drive.mp3",
+   "peril": "assets/music/chip/loops/ascent-boss-peril.mp3"
   }
  }
 ];
