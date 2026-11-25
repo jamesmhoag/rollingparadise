@@ -139,7 +139,7 @@ function oppPanel(opp) {
   let sd = null; try { sd = R.previewOpponent(opp); } catch { sd = null; }
   const V = positionView({ CH: 30, SZ: 19, maxW: 380, mirror: true, lift: 2 }); if (sd) V.draw(sd);
   return h('div', { class: 'box col opp-panel', guide: 'opponent' },
-    h('div', { class: 'row between' }, h('span', { class: 'cap', text: t('prep.across') }), h('span', { class: 'sub', tip: () => oppTip(opp), text: `${opp.title ? opp.title + ' · ' : ''}${t('prep.opp.line', { cls: D.CLASSES[opp.cls].name, amt: cents(opp.worth) })}` })),
+    h('div', { class: 'row between' }, h('span', { class: 'cap', text: t('prep.across') }), h('span', { class: 'sub', guide: 'opponent', tip: () => oppTip(opp), text: `${opp.title ? opp.title + ' · ' : ''}${t('prep.opp.line', { cls: D.CLASSES[opp.cls].name, amt: cents(opp.worth) })}` })),
     h('div', { class: 'row', style: { alignItems: 'center', gap: '14px' } }, sign, gear),
     h('span', { class: 'cap', text: t('prep.theirs') }), sd ? V.board : h('p', { class: 'sub', text: '—' }),
     h('span', { class: 'cap', text: t('prep.theirBook', { dice: diceSummary(opp.dice) }) }), h('div', { class: 'bookcards' }, opp.tricks.map((tr) => bookCard(tr, opp.cls))));
