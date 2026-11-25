@@ -1084,3 +1084,56 @@ table.b-shop { border-collapse: collapse; width: 100%; font-size: 12px; margin-t
 .card-preview { padding: 18px; display: flex; justify-content: center; } .card-preview .gcard.big { transform: scale(2.4); transform-origin: center top; margin-bottom: 110px; }
 .card-preview .gcard.bizcard.big { transform: scale(1.8); margin-bottom: 40px; }
 .gcard.art.edge-top { padding-top: 12px; } .gcard.art.edge-bottom { padding-bottom: 11px; }
+/* ---------- tricks: the list item, the full card, the played card (trickcard.js) ---------- */
+.tk-item { gap: 5px; padding: 2px 8px 2px 6px; background: rgba(22, 15, 46, .85); }
+.tk-item .chip.mini { width: 16px; height: 16px; flex: none; }
+.tk-name { font-family: var(--script); font-weight: 400; letter-spacing: .01em; color: #fff; }
+.tk-item .tk-name { font-size: 15px; line-height: 1.1; }
+.tk-q { display: inline-flex; align-items: baseline; gap: 2px; } .tk-q b { font-family: Georgia, 'Times New Roman', serif; font-weight: 700; font-size: 11px; color: var(--gold); letter-spacing: .04em; }
+.tk-q i { font-style: normal; font-size: 11px; } .tk-q .ankh { color: #fff; text-shadow: 0 0 6px #fff, 0 0 12px rgba(255,255,255,.6); } .tk-q .fmark { background: linear-gradient(90deg, #ff6ec7, #ffd76a, #7dffb5, #6ec8ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.tk-q .mmark { color: #ff6ec7; }
+/* the Bonus dice, in the trick's pattern */
+.tk-dice { position: relative; display: inline-flex; flex-direction: column; gap: 1px; vertical-align: middle; } .tk-dice.al-left { align-items: flex-start; } .tk-dice.al-center { align-items: center; } .tk-dice.al-right { align-items: flex-end; }
+.tk-row { display: flex; gap: 1px; }
+.tk-slot { position: relative; display: inline-grid; place-items: center; width: 14px; height: 14px; font-style: normal; font-size: 8px; font-weight: 700; color: #1a1430; background: #e8e2d4; border-radius: 2px; line-height: 1; }
+.tk-slot.d4 { clip-path: polygon(50% 0, 100% 100%, 0 100%); border-radius: 0; padding-top: 3px; } .tk-slot.d8 { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); border-radius: 0; }
+.tk-slot.d12 { clip-path: polygon(50% 0, 98% 36%, 80% 100%, 20% 100%, 2% 36%); border-radius: 0; } .tk-slot.d20 { clip-path: polygon(50% 0, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%); border-radius: 0; }
+.tk-dice.mini .tk-slot { width: 9px; height: 9px; font-size: 0; } .tk-dice.big .tk-slot { width: 26px; height: 26px; font-size: 12px; background: rgba(232, 226, 212, .12); color: rgba(255,255,255,.55); outline: 1px dashed rgba(255,255,255,.25); outline-offset: -3px; }
+.tk-dice.big { gap: 5px; } .tk-dice.big .tk-row { gap: 5px; }
+.tk-slot s { position: absolute; inset: 0; display: grid; place-items: center; text-decoration: none; color: rgba(0, 160, 255, .55); transform: translate(1.5px, -1px); }
+.tk-was { position: absolute; right: -9px; top: -6px; font-size: 9px; text-decoration: line-through; color: #ff6ec7; opacity: .8; }
+/* the full card */
+.tk-card { width: 270px; padding: 9px 11px 10px; border-radius: 11px; background: linear-gradient(180deg, #221748, #0e0a24); border: 2px solid color-mix(in srgb, var(--tc) 70%, #000); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); color: var(--cream, #f3ead2); position: relative; overflow: hidden; }
+#tooltip .tk-card { margin: -2px -4px; }
+.tk-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; } .tk-card .tk-name { font-size: 27px; line-height: 1.05; }
+.tk-card .tk-q b { font-size: 20px; } .tk-card .tk-q i { font-size: 18px; }
+.tk-art-row { display: grid; grid-template-columns: 50px 1fr; gap: 9px; align-items: center; margin: 5px 0 7px; } .tk-art-row .flavor { margin: 0; font-size: 11.5px; }
+.chip.tk-art { width: 48px; height: 48px; } .chip.tk-art i { font-size: 18px; } .tk-art.none { width: 48px; height: 48px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--tc) 50%, #fff), var(--tc)); }
+.tk-sec { display: grid; gap: 1px; margin: 4px 0; font-size: 12px; line-height: 1.3; } .tk-sec em { font-style: normal; font-weight: 700; font-size: 11px; letter-spacing: .06em; color: color-mix(in srgb, var(--tc) 55%, #fff); }
+.tk-sec .tk-dice { margin-left: 4px; } .tk-print { font-size: 11px; margin: 5px 0 0; }
+.tk-facts { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 7px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,.1); }
+.tk-fact { display: inline-flex; gap: 3px; align-items: center; padding: 1px 6px; border-radius: 9px; background: rgba(255,255,255,.07); font-size: 10.5px; } .tk-fact i { font-style: normal; opacity: .75; } .tk-fact .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.tk-card.wrong-cls { opacity: .85; } .tk-card.wrong-cls .tk-sec:nth-of-type(5) { opacity: .6; }
+/* the played card */
+.tk-played { width: 150px; padding: 6px 8px 8px; border-radius: 10px; background: linear-gradient(180deg, #221748, #0e0a24); border: 2px solid color-mix(in srgb, var(--tc) 70%, #000); display: grid; gap: 6px; justify-items: center; position: relative; overflow: hidden; }
+.tk-played .tk-head { width: 100%; } .tk-played .tk-name { font-size: 20px; } .tk-ring { width: 54px; height: 54px; border-radius: 50%; border: 2px dashed color-mix(in srgb, var(--tc) 60%, #fff); display: grid; place-items: center; }
+.tk-ring .chip { width: 38px; height: 38px; }
+/* the prints: Foil glints (a metallic rainbow passes over it now and then), a Misprint's ink is off at an angle, a
+   Reprint wears an ankh and a white aura */
+.tk-item.foil, .tk-card.foil, .tk-played.foil, .tcard.foil { background-image: linear-gradient(115deg, transparent 35%, rgba(255,110,199,.28) 42%, rgba(255,215,106,.3) 48%, rgba(125,255,181,.28) 54%, rgba(110,200,255,.28) 60%, transparent 67%), linear-gradient(135deg, rgba(200,210,230,.10), rgba(120,110,170,.06) 40%, rgba(220,230,255,.12)), linear-gradient(180deg, #221748, #0e0a24);
+  background-size: 300% 100%, 100% 100%, 100% 100%; background-repeat: no-repeat; animation: tk-glint 7s ease-in-out infinite; }
+.tk-item.foil { background-image: linear-gradient(115deg, transparent 35%, rgba(255,110,199,.28) 42%, rgba(255,215,106,.3) 48%, rgba(125,255,181,.28) 54%, rgba(110,200,255,.28) 60%, transparent 67%), linear-gradient(135deg, rgba(200,210,230,.14), rgba(120,110,170,.08) 40%, rgba(220,230,255,.16)), linear-gradient(rgba(22,15,46,.85), rgba(22,15,46,.85)); }
+@keyframes tk-glint { 0%, 70% { background-position: 150% 0, 0 0, 0 0; } 92%, 100% { background-position: -50% 0, 0 0, 0 0; } }
+.misprint .tk-name, .misprint .tk-q b, .misprint .tk-sec em, .misprint .tk-slot, .tcard.misprint .c-name b, .tcard.misprint .c-compact b { text-shadow: 1.3px 1px 0 rgba(0, 220, 255, .75), -1.2px .7px 0 rgba(255, 0, 200, .7), .5px -1.3px 0 rgba(255, 230, 0, .65); }
+.misprint .tk-sec.off span, .tk-dice.off .tk-slot { box-shadow: 1.5px 1px 0 rgba(0, 220, 255, .6), -1px .8px 0 rgba(255, 0, 200, .55); }
+.tk-mis { color: #ff6ec7; }
+.tk-item.reprint, .tk-card.reprint, .tk-played.reprint, .tcard.reprint { box-shadow: 0 0 8px rgba(255,255,255,.55), 0 0 20px rgba(255,255,255,.22), inset 0 0 12px rgba(255,255,255,.12); filter: none; }
+.tag-t.trick.reprint { filter: none; }
+/* the played card at the table: the bid ring and the dice area; what it does is in its hover (the full card) */
+.tcard .tk-name { font-family: var(--script); font-weight: 400; font-size: 17px; } .c-compact .tk-name { font-size: 16px; }
+.tcard.open .c-text > p:first-child { display: none; }
+.c-need .tk-slot.need.full { background: var(--gold); color: #1a1430; box-shadow: 0 0 6px rgba(255,215,106,.7); }
+.c-compact .req.bonus-req .tk-dice { margin: 0; }
+.b-states { display: grid; gap: 6px; justify-items: start; } .b-states .tk-card { width: 280px; }
+.btn.pat { padding: 4px 6px; } .btn.pat.on { box-shadow: 0 0 0 2px var(--gold); }
+.c-compact .req.bonus-req { background: none; box-shadow: none; padding: 0; border: 0; } .c-compact .tk-dice.mini .tk-slot { width: 12px; height: 12px; font-size: 7px; }

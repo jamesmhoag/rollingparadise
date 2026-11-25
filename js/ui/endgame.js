@@ -5,6 +5,7 @@ import { jacketTip, trickTip, trickWords, cardTip, dieTip, dieEl, passEl } from 
 import { planner } from './prep.js';
 import * as D from '../data.js';
 import { signOf, dressSign, crownLookOf } from './sign.js';
+import { trickItem } from './trickcard.js';
 import * as R from '../run.js';
 import { flavorP } from './parts.js';
 import { cents } from '../util.js';
@@ -36,7 +37,7 @@ export function suiteScene(root, penthouse) {
   const offer = R.suiteOffer(run), dresser = h('div', { class: 'items list' });
   const J = jacketList((id) => { run.jacket = id; J.render(); H.update(); toast(t('suite.changed', { name: D.JACKETS[id].name })); });
   function render() {
-    syncList(dresser, offer.filter((x) => !x.taken), (x) => x.uid, (x) => { const def = D.TRICKS[x.id]; return h('div', { class: 'item', style: { '--tc': D.TYPES[def.type].color }, tip: () => trickTip(x, run.cls) }, h('div', { class: 'main' }, h('b', { html: `${def.name} <span class="q">${trickWords(x)}</span>` }), h('small', { text: t('suite.dresser.line', { type: D.TYPES[def.type].name }) })), btn(t('suite.take'), () => { x.taken = true; run.tricks.push({ uid: x.uid, id: x.id, q: x.q, wear: x.wear, rar: x.rar, ...(x.foil ? { foil: x.foil } : {}) }); render(); H.update(); toast(t('suite.taken', { name: def.name })); }, null, 'small')); });
+    syncList(dresser, offer.filter((x) => !x.taken), (x) => x.uid, (x) => { const def = D.TRICKS[x.id]; return h('div', { class: 'item', style: { '--tc': D.TYPES[def.type].color }, tip: () => trickTip(x, run.cls) }, h('div', { class: 'main' }, h('b', {}, trickItem(x)), h('small', { text: t('suite.dresser.line', { type: D.TYPES[def.type].name }) })), btn(t('suite.take'), () => { x.taken = true; run.tricks.push({ uid: x.uid, id: x.id, q: x.q, wear: x.wear, rar: x.rar, ...(x.foil ? { foil: x.foil } : {}) }); render(); H.update(); toast(t('suite.taken', { name: def.name })); }, null, 'small')); });
   }
   render();
   const K = D.CLASSES[run.cls];

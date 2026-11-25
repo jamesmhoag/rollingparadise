@@ -600,23 +600,32 @@ soaked), `interest` (a 1¢ chip on its Bet each turn per so many ¢ of Worth, ca
   percentage is also its wear threshold (Excellent from 75, Good from 50, Poor below). Your first Book is Good (wear
   74), the shelf Excellent (99), foil packs Mint (100). Gem Mint comes only out of packs (8% a trick) and is Mint
   until it first plays. A Poor trick plays forever at full strength.
-- **Rarity**: Basic; **Foil** in three tiers that multiply the roll total (Foil ×1.25, Holo ×1.5, Prism ×2;
-  Investments +0.25 a tier); **Misprint**, a changed die (one size up, sometimes down, among d4/d6/d8) or effect
-  value (+1 to +3, sometimes −1), three in four for the better; **Reprint**, an older rule: the roll effect plays
-  once per die, each worth that die (the bid joins the first). An Upgrade chip bid on a trick plays it one foil tier higher.
-- **Quality** (Common, Fine, Grand, Royal) is unlocked by floor and sets the multiplier. Common and Fine roll only
+- **Rarity**: Basic; **Foil**, the same trick a tier stronger (it plays with the quality above its own; an
+  Upgrade chip bid on a trick does the same, and they add up); Holo and Prism are gone (old saves load them as Foil).
+  **Misprint**: one value printed wrong, and it plays as printed. The kinds of fault are a table (`MISPRINTS` in
+  data.js), each naming the value it changes, how it rolls, how it changes the rules and which part of the card
+  shows wrong: its Bonus dice a size off (`die`), one Bonus die more or fewer (`count`), its effect value off
+  (`trait`), most of them for the better. More kinds (a colour, an aim, a bid) slot in the same way, so any trick
+  can come out misprinted in any of them. **Reprint**: a trick brought back to print, marked with an ankh and a white
+  aura, playing an older rule (the roll effect plays once per die). Only tricks marked `reprint` in the Trick maker
+  come out as Reprints; a trick taken out of the game is marked `retired` (dealt nowhere, still held and played,
+  still reprintable), never deleted.
+- **Quality** (Common, Fine, Grand, Royal: shown as I, II, III, IV wherever the trick is) is unlocked by floor and sets the multiplier. Common and Fine roll only
   their own small dice and are reliable. Grand and Royal roll a quality die when drawn (d10, d20): a dud (1; 1–2)
   plays at Common strength that turn; a hot roll (10; 19–20) sets off the Bonus whatever the dice. Drawing a trick
   again the same turn keeps its roll.
 - **Foil packs** replace upgrades at the Trick Trader: five tricks of the set's quality, all Mint, one of them a
-  rarer print (Misprint, Reprint, Holo or Prism); the others are Basic, one in five Foil. Common, Fine, Grand and
+  rarer print (Misprint, Reprint or Foil); the others are Basic, one in five Foil. Common, Fine, Grand and
   Royal sets open on floors 1 to 4, at 200¢ × quality × floor (above what the five sell for at Mint). The pack's
   tricks go into your Book and are listed under the shelf.
-- Quality and print are shown as words and rarity styling (moving foil, Prism rainbow, Misprint offset ink,
-  Reprint's older paper), not pips and triangles. Old saves: an upgraded trick becomes the foil it played as (one
-  upgrade → Foil, two → Holo, the same strength).
-
-### Passes (round 17)
+- **A trick has three states**, the same everywhere (trickcard.js): the **list item** (its type's colour, its chip,
+  its name in script, its numeral and print mark, its Bonus dice in their pattern), the **full card** (its hover and
+  previews: name and numeral, chip and flavour, then Trick (what it aims at), Roll and Bonus, and a strip of its
+  numbers with marks) and the **played card** at the table (its name strip, the bid ring and the dice area). The
+  Bonus dice are laid out by the trick's `pattern` (rows of up to four, at most nine dice, lined up left, centre or
+  right; set in the Trick maker, which previews all three states and the three prints). Prints show on all three:
+  Foil a metallic rainbow that glints now and then, a Misprint's ink off at an angle (cyan, magenta and yellow) with
+  the true value ghosted behind the wrong one, a Reprint its ankh and white aura.
 - Passes are not cards. Every wallet holds **its own number of passes** (`passes` on each wallet in `WALLETS`, tuned
   in Build mode's tables; 1 to start), each in a pass slot that cards never use. A full wallet gives up its lowest
   pass for a new one, so a one-pass wallet behaves as before. Kept passes come into the next run together, and the

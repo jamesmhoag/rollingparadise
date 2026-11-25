@@ -147,9 +147,7 @@ export function planner(getExtra, onChange, { maxW = 400 } = {}) {
 }
 
 // ---------- the opponent, as they will sit down ----------
-const bookCard = (tr, cls) => { const def = D.defOf(tr), T = D.TYPES[def.type], ch = trickChip(def);
-  return h('div', { class: `bookcard ${trickLook(tr)}`, style: { '--tc': T.color }, tip: () => trickTip(tr, cls) }, ch ? chipEl(ch, 'mini') : null, h('b', { text: def.name }), h('span', { class: 'q', html: trickWord(tr) }),
-    h('span', { class: 'req' }, h('em', { text: '★' }), `${def.count}×`, dieEl({ type: def.die, up: [] }, '', 'mini'))); };
+const bookCard = (tr, cls) => trickTag(tr, cls);
 function oppPanel(opp) {
   const sign = h('div', { class: 'who them neon-sample prep-sign' }, h('div', { class: 'name nsign' }, h('b', { class: 'neon-name', text: opp.name }), h('span', { class: 'neon-class', text: D.CLASSES[opp.cls].name })));
   requestAnimationFrame(() => dressSign(sign, { ...signOf('them', opp.sign), crown: opp.boss ? { level: Math.max(1, Math.min(4, opp.floor || 1)) } : null }, 'them'));

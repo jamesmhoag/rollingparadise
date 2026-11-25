@@ -4,6 +4,7 @@
 import { h, openPanel, closePanel, btn } from './core.js';
 import { app } from './app.js';
 import { upgrade as upgradeFaces, suggestFace, dieName } from '../dice.js';
+import { trickItem } from './trickcard.js';
 import { cardRule, chipEl, chipTip, dieEl, dieTip, faceStrip, trickTip, trickWords, trickLook, cardEl, cardTip, passEl, walletEl, jacketEl, jacketTip, drinkEl, feltEl } from './parts.js';
 import * as D from '../data.js';
 import { CHIP_LIST } from '../chiplist.js';
@@ -24,7 +25,7 @@ function entry(vis, name, lines, o = {}) {
 }
 const dim = (t) => `<span class="dim">${t}</span>`;
 const fx = (m) => '×' + (m % 1 ? m.toFixed(2).replace(/0$/, '') : m);
-const tagOf = (t) => h('span', { class: `tag-t trick ${trickLook(t)}`, style: { '--tc': D.TYPES[D.TRICKS[t.id].type].color } }, D.TRICKS[t.id].name, h('span', { class: 'q', html: trickWords(t) }));
+const tagOf = (t) => trickItem(t);
 const tipped = (el, fn) => { el._tip = fn; el.classList.add('has-tip'); return el; };
 const noUpgrades = (what) => sec('Upgrades', tx('library.have-no-upgrades-yet', { what }));
 
@@ -108,11 +109,11 @@ function tricksTab(own) {
   }
   out.push(sec('Quality', tx('library.quality-common-to-royal')));
   for (const q of [1, 2, 3, 4]) { const t = { id: 'charge', q };
-    out.push(entry(tipped(tagOf(t), () => trickTip(t, own.run?.cls)), D.QNAME[q], [tx('library.roll-total-trait', { fx: fx(multOf(t)) }), dim(tx('library.investments', { fx: fx(multOf({ ...t, id: 'stir' })), qdieText: D.qdieText(q) }))])); }
+    out.push(entry(tipped(tagOf(t), () => trickTip(t, own.run?.cls)), `${D.QROMAN[q]} · ${D.QNAME[q]}`, [tx('library.roll-total-trait', { fx: fx(multOf(t)) }), dim(tx('library.investments', { fx: fx(multOf({ ...t, id: 'stir' })), qdieText: D.qdieText(q) }))])); }
   out.push(sec('Rarity', tx('library.how-a-trick-is')));
-  const prints = [{ rar: 'basic' }, { rar: 'foil', foil: 1 }, { rar: 'foil', foil: 2 }, { rar: 'foil', foil: 3 }, { rar: 'misprint', mis: { die: 'd8' } }, { rar: 'misprint', mis: { trait: 2 } }, { rar: 'reprint' }].map((x) => ({ id: 'charge', q: 1, ...x }));
-  for (const t of prints) out.push(entry(tipped(tagOf(t), () => trickTip(t, own.run?.cls)), t.foil ? D.FOIL[t.foil].name : D.RARITY[t.rar].name,
-    [t.foil ? tx('library.roll-total-on-common', { fx: fx(multOf(t)), mult: D.FOIL[t.foil].mult }) : t.rar === 'misprint' ? tx('library.this-one', { text: D.RARITY.misprint.text, misText: D.misText(t) }) : t.rar === 'reprint' ? `${D.RARITY.reprint.text}` : D.RARITY.basic.text,
+  const prints = [{ rar: 'basic' }, { rar: 'foil', foil: 1 }, { rar: 'misprint', mis: { die: 'd8' } }, { rar: 'misprint', mis: { count: 3 } }, { rar: 'misprint', mis: { trait: 2 } }, { rar: 'reprint' }].map((x) => ({ id: 'charge', q: 1, ...x }));
+  for (const t of prints) out.push(entry(tipped(tagOf(t), () => trickTip(t, own.run?.cls)), t.foil ? D.FOIL[1].name : D.RARITY[t.rar].name,
+    [t.foil ? tx('library.roll-total-on-common', { fx: fx(multOf(t)) }) : t.rar === 'misprint' ? tx('library.this-one', { text: D.RARITY.misprint.text, misText: D.misText(t) }) : t.rar === 'reprint' ? `${D.RARITY.reprint.text}` : D.RARITY.basic.text,
       t.rar === 'reprint' ? dim(Object.entries(D.REPRINT).map(([k, v]) => `${D.TYPES[k].name}: ${v.replace('Older rule: ', '')}`).join(' ')) : null].filter(Boolean)));
   out.push(sec('Condition', tx('library.condition-sets-only-what')));
   for (const [k, C] of Object.entries(D.CONDITIONS)) out.push(entry(h('b', { text: C.name }), C.sell ? `Sells at ${Math.round(C.sell * 100)}%` : tx('library.trash-only'),

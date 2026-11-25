@@ -13,6 +13,7 @@ import { t as tt } from '../text.js';
 import { facesOf, faceValue, dieName } from '../dice.js';
 import { solidEl } from './solid.js';
 import { signOf, dressSign, crownLookOf } from './sign.js';
+import { diceHtml, trickItem } from './trickcard.js';
 import { sfx } from './sfx.js';
 import { t as tx } from '../text.js';
 
@@ -176,7 +177,7 @@ export function boutScene(root, bout, ctx, onDone) {
       h('div', { class: 'led-row' }, h('span', { class: 'led-k', text: tx('table.ledger-tapped') })), ledEl[si].tap)));
   function ledgerTip(si) {
     const s = bout.sides[si], bids = s.run.filter((e) => e.state === 'bid' && e.bid.length);
-    return tx('table.ledger-tip', { who: si ? opp.name : tx('end.you'), list: bids.map((e) => `<span class="tag-t" style="--tc:${D.TYPES[D.TRICKS[e.trick.id].type].color}">${D.TRICKS[e.trick.id].name} ${sum(e.bid, (ch) => ch.value)}¢</span>`).join(' ') || tx('table.ledger-none'), t: s.tapped.tricks.length, d: s.tapped.dice.length });
+    return tx('table.ledger-tip', { who: si ? opp.name : tx('end.you'), list: bids.map((e) => `${trickItem(e.trick).outerHTML} ${sum(e.bid, (ch) => ch.value)}¢`).join(' ') || tx('table.ledger-none'), t: s.tapped.tricks.length, d: s.tapped.dice.length });
   }
   function syncLedger() {
     bout.sides.forEach((s, si) => { const bids = s.run.filter((e) => e.state === 'bid' && e.bid.length), L = ledEl[si];
@@ -442,18 +443,18 @@ export function boutScene(root, bout, ctx, onDone) {
   // a trick's card shows the chip it makes (or what stands for its effect) beside its name, and its Bonus
   // requirement as a gold badge: how many dice of which size
   const illus = (def) => { const ch = trickChip(def); return ch ? h('span', { class: 'c-illus' }, chipEl(ch, 'mini')) : null; };
-  const bonusReq = (def) => h('span', { class: 'req bonus-req', tip: tx('table.bonus-req-tip', { count: def.count, die: def.die, cond: D.condText(def.bonus.cond), text: def.bonus.text }) },
-    h('em', { text: '★' }), `${def.count}×`, dieEl({ type: def.die, up: [] }, '', 'mini'));
+  // the Bonus requirement: its dice, laid out in the trick's pattern (trickcard.js)
+  const bonusReq = (t, def) => h('span', { class: 'req bonus-req', html: diceHtml(t, def, 'mini'), tip: tx('table.bonus-req-tip', { count: def.count, die: def.die, cond: D.condText(def.bonus.cond), text: def.bonus.text }) });
   function mkCard(t, si = 0) {
     const def = D.defOf(t), T = D.TYPES[def.type];
     const el = h('div', { class: `tcard ${trickLook(t)}${si ? ' theirs' : ''}`, style: { '--tc': T.color }, ...(si ? {} : { onclick: (ev) => clickCard(t.uid, ev), onmouseenter: () => { ui.card = t.uid; marks(); }, onmouseleave: () => { if (ui.card === t.uid) { ui.card = null; marks(); } } }) },
-      h('div', { class: 'c-compact' }, illus(def), h('b', { text: def.name }), h('span', { class: 'q', html: trickWord(t) }), bonusReq(def)),
+      h('div', { class: 'c-compact' }, illus(def), h('b', { class: 'tk-name', text: def.name }), h('span', { class: 'q', html: trickWord(t) }), bonusReq(t, def)),
       h('div', { class: 'c-open' },
-        h('div', { class: 'c-name' }, illus(def), h('b', { text: def.name }), h('span', { class: 'c-stack', tip: () => stackTip(t.uid) }), h('span', { class: 'q', html: trickWord(t) })),
+        h('div', { class: 'c-name' }, illus(def), h('b', { class: 'tk-name', text: def.name }), h('span', { class: 'c-stack', tip: () => stackTip(t.uid) }), h('span', { class: 'q', html: trickWord(t) })),
         h('div', { class: 'c-type' }, T.name, h('span', { class: `xm ${t.foil ? 'up' : ''}`, text: ` ${fmtX(B.multOf(t))}` }), h('span', { class: 'qd', tip: tx('table.quality-2', { QNAME: D.QNAME[t.q], qdieText: D.qdieText(t.q) }) }), h('span', { class: 'tgt', text: 'aim', 'data-act': 'target', tip: tx('table.aim-change-where-this') })),
         h('div', { class: 'c-dice' }), // the dice on it are drawn over this row
         h('div', { class: 'c-bid' }, h('span', { class: 'bidslot', tip: tx('table.bid-space-tip') }), h('div', { class: 'c-math' })), // the roll breakdown sits beside the bid pile
-        h('div', { class: 'c-text' }, h('p', {}, h('em', { text: tx('table.roll-2') }), def.roll.text), h('p', { class: 'bonus', tip: tx('table.bonus-dice-tip', { count: def.count, die: def.die }) }, h('em', { text: tx('table.bonus') }), h('span', { class: 'c-need' }, Array.from({ length: def.count }, () => h('i', { class: 'need', text: def.die }))), def.bonus.text)),
+        h('div', { class: 'c-text' }, h('p', {}, h('em', { text: tx('table.roll-2') }), def.roll.text), h('p', { class: 'bonus', tip: tx('table.bonus-dice-tip', { count: def.count, die: def.die }) }, h('em', { text: tx('table.bonus') }), h('span', { class: 'c-need', html: diceHtml(t, def).replace(/class="tk-slot /g, 'class="tk-slot need ') }), def.bonus.text)),
         h('div', { class: 'c-total' }, h('span', { class: 'state' }), h('b', { class: 'num' }))));
     el._tuid = t.uid; tip(el, () => (si ? oppCardTip(t.uid) : cardTip(t.uid))); layer.append(el); return el;
   }

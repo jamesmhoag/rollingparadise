@@ -7,6 +7,7 @@ import { multOf } from '../bout.js';
 import { facesOf, faceValue, matOf, dieName } from '../dice.js';
 import { traitsOf, traitsHtml } from '../traits.js';
 import { iconStyle, textureOf } from './icons.js';
+import { trickCardHtml, printCls, qMarkHtml } from './trickcard.js';
 import { SYMBOLS as SYM, symbolOf } from './symbols.js';
 import { t as tx } from '../text.js';
 
@@ -129,32 +130,17 @@ export const dieStyle = (d) => ({ '--dc': D.MATERIALS[matOf(d)]?.color || '#e8e2
 export const dress3d = (el, d, value) => { if (typeof document !== 'undefined' && !d.chip) import('./dice3d.js').then((m) => m.dress(el, d, value)).catch(() => {}); };
 export const dieEl = (d, value, cls = '') => { const el = h('span', { class: `die static ${d.type} ${dieClass(d)} ${cls}`, style: dieStyle(d) }, h('i', { text: value ?? d.type.slice(1) }), dieMarks(d), dieDyes(d)); el._die = d; dress3d(el, d, value); return el; };
 
-const fx = (m) => '×' + (m % 1 ? m.toFixed(2).replace(/0$/, '') : m);
-// what a trick's quality, print and condition do, spelled out
-export function printInfo(t) {
-  const plain = { id: t.id, q: t.q }, cond = D.CONDITIONS[D.condOf(t)];
-  let s = tx('parts.power-the-roll-total', { fx: fx(multOf(t)), QNAME: D.QNAME[t.q], fx2: fx(multOf(plain)) });
-  s += t.foil ? tx('parts.and-the-print-makes', { name: D.FOIL[Math.min(3, t.foil)].name, fx: fx(multOf(t)) }) : '.</p>';
-  s += `<p><span class="k">${D.QNAME[t.q]}</span> ${D.qdieText(t.q)}</p>`;
-  s += tx('parts.wear-100-1-a', { name: cond.name, v: t.wear ?? D.WEAR.good, v2: cond.sell ? `Sells at ${Math.round(cond.sell * 100)}% of its price` : tx('parts.cannot-be-sold-only') });
-  return s;
-}
 // what a Misprint or a Reprint plays differently (always shown: it changes the rules)
-export const printRule = (t) => (t.rar === 'misprint' ? tx('parts.misprint', { misText: D.misText(t) }) : t.rar === 'reprint' ? tx('parts.reprint', { REPRINT: D.REPRINT[D.TRICKS[t.id].type] }) : '');
-// quality and print are drawn on the trick itself: q1–q4 frames, f1–f3 foil, and a Misprint's or Reprint's look
-export const trickLook = (t) => `q${t.q}${t.foil ? ` f${Math.min(3, t.foil)}` : ''}${t.rar === 'misprint' || t.rar === 'reprint' ? ` ${t.rar}` : ''}`;
-// the words for a trick's quality and print, in place of marks: "Grand", "Grand Holo", "Fine Misprint"
-const rareWord = (t) => (D.rarityName(t) ? `<span class="rw ${trickLook(t)}">${D.rarityName(t)}</span>` : '');
-export const trickWords = (t) => `${D.QNAME[t.q]}${D.rarityName(t) ? ' ' + rareWord(t) : ''}`;
-// one word where room is short (a compact card): the print if it is rare, else the quality above Common
-export const trickWord = (t) => rareWord(t) || (t.q > 1 ? D.QNAME[t.q] : '');
-export function trickTip(t, viewerCls, live) {
-  const def = D.defOf(t), T = D.TYPES[def.type];
-  const classOk = !def.cls || def.cls === viewerCls;
-  const tgt = def.approach === 'none' ? (def.dist === 'rain' ? tx('parts.random-stacks-of-your') : tx('parts.no-target-needed'))
-    : tx('parts.targets-in-position', { APPROACH: D.APPROACH[def.approach], v: def.side === 'self' ? 'your own' : "your opponent's", name: D.DIST[def.dist].name, text: D.DIST[def.dist].text });
-  return tx('parts.trait-bid-a-chip', { name: def.name, trickWords: trickWords(t), name2: D.CONDITIONS[D.condOf(t)].name, color: T.color, name3: T.name, v: def.cls ? ' · ' + D.CLASSES[def.cls].name : tx('parts.any-class'), text: T.text, count: def.count, die: def.die, text2: def.roll.text, v2: classOk ? '' : 'dim', condText: D.condText(def.bonus.cond), text3: def.bonus.text, v3: classOk ? '' : tx('parts.only', { name: D.CLASSES[def.cls].name }), printRule: printRule(t), tgt, printInfo: printInfo(t), v4: flavorP('TRICKS', t.id) + (live || '') });
-}
+export const printRule = (t) => (t.rar === 'misprint' ? tx('parts.misprint', { misText: D.misText(t) }) : t.rar === 'reprint' ? tx('parts.reprint', { REPRINT: D.REPRINT[D.TRICKS[t.id]?.type] || '' }) : t.foil ? tx('parts.foil-rule') : '');
+// a trick's quality and print as classes on whatever shows it (trickcard.js draws them)
+export const trickLook = (t) => printCls(t);
+// the words for a trick's quality and print: its numeral, then the print if it is rare ("III Foil", "II Misprint")
+const rareWord = (t) => (D.rarityName(t) ? `<span class="rw ${printCls(t)}">${D.rarityName(t)}</span>` : '');
+export const trickWords = (t) => `${D.QROMAN[t.q]}${D.rarityName(t) ? ' ' + rareWord(t) : ''}`;
+// where room is short: the numeral with the print's mark
+export const trickWord = (t) => qMarkHtml(t);
+// a trick's hover is its full card
+export const trickTip = (t, viewerCls, live) => trickCardHtml(t, viewerCls, live);
 export function statTip(k, v) {
   const S = D.STATS[k];
   return `<b>${S.name}${v != null ? ' ' + v : ''}</b> <span class="dim">${S.short}</span><p>${S.text}</p>${S.per ? tx('parts.each-point', { per: S.per(1) }) : ''}`;

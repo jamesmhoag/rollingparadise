@@ -394,7 +394,7 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
   assert(d.value >= 1 + 2, 'Boosted chips raise the roll');
   for (const cell of opp.grid[opp.dims.meterRows]) cell.chips.unshift({ id: 1e6 + cell.chips.length, kind: 'std', value: 1, resist: 'cheapened', shop: 'cheapened' });
   const e = { trick: { id: 'charge', q: 1 }, upBoost: 1 };
-  assert(B.trickMult(B.effTrick(e)) === B.trickMult({ id: 'charge', q: 1, foil: 1 }), 'a bid Upgrade chip plays the trick one foil tier higher');
+  assert(B.trickMult(B.effTrick(e)) === B.trickMult({ id: 'charge', q: 1, foil: 1 }), 'a bid Upgrade chip plays the trick one tier higher');
 }
 { // Worm Hole and Dragon Roost
   const run = R.newRun('technician', 'standard', 3); R.enterFloor(run, 4); run.purse = 5000;

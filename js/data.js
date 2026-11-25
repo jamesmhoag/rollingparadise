@@ -106,8 +106,10 @@ export const TYPES = {
   expense: { name: 'Expense', order: 2, color: '#d9564a', text: 'Resolves third. Charges fees that move chips from a position to the Stage.' },
   correction: { name: 'Correction', order: 3, color: '#5bb174', text: 'Resolves last. Adjusts the placement and state of chips.' },
 };
-export const QMULT = [0, 1, 2, 3, 4];
+export const QMULT = [0, 1, 2, 3, 4, 5]; // [5]: a Royal trick played a tier stronger (a Foil print, an Upgrade chip)
 export const QNAME = ['', 'Common', 'Fine', 'Grand', 'Royal'];
+// a trick's quality is shown as a Roman numeral wherever the trick is (the word in its hover)
+export const QROMAN = ['', 'I', 'II', 'III', 'IV', 'V'];
 // A trick's quality level. `q` on a trick (1-4) is set in the Trick maker: every copy of it is made at least that
 // good. Left unset, its level is rated from its traits (rateTrick): what its dice roll on average, how far it reaches,
 // and what its Bonus asks of the dice. The rating is shown; only a set level changes the copies dealt.
@@ -138,12 +140,13 @@ export const condOf = (t) => { const w = t.wear ?? WEAR.good; return w >= 100 ? 
 
 // Rarity. Basic is the plain print. Foil multiplies the roll total in tiers; a Misprint has a modestly changed die or
 // Trait value (most of them for the better); a Reprint plays an older rule for its type, restoring a buff.
-export const FOIL = [null, { name: 'Foil', mult: 1.25 }, { name: 'Holo', mult: 1.5 }, { name: 'Prism', mult: 2 }];
+// A Foil print is the same trick a tier stronger: it plays with the multiplier of the quality above its own.
+export const FOIL = [null, { name: 'Foil', tier: 1 }];
 export const RARITY = {
   basic: { name: 'Basic', text: 'The plain print.' },
-  foil: { name: 'Foil', text: 'A foil print multiplies the roll total: Foil ×1.25, Holo ×1.5, Prism ×2.' },
-  misprint: { name: 'Misprint', text: 'Printed with a changed value: its die, or the value its effect adds, differs from the plain print.' },
-  reprint: { name: 'Reprint', text: 'Printed with an older rule for its type.' },
+  foil: { name: 'Foil', text: 'A foil print is the same trick a tier stronger: it plays as the quality above its own.' },
+  misprint: { name: 'Misprint', text: 'Printed off: one of its values came out wrong (MISPRINTS), and it plays as printed.' },
+  reprint: { name: 'Reprint', text: 'A trick brought back to print: an older rule for its type, or a trick no longer printed. Marked with an ankh.' },
 };
 // the older rule each type's Reprint plays
 export const REPRINT = {
@@ -152,14 +155,40 @@ export const REPRINT = {
   investment: 'Older rule: the roll effect plays once for each die, each instance worth that die (the bid joins the first).',
   correction: 'Older rule: the roll effect plays once for each die, each instance worth that die (the bid joins the first).',
 };
-export const rarityName = (t) => (t.foil ? FOIL[Math.min(3, t.foil)].name : t.rar && t.rar !== 'basic' ? RARITY[t.rar].name : '');
-// a trick's rules as printed on it: a Misprint's die differs from the plain print
+export const rarityName = (t) => (t.foil ? FOIL[1].name : t.rar && t.rar !== 'basic' ? RARITY[t.rar]?.name || '' : '');
+// ---------- Misprints ----------
+// A Misprint is a trick printed off: one value on it came out wrong, and it plays as printed. Each kind of fault names
+// the value it changes (`field`), how it is rolled (`roll`: a step from the true value), how it changes the trick's
+// rules (`apply`), and what looks wrong on the card (`shows`: which part is printed off). Most come out better. More
+// kinds can be added here (a colour printed off, a target, a bid...); each pack's rare slot picks one by `weight`.
+const STEP_DIE = ['d4', 'd6', 'd8', 'd12', 'd20'];
+export const MISPRINTS = {
+  die: { name: 'Die size', weight: 3, shows: 'dice', // its Bonus dice printed a size up (or down)
+    roll: (rng, def) => { const k = STEP_DIE.indexOf(def.die), up = rng.chance(0.75), to = STEP_DIE[k + (up ? 1 : -1)] || STEP_DIE[k + (up ? -1 : 1)]; return to && to !== def.die ? { die: to } : null; },
+    apply: (def, m) => ({ ...def, die: m.die }), text: (def, m, base) => `its Bonus dice are printed ${m.die} instead of ${base.die}` },
+  count: { name: 'Dice count', weight: 2, shows: 'dice', // one Bonus die more (or fewer) printed on it
+    roll: (rng, def) => { const n = def.count + (rng.chance(0.6) && def.count > 1 ? -1 : 1); return n >= 1 && n <= 9 && n !== def.count ? { count: n } : null; },
+    apply: (def, m) => ({ ...def, count: m.count }), text: (def, m, base) => `its Bonus asks ${m.count} dice instead of ${base.count}` },
+  trait: { name: 'Effect value', weight: 3, shows: 'roll', // the value its effect adds printed higher (or lower)
+    roll: (rng) => { const good = rng.chance(0.75); return { trait: good ? 1 + rng.int(3) : -1 }; },
+    apply: (def) => def, text: (def, m) => `its effect is printed ${m.trait > 0 ? '+' : ''}${m.trait}` },
+};
+// a trick's rules as printed on it: a Misprint's faults applied over the plain print
 const printed = new Map();
 export function defOf(t) {
-  const d = t.mis?.die; if (!d) return TRICKS[t.id];
-  const k = t.id + ':' + d; if (!printed.has(k)) printed.set(k, { ...TRICKS[t.id], die: d }); return printed.get(k);
+  const m = t.mis; if (!m || !TRICKS[t.id]) return TRICKS[t.id];
+  const k = t.id + ':' + JSON.stringify(m); if (printed.has(k)) return printed.get(k);
+  let def = TRICKS[t.id]; for (const kind of misKinds(m)) def = MISPRINTS[kind].apply(def, m);
+  printed.set(k, def); return def;
 }
-export const misText = (t) => !t.mis ? '' : [t.mis.die && `prints ${t.mis.die} instead of ${TRICKS[t.id].die}`, t.mis.trait && `effect ${t.mis.trait > 0 ? '+' : ''}${t.mis.trait}`].filter(Boolean).join(', ');
+// which kinds of fault a misprint carries (from the values it holds)
+export const misKinds = (m) => (m ? Object.keys(MISPRINTS).filter((k) => (k === 'die' && m.die) || (k === 'count' && m.count) || (k === 'trait' && m.trait)) : []);
+export const misText = (t) => (!t.mis ? '' : misKinds(t.mis).map((k) => MISPRINTS[k].text(defOf(t), t.mis, TRICKS[t.id])).join(', '));
+// ---------- Reprints ----------
+// A trick is printed again as a Reprint only if it is marked `reprint` in the Trick maker. A trick taken out of the
+// game is not deleted: marked `retired`, it is dealt nowhere (shelves, packs, opponents) but can still come back as a
+// Reprint, and every copy already held keeps playing.
+export const reprintable = () => Object.keys(TRICKS).filter((id) => TRICKS[id]?.reprint);
 // Foil packs: five tricks of the set's quality, all Mint (each may be Gem Mint), one of them a rarer print.
 // Better sets cost more and open as the floors do: 200¢ × quality × floor, above what the five sell for at Mint.
 export const PACKS = [null,
@@ -787,7 +816,7 @@ export function setPath(path, value) {
 export function deletePath(path) { const ks = splitPath(path), last = ks.pop(); let o = TABLES; for (const k of ks) { o = o?.[k]; } if (isObj(o)) delete o[last]; }
 // lists worked out from the tables when the game loads, rebuilt after changes
 export function refreshDerived() {
-  TRICK_IDS.splice(0, TRICK_IDS.length, ...Object.keys(TRICKS));
+  TRICK_IDS.splice(0, TRICK_IDS.length, ...Object.keys(TRICKS).filter((id) => !TRICKS[id]?.retired)); // retired tricks are dealt nowhere
   const C0 = Object.entries(CARDS).filter(([, c]) => c);
   LANYARD_CARDS.splice(0, LANYARD_CARDS.length, ...C0.filter(([, c]) => c.lanyard || ['membership', 'punch', 'key'].includes(c.kind)).map(([k]) => k));
   STARTER_CARDS.splice(0, STARTER_CARDS.length, ...C0.filter(([, c]) => c.starter).map(([k]) => k));

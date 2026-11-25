@@ -2,6 +2,7 @@
 import { h, tween, syncList, btn } from './core.js';
 import { openLibrary } from './library.js';
 import { statTip, dieTip, trickTip, cardTip, jacketTip, drinkTip, trickWords, trickWord, trickLook } from './parts.js';
+import { trickItem } from './trickcard.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
 import { cents } from '../util.js';
@@ -10,12 +11,13 @@ export const app = { run: null, meta: null, nav: {} };
 
 const KEYS6 = ['trickery', 'ingenuity', 'proficiency', 'charisma', 'cunning', 'conviction'];
 export const diceSummary = (dice) => { const m = {}; for (const d of dice) m[d.type] = (m[d.type] || 0) + 1; return Object.entries(m).sort((a, b) => a[0].slice(1) - b[0].slice(1)).map(([t, n]) => `${n}${t}`).join(' · '); };
-export const trickTag = (t, cls) => h('span', { class: `tag-t trick ${trickLook(t)}`, style: { '--tc': D.TYPES[D.TRICKS[t.id].type].color }, tip: () => trickTip(t, cls) }, D.TRICKS[t.id].name, h('span', { class: 'q', html: trickWord(t) }));
+// a trick in a list: its list item (trickcard.js), its hover the full card
+export const trickTag = (t, cls) => trickItem(t, () => trickTip(t, cls));
 export function oppTip(o) {
   return `<b>${o.name}</b> <span class="dim">${o.title ? o.title + ' · ' : ''}${D.CLASSES[o.cls].name}</span>
     <p>Worth <b>${cents(o.worth)}</b> on the table. Position ${o.dims.meterRows} Bet + ${o.dims.barRows} Stake rows, stacks ${o.dims.stackMax} high.</p>
     <p>Draw ${o.tip.trickery} · Bid ${o.tip.ingenuity} · Roll ${o.tip.proficiency} per turn.</p>
-    <p><span class="k">Dice</span> ${diceSummary(o.dice)}</p><p class="tags"><span class="k">Tricks</span> ${o.tricks.map((t) => `<span class="tag-t" style="--tc:${D.TYPES[D.TRICKS[t.id].type].color}">${D.TRICKS[t.id].name}</span>`).join(' ')}</p>${o.roster && D.flavorOf('ROSTER', o.roster) ? `<p class="flavor">${D.flavorOf('ROSTER', o.roster)}</p>` : ''}`;
+    <p><span class="k">Dice</span> ${diceSummary(o.dice)}</p><p class="tags"><span class="k">Tricks</span> ${o.tricks.map((t) => trickItem(t).outerHTML).join(' ')}</p>${o.roster && D.flavorOf('ROSTER', o.roster) ? `<p class="flavor">${D.flavorOf('ROSTER', o.roster)}</p>` : ''}`;
 }
 
 // top bar: where you are, your attributes, your gear and your purse
@@ -29,7 +31,7 @@ export function hud(place, sub) {
     syncList(stats, KEYS6, (k) => k, (k) => h('span', { class: 'stat', tip: () => statTip(k, R.rollerStats(run).v[k]) }, h('em', { text: D.STATS[k].name }), h('b', {})), (e, k) => { e.lastChild.textContent = st[k]; });
     const items = [
       { k: 'dice', text: `🎲 ${run.dice.length}`, tip: () => `<b>Pouch</b><p>${diceSummary(run.dice)}</p><ul>${run.dice.filter((d) => d.up.length).map((d) => `<li>${dieTip(d)}</li>`).join('')}</ul>` },
-      { k: 'tricks', text: `📖 ${run.tricks.length}`, tip: () => `<b>Book</b><ul>${run.tricks.map((t) => `<li>${D.TRICKS[t.id].name} <span class="q">${trickWords(t)} · ${D.CONDITIONS[D.condOf(t)].name}</span> <span class="dim">${D.TYPES[D.TRICKS[t.id].type].name}</span></li>`).join('')}</ul>` },
+      { k: 'tricks', text: `📖 ${run.tricks.length}`, tip: () => `<b>Book</b><ul>${run.tricks.map((t) => `<li>${trickItem(t).outerHTML} <span class="dim">${D.CONDITIONS[D.condOf(t)].name}</span></li>`).join('')}</ul>` },
       { k: 'cards', text: `🃏 ${run.cards.length}`, tip: () => { const v = R.rollerStats(run).v; return `<b>Wallet</b>${run.cards.map((c) => `<div>${cardTip(c, v)}</div>`).join('') || '<p>Empty.</p>'}`; } },
       { k: 'jacket', text: `🧥 ${D.JACKETS[run.jacket].name}`, tip: () => jacketTip(run.jacket, R.rollerStats(run).v) },
     ];

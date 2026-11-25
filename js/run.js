@@ -26,7 +26,8 @@ function migrate(run) {
   if (!Array.isArray(run.passes)) run.passes = run.pass ? [run.pass] : []; // a wallet can hold more than one pass
   for (const t of run.tricks || []) { // Trick Trader upgrades are gone: an upgraded trick becomes the foil it played as
     if (t.wear == null) t.wear = D.WEAR.good;
-    if (t.up) { t.foil = Math.max(t.foil || 0, t.up); t.rar = 'foil'; } delete t.up; if (!t.rar) t.rar = t.foil ? 'foil' : 'basic'; }
+    if (t.up) { t.foil = Math.max(t.foil || 0, t.up); t.rar = 'foil'; } delete t.up; if (!t.rar) t.rar = t.foil ? 'foil' : 'basic';
+    if (t.foil > 1) t.foil = 1; } // Holo and Prism are gone: a Foil is one tier stronger
   for (const box of [run.chips, run.plan?.resist]) { if (!box) continue;
     for (const [old, now] of Object.entries(D.SHOP_RENAMES)) if (old in box) { if (now) box[now] = (box[now] || 0) + box[old]; delete box[old]; } }
 }
@@ -235,11 +236,11 @@ export function buyTrick(run, key) {
 export const packOpen = (run, q) => run.floor + earlyAt(run, 'trader') >= D.PACKS[q].floor;
 export const packCost = (run, q) => price(run, 'trader', D.perFloor(D.SHOPS.trader.packPrice, run.floor, 200) * q, `pack:${q}`);
 export const packLeft = (run, q) => stockLeft(run, `pack:${q}`, D.perFloor(D.SHOPS.trader.packStock, run.floor, 1));
-const STEP_DIE = ['d4', 'd6', 'd8'];
+// a misprint: one fault, picked by weight from the kinds of fault (D.MISPRINTS) that can happen to this trick
 function misprint(rng, id) {
-  const die = D.TRICKS[id].die, k = STEP_DIE.indexOf(die), good = rng.chance(0.75); // most misprints come out better
-  if (rng.chance(0.5) && k >= 0 && STEP_DIE[k + (good ? 1 : -1)]) return { die: STEP_DIE[k + (good ? 1 : -1)] };
-  return { trait: good ? 1 + rng.int(3) : -1 };
+  const def = D.TRICKS[id], kinds = Object.keys(D.MISPRINTS);
+  for (let tries = 0; tries < 6; tries++) { const k = rng.weighted(kinds, (x) => D.MISPRINTS[x].weight || 1), m = D.MISPRINTS[k].roll(rng, def); if (m) return m; }
+  return { trait: 1 };
 }
 export function rollPack(run, q) {
   const rng = run.rng, pool = D.TRICK_IDS.filter((id) => !D.TRICKS[id].cls || D.TRICKS[id].cls === run.cls || rng.chance(0.3));
@@ -247,7 +248,8 @@ export function rollPack(run, q) {
   return Array.from({ length: S.packSize }, (_, k) => {
     const id = rng.pick(pool), o = { wear: D.WEAR.mint, gem: rng.chance(S.gemChance) };
     if (k < S.packSize - 1) { if (rng.chance(S.packFoil)) o.foil = 1; }
-    else { const r = rng.next(); if (r < 0.35) { o.rar = 'misprint'; o.mis = misprint(rng, id); } else if (r < 0.65) o.rar = 'reprint'; else o.foil = rng.chance(0.25 + 0.1 * q) ? 3 : 2; }
+    // the rare slot: a Misprint, a Reprint (of a trick marked for reprint, retired ones included) or a Foil
+    else { const r = rng.next(), rp = D.reprintable(); if (r < 0.35) { o.rar = 'misprint'; o.mis = misprint(rng, id); } else if (r < 0.65 && rp.length) { o.rar = 'reprint'; return mkTrick(run, rng.pick(rp), q, o); } else { o.foil = 1; o.gem = o.gem || rng.chance(0.1 * q); } }
     return mkTrick(run, id, q, o);
   });
 }

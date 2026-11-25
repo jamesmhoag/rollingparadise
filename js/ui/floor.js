@@ -9,6 +9,7 @@ import * as R from '../run.js';
 import { traitRule } from '../bout.js';
 import { planner } from './prep.js';
 import { rollerCard } from './rollercard.js';
+import { trickItem as trickListItem } from './trickcard.js';
 import { cents } from '../util.js';
 import { t } from '../text.js';
 import { iconKids } from './icons.js';
@@ -196,7 +197,7 @@ function diceShopPanel() {
 function trickItem(run, getT) {
   const el = item(); el._tip = () => trickTip(getT(el), run.cls); el.classList.add('has-tip'); return el;
 }
-const trickLine = (t) => { const def = D.defOf(t); return [`${def.name} <span class="q">${trickWords(t)}</span>`, `${D.TYPES[def.type].name} · ${def.cls ? D.CLASSES[def.cls].name : tx('maker.anyClass')} · ${def.count}${def.die} · ${D.CONDITIONS[D.condOf(t)].name}`]; };
+const trickLine = (t) => { const def = D.defOf(t); return [trickListItem(t).outerHTML, `${D.TYPES[def.type].name} · ${def.cls ? D.CLASSES[def.cls].name : tx('maker.anyClass')} · ${def.count}${def.die} · ${D.CONDITIONS[D.condOf(t)].name}`]; };
 function traderPanel() {
   const run = app.run, fs = run.fs;
   const shelf = h('div', { class: 'items list' }), mine = h('div', { class: 'items list' }), secret = h('div', { class: 'items list' }), secretWrap = h('div', { class: 'fade-t' }, h('span', { class: 'cap', text: tx('floor.secret-shelf-the-trader') }), secret);

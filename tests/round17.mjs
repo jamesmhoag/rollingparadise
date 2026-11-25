@@ -36,8 +36,8 @@ const entry = (trick, vals, extra = {}) => ({ uid: 'x' + trick.id, trick, dice: 
 }
 // ---------- rarity: foil tiers multiply; Upgrade chips step the foil ----------
 {
-  assert(B.trickMult({ id: 'charge', q: 2, foil: 1 }) === 2.5 && B.trickMult({ id: 'charge', q: 2, foil: 2 }) === 3 && B.trickMult({ id: 'charge', q: 2, foil: 3 }) === 4, 'Foil ×1.25, Holo ×1.5, Prism ×2');
-  assert(B.trickMult(B.effTrick({ trick: { id: 'charge', q: 1, foil: 1 }, upBoost: 1 })) === 1.5, 'an Upgrade chip bid plays the trick one foil tier higher');
+  assert(B.trickMult({ id: 'charge', q: 2, foil: 1 }) === 3 && B.trickMult({ id: 'charge', q: 4, foil: 1 }) === 5, 'a Foil plays a tier stronger (no Holo or Prism)');
+  assert(B.trickMult(B.effTrick({ trick: { id: 'charge', q: 1, foil: 1 }, upBoost: 1 })) === 3, 'an Upgrade chip bid plays the trick one tier higher (a Foil and a chip: two)');
 }
 // ---------- Misprints: a changed die or effect value ----------
 {
@@ -79,7 +79,7 @@ const entry = (trick, vals, extra = {}) => ({ uid: 'x' + trick.id, trick, dice: 
     run.fs.taken = {}; // (a floor's packs are in stock: this test opens many)
     const got = R.buyPack(run, 1 + (k % 2));
     assert(got.length === 5 && got.every((t) => t.wear === 100 && t.q === 1 + (k % 2)), 'a pack holds five Mint tricks of its set\'s quality');
-    assert(['misprint', 'reprint'].includes(got[4].rar) || got[4].foil >= 2, 'one of them is a rarer print');
+    assert(['misprint', 'reprint'].includes(got[4].rar) || got[4].foil === 1, 'one of them is a rarer print');
     rare += got.filter((t) => t.rar !== 'basic').length; gems += got.filter((t) => t.gem).length; all += 5;
   }
   assert(gems > 0 && gems < all / 4, 'Gem Mint comes now and then');
@@ -91,7 +91,7 @@ const entry = (trick, vals, extra = {}) => ({ uid: 'x' + trick.id, trick, dice: 
   const run = R.newRun('hustler', 'standard', 9); run.tricks = [{ uid: 1, id: 'charge', q: 2, up: 2 }];
   globalThis.localStorage = { s: {}, getItem(k) { return this.s[k] ?? null; }, setItem(k, v) { this.s[k] = v; }, removeItem(k) { delete this.s[k]; } };
   R.saveRun(run); const back = R.loadRun();
-  assert(back, 'the save loads'); { const t = back.tricks[0]; assert(t.foil === 2 && t.rar === 'foil' && t.up === undefined && t.wear === D.WEAR.good && B.trickMult(t) === 3, 'an upgraded trick loads as a Holo foil, at the same strength'); }
+  assert(back, 'the save loads'); { const t = back.tricks[0]; assert(t.foil === 1 && t.rar === 'foil' && t.up === undefined && t.wear === D.WEAR.good && B.trickMult(t) === 3, 'an upgraded trick loads as a Foil, a tier stronger'); }
 }
 // ---------- passes: one slot per wallet, the Bouncer, and passes kept with the wallet ----------
 {

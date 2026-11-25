@@ -22,19 +22,20 @@ import { t as tx } from './text.js';
 export const PHASES = ['draw', 'roll', 'bid', 'aim']; // 'aim' is shown as the Bluff
 export const LAST_CALL = 8;
 export const heat = (turn) => (turn > LAST_CALL ? 1 + 0.25 * (turn - LAST_CALL) : 1);
-// Quality sets the multiplier; a foil print multiplies it again (Investments, which multiply everything else, step
-// gently: +0.5 a quality, +0.25 a foil tier).
-const foilTier = (t) => Math.min(FOIL.length - 1, t.foil || 0);
-export const trickMult = (t) => QMULT[t.q] * (FOIL[foilTier(t)]?.mult || 1);
-const investMult = (t) => 1 + (t.q - 1) * 0.5 + 0.25 * foilTier(t);
+// Quality sets the multiplier. A Foil print, and each Upgrade chip bid on a trick, plays it a tier stronger: as the
+// quality above its own (Investments, which multiply everything else, step gently: +0.5 a tier).
+const tierUp = (t) => (t.foil ? 1 : 0) + (t.boost || 0);
+const playQ = (t) => Math.min(QMULT.length - 1, t.q + tierUp(t));
+export const trickMult = (t) => QMULT[playQ(t)];
+const investMult = (t) => 1 + (playQ(t) - 1) * 0.5;
 // the multiplier a trick applies to its roll total, and the size of its Trait
 export const multOf = (t) => (TRICKS[t.id].type === 'investment' ? investMult(t) : trickMult(t));
 // a Misprint printed with a changed effect value adds (or takes) this much from every roll effect it plays
 export const misPlus = (t) => t?.mis?.trait || 0;
 // a Grand or Royal trick's quality die, rolled when it is drawn: 'dud', 'hot' or null
 export const qState = (e) => { const Q = QDIE[e.trick.q]; if (!Q || e.qroll == null) return null; return e.qroll <= Q.dud ? 'dud' : e.qroll >= Q.hot ? 'hot' : null; };
-// a trick as it plays: one foil tier higher for each Upgrade chip bid on it; Common strength on a dud quality die
-export const effTrick = (e) => { let t = e.trick; if (e.upBoost) t = { ...t, foil: (t.foil || 0) + e.upBoost }; if (qState(e) === 'dud') t = { ...t, q: 1 }; return t; };
+// a trick as it plays: a tier stronger for each Upgrade chip bid on it; Common strength on a dud quality die
+export const effTrick = (e) => { let t = e.trick; if (e.upBoost) t = { ...t, boost: (t.boost || 0) + e.upBoost }; if (qState(e) === 'dud') t = { ...t, q: 1, foil: 0, boost: 0 }; return t; };
 // a chip made in the chip maker (kind 'made'): its rules are its MADE_CHIPS entry
 export const madeOf = (ch) => (ch?.kind === 'made' ? MADE_CHIPS[ch.model] || null : null);
 // How long a chip stays: a made chip's own `lasts`; chips the table makes (Opportunity, Bounty, Block, Counter) follow
@@ -661,7 +662,7 @@ export function occBonus(s, o = occupancy(s)) {
 // Restore order: tapped longest first. Ties: tricks by the phase they belong to, worse quality, basic before exotic
 // prints; dice smaller before larger, plain before fancy; then the one you got first.
 const RAR = { basic: 0, misprint: 1, reprint: 2, foil: 3 };
-const exotic = (t) => (t.foil ? 3 + t.foil : RAR[t.rar] || 0) + (t.gem ? 1 : 0);
+const exotic = (t) => (t.foil ? 4 : RAR[t.rar] || 0) + (t.gem ? 1 : 0);
 const fancy = (d) => (d.up?.length || 0) + (d.mat && d.mat !== DEFAULT_MAT ? 1 : 0) + (d.bone ? 1 : 0) + (d.cast ? 1 : 0) + (d.faces ? 1 : 0);
 const cmp = (a, b) => { for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1; return 0; };
 const trickKey = (x) => [x.at, TYPES[phaseOf(x.trick.id)]?.order ?? 9, x.trick.q || 1, exotic(x.trick), String(x.trick.uid)];
