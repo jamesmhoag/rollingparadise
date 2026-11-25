@@ -25,9 +25,10 @@ for (let f = 1; f <= 5; f++) { ok(loopFor(f, false)?.kind === 'bout' && loopFor(
 ok(new Set(LOOPS.map((L) => L.title)).size === LOOPS.length, 'every loop has its own title');
 // tipping the band: priced from the purse, refused when it is short, in the ledger; the band's state is the run's
 const P = TUNING.band, tipper = (purse) => ({ purse, stats: { spent: 0 }, ledger: [], floor: 1 });
-ok(P.request === 20 && P.swap === 50 && P.stop === 100, 'a request 20¢, a swap 50¢, silence 100¢');
-{ const r = tipper(60); ok(tipBand(r, 'swap') && r.purse === 10 && r.ledger.length === 1 && r.ledger[0].amt === -50, 'a swap is paid from the purse and ledgered');
-  ok(!tipBand(r, 'request', 'Neon Strip') && r.purse === 10, 'a tip the purse cannot cover is refused'); }
+ok(P.skip === 2 && P.request === 2 && P.swap === 5 && P.stop === 10 && P.start === 10, 'a skip or request 2¢, a swap 5¢, stopping or starting 10¢');
+{ const r = tipper(6); ok(tipBand(r, 'swap') && r.purse === 1 && r.ledger.length === 1 && r.ledger[0].amt === -5, 'a swap is paid from the purse and ledgered');
+  ok(!tipBand(r, 'request', 'Neon Strip') && r.purse === 1, 'a tip the purse cannot cover is refused');
+  const s = tipper(20); ok(tipBand(s, 'stop') && tipBand(s, 'start') && s.purse === 0 && s.ledger.length === 2, 'stopping and starting are 10¢ each'); }
 { const r = {}; ok(bandOf(r).mode === 'band' && !bandOf(r).silent && bandOf(r) === r.band, 'a run starts with the band playing'); ok(bandOf(null).mode === 'band', 'no run: the band'); }
 { const list = [{ title: 'A' }, { title: 'B' }, { title: 'C' }]; ok(setlist(list, new Set(['C'])).map((x) => x.title).join() === 'C,A,B', 'favorites top the setlist'); }
 for (const M of MUSIC) ok(srcOf(M, 'band') === M.src && srcOf(M, 'chip') === M.chip && M.chip !== M.src, `${M.title}: a band and a chiptune file`);

@@ -4,10 +4,10 @@
 // (musicKey), so the table's sounds play in the key the band is in.
 //
 // The band takes requests, for a price, from the buttons at the foot of the screen, paid from the purse (greyed
-// when it cannot cover them): ♥ hearts the tune playing (free; favorites top the setlist), ♫ tips for a request
-// from the setlist, ⇄ pays them to swap their instruments for 8-bit chips and back (every tune and loop again on
-// chip voices, tools/jazz/chiptune.py; the place in the tune is kept), ✕ pays them to stop, and they stay quiet
-// until the next tip. What the band is doing belongs to the run (run.band); the favorites to this browser.
+// when it cannot cover them; each price is in the button's hover): ♥ hearts the tune playing (free; favorites top
+// the setlist), ⏭ tips them on to the next tune, ♫ tips for a request from the setlist, ⇄ pays them to swap their
+// instruments for 8-bit chips and back (every tune and loop again on chip voices, tools/jazz/chiptune.py; the place
+// in the tune is kept), and ✕ / ▶ pays them to stop or to start again. While they are stopped only ▶ works. What the band is doing belongs to the run (run.band); the favorites to this browser.
 //
 // At a table the band plays the floor's bout loop instead (content/loops.js; the High Roller and the Ascent's last
 // climb have their own). A loop is four layers played together through Web Audio, sample for sample: the groove and
@@ -150,24 +150,38 @@ export function initMusic(stage, { run = () => null, tip = () => false } = {}) {
     if (!game.run() || purse() < P[what] || !game.tip(what, title)) { toast(t('music.cantTip'), 'warn'); return false; }
     document.dispatchEvent(new Event('rp:purse')); return true;
   }
+  // each button's price is in its hover; requests, skips and swaps need the band playing (starting them is its own tip)
+  const cost = (what, ok = true) => t('music.price', { price: cents(P[what]) }) + (ok ? why(P[what]) : t('music.onBreak'));
+  const can = (what, playingToo = true) => !!game.run() && purse() >= P[what] && (!playingToo || on());
   const fav = btn('♡', () => { const ti = nowTitle(); setFavorite(ti, !favorites().has(ti)); mark(); },
     () => t(favorites().has(nowTitle()) ? 'music.unfav' : 'music.fav', { title: nowTitle(), playing: playingLine() }), 'small band-btn fav-btn');
-  const req = btn(`♫ ${cents(P.request)}`, () => openSetlist(), () => t('music.request', { price: cents(P.request), playing: playingLine() }) + why(P.request), 'small band-btn');
-  const swap = btn(`⇄ ${cents(P.swap)}`, () => {
-    if (!pay('swap', '')) return; const b = bandOf(game.run()); b.mode = b.mode === 'chip' ? 'band' : 'chip'; b.silent = false;
+  // skip: in the lounge, on to the next tune; at a table, on to the next loop of its kind (tables' or High Rollers')
+  const nextLoop = () => { const same = LOOPS.filter((L) => L.kind === loop.L.kind); return same[(same.indexOf(loop.L) + 1) % same.length]; };
+  const upNext = () => (loop ? nextLoop() : order[(at + 1) % order.length]);
+  const skip = btn('⏭', () => {
+    if (!on()) return; const x = upNext(); if (!pay('skip', x.title)) return;
+    if (loop) { const lp = { ...loop, L: x, live: false }; silence(loop, 0.3); loop = lp; startLoop(lp); } else if (audio) next(); else { at = (at + 1) % order.length; play(); }
+    mark();
+  }, () => t('music.skip', { title: upNext().title }) + cost('skip', on()), 'small band-btn');
+  const req = btn('♫', () => openSetlist(), () => t('music.request', { playing: playingLine() }) + cost('request', on()), 'small band-btn');
+  const swap = btn('⇄', () => {
+    if (!on() || !pay('swap', '')) return; const b = bandOf(game.run()); b.mode = b.mode === 'chip' ? 'band' : 'chip';
     toast(t(b.mode === 'chip' ? 'music.toChips' : 'music.toBand')); sync();
-  }, () => t(bandOf(game.run()).mode === 'chip' ? 'music.swapToBand' : 'music.swapToChip', { price: cents(P.swap) }) + why(P.swap), 'small band-btn');
-  const stop = btn(`✕ ${cents(P.stop)}`, () => {
-    if (!on()) return; if (!pay('stop', '')) return; bandOf(game.run()).silent = true; toast(t('music.hushed')); sync();
-  }, () => (on() ? t('music.stop', { price: cents(P.stop) }) + why(P.stop) : t('music.stopped')), 'small band-btn');
+  }, () => t(bandOf(game.run()).mode === 'chip' ? 'music.swapToBand' : 'music.swapToChip') + cost('swap', on()), 'small band-btn');
+  // the band on and off: each way is a tip
+  const power = btn('✕', () => {
+    const what = on() ? 'stop' : 'start'; if (!pay(what, '')) return;
+    bandOf(game.run()).silent = what === 'stop'; toast(t(what === 'stop' ? 'music.hushed' : 'music.back')); sync();
+  }, () => t(on() ? 'music.stop' : 'music.start', { playing: playingLine() }) + cost(on() ? 'stop' : 'start'), 'small band-btn');
   function mark() {
-    setOn(req, purse() >= P.request); setOn(swap, purse() >= P.swap); setOn(stop, on() && purse() >= P.stop);
+    setOn(skip, can('skip')); setOn(req, can('request')); setOn(swap, can('swap')); setOn(power, can(on() ? 'stop' : 'start', false));
+    power.textContent = on() ? '✕' : '▶';
     const f = favorites().has(nowTitle()); fav.textContent = f ? '♥' : '♡'; fav.classList.toggle('on', f);
     swap.classList.toggle('chiptune', bandOf(game.run()).mode === 'chip');
   }
   // a request: the setlist (the lounge band's tunes, or at a table the bout loops), favorites first
   function openSetlist() {
-    if (!game.run() || purse() < P.request) return toast(t('music.cantTip'), 'warn');
+    if (!can('request')) return toast(t('music.cantTip'), 'warn');
     const list = setlist(loop ? LOOPS : MUSIC), favs = favorites();
     const rowOf = (x) => h('div', { class: 'row between setlist-row' },
       btn(favs.has(x.title) ? '♥' : '♡', (e) => { const f = !favorites().has(x.title); setFavorite(x.title, f); e.currentTarget.textContent = f ? '♥' : '♡'; mark(); }, null, 'small fav-btn' + (favs.has(x.title) ? ' on' : '')),
@@ -176,12 +190,12 @@ export function initMusic(stage, { run = () => null, tip = () => false } = {}) {
       h('div', { class: 'col setlist' }, ...list.map(rowOf))));
   }
   function request(x) {
-    if (!pay('request', x.title)) return; closePanel(); bandOf(game.run()).silent = false; sounding = mode();
+    if (!on() || !pay('request', x.title)) return; closePanel();
     if (loop) { const lp = { ...loop, L: x, live: false }; silence(loop, 0.3); loop = lp; startLoop(lp); }
     else { order.splice(at + 1, 0, x); if (!audio) { at++; play(); } else next(); }
     toast(t('music.tipped', { title: x.title })); mark();
   }
-  const group = h('div', { class: 'band-btns' }, fav, req, swap, stop);
+  const group = h('div', { class: 'band-btns' }, fav, skip, req, swap, power);
   mark(); stage.append(group);
   document.addEventListener('rp:purse', mark);
   const first = () => { document.removeEventListener('pointerdown', first, true); lounge.touched = true; sounding = mode(); if (on()) start(); mark(); };
