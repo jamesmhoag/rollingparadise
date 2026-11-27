@@ -1,4 +1,4 @@
-/* The game's three typefaces, served from assets/fonts (both SIL Open Font License; licences beside the files).
+/* The game's typefaces, served from assets/fonts (all SIL Open Font License; licences beside the files).
    Replace a .woff2 to change a typeface; the names here are what css/style.css asks for in --display, --script and --lines
    (Monoton: capitals drawn in parallel lines, like ROLLING on the title sign; a font a sign's name or class can wear). */
 @font-face { font-family: 'Didact Gothic'; font-style: normal; font-weight: 400; font-display: swap;
@@ -15,3 +15,17 @@
 @font-face { font-family: 'Monoton'; font-style: normal; font-weight: 400; font-display: swap;
   src: url('../assets/fonts/monoton-latin-400-normal.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Tilt Neon'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('../assets/fonts/tilt-neon-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Limelight'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('../assets/fonts/limelight-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Poiret One'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('../assets/fonts/poiret-one-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Sacramento'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('../assets/fonts/sacramento-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Bungee Inline'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('../assets/fonts/bungee-inline-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Rye'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('../assets/fonts/rye-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'VT323'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('../assets/fonts/vt323-latin-400-normal.woff2') format('woff2'); }

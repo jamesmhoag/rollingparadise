@@ -8,7 +8,7 @@ import { h, lab, btn } from './core.js';
 import * as D from '../data.js';
 import * as B from '../build/draft.js';
 import { t } from '../text.js';
-import { signOf, dressSign, TUBES, STRIPS, LAMPS, MOTIONS, EDGE_AT, CLS_ALIGN, SIGN_FONTS, BLINK_PARTS, BLINKS, MAX_PAIRS, pairsOf, CROWN_PARTS, crownLookOf, FINISH_PARTS, signFace } from './sign.js';
+import { signOf, dressSign, TUBES, STRIPS, LAMPS, MOTIONS, EDGE_AT, CLS_ALIGN, SIGN_FONTS, BLINK_PARTS, BLINKS, MAX_PAIRS, pairsOf, CROWN_PARTS, crownLookOf, FINISH_PARTS, nameSign, signFace } from './sign.js';
 import { draftForm, pick, tick, colourIn } from './form.js';
 import { finishPicker } from './finish.js';
 import { SYMBOLS, SYMBOL_GROUPS } from './symbols.js';
@@ -33,15 +33,15 @@ export function symbolPicker(value, onPick, allowChar = true) {
 // show on the sample (a High Roller's floor).
 export function signEditor(base, who, own, redraw, sample, crown) {
   const F = draftForm(base, redraw), { P, set, field } = F, spec = signOf(who, base.startsWith('NEON.') ? null : own);
-  // a sign's options are named in the text (neon.opt.*); align- and font- prefixes keep their names apart there
+  // a sign's options are named in the text (neon.opt.*; the align- prefix keeps those names apart there). Faces are named once for everything (font.*).
   const named = (list) => list.map((v) => [v, t(`neon.opt.${v}`)]);
-  const select = (ks, list, value, groups) => F.select(ks, groups ? groups.map(([g, l]) => [t(`neon.group.${g}`), named(l)]) : named(list), value, { parse: (x) => x.replace(/^(align|font)-/, '') });
+  const select = (ks, list, value, groups) => F.select(ks, groups ? groups.map(([g, l]) => [t(`neon.group.${g}`), named(l)]) : named(list), value, { parse: (x) => x.replace(/^align-/, '') });
   const colour = (value, on) => colourIn(value, on);
   const pairEl = (pair, on, i) => h('label', { class: 'neon-in row' }, colour(pair[0], (c) => on([c, pair[1]])), colour(pair[1], (c) => on([pair[0], c])), h('small', { text: i == null ? t('neon.core-glow') : t(`neon.pair.${pairWord()}`, { n: i + 1 }) }));
   const pairWord = () => (spec.frame === 'gradient' ? 'colour' : STRIPS.includes(spec.frame) ? (spec.frame === 'twist' ? 'strand' : 'stripe') : LAMPS.includes(spec.frame) ? 'lamp' : 'tube');
   const pairs = pairsOf(spec), setPairs = (list) => { B.setValue(P('border'), list[0]); B.setValue(P('more'), list.slice(1)); redraw(); };
   const [name, cls] = sample || SAMPLE[who]();
-  const prev = h('div', { class: `who ${who === 'you' ? 'me' : 'them'} neon-sample` }, signFace(name, cls));
+  const prev = who === 'house' ? h('div', { class: 'who them neon-sample' }, signFace(name, cls)) : nameSign(who, name, cls, null, 'neon-sample'); // a Roller's sign is the sign itself
   dressSign(prev, crown ? { ...spec, crown: { level: crown } } : spec, who === 'house' ? 'house' : who);
   if (who === 'house') prev.classList.add('house-preview');
   const readImage = (e) => { const f = e.target.files?.[0]; if (!f) return; if (f.size > MAX_IMAGE) { e.target.value = ''; return globalThis.alert?.(t('neon.image.big')); }
@@ -61,7 +61,7 @@ export function signEditor(base, who, own, redraw, sample, crown) {
     spec.frame === 'symbols' || spec.frame === 'none' ? null : field(lab('neon.edgeAt'), select(['edgeAt'], EDGE_AT, spec.edgeAt), ['edgeAt']),
     ...PARTS.slice(1).map((part) => field(lab(`neon.${part}`), pairEl(spec[part], (pr) => set([part], pr)), [part])),
     // each line's face: any of the three, for the name and for the class
-    ...['nameFont', 'clsFont'].map((k) => field(lab(`neon.${k}`), select([k], SIGN_FONTS.map((f) => `font-${f}`), `font-${spec[k]}`), [k])),
+    ...['nameFont', 'clsFont'].map((k) => field(lab(`neon.${k}`), F.select([k], SIGN_FONTS.map((f) => [f, t(`font.${f}`)]), spec[k]), [k])),
     field(lab('neon.clsAlign'), select(['clsAlign'], CLS_ALIGN.map((a) => `align-${a}`), `align-${spec.clsAlign || 'right'}`), ['clsAlign']),
     field(lab('neon.symbol'), h('div', { class: 'col' }, tick(t('neon.symbol.on'), spec.symbol.on, (v) => set(['symbol', 'on'], v), 'row'),
       spec.symbol.on ? h('div', { class: 'row' }, h('small', { text: t('neon.motion') }), select(['symbol', 'motion'], MOTIONS, spec.symbol.motion)) : null,

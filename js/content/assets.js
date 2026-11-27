@@ -3,10 +3,19 @@
 // its own, put the file in assets/ and set its src here. The game uses the file when src is set and the glyph
 // (or its own gradient) when it is not. npm test checks that every src exists and lists files nothing uses.
 
+// Every face is offered wherever a face is chosen (a sign's name and class line, a card's print): the id here is its
+// CSS variable (--neon, --marquee...) in css/style.css and its option's text key (font.<id>).
 export const FONTS = {
   display: { family: "Didact Gothic", files: ["assets/fonts/didact-gothic-latin-400-normal.woff2", "assets/fonts/didact-gothic-latin-ext-400-normal.woff2"], license: "assets/fonts/OFL-didact-gothic.txt" },
   script: { family: "Yellowtail", files: ["assets/fonts/yellowtail-latin-400-normal.woff2"], license: "assets/fonts/OFL-yellowtail.txt" },
   lines: { family: "Monoton", files: ["assets/fonts/monoton-latin-400-normal.woff2", "assets/fonts/monoton-latin-ext-400-normal.woff2"], license: "assets/fonts/OFL-monoton.txt" },
+  neon: { family: "Tilt Neon", files: ["assets/fonts/tilt-neon-latin-400-normal.woff2"], license: "assets/fonts/OFL-tilt-neon.txt" },
+  marquee: { family: "Limelight", files: ["assets/fonts/limelight-latin-400-normal.woff2"], license: "assets/fonts/OFL-limelight.txt" },
+  deco: { family: "Poiret One", files: ["assets/fonts/poiret-one-latin-400-normal.woff2"], license: "assets/fonts/OFL-poiret-one.txt" },
+  hand: { family: "Sacramento", files: ["assets/fonts/sacramento-latin-400-normal.woff2"], license: "assets/fonts/OFL-sacramento.txt" },
+  inline: { family: "Bungee Inline", files: ["assets/fonts/bungee-inline-latin-400-normal.woff2"], license: "assets/fonts/OFL-bungee-inline.txt" },
+  saloon: { family: "Rye", files: ["assets/fonts/rye-latin-400-normal.woff2"], license: "assets/fonts/OFL-rye.txt" },
+  board: { family: "VT323", files: ["assets/fonts/vt323-latin-400-normal.woff2"], license: "assets/fonts/OFL-vt323.txt" },
 };
 
 // Each Roller's neon sign at the table, and the House's, set in Build mode (Neon): a pair of colours for each part (the

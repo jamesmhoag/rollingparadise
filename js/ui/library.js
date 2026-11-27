@@ -25,6 +25,9 @@ function entry(vis, name, lines, o = {}) {
     h('div', { class: 'vis' }, vis), h('div', { class: 'txt' }, h('b', { html: name }), ...lines.filter(Boolean).map((l) => h('p', { html: l })), o.own ? h('span', { class: 'own-t', text: typeof o.own === 'string' ? o.own : tx('library.owned') }) : null));
 }
 const dim = (t) => `<span class="dim">${t}</span>`;
+// a trick is shown as the trick itself (the whole card, as a hover shows it), with under it only what the card does not say
+const trickEntry = (t, cls, lines = [], own = null) => h('div', { class: `lib-trick ${own ? 'own' : ''}` }, h('div', { class: 'lt-card', html: trickTip(t, cls) }),
+  ...lines.filter(Boolean).map((l) => h('p', { html: l })), own ? h('span', { class: 'own-t', text: own }) : null);
 const fx = (m) => '×' + (m % 1 ? m.toFixed(2).replace(/0$/, '') : m);
 const tagOf = (t) => trickItem(t);
 const tipped = (el, fn) => { el._tip = fn; el.classList.add('has-tip'); return el; };
@@ -106,18 +109,16 @@ function tricksTab(own) {
     out.push(sec(`${T.name}s`, T.text));
     for (const [id, def] of Object.entries(D.TRICKS)) { if (def.type !== type) continue;
       const t = { id, q: 1 }, n = own.trick(id);
-      out.push(entry(tipped(tagOf(t), () => trickTip(t, own.run?.cls)), def.name,
-        [`${def.cls ? D.CLASSES[def.cls].name : tx('maker.anyClass')} · ${def.count}${def.die} · ${def.approach === 'none' ? 'no target' : `${def.approach}, ${D.DIST[def.dist].name}`}`, tx('library.roll', { text: def.roll.text }), tx('library.bonus', { condText: D.condText(def.bonus.cond), text: def.bonus.text }), def.early ? dim(tx('library.swift-plays-with-the', { name: D.TYPES[def.early].name })) : null, def.arrange ? dim(tx('library.arrangement-moves-chips-in', { v: def.side === 'opp' ? 'your opponent\'s' : 'your', replace: def.arrange.replace('opp-', '') })) : null], { own: n ? (n > 1 ? tx('library.in-your-book', { n }) : tx('library.in-your-book-2')) : null }));
+      out.push(trickEntry(t, own.run?.cls, [def.early ? dim(tx('library.swift-plays-with-the', { name: D.TYPES[def.early].name })) : null, def.arrange ? dim(tx('library.arrangement-moves-chips-in', { v: def.side === 'opp' ? 'your opponent\'s' : 'your', replace: def.arrange.replace('opp-', '') })) : null], n ? (n > 1 ? tx('library.in-your-book', { n }) : tx('library.in-your-book-2')) : null));
     }
   }
   out.push(sec('Quality', tx('library.quality-common-to-royal')));
   for (const q of [1, 2, 3, 4]) { const t = { id: 'charge', q };
-    out.push(entry(tipped(tagOf(t), () => trickTip(t, own.run?.cls)), `${D.QROMAN[q]} · ${D.QNAME[q]}`, [tx('library.roll-total-trait', { fx: fx(multOf(t)) }), dim(tx('library.investments', { fx: fx(multOf({ ...t, id: 'stir' })), qdieText: D.qdieText(q) }))])); }
+    out.push(trickEntry(t, own.run?.cls, [`<b>${D.QROMAN[q]} · ${D.QNAME[q]}</b> ${tx('library.roll-total-trait', { fx: fx(multOf(t)) })}`, dim(tx('library.investments', { fx: fx(multOf({ ...t, id: 'stir' })), qdieText: D.qdieText(q) }))])); }
   out.push(sec('Rarity', tx('library.how-a-trick-is')));
   const prints = [{ rar: 'basic' }, { rar: 'foil', foil: 1 }, { rar: 'misprint', mis: { die: 'd8' } }, { rar: 'misprint', mis: { count: 3 } }, { rar: 'misprint', mis: { trait: 2 } }, { rar: 'reprint' }].map((x) => ({ id: 'charge', q: 1, ...x }));
-  for (const t of prints) out.push(entry(tipped(tagOf(t), () => trickTip(t, own.run?.cls)), t.foil ? D.FOIL[1].name : D.RARITY[t.rar].name,
-    [t.foil ? tx('library.roll-total-on-common', { fx: fx(multOf(t)) }) : t.rar === 'misprint' ? tx('library.this-one', { text: D.RARITY.misprint.text, misText: D.misText(t) }) : t.rar === 'reprint' ? `${D.RARITY.reprint.text}` : D.RARITY.basic.text,
-      t.rar === 'reprint' ? dim(Object.entries(D.REPRINT).map(([k, v]) => `${D.TYPES[k].name}: ${v.replace('Older rule: ', '')}`).join(' ')) : null].filter(Boolean)));
+  for (const t of prints) out.push(trickEntry(t, own.run?.cls, [`<b>${t.foil ? D.FOIL[1].name : D.RARITY[t.rar].name}</b>`, t.foil ? tx('library.roll-total-on-common', { fx: fx(multOf(t)) }) : t.rar === 'misprint' ? tx('library.this-one', { text: D.RARITY.misprint.text, misText: D.misText(t) }) : t.rar === 'reprint' ? `${D.RARITY.reprint.text}` : D.RARITY.basic.text,
+      t.rar === 'reprint' ? dim(Object.entries(D.REPRINT).map(([k, v]) => `${D.TYPES[k].name}: ${v.replace('Older rule: ', '')}`).join(' ')) : null]));
   out.push(sec('Condition', tx('library.condition-sets-only-what')));
   for (const [k, C] of Object.entries(D.CONDITIONS)) out.push(entry(h('b', { text: C.name }), C.sell ? `Sells at ${Math.round(C.sell * 100)}%` : tx('library.trash-only'),
     [k === 'gem' ? tx('library.only-out-of-foil') : k === 'mint' ? tx('library.every-trick-in-a') : k === 'excellent' ? tx('library.bought-off-the-trader') : k === 'good' ? tx('library.your-first-book-starts') : tx('library.wear-below-50')]));

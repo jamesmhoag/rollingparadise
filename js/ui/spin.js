@@ -16,7 +16,7 @@ const scaleOf = () => { const s = stage(); return s.getBoundingClientRect().widt
 
 function close(now) {
   if (!view) return; const v = view; view = null; cancelAnimationFrame(v.raf); clearTimeout(v.leave);
-  document.body.classList.remove('spinning');
+  document.body.classList.remove('spinning'); v.node.classList.remove('lifted'); // it is back where it was
   if (now) return v.el.remove();
   v.el.classList.add('out'); setTimeout(() => v.el.remove(), 260);
 }
@@ -37,7 +37,7 @@ function open(node) {
   el.addEventListener('pointerdown', (ev) => { if (ev.button !== 0 || !view) return; ev.preventDefault(); ev.stopPropagation(); grab(ev, el); });
   el.addEventListener('pointerenter', () => { if (view) clearTimeout(view.leave); });
   el.addEventListener('pointerleave', () => { if (view && !view.held) { clearTimeout(view.leave); view.leave = setTimeout(() => close(), 450); } });
-  stage().append(el); document.body.classList.add('spinning');
+  stage().append(el); document.body.classList.add('spinning'); node.classList.add('lifted'); // what is held up is no longer where it was: the one turns into the other
   view = { el, node, solid, vx: 0, vy: 0, raf: 0, held: false, leave: 0 };
 }
 function turn(dx, dy) { const m = new DOMMatrix().rotateSelf(-dy * SENS, dx * SENS, 0).multiplySelf(view.solid.matrix); view.solid.setRotation(m); }
@@ -52,10 +52,12 @@ function coast() {
 // follow the pointer until it is let go
 function grab(ev, target) {
   const v = view; v.held = true; cancelAnimationFrame(v.raf); clearTimeout(v.leave);
-  let lx = ev.clientX, ly = ev.clientY; const k = scaleOf();
+  let lx = ev.clientX, ly = ev.clientY, moved = 0; const k = scaleOf();
   try { target.setPointerCapture(ev.pointerId); } catch { /* not capturable */ }
-  const move = (e) => { if (view !== v) return; const dx = (e.clientX - lx) / k, dy = (e.clientY - ly) / k; lx = e.clientX; ly = e.clientY; v.vx = dx; v.vy = dy; turn(dx, dy); };
-  const up = () => { target.removeEventListener('pointermove', move); target.removeEventListener('pointerup', up); target.removeEventListener('pointercancel', up); if (view !== v) return; v.held = false; coast(); };
+  const move = (e) => { if (view !== v) return; const dx = (e.clientX - lx) / k, dy = (e.clientY - ly) / k; lx = e.clientX; ly = e.clientY; moved += Math.hypot(dx, dy); v.vx = dx; v.vy = dy; turn(dx, dy); };
+  const up = () => { target.removeEventListener('pointermove', move); target.removeEventListener('pointerup', up); target.removeEventListener('pointercancel', up); if (view !== v) return; v.held = false;
+    if (moved < GRAB && v.solid.click) { v.vx = v.vy = 0; v.solid.click(); clearTimeout(v.leave); return; } // a click on it, not a turn: what a click does to it (a wallet opens)
+    coast(); };
   target.addEventListener('pointermove', move); target.addEventListener('pointerup', up); target.addEventListener('pointercancel', up);
 }
 // the click that ends a spin must not reach the die

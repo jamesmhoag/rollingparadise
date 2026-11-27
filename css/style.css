@@ -6,6 +6,8 @@
   --coral: #ff86ea; --pink: #ff86ea; --amber: #ffd76a; --good: #7dffb5; --bad: #ff7096; --violet: #b08cff; --sky: #63c4ff;
   --ease: cubic-bezier(.22, .8, .24, 1); --display: 'Didact Gothic', 'Century Gothic', 'Avant Garde', Futura, 'Avenir Next', 'Trebuchet MS', system-ui, sans-serif; --script: 'Yellowtail', 'Brush Script MT', 'Segoe Script', 'Snell Roundhand', 'Apple Chancery', cursive;
   --lines: 'Monoton', 'Didact Gothic', 'Century Gothic', system-ui, sans-serif; /* capitals in parallel lines, like ROLLING on the title sign */
+  /* more faces, for wherever a face is chosen (signs, cards): one bent tube · a theatre front · thin deco · a fine joined script · sign capitals with an inline · a saloon poster · the dots of a tote board */
+  --neon: 'Tilt Neon', var(--display); --marquee: 'Limelight', var(--display); --deco: 'Poiret One', var(--display); --hand: 'Sacramento', var(--script); --inline: 'Bungee Inline', var(--display); --saloon: 'Rye', var(--display); --board: 'VT323', var(--display);
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; background: radial-gradient(ellipse at 50% 30%, #150a2e, #020106 75%); overflow: hidden; }
@@ -272,6 +274,10 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .sign.go .tsign .long .on { animation-duration: .6s; }
 .sign.lit .tsign .on { animation: tubeHum var(--hum, 5.6s) ease-in-out var(--lag, 0s) infinite, tubeBuzz var(--buzz, 13s) linear var(--lag, 0s) infinite; opacity: 1; }
 .sign.off .tsign .on { animation: tubeOff .5s ease-in var(--back, 0s) both; }
+/* the pulse that runs a lit sign: each tube in turn (its own piece, so it does not fight the hum on the light inside it) */
+.sign.chase .tsign .tube { transform-box: fill-box; transform-origin: center; animation: tubePulse .62s ease-out calc(var(--i, 0) * 75ms) 1 both; }
+@keyframes tubePulse { 0%, 100% { filter: none; transform: scale(1); } 30% { filter: brightness(1.75) drop-shadow(0 0 10px rgba(255, 255, 255, .7)); transform: scale(1.045); } }
+@media (prefers-reduced-motion: reduce) { .sign.chase .tsign .tube { animation: none; } }
 @keyframes tubeOn { 0% { opacity: 0; filter: brightness(.6); } 45% { opacity: 1; filter: brightness(1.5); } 100% { opacity: 1; filter: brightness(1); } }
 @keyframes tubeOff { 0% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes tubeHum { 0%, 100% { opacity: 1; } 50% { opacity: .9; } }
@@ -459,6 +465,10 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .lib-e .txt { display: flex; flex-direction: column; gap: 3px; min-width: 0; } .lib-e .txt b { color: var(--gold); } .lib-e .txt p { margin: 0; font-size: 11.5px; color: var(--cream); } .lib-e .txt .dim { font-size: 11px; }
 .lib-e .own-t { font-size: 10px; color: var(--good); text-transform: uppercase; letter-spacing: .08em; }
 .lib-e.wide { grid-column: span 2; }
+/* a trick in the Library: the whole card, and under it only what the card does not say */
+.lib-trick { display: grid; gap: 4px; justify-items: center; align-content: start; padding: 8px 6px; border-radius: 10px; border: 1px solid transparent; } .lib-trick.own { border-color: color-mix(in srgb, var(--good) 60%, transparent); background: rgba(9, 6, 24, .45); }
+.lib-trick p { margin: 0; max-width: 270px; font-size: 11.5px; color: var(--cream); text-align: center; } .lib-trick p b { color: var(--gold); } .lib-trick .own-t { font-size: 10px; color: var(--good); text-transform: uppercase; letter-spacing: .08em; }
+.lib-body:has(.lib-trick) { grid-template-columns: repeat(auto-fill, minmax(286px, 1fr)); }
 .lib-steps { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; } .lib-steps .arrow { color: var(--dim); }
 .scene.bout .lib-btn { position: absolute; right: 16px; top: 412px; padding: 2px 10px; font-size: 11px; z-index: 4; }
 
@@ -685,7 +695,18 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .sface b.ul { text-decoration: underline 2px; text-underline-offset: 2px; } /* 6 and 9 */
 .spin-view { position: absolute; z-index: 95; display: grid; justify-items: center; gap: 4px; cursor: grab; touch-action: none; animation: spin-in .18s var(--ease) both;
   filter: drop-shadow(0 10px 18px rgba(0, 0, 0, .6)); } .spin-view:active { cursor: grabbing; }
-.spin-view.out { opacity: 0; scale: .7; transition: opacity .25s, scale .25s; } @keyframes spin-in { from { opacity: 0; scale: .5; } }
+.spin-view.out { opacity: 0; scale: .7; transition: opacity .25s, scale .25s; }
+/* a drink's place on the table, by its Roller's seat: a coaster, the glass on it */
+.coaster { position: absolute; top: 284px; left: 56px; width: 62px; height: 70px; display: grid; place-items: end center; z-index: 12; cursor: pointer; }
+.coaster.them { left: auto; right: 56px; cursor: help; } .coaster.gone { display: none; }
+.coaster::before { content: ''; position: absolute; left: 4px; right: 4px; bottom: -4px; height: 18px; border-radius: 50%; background: radial-gradient(ellipse at 50% 40%, #3a2a55, #17102b 70%); box-shadow: 0 0 0 1.5px rgba(255, 215, 106, .45), 0 4px 8px rgba(0, 0, 0, .5); }
+.coaster .gdrink { zoom: 1.35; position: relative; } .coaster.can::before { box-shadow: 0 0 0 1.5px var(--gold), 0 0 14px rgba(255, 215, 106, .7), 0 4px 8px rgba(0, 0, 0, .5); animation: pulse 1.4s ease-in-out infinite; }
+/* a window's arrows (the Book, the Run, the Roll, the Pouch): shown only when it holds more rows than it shows */
+.scroller { position: absolute; z-index: 70; width: 13px; display: grid; grid-template-rows: auto 1fr auto; justify-items: center; align-items: center; pointer-events: auto; cursor: help; }
+.scroller.away { display: none; } .scroller button { all: unset; width: 13px; height: 15px; display: grid; place-items: center; font-size: 8px; color: var(--gold); border-radius: 4px; background: rgba(22, 15, 46, .9); box-shadow: inset 0 0 0 1px rgba(255, 215, 106, .45); cursor: pointer; }
+.scroller button:disabled { opacity: .3; cursor: default; } .scroller button:not(:disabled):hover { background: rgba(255, 215, 106, .25); } .scroller b { writing-mode: vertical-rl; font-size: 8.5px; font-weight: 400; color: var(--cream); opacity: .75; letter-spacing: .04em; }
+/* what is held up close is gone from where it was until it is let go */
+.lifted { opacity: 0 !important; transition: opacity .16s; } @keyframes spin-in { from { opacity: 0; scale: .5; } }
 .spin-cap { display: grid; justify-items: center; padding: 3px 9px; border-radius: 8px; background: rgba(9, 6, 24, .86); border: 1px solid var(--line); font-size: 10.5px; white-space: nowrap; pointer-events: none; }
 .spin-cap b { color: var(--gold); font-weight: 700; } .spin-cap span { color: var(--dim); font-size: 9.5px; letter-spacing: .04em; }
 body.spinning, body.spinning * { user-select: none; cursor: grabbing !important; } body.spinning #tooltip { opacity: 0 !important; }
@@ -888,13 +909,20 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 .nsign.nf-lines .neon-name { --nk: .82; font-family: var(--lines) !important; text-transform: uppercase; letter-spacing: .03em; line-height: 1.1; }
 .nsign.cf-script .neon-class { --ck: 1.75; font-family: var(--script); font-weight: 400; text-transform: none; letter-spacing: .02em; line-height: 1; padding-left: 0; }
 .nsign.cf-lines .neon-class { --ck: 1.3; font-family: var(--lines); font-weight: 400; letter-spacing: .14em; line-height: 1.15; }
+.nsign.nf-neon .neon-name { --nk: 0.8; font-family: var(--neon) !important; text-transform: none; letter-spacing: .02em; line-height: 1.08; } .nsign.cf-neon .neon-class { --ck: 1.2; font-family: var(--neon); font-weight: 400; text-transform: uppercase; letter-spacing: .12em; line-height: 1.1;  }
+.nsign.nf-marquee .neon-name { --nk: 0.72; font-family: var(--marquee) !important; text-transform: none; letter-spacing: .03em; line-height: 1.08; } .nsign.cf-marquee .neon-class { --ck: 1.2; font-family: var(--marquee); font-weight: 400; text-transform: uppercase; letter-spacing: .12em; line-height: 1.1;  }
+.nsign.nf-deco .neon-name { --nk: 0.84; font-family: var(--deco) !important; text-transform: uppercase; letter-spacing: .1em; line-height: 1.08; } .nsign.cf-deco .neon-class { --ck: 1.25; font-family: var(--deco); font-weight: 400; text-transform: uppercase; letter-spacing: .12em; line-height: 1.1;  }
+.nsign.nf-hand .neon-name { --nk: 1.08; font-family: var(--hand) !important; text-transform: none; letter-spacing: .01em; line-height: 1.08; } .nsign.cf-hand .neon-class { --ck: 1.9; font-family: var(--hand); font-weight: 400; text-transform: none; letter-spacing: .02em; line-height: 1.1; padding-left: 0; }
+.nsign.nf-inline .neon-name { --nk: 0.6; font-family: var(--inline) !important; text-transform: uppercase; letter-spacing: .03em; line-height: 1.08; } .nsign.cf-inline .neon-class { --ck: 1.05; font-family: var(--inline); font-weight: 400; text-transform: uppercase; letter-spacing: .12em; line-height: 1.1;  }
+.nsign.nf-saloon .neon-name { --nk: 0.68; font-family: var(--saloon) !important; text-transform: none; letter-spacing: .03em; line-height: 1.08; } .nsign.cf-saloon .neon-class { --ck: 1.1; font-family: var(--saloon); font-weight: 400; text-transform: uppercase; letter-spacing: .12em; line-height: 1.1;  }
+.nsign.nf-board .neon-name { --nk: 0.98; font-family: var(--board) !important; text-transform: uppercase; letter-spacing: .08em; line-height: 1.08; } .nsign.cf-board .neon-class { --ck: 1.5; font-family: var(--board); font-weight: 400; text-transform: uppercase; letter-spacing: .12em; line-height: 1.1;  }
 .who.me .neon-name { color: color-mix(in srgb, var(--you-name1) 28%, #fff) !important; text-shadow: 0 0 2px #fff, 0 0 7px var(--you-name1), 0 0 16px var(--you-name1), 0 0 28px var(--you-name2), 0 0 44px var(--you-name2) !important; }
 .who.them .neon-name { color: color-mix(in srgb, var(--them-name1) 28%, #fff) !important; text-shadow: 0 0 2px #fff, 0 0 7px var(--them-name1), 0 0 16px var(--them-name1), 0 0 28px var(--them-name2), 0 0 44px var(--them-name2) !important; }
 .who.me .neon-class { color: color-mix(in srgb, var(--you-cls1) 70%, #fff); text-shadow: 0 0 4px var(--you-cls1), 0 0 10px var(--you-cls2); }
 .who.them .neon-class { color: color-mix(in srgb, var(--them-cls1) 70%, #fff); text-shadow: 0 0 4px var(--them-cls1), 0 0 10px var(--them-cls2); }
 .who.seat .pills, .who.seat .badges { flex-basis: 100%; }
 /* the Neon tool's preview */
-.neon-maker .neon-side { display: grid; gap: 6px; margin-bottom: 14px; } .neon-sample { display: flex; padding: 8px 14px; border-radius: 12px; background: #07040f; width: max-content; }
+.neon-maker .neon-side { display: grid; gap: 6px; margin-bottom: 14px; } .house-preview { display: flex; padding: 8px 14px; border-radius: 12px; background: #07040f; width: max-content; }
 .neon-in { display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; } .neon-in input { width: 34px; height: 24px; padding: 0; border: 0; background: none; cursor: pointer; }
 .scene.bout .tcard .c-text { line-height: 1.17; } .scene.bout .tcard .c-open { gap: 3px; }
 
@@ -932,7 +960,7 @@ p.flavor { font-style: italic; color: var(--dim); }
 @keyframes sign-flicker { 0%, 61%, 64%, 82%, 85%, 100% { opacity: 1; } 62.5% { opacity: .7; } 83.5% { opacity: .78; } }
 @keyframes sign-alt { 0%, 45% { opacity: 1; } 55%, 95% { opacity: .55; } 100% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .neonsign, .neonsign *, .marquee i { animation: none !important; } }
-.neon-maker .neon-sample { margin-bottom: 8px; } .neon-sample.house-preview { min-width: 180px; justify-content: center; }
+.neon-maker .neon-sample { margin-bottom: 8px; } .neon-sample.house-preview { min-width: 180px; justify-content: center; position: relative; }
 .neon-sample.house-preview .neon-name { color: color-mix(in srgb, var(--house-cls1) 85%, #fff) !important; text-shadow: 0 0 3px #fff, 0 0 9px var(--house-name1), 0 0 20px var(--house-name2) !important; }
 .neon-sample.house-preview .neon-class { color: var(--house-cls1); text-shadow: 0 0 6px var(--house-cls2); }
 .btn.glyph { min-width: 26px; padding: 2px 4px; } .btn.glyph.on { outline: 1px solid var(--gold); }
@@ -1039,8 +1067,8 @@ p.flavor { font-style: italic; color: var(--dim); }
 .bk.bk-pulse, .neonsign.bk-name-pulse .neon-name, .neonsign.bk-name-pulse .hs-name, .neonsign.bk-cls-pulse .neon-class, .neonsign.bk-cls-pulse .turn { animation: sign-pulse 2.2s ease-in-out infinite; }
 .bk.bk-flicker, .neonsign.bk-name-flicker .neon-name, .neonsign.bk-name-flicker .hs-name, .neonsign.bk-cls-flicker .neon-class, .neonsign.bk-cls-flicker .turn { animation: sign-flicker 4.6s ease-in-out infinite; }
 .bk.bk-alternate, .neonsign.bk-name-alternate .neon-name, .neonsign.bk-name-alternate .hs-name { animation: sign-alt 3s ease-in-out infinite; } .neonsign.bk-cls-alternate .neon-class, .neonsign.bk-cls-alternate .turn { animation: sign-alt 3s ease-in-out -1.5s infinite; }
-.crown-case .row { align-items: center; gap: 12px; margin-top: 8px; } .crown-sample { position: relative; padding: 4px 12px; }
-.pick-sign { position: relative; align-self: flex-start; padding: 6px 14px; margin: 2px 0 6px; pointer-events: none; }
+.crown-case .row { align-items: center; gap: 12px; margin-top: 8px; } .crown-sample { zoom: .8; }
+.pick-sign { align-self: flex-start; margin: 2px 0 6px; pointer-events: none; }
 .nsign.cls-right .neon-class { justify-self: end; } .nsign.cls-left .neon-class { justify-self: start; } .nsign.cls-center .neon-class { justify-self: center; }
 .nsign.has-crown { padding-top: .18em; }
 /* a seat's sign never grows past its slot: the frame's room is padding, and the name is fitted to what is left */
@@ -1062,7 +1090,7 @@ p.flavor { font-style: italic; color: var(--dim); }
 .rowdots { display: flex; gap: 3px; } .rowdots i { width: 9px; height: 9px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .25); } .rowdots i.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 6px rgba(255, 200, 90, .6); }
 .pmeter b { font-size: 12px; } .pmeter small { font-size: 10.5px; }
 .mboard.mirror .mlabel { text-align: center; }
-.opp-panel { gap: 10px; } .prep-sign { position: relative; padding: 6px 14px; flex: none; }
+.opp-panel { gap: 10px; } .prep-sign { flex: none; }
 .gear { gap: 8px; align-items: center; } .gear-none { font-size: 11px; color: var(--dim); font-style: italic; }
 .bookcards { display: flex; flex-wrap: wrap; gap: 5px; }
 .bookcard { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px 4px 6px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, .1); border-left: 4px solid var(--tc); background: linear-gradient(90deg, color-mix(in srgb, var(--tc) 16%, #120c2a), #0e0a22); font-size: 12px; }
@@ -1222,10 +1250,14 @@ table.b-shop { border-collapse: collapse; width: 100%; font-size: 12px; margin-t
    pills are the Roller's field beside it */
 .who.seat { display: grid; grid-template-columns: 196px minmax(0, 1fr); grid-auto-rows: min-content; column-gap: 12px; row-gap: 3px; align-content: center; align-items: center; height: 88px; }
 .who.seat.them { grid-template-columns: minmax(0, 1fr) 196px; }
-.who.seat .plate { grid-column: 1; grid-row: 1 / span 4; width: 196px; height: 88px; box-sizing: border-box; position: relative; display: grid; place-items: center; overflow: visible; padding: var(--sign-room-t, 6px) calc(var(--sign-room, 6px) + 6px) var(--sign-room-b, 6px); }
+/* A Roller's sign: one build and one size wherever it hangs (the seat at the table, the table's door, a Roller's card,
+   a business card, the Neon maker). .signbox is the whole of it: 196 × 88, the lettering fitted to the room its frame
+   leaves. A place that wants it smaller scales the whole sign (zoom); nothing about it is rebuilt or restyled. */
+.signbox, .who.signbox, .who.me.signbox, .who.them.signbox { width: 196px; height: 88px; flex: none; box-sizing: border-box; position: relative; display: grid; place-items: center; place-content: center; overflow: visible; padding: var(--sign-room-t, 6px) calc(var(--sign-room, 6px) + 6px) var(--sign-room-b, 6px); }
+.signbox .name.nsign, .who.them.signbox .name.nsign { justify-items: center; text-align: center; max-width: 100%; }
+.who.seat .plate { grid-column: 1; grid-row: 1 / span 4; }
 .who.seat.them .plate { grid-column: 2; }
 .who.seat > .worth, .who.seat > .field, .who.seat > .pills, .who.seat > .badges { grid-column: 2; min-width: 0; } .who.seat.them > .worth, .who.seat.them > .field, .who.seat.them > .pills, .who.seat.them > .badges { grid-column: 1; }
-.who.seat .plate .name.nsign { justify-items: center; text-align: center; max-width: 100%; }
 .who.seat > .worth { white-space: nowrap; }
 .field { display: flex; flex-wrap: nowrap; gap: 10px; align-items: baseline; font-size: 10.5px; color: var(--cream); cursor: help; white-space: nowrap; } .who.seat.them > .field { justify-content: flex-end; }
 .field .fld { display: inline-flex; align-items: baseline; gap: 3px; } .field .fld em { font-style: normal; font-size: 8.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
@@ -1363,7 +1395,7 @@ body.carrying-now #tooltip { display: none !important; } /* nothing explains its
 .fin-svg.fin-tex .tube[fill]:not([fill="none"]), .fin-svg.fin-tex [fill="currentColor"], .card-syms.fin-tex [fill]:not([fill="none"]) { fill: var(--fin-paint) !important; }
 .fin-svg.fin-tex .halo { opacity: .14 !important; } .fin-svg.fin-tex .hot { opacity: .28 !important; }
 /* a sign standing on its own takes the room its frame and edging need on each side; the lettering sits in what is left */
-.neon-sample.neonsign { padding: calc(var(--sign-room-t, 6px) + 3px) calc(var(--sign-room, 6px) + 8px) calc(var(--sign-room-b, 6px) + 3px); }
+.house-preview.neonsign { padding: calc(var(--sign-room-t, 6px) + 3px) calc(var(--sign-room, 6px) + 8px) calc(var(--sign-room-b, 6px) + 3px); }
 
 /* ---------- things you hold (ui/thing.js): a face, a back, and the edge between, as thick as the material ---------- */
 .thing { display: inline-block; position: relative; flex: none; perspective: 520px; vertical-align: bottom; line-height: 0; cursor: grab; touch-action: none; --th-rx: 9deg; --th-ry: -15deg; }
@@ -1389,7 +1421,7 @@ body.spinning .thing > .th-body, body.carrying-now .thing > .th-body { transitio
 .cback-lines b { font-family: var(--cfont); font-size: 5.4px; line-height: 1.1; } .cback-lines p { margin: 0; font-size: 3.5px; line-height: 1.25; } .cback-lines q { font-size: 3.2px; line-height: 1.25; font-style: italic; opacity: .85; quotes: none; }
 .cback-lines small { font-size: 3px; letter-spacing: .14em; opacity: .7; font-variant-numeric: tabular-nums; } .cback-lines .note { opacity: .9; }
 .gcard.plated { justify-content: space-between; } .gcard .card-plate { display: grid; place-items: center; width: 100%; flex: 1; min-height: 0; position: relative; z-index: 1; }
-.gcard .card-sign { zoom: .34; pointer-events: none; background: #07040f; }
+.gcard .card-sign { zoom: .34; pointer-events: none; }
 .thing.armed .gcard { box-shadow: 0 0 0 2px var(--bad), 0 3px 8px rgba(0, 0, 0, .45); }
 
 /* ---------- wallets and jackets (ui/gear.js) ---------- */

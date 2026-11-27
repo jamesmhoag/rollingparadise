@@ -47,7 +47,7 @@ function designFields(F, L) {
     L.edgeAt && L.edgeAt !== 'none' ? field('edge', symbolPicker(L.edge, (g) => set(LP('edge'), g)), LP('edge')) : null,
     L.edgeAt && L.edgeAt !== 'none' ? field('edgeColor', colour(LP('edgeColor'), L.edgeColor), LP('edgeColor')) : null,
     field('ink', colour(LP('ink'), L.ink), LP('ink')),
-    field('font', select(LP('font'), [['display', t('cards.font.display')], ['script', t('cards.font.script')], ['body', t('cards.font.body')]], L.font || 'display'), LP('font')),
+    field('font', select(LP('font'), [...Object.keys(D.FONTS).map((f) => [f, t(`font.${f}`)]), ['body', t('cards.font.body')]], L.font || 'display'), LP('font')),
     ...['bg', 'ink', 'symbol'].map((part) => { const at = ['look', 'finish', part], Fn = L.finish?.[part] || {};
       return field(`finish.${part}`, finishPicker(Fn, (v) => set(at, { ...Fn, ...v }), () => set(at, null), { none: t(part === 'bg' ? 'cards.finish.stock' : 'cards.finish.print'), colour: false }), at); }),
     // the back

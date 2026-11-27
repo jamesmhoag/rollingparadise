@@ -144,6 +144,7 @@ function ready() {
       await G3.prepare([...Object.entries(D.WALLETS).map(([id, W]) => ({ kind: 'wallet', look: walletLook(id, W) })), ...Object.entries(D.JACKETS).map(([id, J]) => ({ kind: 'jacket', look: jacketLook(id, J) })), ...D.DRINKS.map((d) => ({ kind: 'drink', look: drinkLook(d) }))], show(0.6, 0.4));
     } catch { /* no renderer: the drawn looks stand */ }
     line.textContent = t('boot.ready'); bar.style.width = '100%'; await new Promise((r) => setTimeout(r, 180));
+    el.remove(); inner?.classList.remove('loading'); // (the title may still be the scene: the Library opens over it, and its menu must be there on the way back)
   })());
 }
 // every way off the title waits on it

@@ -40,7 +40,7 @@ export const FRAMES = [...TUBES, ...STRIPS, ...LAMPS, 'none'];
 export const MOTIONS = ['chase', 'breathe', 'swap', 'twinkle', 'still'];
 export const EDGE_AT = ['none', 'corners', 'top', 'bottom', 'edge']; // edge: the top and the bottom
 export const CLS_ALIGN = ['right', 'left', 'center'];
-export const SIGN_FONTS = ['script', 'display', 'lines']; // --script, --display, --lines in style.css
+export const SIGN_FONTS = Object.keys(D.FONTS); // every face the game has (content/assets.js): --script, --display, --lines, --neon... in style.css
 export const FONT_DEFAULT = { nameFont: 'script', clsFont: 'display' };
 export const BLINK_PARTS = ['name', 'cls', 'border', 'edge', 'symbol', 'crown'];
 export const BLINKS = ['breathe', 'pulse', 'flicker', 'alternate'];
@@ -389,12 +389,15 @@ export function fitSign(el) {
     return [...el.children].filter((c) => !c.matches('svg, .badges, i')).some((c) => { const q = c.getBoundingClientRect(); return q.height && (q.top < top - 1.5 || q.bottom > bot + 1.5); }) || n.getBoundingClientRect().width > wide + 1.5; };
   while (fs > 13 && spills()) { fs -= 1; el.style.setProperty('--name-fs', `${fs}px`); }
 }
-// The one way a name sign is built: a Roller's name and the line under it, dressed as `spec` says. who: 'you',
-// 'them' or 'house' (whose colours it reads). → the element (dressed and fitted once it is on the page).
+// The one way a Roller's sign is built, for anywhere it is shown: their seat at the table, the table's door, a
+// Roller's card, a business card, the Neon maker. It is always the same thing at the same size (.signbox: 196 × 88,
+// its name and the line under it fitted to the room its frame leaves), dressed as `spec` says; a place that wants it
+// smaller scales the whole of it. who: 'you' or 'them' (whose colours it reads). extra: classes for where it hangs.
+// → the element (dressed and fitted once it is on the page; dressSign(el, spec, who) again redresses it).
 export function signFace(name, cls = '') { const f = document.createElement('div'), b = document.createElement('b'), c = document.createElement('span'); f.className = 'name nsign'; b.className = 'neon-name'; b.textContent = name; c.className = 'neon-class'; c.textContent = cls; f.append(b, c); return f; }
 export function nameSign(who, name, cls, spec, extra = '') {
-  const el = document.createElement('div'); el.className = `who ${who === 'you' ? 'me' : 'them'} neon-sample ${extra}`; el.append(signFace(name, cls));
-  requestAnimationFrame(() => dressSign(el, spec, who)); return el;
+  const el = document.createElement('div'); el.className = `who ${who === 'you' ? 'me' : 'them'} signbox ${extra}`; el.append(signFace(name, cls));
+  if (spec) requestAnimationFrame(() => dressSign(el, spec, who)); return el;
 }
 
 // Dress an element as a sign: its colours (as the --who-part1/2 variables the table's styles read), its frame, mount,

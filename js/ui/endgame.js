@@ -4,7 +4,7 @@ import { app, hud, oppTip, trickTag } from './app.js';
 import { jacketTip, trickTip, trickWords, cardTip, dieTip, dieEl, passEl } from './parts.js';
 import { planner } from './prep.js';
 import * as D from '../data.js';
-import { signOf, dressSign, crownLookOf, crownFit, CROWN_FIT, signFace } from './sign.js';
+import { signOf, dressSign, crownLookOf, crownFit, CROWN_FIT, nameSign } from './sign.js';
 import { trickItem } from './trickcard.js';
 import * as R from '../run.js';
 import { flavorP } from './parts.js';
@@ -50,7 +50,7 @@ export function suiteScene(root, penthouse) {
   function renderCrowns() {
     const list = run.crownCase || [];
     crowns.replaceChildren(h('h2', { text: t('suite.crowns') }), h('p', { class: 'sub', text: t(list.length ? 'suite.crowns.sub' : 'suite.crowns.none') }),
-      ...list.map((c, i) => { const prev = h('div', { class: 'who me neon-sample crown-sample' }, signFace(D.ROLLERS[run.roller]?.name || K.name, t('suite.crown.from', { name: c.from })));
+      ...list.map((c, i) => { const prev = nameSign('you', D.ROLLERS[run.roller]?.name || K.name, t('suite.crown.from', { name: c.from }), null, 'crown-sample');
         const dress = () => dressSign(prev, { ...signOf('you', D.ROLLERS[run.roller]?.sign), crown: { level: c.floor, look: crownLookOf(signOf('them', D.ROSTER[c.roster]?.sign)), fit: c.fit } }, 'you'); dress();
         // the crown you are wearing can be set on your name just so: tilt, along, up and down, size (you have to put it on to wear it)
         const F = crownFit(c.fit), slide = (k) => { const [lo, hi, step] = CROWN_FIT[k]; return h('label', { class: 'crown-fit', guide: 'crown-fit', tip: t(`suite.crown.fit.${k}.tip`) }, h('span', { text: t(`suite.crown.fit.${k}`) }),

@@ -360,9 +360,15 @@ function dress(el, face, spec) {
   if (spec.kind !== 'wallet') el.addEventListener('pointermove', (ev) => { const r = el.getBoundingClientRect(); if (!r.width || still()) return; const x = (ev.clientX - r.left) / r.width - 0.5, y = (ev.clientY - r.top) / r.height - 0.5;
     st.lean = [-y * 30, x * 44]; cancelAnimationFrame(st.raf); st.raf = requestAnimationFrame(draw); }, { passive: true });
   // in the hand (ui/spin.js): the body itself, turned freely
-  el._look = (least) => { const size = Math.max(least, 250), half = (Math.max(M.w, M.h) * 0.62 + 10) * u, px = Math.round(size * Math.min(2, devicePixelRatio || 1)), cv = document.createElement('canvas'); cv.width = cv.height = px; Object.assign(cv.style, { width: `${size}px`, height: `${size}px` });
-    const cx = cv.getContext('2d'), wrap = document.createElement('div'); wrap.className = 'g3-look'; wrap.append(cv); let R = new DOMMatrix();
-    return { el: wrap, size, name: spec.name, sub: spec.sub, start: new DOMMatrix().rotateSelf(-10, 24, 0), get matrix() { return R; },
-      setRotation(m) { R = m; M.pose(0); cx.clearRect(0, 0, px, px); cx.drawImage(renderGroup(M.root, { w: px, h: px, view: [-half, -half, half, half], turn: m }), 0, 0); } }; };
+  el._look = (least) => { const size = Math.max(least, 250), px = Math.round(size * Math.min(2, devicePixelRatio || 1)), cv = document.createElement('canvas'); cv.width = cv.height = px; Object.assign(cv.style, { width: `${size}px`, height: `${size}px` });
+    const cx = cv.getContext('2d'), wrap = document.createElement('div'); wrap.className = 'g3-look'; wrap.append(cv); let R = new DOMMatrix(), t = 0, want = 0, raf = 0;
+    // shut, it fills the view; open, the view takes in all of it however it is turned
+    const near = (Math.max(M.w, M.h) * 0.62 + 10) * u, far = Math.hypot(Math.max(M.w / 2 - bx0, bx1 - M.w / 2), Math.max(M.h / 2 - by0, by1 - M.h / 2)) * u;
+    const paint = () => { const half = near + (far - near) * t; M.pose(t); cx.clearRect(0, 0, px, px); cx.drawImage(renderGroup(M.root, { w: px, h: px, view: [-half, -half, half, half], turn: R }), 0, 0); };
+    const look = { el: wrap, size, name: spec.name, sub: spec.sub, start: new DOMMatrix().rotateSelf(-10, 24, 0), get matrix() { return R; }, setRotation(m) { R = m; paint(); } };
+    // a click on a wallet held up opens it, or shuts it again (what it holds stays where the wallet was: only the wallet is in the hand)
+    if (spec.kind === 'wallet' && !M.flat) look.click = () => { want = want ? 0 : 1; cancelAnimationFrame(raf); let last = performance.now();
+      const tick = (now) => { const d = (now - last) / 420; last = now; t = want > t ? Math.min(want, t + d) : Math.max(want, t - d); paint(); if (t !== want && wrap.isConnected) raf = requestAnimationFrame(tick); }; raf = requestAnimationFrame(tick); };
+    return look; };
   aim(); draw();
 }

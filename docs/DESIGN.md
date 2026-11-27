@@ -1030,7 +1030,26 @@ for a close look, to be turned over (`ui/spin.js`, the look a die gets).
   Two liquids join the materials: `liquid` (you see through it; it takes its colour with depth) and `cream` (you do
   not). The renderer shows nothing clear through a clear body, so a clear vessel is drawn as a sheer film over what
   it holds, and ice and fizz inside a clear drink are solid to the eye.
-- Right click lets go of anything held up close (as Esc does).
+- Right click lets go of anything held up close (as Esc does). While something is held up, it is gone from where it
+  was (the one turns into the other) and is back when it is let go. A click on a wallet held up opens it, and shuts
+  it again.
+- **Fixed sizes, scrolling windows.** At the table the Book, the Run, the Roll and the Pouch keep everything in them
+  at its own size: tricks are always the full card width, shelf items the full strip, dice their own size. Each is a
+  window a whole number of rows tall; what does not fit is on further rows, reached with the wheel or the window's
+  arrows (which say which rows are showing), and a window moves by itself to show what was just added. Only the size
+  of the screen scales them, all together. (Dice placed on one trick still close up past three.)
+- **A Roller's sign is one build at one size** (`nameSign`, ui/sign.js; `.signbox`, 196 × 88) wherever it hangs: the
+  seat at the table, the table's door, a Roller's card, a business card, the crown case, the Neon maker. A place that
+  wants it smaller scales the whole sign; nothing is rebuilt or restyled.
+- **Faces.** Ten typefaces (content/assets.js `FONTS`; all open licence), each offered wherever a face is chosen (a
+  sign's name and class line, a card's print): the three the game began with, and a bent neon tube, a theatre
+  marquee, thin deco, a fine joined script, sign capitals with an inline, a saloon poster and the dots of a tote board.
+- **The title sign** runs a pulse every few seconds once lit: each letter and piece swells brighter in turn, in the
+  order they came on.
+- **Your drink stands on the table** by your seat (your opponent's by theirs), on a coaster: the glass, as full as
+  the sips left. A click on yours in the Drink phase takes a sip; there is no Sip button.
+- **The Library shows a trick as the trick**: the whole card, as a hover shows it, with under it only what the card
+  does not say.
 - Still a flat picture of the same material, not a body of it: cards and passes, sign letters, symbols and crowns.
 - A jacket has a style (blazer, bomber, long coat, parka) and parts (body, sleeves, trim, collar, closure, pockets,
   emblem), each with its own material and colour.

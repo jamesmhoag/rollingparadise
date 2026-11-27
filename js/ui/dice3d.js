@@ -130,9 +130,9 @@ function faceMaps(type, mat, labels, F, atlas, base) {
     const [tu, tv] = atlas.tile(i), cx = (tu + 0.5) * tile, cy = (tv + 0.5) * tile, k = (tile * 0.98) / (2 * f.R) * f.ins * 0.8; // k: the face's inscribed radius in px, less the rounded rim
     const val = String(labels[i] ?? '');
     if (type === 'd4') { // a number at each corner, its top toward the corner: the one at the top point is the roll
-      const sc = (tile * 0.98) / (2 * f.R), fsz = k * 0.9; hx.font = `600 ${fsz}px "Rubik", "Inter", "Segoe UI", system-ui, sans-serif`; // (larger and lighter than the other dice: three numbers share a face) hx.textAlign = 'center'; hx.textBaseline = 'middle';
+      const sc = (tile * 0.98) / (2 * f.R), fsz = k * 0.98; hx.font = `600 ${fsz}px "Rubik", "Inter", "Segoe UI", system-ui, sans-serif`; /* (larger and lighter than the other dice: three numbers share a face) */ hx.textAlign = 'center'; hx.textBaseline = 'middle';
       for (const { p, k: vi } of d4Corners(i)) { const la = dot(sub(p, f.c), f.u) * sc, lb = dot(sub(p, f.c), f.v) * sc, L0 = Math.hypot(la, lb) || 1, t = String(labels[vi] ?? '');
-        const far = sc * f.R * 0.205; hx.save(); hx.translate(cx + (la / L0) * far, cy + (lb / L0) * far); /* (as large as three numbers can be on the flat of a face, and close in: its rounded edges cut off anything nearer a corner) */ hx.rotate(Math.atan2(la / L0, -lb / L0)); hx.fillText(t, 0, fsz * 0.04);
+        const far = sc * f.R * 0.37; hx.save(); hx.translate(cx + (la / L0) * far, cy + (lb / L0) * far); /* (each number sits under its own point, well up into the corner, its middle on the line from the face's middle to the point) */ hx.rotate(Math.atan2(la / L0, -lb / L0)); hx.fillText(t, 0, fsz * 0.04);
         if (t === '6' || t === '9') hx.fillRect(-fsz * 0.2, fsz * 0.44, fsz * 0.4, fsz * 0.06); hx.restore(); }
     } else if (type === 'd6' && PIPS[val]) for (const [px, py] of PIPS[val]) { hx.beginPath(); hx.arc(cx + px * k * 0.52, cy + py * k * 0.52, k * 0.17, 0, Math.PI * 2); hx.fill(); }
     else { const fsz = k * (val.length > 2 ? 0.62 : val.length > 1 ? 0.8 : 0.98) * (type === 'd4' ? 0.8 : 1); hx.font = `800 ${fsz}px "Rubik", "Inter", "Segoe UI", system-ui, sans-serif`; hx.textAlign = 'center'; hx.textBaseline = 'middle';

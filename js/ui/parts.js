@@ -255,7 +255,7 @@ const WIDE = [72, 52], TALL = [52, 72];
 const bodyOf = (L) => ({ mat: L.finish?.bg?.m || 'paper', color: L.finish?.bg?.color || L.bg?.[0] || '#e9e2d0' });
 function printFace(spec, cls = '') {
   const L = spec.look || {}, ea = L.edgeAt || 'none', [W, H] = spec.wide ? WIDE : TALL;
-  const el = h('span', { class: `gcard art ${spec.wide ? 'wide' : ''} ${ea === 'top' || ea === 'edge' ? 'edge-top' : ''} ${ea === 'bottom' || ea === 'edge' ? 'edge-bottom' : ''} ${ea === 'corners' ? 'edge-corners' : ''} ${cls}`, style: { '--ink': L.ink || '#fff', '--cfont': L.font === 'script' ? 'var(--script, "Yellowtail")' : L.font === 'body' ? 'inherit' : 'var(--display)' } },
+  const el = h('span', { class: `gcard art ${spec.wide ? 'wide' : ''} ${ea === 'top' || ea === 'edge' ? 'edge-top' : ''} ${ea === 'bottom' || ea === 'edge' ? 'edge-bottom' : ''} ${ea === 'corners' ? 'edge-corners' : ''} ${cls}`, style: { '--ink': L.ink || '#fff', '--cfont': faceOf(L.font) } },
     h('em', { text: spec.kind || '' }), h('b', {}), h('small', { text: spec.name || '' }));
   el.prepend(cardArt({ ...L, symbol: spec.plate ? '' : L.symbol }, W, H));
   if (spec.plate) { el.classList.add('plated'); el.querySelector('b').replaceWith(h('b', { class: 'card-plate' }, spec.plate())); } // a business card carries its Roller's own name sign
@@ -280,7 +280,7 @@ export function backLook(L = {}) { const Bk = L.back || {}, bg = L.bg || ['#93a3
 const serialOf = (key) => { let n = 7; for (const ch of String(key)) n = (n * 31 + ch.charCodeAt(0)) % 100000; return String(n).padStart(5, '0'); };
 function printBack(spec, cls = '') {
   const Bk = backLook(spec.look), [W, H] = spec.wide ? WIDE : TALL, shows = (k) => Bk.show.includes(k);
-  const el = h('span', { class: `gcard art cback ${spec.wide ? 'wide' : ''} ${cls}`, style: { '--ink': Bk.ink, '--cfont': Bk.font === 'script' ? 'var(--script, "Yellowtail")' : Bk.font === 'body' ? 'inherit' : 'var(--display)' } },
+  const el = h('span', { class: `gcard art cback ${spec.wide ? 'wide' : ''} ${cls}`, style: { '--ink': Bk.ink, '--cfont': faceOf(Bk.font) } },
     cardArt(Bk, W, H), h('span', { class: 'cback-lines' },
       shows('name') && spec.name ? h('b', { text: spec.name }) : null, shows('rule') && spec.rule ? h('p', { html: spec.rule }) : null,
       shows('flavor') && spec.flavor ? h('q', { text: spec.flavor }) : null, shows('note') && Bk.note ? h('p', { class: 'note', text: Bk.note }) : null,
@@ -319,8 +319,11 @@ export function symEl(id, color = '#fff', cls = '') {
   const svg = sv('svg', { class: cls, viewBox: '0 0 24 24', 'aria-hidden': 'true' }, [sv('path', { d: S.d, fill: 'none', stroke: 'currentColor', 'stroke-width': 2.4, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }), ...(S.dots || []).map(([x, y]) => sv('circle', { cx: x, cy: y, r: 1.8, fill: 'currentColor' }))]);
   svg.style.color = color; return svg;
 }
+// the face a print is set in: any of the game's (content/assets.js), or 'body' (plain, as the text round it)
+export const faceOf = (id) => (id === 'body' ? 'inherit' : `var(--${D.FONTS[id] ? id : 'display'})`);
 // sips left are shown as how full the glass is
 export function drinkEl(d, sips = d.sips, max = d.max || d.sips, cls = '') {
+  d = { ...(D.DRINKS.find((x) => x.id === d.id) || {}), ...d }; // (a poured drink carries its name and sips; how it looks is the menu's)
   const fill = Math.round(100 * Math.max(0, sips) / Math.max(1, max)), el = h('span', { class: `gdrink ${cls}`, style: { '--dk': d.color || '#ff86ea', '--fill': `${fill}%` } }, h('i', { class: 'liquid' }), h('b', { text: sips }));
   embody(el, el, { kind: 'drink', look: drinkLook(d), notes: fill, name: d.name || '', sub: d.verb || '' }); // the glass and what is in it, as a body (ui/gear3d.js); this drawing stands in without it
   return el;
