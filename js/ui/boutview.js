@@ -12,7 +12,7 @@ import { sum } from '../util.js';
 import { t as tt } from '../text.js';
 import { facesOf, faceValue, dieName } from '../dice.js';
 import { solidEl } from './solid.js';
-import { signOf, dressSign, crownLookOf } from './sign.js';
+import { signOf, dressSign, crownLookOf, killSign, celebrateSign } from './sign.js';
 import { diceHtml, trickItem } from './trickcard.js';
 import { sfx } from './sfx.js';
 import { t as tx } from '../text.js';
@@ -826,18 +826,40 @@ export function boutScene(root, bout, ctx, onDone) {
     const e = me.run.find((x) => x.uid === ui.entry);
     if (!ui.locked && bout.phase === 'roll' && !me.thrown) { for (const f of B.flippable(me)) mark(0, f.r, f.c, 'soft'); for (const f of ui.flips) mark(0, f.r, f.c, 'sel'); }
     if (!ui.locked && bout.phase === 'bid' && ui.mode !== 'target') { for (const f of B.biddable(me)) mark(0, f.r, f.c, ui.hand.length ? 'soft' : 'ok'); for (const f of ui.hand) mark(0, f.r, f.c, 'sel'); }
-    let fc = null;
+    let fc = null, land = null, soft = false;
     if (ui.mode === 'target' && e) {
       const valid = B.validTargets(bout, me, e); for (const v of valid) mark(v.side, v.r, v.c, 'ok');
       const def0 = D.TRICKS[e.trick.id], ts = B.targetSide(bout, me, def0); if (ts && B.addsChips(def0)) for (let r = 0; r < ts.rows; r++) for (let c = 0; c < ts.dims.cols; c++) if (B.solidCount(ts.grid[r][c]) && B.capacityLeft(ts, ts.grid[r][c]) <= 0) mark(ts.idx, r, c, 'full-tgt');
       const at = hover && valid.some((v) => v.side === hover.side && v.r === hover.r && v.c === hover.c) ? hover : e.target;
-      if (at) { for (const x of B.affected(bout, bout.sides[at.side], D.TRICKS[e.trick.id], at, e.dice.length)) mark(at.side, x.r, x.c, 'aff'); fc = B.forecastFee(bout, me, e, at); }
+      if (at) { for (const x of B.affected(bout, bout.sides[at.side], D.TRICKS[e.trick.id], at, e.dice.length)) mark(at.side, x.r, x.c, 'aff'); fc = B.forecastFee(bout, me, e, at); land = B.landing(bout, me, e, at); }
     } else if (!ui.locked) { // hovering a trick that is bid and aimed: show what its fee would do
       const he = me.run.find((x) => x.uid === ui.card);
       if (he && he.state === 'bid' && he.target) fc = B.forecastFee(bout, me, he, he.target);
+      if (ui.card != null) { land = landingFor(ui.card); soft = !(he && he.state !== 'shown'); } // any trick under the pointer shows where its chips would go
     }
-    showForecast(fc);
+    showForecast(fc); showLanding(land, soft);
     root.classList.toggle('m-bid', bout.phase === 'bid' && !ui.locked && ui.mode !== 'target'); root.classList.toggle('m-target', ui.mode === 'target'); root.classList.toggle('m-die', ui.mode === 'die');
+  }
+  // Where chips will land: over each space a trick's chips go to, a ghost of the chip and how many (once the roll is
+  // known). Shown for the trick being aimed, and for any trick under the pointer, in the Book, on the Run or in play.
+  const landEls = new Map();
+  function showLanding(list, soft) {
+    const keep = new Set((list || []).map((x) => `${x.side}:${x.r}:${x.c}`));
+    for (const [k, el] of landEls) if (!keep.has(k)) { el.remove(); landEls.delete(k); }
+    for (const x of list || []) {
+      const k = `${x.side}:${x.r}:${x.c}`; let el = landEls.get(k); if (!el) { el = h('div', { class: 'land' }); fcLayer.append(el); landEls.set(k, el); }
+      const p = cellPos(x.side, x.r, x.c); el.classList.toggle('soft', !!soft);
+      el.style.left = p.x + 'px'; el.style.top = p.y + 'px'; el.style.width = p.w + 'px'; el.style.height = CH + 'px';
+      el.innerHTML = `<i></i><b>${x.n ? '+' + x.n : '+'}</b>`;
+    }
+  }
+  // the entry a hovered card stands for: on the Run, itself; in the Book, as it would be once bid (aimed at its first valid target)
+  function landingFor(uid) {
+    const e = me.run.find((x) => x.uid === uid);
+    if (e) { const at = e.target || B.validTargets(bout, me, e)[0] || null; return at ? B.landing(bout, me, e, at) : []; }
+    const t = me.book.find((x) => x.uid === uid) || me.tapped.tricks.find((x) => x.trick.uid === uid)?.trick; if (!t) return [];
+    const ghost = { uid: -1, trick: t, dice: [], bid: [], bidValue: 0, target: null, state: 'bid', stack: [] }, at = B.validTargets(bout, me, ghost)[0] || null;
+    return at ? B.landing(bout, me, ghost, at) : [];
   }
   // fee forecast: over each stack it touches, what is paid, what stays as Debt, and what carries down the lane
   const fcEls = new Map(); let fcNow = null;
@@ -1214,7 +1236,14 @@ export function boutScene(root, bout, ctx, onDone) {
   }
   async function finish() {
     document.removeEventListener('keydown', onKey); if (rightClick.take) rightClick.take = null;
-    const win = bout.winner === 0; sfx(win ? 'win' : 'lose'); lights('flash'); neonCall(tx(win ? 'table.win-call' : 'table.lose-call'), win ? '#7dff9e' : '#ff4d6a', 2600); await wait(500);
+    // One thing at a time. First the table's own moment: the call, the loser's sign sparking out and going dark, the
+    // winner's sign taking its lap. Nothing else comes up over it. Only when that has played does the match's readout
+    // (the card with Continue) come in; the settlement follows from there.
+    const win = bout.winner === 0; ui.locked = true; setMode(null); ui.hand = []; prompt = ''; renderFeed(); showForecast(null); showLanding(null);
+    const [mineEl, theirsEl] = [root.querySelector('.who.me .plate'), root.querySelector('.who.them .plate')];
+    sfx(win ? 'win' : 'lose'); lights('flash'); neonCall(tx(win ? 'table.win-call' : 'table.lose-call'), win ? '#7dff9e' : '#ff4d6a', 2600);
+    killSign(win ? theirsEl : mineEl); celebrateSign(win ? mineEl : theirsEl, 3000); sfx('spent', 250, { pan: win ? 0.5 : -0.3 }); sfx('spent', 900, { pan: win ? 0.5 : -0.3 }); // the sign sparks and buzzes out
+    await wait(3100 / ui.speed);
     banner.append(h('div', { class: `banner-card ${win ? 'win' : 'lose'}` }, h('h1', { text: win ? tx('table.the-table-is-yours') : tx('table.broke') }),
       h('p', { text: win ? tx('table.is-out-of-worth', { name: opp.name, turn: bout.turn }) : tx('table.takes-everything-on-the', { name: opp.name }) }),
       btn(tx('title.continue'), () => onDone(), null, 'big go')));
@@ -1222,6 +1251,7 @@ export function boutScene(root, bout, ctx, onDone) {
   }
 
   paintNeon();
+  if (globalThis.RP) globalThis.RP.table = { sync, commit, finish }; // ?debug: for automated playthroughs and checks (tools/)
   requestAnimationFrame(() => { spyPhase(); sync(); hint(); turnSign(); autoSkip(); });
   void ctx; void sum;
 }

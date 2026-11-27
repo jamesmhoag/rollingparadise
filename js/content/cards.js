@@ -1,4 +1,4 @@
-// Cards: what rides in your wallet (and on your lanyard). Each card is one `kind`, and what it does is written from its
+// Cards: what rides in your wallet's card slots. Each card is one `kind`, and what it does is written from its
 // numbers (parts.js cardRule), so the words always match the game:
 //
 //   discount    shop, pct                 pct% off everything at that shop
@@ -8,15 +8,14 @@
 //   membership  shop, early, pct, earn    that shop's items open `early` floors sooner, and its members-only items appear
 //                                         (chips, drinks, the Trader's secret shelf); pct% off there too. earn.buys: given
 //                                         after buying that many on one floor at that shop
-//   key         floor                     a Suite Key: opens that floor's Suite after you beat its High Roller (won with a
-//                                         Double Down). Clipped to the lanyard like a pass
+//   key         floor                     how a floor's Suite Key is printed. A Suite Key is a pass, not a card: it takes a
+//                                         pass slot and is named for its room (run.js addKey)
 //   note        text                      a hint, found in the Dodgy Corner
 //   trading     text                      a collector's card; does nothing here
 //   other       text                      anything else (the Debit Card: the ATM in the Gift Shop)
 //
 // `starter`: dealt at the start of a run (two of them, to fill the wallet). `corner`: its chance weight in the Shady
-// Corner (0 or unset: never found there). `lanyard`: clipped to the lanyard, not taking a wallet slot (memberships,
-// punch cards and keys always are). `look`: how the card is printed (see cardEl in parts.js): its colours, pattern,
+// Corner (0 or unset: never found there). Every card takes a wallet slot (there is no lanyard). `look`: how the card is printed (see cardEl in parts.js): its colours, pattern,
 // border, edge symbols and big symbol, ink and font, like a neon sign but printed. Shops: diesmith, trader, lounge,
 // dice, exchange. The High Rollers' business cards are their traits (bosstraits.js); the Cards section lists them too.
 export const CARD_SHOPS = ['diesmith', 'trader', 'lounge', 'dice', 'exchange'];
@@ -32,12 +31,12 @@ export const CARDS = {
   discount_lounge: { kind: 'discount', shop: 'lounge', pct: 10, name: 'Discount Card: Lounge', starter: true, look: look(['#2aa7c4', '#6a2d8a'], '%', { pattern: 'stripes' }) },
   discount_dice: { kind: 'discount', shop: 'dice', pct: 10, name: 'Discount Card: Dice Shop', corner: 0.05, look: look(['#2aa7c4', '#3d7a1c'], '%', { pattern: 'stripes' }) },
   discount_exchange: { kind: 'discount', shop: 'exchange', pct: 10, name: 'Discount Card: Chip Exchange', corner: 0.05, look: look(['#2aa7c4', '#8a6a1c'], '%', { pattern: 'stripes' }) },
-  membership: { kind: 'membership', shop: 'trader', early: 1, pct: 10, earn: { buys: 5 }, name: 'Membership Card', lanyard: true, look: look(['#b08cff', '#4a2d8a'], 'M', { border: 'double', borderColor: '#ffd76a', font: 'script' }) },
-  punch: { kind: 'punch', shop: 'lounge', punches: 5, per: 'purchase', free: 'any', name: 'Punch Card', lanyard: true, corner: 0.1, look: look(['#ff9f3a', '#c4501c'], 'cocktail', { border: 'dashed', edge: 'ring', edgeAt: 'top' }) },
-  suite_1: { kind: 'key', floor: 1, name: 'Suite Key: Boogey Basement', lanyard: true, look: look(['#ff86ea', '#8a2d6a'], '⚿', { border: 'notched' }) },
-  suite_2: { kind: 'key', floor: 2, name: 'Suite Key: Hustlers Haven', lanyard: true, look: look(['#ff86ea', '#2d4a8a'], '⚿', { border: 'notched' }) },
-  suite_3: { kind: 'key', floor: 3, name: 'Suite Key: Rollers Suite', lanyard: true, look: look(['#ff86ea', '#8a6a2d'], '⚿', { border: 'notched' }) },
-  suite_4: { kind: 'key', floor: 4, name: 'Suite Key: Royal Paradise', lanyard: true, look: look(['#ffd76a', '#8a2d6a'], '⚿', { border: 'notched', edge: 'crown', edgeAt: 'corners' }) },
+  membership: { kind: 'membership', shop: 'trader', early: 1, pct: 10, earn: { buys: 5 }, name: 'Membership Card', look: look(['#b08cff', '#4a2d8a'], 'M', { border: 'double', borderColor: '#ffd76a', font: 'script' }) },
+  punch: { kind: 'punch', shop: 'lounge', punches: 5, per: 'purchase', free: 'any', name: 'Punch Card', corner: 0.1, look: look(['#ff9f3a', '#c4501c'], 'cocktail', { border: 'dashed', edge: 'ring', edgeAt: 'top' }) },
+  suite_1: { kind: 'key', floor: 1, name: 'Suite Key: Boogey Basement', look: look(['#ff86ea', '#8a2d6a'], '⚿', { border: 'notched' }) },
+  suite_2: { kind: 'key', floor: 2, name: 'Suite Key: Hustlers Haven', look: look(['#ff86ea', '#2d4a8a'], '⚿', { border: 'notched' }) },
+  suite_3: { kind: 'key', floor: 3, name: 'Suite Key: Rollers Suite', look: look(['#ff86ea', '#8a6a2d'], '⚿', { border: 'notched' }) },
+  suite_4: { kind: 'key', floor: 4, name: 'Suite Key: Royal Paradise', look: look(['#ffd76a', '#8a2d6a'], '⚿', { border: 'notched', edge: 'crown', edgeAt: 'corners' }) },
   debit: { kind: 'other', text: 'Found by searching the floor. Lets you use the ATM in the Gift Shop, which keeps chips between runs.', name: 'Debit Card', corner: 0.1, look: look(['#3c7fc4', '#1c2f6a'], '$', { pattern: 'grain' }) },
   note: { kind: 'note', name: 'Note: on bidding', text: '"Every chip you bid adds its worth to the trick. Two of the same trick, stacked, play twice for one bid."', corner: 0.08, look: look(['#f4efe2', '#e2d6b8'], '✉', { ink: '#3a2c14', symColor: '#3a2c14', border: 'none', font: 'script' }) },
   note_dice: { kind: 'note', name: 'Note: on dice', text: '"Roll, bid on what you rolled, then pile the dice on the bid tricks in the Bluff. Any die adds its value; the ones of the trick\'s own size make its Bonus."', corner: 0.08, look: look(['#f4efe2', '#e2d6b8'], '✉', { ink: '#3a2c14', symColor: '#3a2c14', border: 'none', font: 'script' }) },
@@ -52,8 +51,8 @@ export const SHADY = { nothing: 0 };
 // a new card from the Cards section starts as this, for its kind
 export const NEW_CARD = {
   discount: { kind: 'discount', shop: 'trader', pct: 10, name: 'New Discount Card', look: look(['#2aa7c4', '#16607a'], '%', { pattern: 'stripes' }) },
-  punch: { kind: 'punch', shop: 'lounge', punches: 5, per: 'purchase', free: 'any', name: 'New Punch Card', lanyard: true, look: look(['#ff9f3a', '#c4501c'], 'ring', { border: 'dashed' }) },
-  membership: { kind: 'membership', shop: 'exchange', early: 1, pct: 0, earn: { buys: 5 }, name: 'New Membership', lanyard: true, look: look(['#b08cff', '#4a2d8a'], 'M', { border: 'double', borderColor: '#ffd76a', font: 'script' }) },
+  punch: { kind: 'punch', shop: 'lounge', punches: 5, per: 'purchase', free: 'any', name: 'New Punch Card', look: look(['#ff9f3a', '#c4501c'], 'ring', { border: 'dashed' }) },
+  membership: { kind: 'membership', shop: 'exchange', early: 1, pct: 0, earn: { buys: 5 }, name: 'New Membership', look: look(['#b08cff', '#4a2d8a'], 'M', { border: 'double', borderColor: '#ffd76a', font: 'script' }) },
   note: { kind: 'note', name: 'Note: new', text: '"Write the hint here."', corner: 0.05, look: look(['#f4efe2', '#e2d6b8'], '✉', { ink: '#3a2c14', symColor: '#3a2c14', border: 'none', font: 'script' }) },
   trading: { kind: 'trading', name: 'Trading Card: new', text: 'A collector\'s card. Does not seem to do anything here.', corner: 0.05, look: look(['#7dffb5', '#2d8a6a'], 'sparkle', { pattern: 'rays', border: 'double' }) },
 };

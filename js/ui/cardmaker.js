@@ -1,5 +1,5 @@
 // Build mode: Cards. Every card in the game by kind (content/cards.js): discount, punch and membership cards for each
-// shop, Suite Keys (one a floor, clipped to the lanyard like a pass), notes, trading cards and the rest, and the High
+// shop, Suite Keys (one design a floor: the key itself is a pass, named for its room), notes, trading cards and the rest, and the High
 // Rollers' business cards (their traits). New discount, punch, membership, note and trading cards are made here. Each
 // card's rule is written from its numbers; its print (colours, pattern, border, symbols, ink, font) is designed here
 // with a preview. The Dodgy Corner page sets which cards turn up there and how often.
@@ -64,7 +64,6 @@ export function cardMaker(id, redraw, openTable) {
     kind === 'key' ? field('floor', select(['floor'], [1, 2, 3, 4].map((f) => [f, D.FLOORS[f]?.name || f]), C.floor), ['floor']) : null,
     ['note', 'trading', 'other'].includes(kind) ? field('text', text(['text'], C.text, true), ['text']) : null,
     field('starter', check(['starter'], C.starter), ['starter']),
-    ['membership', 'punch', 'key'].includes(kind) ? null : field('lanyard', check(['lanyard'], C.lanyard), ['lanyard']),
     field('corner', h('div', { class: 'row' }, num(['corner'], C.corner, { step: 0.01 }), h('small', { class: 'dim', text: C.corner ? t('cards.corner.pct', { pct: pctOf(C.corner) }) : t('cards.corner.never') })), ['corner']),
     flavorField('CARDS', id, redraw)];
   const LP = (k) => ['look', k];
@@ -84,7 +83,7 @@ export function cardMaker(id, redraw, openTable) {
   const big = cardEl(id, 'big'); big._tip = () => cardTip(id); big.classList.add('has-tip');
   return h('div', { class: 'b-maker' }, h('div', { class: 'b-fields' }, h('span', { class: 'cap', text: t('cards.rule') }), ...rule, ...design),
     h('div', { class: 'col' }, h('span', { class: 'cap', text: t('maker.preview') }), h('div', { class: 'card-preview' }, big), h('p', { class: 'sub', text: cardRule(id) }),
-      h('p', { class: 'dim', text: D.LANYARD_CARDS.includes(id) ? t('cards.on.lanyard') : t('cards.on.wallet') })));
+      h('p', { class: 'dim', text: t(C.kind === 'key' ? 'cards.on.pass' : 'cards.on.wallet') })));
 }
 // the shop's members-only items, switched on and off here (they are kept on the items themselves)
 function membersOnly(shop, redraw) {

@@ -11,7 +11,7 @@ const KEY = 'rollingparadise.build.test.v1';
 const store = () => { try { return globalThis.localStorage || null; } catch { return null; } };
 export function loadSetup() {
   let o = null; try { o = JSON.parse(store()?.getItem(KEY) || 'null'); } catch { o = null; }
-  return { cls: 'hustler', floor: 1, q: 1, tricks: ['charge', 'block', 'settle'], dice: { d6: 7 }, purse: 500, roster: null, rules: false, ...(o || {}) };
+  return { cls: 'hustler', floor: 1, q: 0, tricks: ['charge', 'block', 'settle'], dice: { d6: 7 }, purse: 500, roster: null, rules: false, ...(o || {}) };
 }
 const saveSetup = (o) => { try { store()?.setItem(KEY, JSON.stringify(o)); } catch { /* storage unavailable */ } };
 
@@ -37,7 +37,7 @@ export function testTable(redraw, sitDown) {
     field(lab('test.dice'), h('div', { class: 'row wrap b-dice' }, ...Object.keys(D.DICE).map((k) => h('label', { class: 'b-die' }, dieEl({ type: k, up: [] }, '', 'mini'),
       h('input', { type: 'number', min: 0, value: o.dice?.[k] || 0, style: { width: '52px' }, onchange: (e) => { const out = { ...(o.dice || {}) }, n = Math.max(0, Math.floor(Number(e.target.value) || 0)); if (n) out[k] = n; else delete out[k];
         if (!Object.keys(out).length) { toast(t('test.dice.bad'), 'warn'); return redraw(); } set('dice', out); } }))))),
-    field(lab('test.quality'), select('q', [1, 2, 3, 4].map((n) => [n, D.QNAME[n]]), o.q)),
+    field(lab('test.quality'), select('q', [[0, t('test.quality.own')], ...[1, 2, 3, 4].map((n) => [n, D.QNAME[n]])], o.q || 0)),
     field(lab('test.tricks'), h('div', {}, h('input', { class: 'b-filter', placeholder: t('build.filter'), oninput: (e) => { find = e.target.value.toLowerCase(); drawTricks(); } }), trickList, count)),
     h('span', { class: 'cap', text: t('test.part.opp') }),
     field(lab('test.opp'), select('roster', rosterOpts, o.roster)),

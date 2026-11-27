@@ -1,5 +1,5 @@
 // A flipped chip rides a trick as a die of any type, keeps its face through an undo, and returns to the Meter.
-import * as R from '../js/run.js'; import * as B from '../js/bout.js'; import { planPhase, autoTurn } from '../js/ai.js';
+import * as R from '../js/run.js'; import * as B from '../js/bout.js'; import * as D from '../js/data.js'; import { planPhase, autoTurn } from '../js/ai.js';
 const assert = (ok, msg) => { if (!ok) { console.error('FAIL', msg); process.exit(1); } };
 const closeBoth = (bout) => { planPhase(bout, bout.sides[1]); assert(B.advance(bout), `close ${bout.phase}: ${B.needOf(bout, bout.sides[0])}`); };
 for (let seed = 1; seed <= 30; seed++) {
@@ -32,7 +32,14 @@ for (let seed = 1; seed <= 30; seed++) {
 const run = R.newRun('rascal', 'standard', 5, { wallet: 'duct_tape', kept: ['debit', 'note'] });
 assert(R.walletCards(run).length === 1 && run.cards[0] === 'debit', 'a 1-slot wallet starts with one kept card');
 
-assert(R.addCard(run, 'punch') && run.cards.includes('punch'), 'passes do not take a slot');
+assert(!R.addCard(run, 'punch') && run.pendingCard === 'punch' && !run.cards.includes('punch'), 'a punch card is a card: it needs a slot like any other (there is no lanyard)');
+R.resolvePending(run, null);
+R.addPass(run, 1);
+assert(!R.addCard(run, 'suite_1') && !run.pendingCard && R.addKey(run, 1) === null && !R.hasKey(run, 1), 'a Suite Key is a pass: a wallet with one pass slot, taken by the floor\'s pass, has nowhere to put it');
+{ const r2 = R.newRun('rascal', 'standard', 5, { wallet: 'duct_tape' }); r2.passes = [2, 1]; r2.pass = 2; r2.floor = 2; D.WALLETS.duct_tape.passes = 2;
+  const k = R.addKey(r2, 2); assert(k && /^2\d\d$/.test(k.room) && R.hasKey(r2, 2) && R.passesOf(r2).join() === '2' && R.passSlotsUsed(r2) === 2, 'with no slot free a key takes the slot of a pass for a floor below; it is cut for a room, the floor then two digits');
+  assert(R.keyName(k) === `Suite ${k.room}` && R.nextAfterBoss(r2) === 'suite', 'the key is named for its room, and opens its floor\'s Suite');
+  R.addPass(r2, 3); assert(R.passesOf(r2).join() === '3' && R.keysOf(r2).length === 1, 'the next floor\'s pass takes the lower pass\'s slot, not the key\'s'); D.WALLETS.duct_tape.passes = 1; }
 assert(!R.addCard(run, 'royal') && run.pendingCard === 'royal' && !R.dropCard(run, 'royal'), 'the Royal Card needs a slot');
 R.resolvePending(run, null);
 assert(!R.addCard(run, 'note') && run.pendingCard === 'note', 'a full wallet holds the found card as pending');

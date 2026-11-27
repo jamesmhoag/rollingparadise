@@ -3,7 +3,7 @@ import { h, syncList, openPanel, closePanel, toast, btn, tween, pulse, swapText,
 import { app, hud, oppTip, trickTag, diceSummary } from './app.js';
 import { faceList, dieName, canMelt, matOf } from '../dice.js';
 import { meltVolume, castNeed, castFor, mixDyes, mixOpen } from '../forge.js';
-import { dieEl, dieTip, trickTip, trickWords, drinkTip, cardTip, chipEl, chipTip, cardEl, walletEl, jacketEl, drinkEl, feltStyle, passEl , cardRule } from './parts.js';
+import { dieEl, dieTip, trickTip, trickWords, drinkTip, cardTip, chipEl, chipTip, cardEl, walletEl, jacketEl, drinkEl, feltStyle, passEl, keyEl, cardRule } from './parts.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
 import { traitRule } from '../bout.js';
@@ -300,10 +300,10 @@ function kitPanel() {
   openPanel(h('div', {}, head(tx('floor.coat-check'), tx('floor.coat-check.sub')),
     h('div', { class: 'row', style: { alignItems: 'flex-start', gap: '18px' } }, rollerCard({ rid: run.roller || D.rollerOf(run.cls), v: st.v, dice: run.dice, tricks: run.tricks, crown: R.crownWorn(run) }),
     h('div', { class: 'col', style: { minWidth: 0, flex: 1 } },
-      h('span', { class: 'cap', text: tx('floor.wallet-slots-plus-one', { name: R.walletOf(run).name, walletCardN: R.walletCards(run).length, slots: R.walletOf(run).slots }) }),
-      h('div', { class: 'row wrap', style: { alignItems: 'flex-end' } }, walletEl(run.wallet), ...R.passesOf(run).map((f) => passEl(f)), jacketEl(run.jacket), run.drink ? drinkEl(run.drink, run.drink.sips, run.drink.max) : null,
-        h('div', { class: 'inv', style: { alignItems: 'flex-end' } }, run.cards.map((c) => { const pass = D.LANYARD_CARDS.includes(c); const el = cardEl(c); el.style.cursor = pass ? '' : 'pointer'; el._tip = () => cardTip(c, R.rollerStats(run).v) + (pass ? tx('floor.clipped-to-your-lanyard') : tx('floor.takes-a-wallet-slot')); el.classList.add('has-tip');
-        el.onclick = () => { if (pass) return; if (!el._armed) { el._armed = true; el.classList.add('armed'); return toast(tx('floor.click-again-to-drop', { name: D.CARDS[c].name }), 'warn'); } if (!R.dropCard(run, c)) return toast(tx('floor.you-need-that-one'), 'warn'); closePanel(); rerender(); toast(tx('floor.dropped', { name: D.CARDS[c].name })); }; return el; }))),
+      h('span', { class: 'cap', text: tx('floor.wallet-slots-plus-one', { name: R.walletOf(run).name, walletCardN: R.walletCards(run).length, slots: R.walletOf(run).slots, used: R.passSlotsUsed(run), passes: R.passCap(run.wallet) }) }),
+      h('div', { class: 'row wrap', style: { alignItems: 'flex-end' } }, walletEl(run.wallet), ...R.passesOf(run).map((f) => passEl(f)), ...R.keysOf(run).map((k) => keyEl(k)), jacketEl(run.jacket), run.drink ? drinkEl(run.drink, run.drink.sips, run.drink.max) : null,
+        h('div', { class: 'inv', style: { alignItems: 'flex-end' } }, R.walletCards(run).map((c) => { const el = cardEl(c, '', { punched: R.punchesOf(run, c) }); el.style.cursor = 'pointer'; el._tip = () => cardTip(c, R.rollerStats(run).v) + tx('floor.takes-a-wallet-slot'); el.classList.add('has-tip');
+        el.onclick = () => { if (!el._armed) { el._armed = true; el.classList.add('armed'); return toast(tx('floor.click-again-to-drop', { name: D.CARDS[c].name }), 'warn'); } if (!R.dropCard(run, c)) return toast(tx('floor.you-need-that-one'), 'warn'); closePanel(); rerender(); toast(tx('floor.dropped', { name: D.CARDS[c].name })); }; return el; }))),
       ...bizCards(run, () => { closePanel(); rerender(); }),
       h('span', { class: 'cap', text: tx('floor.position') }), h('p', { class: 'sub', text: tx('floor.bet-rows-and-stake', { meterRows: st.dims.meterRows, barRows: st.dims.barRows, stackMax: st.dims.stackMax, barRows2: st.dims.barRows * 5 * st.dims.stackMax }) }),
       // your starting position, changed here as well as before each bout (it is the one every table starts from)
@@ -330,7 +330,7 @@ function walletFullPanel() {
   const done = (drop) => { R.resolvePending(run, drop); closePanel(); rerender(); toast(drop ? tx('floor.goes-in-your-wallet', { name: D.CARDS[id].name }) : tx('floor.you-leave-it-where')); };
   openPanel(h('div', { class: 'col' }, h('h2', { text: tx('floor.found', { name: D.CARDS[id].name }) }), h('p', { class: 'sub', html: D.CARDS[id].mods ? Object.entries(D.CARDS[id].mods).map(([k, n]) => tx('floor.keep-it-and-goes', { name: D.STATS[k].name, v: R.rollerStats(run).v[k], v2: R.rollerStats(run).v[k] + n, per: D.STATS[k].per(n) })).join(' ') : cardRule(id) }),
     h('p', { text: tx('floor.your-wallet-holds-and', { name: Wl.name, slots: Wl.slots }) }),
-    h('div', { class: 'items' }, R.walletCards(run).map((c) => h('div', { class: 'item', tip: () => cardTip(c, R.rollerStats(run).v) }, cardEl(c), h('div', { class: 'main' }, h('b', { text: D.CARDS[c].name }), h('small', { html: dropText(run, c) })), btn(tx('floor.drop-this'), () => done(c), null, 'small danger')))),
+    h('div', { class: 'items' }, R.walletCards(run).map((c) => h('div', { class: 'item', tip: () => cardTip(c, R.rollerStats(run).v) }, cardEl(c, '', { punched: R.punchesOf(run, c) }), h('div', { class: 'main' }, h('b', { text: D.CARDS[c].name }), h('small', { html: dropText(run, c) })), btn(tx('floor.drop-this'), () => done(c), null, 'small danger')))),
     h('div', { class: 'row' }, btn(tx('floor.leave-the-new-card'), () => done(null), null, ''))));
 }
 

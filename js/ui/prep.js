@@ -55,7 +55,7 @@ export function positionView({ CH = 46, maxW = 400, mirror = false } = {}) {
     const o = B.occupancy(sd), ob = B.occBonus(sd, o), focus = ob.parts.find((x) => x.zone === 'focus');
     for (const k of ['bet', 'stake']) { const M = Z[k], rs = k === 'bet' ? o.betRows : o.stakeRows, cs = k === 'bet' ? o.betCols : o.stakeCols, al = k === 'bet' ? o.betAligned : o.stakeAligned, part = ob.parts.find((x) => x.zone === k);
       M.rows.replaceChildren(...rs.map((x) => h('i', { class: x.n > 0 ? 'on' : '' }))); M.rows.classList.toggle('full', !!part); M.rows.classList.toggle('aligned', al >= 0);
-      swapText(M.bonus, part ? `+${part.n + (focus ? focus.n : 0)} ${part.keys.length > 1 ? t('table.zm-all') : D.STATS[part.keys[0]].name}` : '');
+      swapText(M.bonus, part ? `+${part.n + (focus ? focus.n : 0)}` : ''); // the amount only: the dots' hover names the stat (a name here ran into the next label)
       M.cols.replaceChildren(...(mirror ? cs : cs.slice().reverse()).map((x) => h('i', { class: `${x.n > 0 ? 'on' : ''}${x.r === al ? ' al' : ''}` }))); }
   }
   // the space under a pointer: { r, c } in the side's rows, or null

@@ -1058,6 +1058,21 @@ export function setTarget(b, s, e, tgt) {
   if (!validTargets(b, s, e).some((v) => v.side === tgt.side && v.r === tgt.r && v.c === tgt.c)) return false;
   e.target = { side: tgt.side, r: tgt.r, c: tgt.c }; return true;
 }
+// Where a trick's chips will land, for the table to show before it plays: [{ side, r, c, n, chip }] in the order they
+// are laid. A made trick (roll 'chips') lays its instances round its deployment pattern from the target, so each space's
+// count is known as soon as the roll is (n is 0 until there is a total: the spaces are still right). Other tricks that
+// add chips name the spaces they cover.
+export function landing(b, s, e, at) {
+  const def = TRICKS[e.trick.id], R = def.roll, t = at ? b.sides[at.side] : null; if (!t) return [];
+  if (R.k !== 'chips') return addsChips(def) ? affected(b, t, def, at, e.dice.length).map((x) => ({ side: t.idx, r: x.r, c: x.c, n: 0, chip: def.make?.chip || R.k })) : [];
+  const total = previewTotal(s, e), vals = e.dice.map((d) => d.value);
+  let inst = total > 0 ? instances(R.convert, vals.length ? vals : [total], total) : []; if (bonusMet(s, e) && def.bonus.k === 'multiply') inst = Array.from({ length: def.bonus.x || 2 }, () => inst).flat();
+  const spaces = deployOrder(t.rows, t.dims.cols, at, R.deploy).filter(({ r, c }) => !t.grid[r][c].hole && !t.grid[r][c].link); if (!spaces.length) return [];
+  const out = new Map(); const add = (sp, n) => { const k = sp.r + ':' + sp.c; if (!out.has(k)) out.set(k, { side: t.idx, r: sp.r, c: sp.c, n: 0, chip: R.chip }); out.get(k).n += n; };
+  if (!inst.length) for (const sp of R.convert === 'lump' ? spaces.slice(0, 1) : spaces) add(sp, 0);
+  inst.forEach((_, i) => add(spaces[i % spaces.length], 1));
+  return [...out.values()];
+}
 // spaces an effect covers from an origin on side t
 export function affected(b, t, def, origin, nDice, o = {}) {
   const dist = o.dist || def.dist, D = DIST[dist], n = Math.min(D.max, D.min + D.inc * Math.max(0, nDice - 1));

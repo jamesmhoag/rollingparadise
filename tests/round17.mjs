@@ -78,7 +78,7 @@ const entry = (trick, vals, extra = {}) => ({ uid: 'x' + trick.id, trick, dice: 
   for (let k = 0; k < 40; k++) {
     run.fs.taken = {}; // (a floor's packs are in stock: this test opens many)
     const got = R.buyPack(run, 1 + (k % 2));
-    assert(got.length === 5 && got.every((t) => t.wear === 100 && t.q === 1 + (k % 2)), 'a pack holds five Mint tricks of its set\'s quality');
+    assert(got.length === 5 && got.every((t) => t.wear === 100 && t.q === D.qualityOf(D.TRICKS[t.id])), 'a pack holds five Mint tricks, each at its own quality: there are no tiered copies');
     assert(['misprint', 'reprint'].includes(got[4].rar) || got[4].foil === 1, 'one of them is a rarer print');
     rare += got.filter((t) => t.rar !== 'basic').length; gems += got.filter((t) => t.gem).length; all += 5;
   }

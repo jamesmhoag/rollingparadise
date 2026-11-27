@@ -394,3 +394,27 @@ export function dressSign(el, spec, who) {
   document.fonts?.ready?.then(() => { last = ''; redraw(); }); // the script face changes the letters' shapes once it loads
   return el;
 }
+
+// A sign going dark: its Roller is out of the match. Every lit part sparks and fails (the name, the class line, the
+// frame's tubes and bulbs, the symbols, the crown), then stays off: grey glass on a dull mount, a crack run through
+// the plate, a few pieces of it on the floor. `celebrate` is the other sign's lap of honour while it happens.
+export function killSign(el) {
+  if (!el || el.classList.contains('sign-dead')) return;
+  el.classList.add('sign-dying');
+  const W = el.offsetWidth || 196, H = el.offsetHeight || 88;
+  for (let i = 0; i < 18; i++) { // sparks from the frame, where the tubes are
+    const edge = i % 4, x = edge < 2 ? Math.random() * W : edge === 2 ? 0 : W, y = edge === 0 ? 0 : edge === 1 ? H : Math.random() * H, a = Math.random() * Math.PI * 2, d = 14 + Math.random() * 30;
+    const sp = document.createElement('i'); sp.className = 'sign-spark'; sp.style.cssText = `left:${x.toFixed(1)}px;top:${y.toFixed(1)}px;--dx:${(Math.cos(a) * d).toFixed(1)}px;--dy:${(Math.sin(a) * d + 16).toFixed(1)}px;animation-delay:${(Math.random() * 0.9).toFixed(2)}s`;
+    el.append(sp); setTimeout(() => sp.remove(), 2200);
+  }
+  setTimeout(() => {
+    el.classList.remove('sign-dying'); el.classList.add('sign-dead');
+    // the crack: one jagged line across the plate with two branches, and three shards that drop away
+    const pts = [[0.08, 0.3], [0.24, 0.42], [0.37, 0.33], [0.5, 0.56], [0.66, 0.47], [0.8, 0.66], [0.94, 0.58]].map(([x, y]) => `${(x * W).toFixed(1)},${(y * H).toFixed(1)}`).join(' ');
+    const svg = mk('svg', { class: 'sign-crack', viewBox: `0 0 ${W} ${H}`, 'aria-hidden': 'true' });
+    svg.append(mk('polyline', { points: pts }), mk('polyline', { points: `${(0.37 * W).toFixed(1)},${(0.33 * H).toFixed(1)} ${(0.43 * W).toFixed(1)},${(0.1 * H).toFixed(1)}` }), mk('polyline', { points: `${(0.66 * W).toFixed(1)},${(0.47 * H).toFixed(1)} ${(0.72 * W).toFixed(1)},${(0.9 * H).toFixed(1)}` }));
+    el.append(svg);
+    for (let i = 0; i < 3; i++) { const sh = document.createElement('i'); sh.className = 'sign-shard'; sh.style.cssText = `left:${(20 + i * 30 + Math.random() * 10).toFixed(0)}%;top:${(40 + Math.random() * 30).toFixed(0)}%;--r:${(Math.random() * 120 - 60).toFixed(0)}deg;animation-delay:${(i * 0.12).toFixed(2)}s`; el.append(sh); setTimeout(() => sh.remove(), 1800); }
+  }, 1250);
+}
+export function celebrateSign(el, ms = 2800) { if (!el) return; el.classList.add('sign-victory'); setTimeout(() => el.classList.remove('sign-victory'), ms); }

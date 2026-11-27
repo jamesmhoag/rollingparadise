@@ -21,7 +21,10 @@ function migrate(run) {
   if (run.pass == null) { // the Royal Card became the Casino Pass; a run already on a floor holds that floor's pass, unless the card was dropped
     run.pass = run.cards?.includes('royal') ? Math.max(1, run.floor || 0) : 0; if (run.cards) run.cards = run.cards.filter((c) => c !== 'royal'); }
   if (run.cards) run.cards = run.cards.filter((c) => !D.RETIRED_CARDS.includes(c)); // Business Cards became High Roller traits; Paradise and Resist cards are gone
-  if (run.cards?.includes('suite')) run.cards = run.cards.filter((c) => c !== 'suite'); // the one Suite Key became a key per floor (run.suiteKey still opens this floor's)
+  if (run.cards?.includes('suite')) run.cards = run.cards.filter((c) => c !== 'suite'); // the one Suite Key became a key per floor
+  // Suite Keys are passes now (run.keys, each cut for a room); a key card held by an older save moves over
+  if (run.cards?.some((c) => /^suite_\d$/.test(c))) { run.keys = run.keys || []; for (const c of run.cards.filter((x) => /^suite_\d$/.test(x))) { const f = +c.slice(6); if (!run.keys.some((k) => k.floor === f)) run.keys.push({ floor: f, room: `${f}${String((run.nextId * 37 + f * 11) % 100).padStart(2, '0')}` }); } run.cards = run.cards.filter((x) => !/^suite_\d$/.test(x)); }
+  if (run.suiteKey && run.floor && !(run.keys || []).some((k) => k.floor === run.floor)) (run.keys = run.keys || []).push({ floor: run.floor, room: `${run.floor}${String((run.nextId * 37) % 100).padStart(2, '0')}` });
   if (typeof run.punches === 'number') { run.punch = run.punches && D.CARDS.punch ? { punch: run.punches } : {}; delete run.punches; } // punch cards count their own punches
   if (!Array.isArray(run.passes)) run.passes = run.pass ? [run.pass] : []; // a wallet can hold more than one pass
   for (const t of run.tricks || []) { // Trick Trader upgrades are gone: an upgraded trick becomes the foil it played as
@@ -36,27 +39,33 @@ export function loadRun() {
 }
 
 // A trick: its quality (q), wear (its condition), and its print: rarity, foil tier, a Misprint's changes, Gem Mint.
-const mkTrick = (run, id, q = 1, o = {}) => { q = Math.max(q, D.TRICKS[id]?.q || 1); const t = { uid: run.nextId++, id, q, wear: o.wear ?? D.WEAR.good, rar: o.rar || (o.foil ? 'foil' : 'basic') };
+// A trick has one quality: its own (set in the Trick maker, or rated from what it does for the dice it asks: data.js
+// qualityOf). There are no tiered versions of a trick: every copy, wherever it comes from, is made at that quality.
+// (`q` is kept in the calls for where a trick came from; it no longer changes the copy. A Foil is a print, not a tier.)
+const mkTrick = (run, id, q = 1, o = {}) => { void q; q = D.qualityOf(D.TRICKS[id]); const t = { uid: run.nextId++, id, q, wear: o.wear ?? D.WEAR.good, rar: o.rar || (o.foil ? 'foil' : 'basic') };
   if (o.foil) t.foil = o.foil; if (o.mis) t.mis = o.mis; if (o.gem) t.gem = true; return t; };
 const printOf = (t) => ({ foil: t.foil, rar: t.rar, mis: t.mis }); // a copy keeps the print, not the wear
 const mkDie = (run, type, mat = D.DEFAULT_MAT) => ({ id: run.nextId++, type, mat, up: [] });
 const ledger = (run, label, amt) => { run.ledger.push({ label, amt, floor: run.floor }); if (run.ledger.length > 200) run.ledger.shift(); };
 export const hasCard = (run, id) => run.cards.includes(id);
-// wallet: benefit cards take a slot, passes do not
-export const walletCards = (run) => run.cards.filter((id) => !D.LANYARD_CARDS.includes(id));
+// The wallet: everything you collect is a card or a pass. A card (discounts, punch cards, memberships, notes, trading
+// cards...) takes one of the wallet's card slots; a pass (a floor's pass, a Suite Key) takes one of its pass slots.
+// Nothing rides anywhere else: there is no lanyard.
+export const walletCards = (run) => run.cards.filter((id) => D.CARDS[id]?.kind !== 'key');
 export const walletOf = (run) => D.WALLETS[run.wallet] || D.WALLETS.worn_cloth;
 export const walletFull = (run) => walletCards(run).length >= walletOf(run).slots;
 // returns false and holds the card as pending when the wallet has no room
 export function addCard(run, id) {
   if (hasCard(run, id)) return true;
-  if (!D.LANYARD_CARDS.includes(id) && walletFull(run)) { run.pendingCard = id; return false; }
+  if (D.CARDS[id]?.kind === 'key') return false; // a Suite Key is a pass (addKey)
+  if (walletFull(run)) { run.pendingCard = id; return false; }
   run.cards.push(id); return true;
 }
 export function resolvePending(run, dropId) {
   const id = run.pendingCard; run.pendingCard = null; if (!id || !dropId) return;
   run.cards = run.cards.filter((x) => x !== dropId); run.cards.push(id);
 }
-export function dropCard(run, id) { if (!hasCard(run, id) || D.LANYARD_CARDS.includes(id)) return false; run.cards = run.cards.filter((x) => x !== id); return true; }
+export function dropCard(run, id) { if (!hasCard(run, id)) return false; run.cards = run.cards.filter((x) => x !== id); return true; }
 // the Membership Card carries the Trader's discount as well; the two do not stack
 // ---------- shop cards ----------
 // the cards you hold of one kind for one shop (content/cards.js)
@@ -256,7 +265,10 @@ function genShelf(run) {
   const own = new Set(run.tricks.map((t) => t.id));
   for (const cls of ['hustler', 'rascal', 'technician', null]) {
     const pool = D.TRICK_IDS.filter((id) => D.TRICKS[id].cls === cls); const fresh = pool.filter((id) => !own.has(id));
-    const id = rng.pick(fresh.length ? fresh : pool); const S = D.TUNING.shops, q = clamp(f + (rng.chance(S.shelfUp) ? 1 : 0) - (rng.chance(S.shelfDown) ? 1 : 0), 1, 4);
+    // the shelf leans toward tricks of the floor's quality (a step up or down by the tuner's chances): it picks among the
+    // tricks nearest that quality, and each sells at its own
+    const S = D.TUNING.shops, want = clamp(f + (rng.chance(S.shelfUp) ? 1 : 0) - (rng.chance(S.shelfDown) ? 1 : 0), 1, 4), from = fresh.length ? fresh : pool;
+    const gap = Math.min(...from.map((x) => Math.abs(D.qualityOf(D.TRICKS[x]) - want))), id = rng.pick(from.filter((x) => Math.abs(D.qualityOf(D.TRICKS[x]) - want) === gap)), q = D.qualityOf(D.TRICKS[id]);
     out.push({ key: run.nextId++, trick: mkTrick(run, id, q, { wear: D.WEAR.excellent }), cost: D.perFloor(D.SHOPS.trader.price, f, 50) * q, left: D.perFloor(D.SHOPS.trader.stock, f, 1) }); // off the shelf: Excellent
   }
   return out;
@@ -282,7 +294,9 @@ function misprint(rng, id) {
   return { trait: 1 };
 }
 export function rollPack(run, q) {
-  const rng = run.rng, pool = D.TRICK_IDS.filter((id) => !D.TRICKS[id].cls || D.TRICKS[id].cls === run.cls || rng.chance(0.3));
+  // a pack is a set by quality: its tricks are the ones made at that quality (or the nearest there is)
+  const all = D.TRICK_IDS.filter((id) => !D.TRICKS[id].cls || D.TRICKS[id].cls === run.cls || run.rng.chance(0.3)), near = Math.min(...all.map((id) => Math.abs(D.qualityOf(D.TRICKS[id]) - q)));
+  const rng = run.rng, pool = all.filter((id) => Math.abs(D.qualityOf(D.TRICKS[id]) - q) === near);
   const S = D.TUNING.shops;
   return Array.from({ length: S.packSize }, (_, k) => {
     const id = rng.pick(pool), o = { wear: D.WEAR.mint, gem: rng.chance(S.gemChance) };
@@ -461,7 +475,8 @@ export function searchFloor(run) {
 export function testTable(o) {
   const floor = clamp(o.floor || 1, 1, 4), run = newRun(o.cls || 'hustler', 'standard', o.seed || 7);
   run.phase = 'floor'; enterFloor(run, floor); run.purse = Math.max(10, o.purse || 500);
-  if (o.tricks?.length) run.tricks = o.tricks.filter((id) => D.TRICKS[id]).map((id) => mkTrick(run, id, clamp(o.q || 1, 1, 4)));
+  // (the test table can deal its tricks at any quality, to try one out stronger or weaker than it is made: only here)
+  if (o.tricks?.length) run.tricks = o.tricks.filter((id) => D.TRICKS[id]).map((id) => { const t = mkTrick(run, id); if (o.q) t.q = clamp(o.q, 1, 4); return t; });
   if (o.dice && Object.keys(o.dice).length) run.dice = Object.entries(o.dice).flatMap(([type, n]) => (D.DICE[type] ? Array.from({ length: n }, () => mkDie(run, type)) : []));
   const worth = D.FLOORS[floor].worth[0];
   run.fs.tables[0].opp = genOpponent(run, floor, worth, o.roster && D.ROSTER[o.roster] ? { name: D.ROSTER[o.roster].name, roster: o.roster, ...(D.ROSTER[o.roster].cls ? { cls: D.ROSTER[o.roster].cls } : {}), ...(D.ROSTER[o.roster].boss ? { boss: true } : {}) } : {});
@@ -568,10 +583,28 @@ export const passFloor = (run) => run.pass || 0;
 export const passCap = (id) => Math.max(1, Math.round(D.WALLETS[id]?.passes ?? 1));
 export const passesOf = (run) => { const top = run.pass || 0, list = (run.passes || []).filter((f) => f > 0 && f <= top);
   if (top && !list.includes(top)) list.push(top); return list.sort((a, b) => b - a); };
+// Suite Keys are passes too: each takes a pass slot. A key is cut for a room: its floor's number and two more digits
+// (floor 2: 200 to 299), drawn when you win it, and that is its name.
+export const keysOf = (run) => (run.keys || []).filter((k) => k && k.floor > 0);
+export const hasKey = (run, floor) => keysOf(run).some((k) => k.floor === floor);
+export const passSlotsUsed = (run) => passesOf(run).length + keysOf(run).length;
 export function addPass(run, f) {
   if (!(f > 0)) return; const list = passesOf(run); if (!list.includes(f)) list.push(f);
-  list.sort((a, b) => b - a); run.passes = list.slice(0, passCap(run.wallet)); run.pass = run.passes[0] || 0;
+  list.sort((a, b) => b - a); const cap = passCap(run.wallet);
+  // the newest floor's pass always has a slot: lower passes give theirs up first, then the oldest keys
+  while (list.length + keysOf(run).length > cap && list.length > 1) list.pop();
+  run.keys = keysOf(run); while (list.length + run.keys.length > cap && run.keys.length) run.keys.shift();
+  run.passes = list.slice(0, cap); run.pass = run.passes[0] || 0;
 }
+// A Suite Key for this floor, into a pass slot: a free one, or the slot of a pass for a floor below this one (you are
+// already past its door). With neither, there is nowhere to put it and it stays at the desk. Returns the key, or null.
+export function addKey(run, floor = run.floor) {
+  if (hasKey(run, floor)) return keysOf(run).find((k) => k.floor === floor);
+  const cap = passCap(run.wallet), list = passesOf(run); run.keys = keysOf(run);
+  if (list.length + run.keys.length >= cap) { if (list.length > 1) { list.pop(); run.passes = list; } else return null; }
+  const key = { floor, room: `${floor}${String(run.rng.int(100)).padStart(2, '0')}` }; run.keys.push(key); return key;
+}
+export const keyName = (k) => tx('run.suite-key-name', { room: k.room });
 export const needsBouncer = (run) => run.phase === 'floor' && run.floor >= 1 && passFloor(run) < run.floor;
 // after the Doorman, a pass kept from the last run skips the floor checks up to its floor
 export const startFloor = (run) => Math.max(1, Math.min(4, passFloor(run)));
@@ -705,7 +738,8 @@ export function settle(run, ctx, bout) {
     res.base = base; res.winnings = winnings;
     res.prizes = { dice: rng.shuffle(ctx.opp.dice).slice(0, 3).map((d) => ({ ...d })), tricks: rng.shuffle(ctx.opp.tricks).slice(0, 2).map((t) => ({ ...t })) };
     if (ctx.kind === 'table') {
-      if (ctx.prep.dd) { run.fs.ddStreak++; run.stats.dd++; run.fs.bossOpen = true; run.suiteKey = true; if (D.CARDS[`suite_${run.floor}`] && !hasCard(run, `suite_${run.floor}`)) run.cards.push(`suite_${run.floor}`); res.news.push(tx('run.double-down-won-a')); }
+      if (ctx.prep.dd) { run.fs.ddStreak++; run.stats.dd++; run.fs.bossOpen = true; const key = addKey(run, run.floor); run.suiteKey = !!key; // the key is a pass: it needs a pass slot
+        res.news.push(key ? tx('run.double-down-won-a', { room: key.room }) : tx('run.double-down-no-slot')); }
       run.fs.lastWin = { tilts: { ...ctx.prep.tilts }, mult: ctx.mult };
       if (bossReady(run) && !run.fs.bossOpen) { run.fs.bossOpen = true; res.news.push(tx('run.the-high-roller-is')); }
     } else { res.news.push(tx('run.is-dethroned-the-stairs', { name: ctx.opp.name }));
@@ -759,7 +793,7 @@ export function suiteOffer(run) {
 }
 export function goToBed(run, penthouse) { run.rest = penthouse ? { bouts: 2, amt: 2 } : { bouts: 1, amt: 1 }; }
 // after a High Roller: the Penthouse at the top; a Suite when you hold this floor's Suite Key (won with a Double Down)
-export function nextAfterBoss(run) { return run.floor >= 4 ? 'penthouse' : run.suiteKey || hasCard(run, `suite_${run.floor}`) ? 'suite' : 'floor'; }
+export function nextAfterBoss(run) { return run.floor >= 4 ? 'penthouse' : hasKey(run, run.floor) ? 'suite' : 'floor'; }
 // the stairs after a High Roller you did not beat: straight up to the next floor (no suite, and no Penthouse or Ascent
 // from the top floor: those are for the Roller who dethroned its High Roller)
 export const climbAfterLoss = (run) => (stairsOpen(run) && !run.fs.boss.beaten && run.floor < 4 ? 'floor' : null);

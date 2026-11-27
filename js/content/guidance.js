@@ -121,8 +121,6 @@ export const GUIDE = {
     how: ['Keep it in a wallet slot; it works on its own.', 'A better wallet keeps more cards when the run ends in the alley.'] },
   pass: { name: 'Pass', def: 'A pass that gets you past a floor check.',
     how: ['It travels in its own wallet slot; on your next run it can take the elevator straight up.'] },
-  lanyard: { name: 'Lanyard card', def: 'A card you wear rather than carry.',
-    how: ['It takes no wallet slot, so you never have to choose between it and another card.'] },
   jacket: { name: 'Jacket', def: 'What you wear at the tables. Each changes your attributes.',
     how: ['Unlock jackets in the Gift Shop; pick one at the start of a run, or change in a Suite.'] },
   denom: { name: 'Table chip', def: 'A chip of one value, as you lay out your position.',
@@ -271,7 +269,7 @@ export const GUIDE = {
 export const GUIDE_BY_CLASS = [
   ['room.r-entry', 'room:entry'], ['room.r-stairs', 'room:stairs'], ['pawn', 'pawn'], ['purse', 'purse'], ['sign', 'sign'],
   ['item.locked', 'shop-locked'], ['item.bone', 'bone-die'], ['item.sel', 'jacket'], ['item', 'shop-item'],
-  ['gcard.gpass', 'pass'], ['gcard.lanyard', 'lanyard'], ['gcard', 'card'], ['gjacket', 'jacket'],
+  ['gcard.gpass', 'pass'], ['gcard.gpasskey', 'pass'], ['gcard', 'card'], ['gjacket', 'jacket'],
   ['box.row', 'denom'], ['dye', 'dye'],
   ['tilt.challenge', 'tilt:challenge'], ['tilt.cheat', 'tilt:cheat'], ['ocell', 'opp-stack'],
   ['band-btn', 'music'], ['pmeter', 'prep:meters'], ['bookcard', 'trick'], ['mcell', 'cell'], ['bonus-req', 'trick-dice'], ['nsign', 'sign'], ['house-sign', 'house'], ['fld', 'pit'], ['field', 'ledger'], ['pit-void', 'pit'], ['phases', 'phase-track'], ['orbital', 'weather'], ['sfx-btn', 'sfx'], ['qd', 'quality'], ['tgt', 'aim'], ['bonus', 'trick-dice'], ['c-stack', 'trick-stack'], ['zone-title', 'zone'], ['zone-label', 'position-label'], ['b-lab', 'build-option'], ['glyph', 'sign-glyph'], ['stakeboard', 'layout-space'], ['bidslot', 'bid-space'],

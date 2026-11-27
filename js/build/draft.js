@@ -11,9 +11,10 @@ const store = () => { try { return globalThis.localStorage || null; } catch { re
 const clone = (v) => (v && typeof v === 'object' ? JSON.parse(JSON.stringify(v)) : v);
 
 // Changes written by an older build of the game: fields the content no longer has are dropped, so an old export or a
-// draft kept in a browser still loads cleanly. (A class's `hero`: the Roller is named in ROLLERS now.)
-const GONE = [/^CLASSES\.[^.]+\.hero$/];
-const GONE_IN = { CLASSES: ['hero'] };
+// draft kept in a browser still loads cleanly. (A class's `hero`: the Roller is named in ROLLERS now. A card's
+// `lanyard`: there is no lanyard, every card takes a wallet slot.)
+const GONE = [/^CLASSES\.[^.]+\.hero$/, /^CARDS\.[^.]+\.lanyard$/];
+const GONE_IN = { CLASSES: ['hero'], CARDS: ['lanyard'] };
 export function migrate(changes) {
   const out = {};
   for (const [p, v] of Object.entries(changes || {})) {

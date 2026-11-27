@@ -768,9 +768,8 @@ export const WALLETS = {
   fine_leather: { name: 'Fine Leather', color: '#4a2412', slots: 4, keep: 12, passes: 1, price: 100000, level: 2 },
   royal_luxury: { name: 'Royal Luxury', color: '#ffd76a', slots: 4, keep: 7, passes: 1, price: 10000000, level: 4, crown: true },
 };
-// these cards are clipped to your lanyard and do not take a wallet slot
-// clipped to the lanyard, not taking a wallet slot (worked out from CARDS: memberships, punch cards and keys, and any
-// card marked lanyard); dealt at the start (starter); found in the Shady Corner (corner > 0). Rebuilt after changes.
+// Card lists worked out from CARDS: dealt at the start (starter), found in the Dodgy Corner (corner > 0). Rebuilt after
+// changes. (LANYARD_CARDS is always empty now: the lanyard is gone, and everything collected is a card or a pass.)
 export const LANYARD_CARDS = [];
 // Passes are not cards: every wallet holds one, in its own slot. The Casino Pass is won from the Doorman and each
 // floor has its own pass, given as you reach it (it takes the slot from the last). Once you are in, a pass is not
@@ -830,8 +829,8 @@ export function deletePath(path) { const ks = splitPath(path), last = ks.pop(); 
 // lists worked out from the tables when the game loads, rebuilt after changes
 export function refreshDerived() {
   TRICK_IDS.splice(0, TRICK_IDS.length, ...Object.keys(TRICKS).filter((id) => !TRICKS[id]?.retired)); // retired tricks are dealt nowhere
-  const C0 = Object.entries(CARDS).filter(([, c]) => c);
-  LANYARD_CARDS.splice(0, LANYARD_CARDS.length, ...C0.filter(([, c]) => c.lanyard || ['membership', 'punch', 'key'].includes(c.kind)).map(([k]) => k));
+  const C0 = Object.entries(CARDS).filter(([, c]) => c && c.kind !== 'key'); // a Suite Key is a pass: never dealt or found as a card
+  LANYARD_CARDS.splice(0, LANYARD_CARDS.length); // there is no lanyard: every card takes a wallet slot, every pass a pass slot
   STARTER_CARDS.splice(0, STARTER_CARDS.length, ...C0.filter(([, c]) => c.starter).map(([k]) => k));
   FIND_CARDS.splice(0, FIND_CARDS.length, ...C0.filter(([, c]) => (c.corner || 0) > 0).map(([k]) => k));
   FELT_POOL.splice(0, FELT_POOL.length, ...Object.keys(FELTS).filter((k) => FELTS[k].pool !== false));

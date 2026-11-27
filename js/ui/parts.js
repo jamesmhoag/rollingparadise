@@ -224,13 +224,25 @@ export function cardArt(look = {}, W = 52, H = 72) {
   if (L.symbol) svg.append(sym(L.symbol, W / 2, H * 0.47, Math.min(W, H) * 0.42, L.symColor, 2));
   return svg;
 }
-export function cardEl(id, cls = '') {
-  const c = D.CARDS[id] || {}, L = c.look || {}, lanyard = D.LANYARD_CARDS.includes(id);
-  const ea = L.edgeAt || 'none', el = h('span', { class: `gcard art ${lanyard ? 'lanyard' : ''} ${ea === 'top' || ea === 'edge' ? 'edge-top' : ''} ${ea === 'bottom' || ea === 'edge' ? 'edge-bottom' : ''} ${cls}`, style: { '--ink': L.ink || '#fff', '--cfont': L.font === 'script' ? 'var(--script, "Yellowtail")' : L.font === 'body' ? 'inherit' : 'var(--display)' } },
-    h('em', { text: tx(`card.kind.${c.kind || 'other'}`) }), h('b', {}), h('small', { text: (c.name || id).replace(/^.*?: /, '') }));
+// A punch card shows its punches: a ring for each one it takes, and a real hole through the card for each one made
+// (the card is masked there, so whatever is behind it shows through). `o.punched`: how many are made (the run's count).
+const PUNCH_AT = (n, W = 52, H = 72) => { const per = Math.min(n, 5), rows = Math.ceil(n / per), out = [];
+  for (let i = 0; i < n; i++) { const r = Math.floor(i / per), k = i % per, inRow = Math.min(per, n - r * per); out.push([W / 2 + (k - (inRow - 1) / 2) * 8.4, H - 20 - (rows - 1 - r) * 8.4]); } return out; };
+export function cardEl(id, cls = '', o = {}) {
+  const c = D.CARDS[id] || {}, L = c.look || {};
+  const ea = L.edgeAt || 'none', el = h('span', { class: `gcard art ${c.kind === 'key' ? 'gkey' : ''} ${ea === 'top' || ea === 'edge' ? 'edge-top' : ''} ${ea === 'bottom' || ea === 'edge' ? 'edge-bottom' : ''} ${cls}`, style: { '--ink': L.ink || '#fff', '--cfont': L.font === 'script' ? 'var(--script, "Yellowtail")' : L.font === 'body' ? 'inherit' : 'var(--display)' } },
+    h('em', { text: tx(`card.kind.${c.kind || 'other'}`) }), h('b', {}), h('small', { text: o.name || (c.name || id).replace(/^.*?: /, '') }));
   el.prepend(cardArt({ symbol: KIND_GLYPH[c.kind] || '?', ...L }));
+  if (c.kind === 'punch' && c.punches > 0) { const pts = PUNCH_AT(Math.min(15, c.punches)), done = Math.max(0, Math.min(pts.length, o.punched || 0)), R0 = 2.7;
+    const rings = sv('svg', { class: 'card-punches', viewBox: '0 0 52 72', 'aria-hidden': 'true' }, pts.map(([x, y], i) => sv('circle', { cx: x, cy: y, r: R0, fill: i < done ? 'none' : 'rgba(0,0,0,.18)', stroke: L.ink || '#fff', 'stroke-width': i < done ? 0.9 : 0.6, 'stroke-dasharray': i < done ? null : '1.4 1.2', opacity: i < done ? 0.9 : 0.7 })));
+    el.append(rings); el.classList.add('punch');
+    if (done) { const holes = pts.slice(0, done).map(([x, y]) => `radial-gradient(circle ${R0 - 0.4}px at ${(x / 52 * 100).toFixed(2)}% ${(y / 72 * 100).toFixed(2)}%, transparent 97%, #000 100%)`).join(', ');
+      for (const k of ['maskImage', 'webkitMaskImage']) el.style[k] = holes; for (const k of ['maskComposite']) el.style[k] = 'intersect'; el.style.webkitMaskComposite = 'source-in'; } }
   return el;
 }
+// a Suite Key: a pass cut for one room, printed as its floor's key design with the room number for its name
+export const keyTip = (k) => tx('parts.suite-key', { room: k.room, floor: D.FLOORS[k.floor]?.name || k.floor }) + flavorP('CARDS', `suite_${k.floor}`);
+export function keyEl(k, cls = '') { const el = cardEl(`suite_${k.floor}`, cls, { name: tx('parts.suite-key-room', { room: k.room }) }); el.classList.add('gpasskey'); el._tip = () => keyTip(k); el.classList.add('has-tip'); return el; }
 // a pass: not a card, it rides in the wallet's own pass slot
 export const passTip = (f) => tx('parts.every-wallet-holds-one', { name: D.PASSES[f].name, text: D.PASSES[f].text }) + flavorP('PASSES', f);
 export function passEl(f, cls = '') {
