@@ -31,12 +31,17 @@ export const MOVES = {
   toTop: 'Sorts to the top when restacked', toBottom: 'Sorts to the bottom when restacked', anchored: 'Anchored: other effects cannot move it', flying: 'Flying: untouched by effects from below',
   spreading: 'Spreading: infects what it touches', jumping: 'Jumping: to a random neighbouring space', shifting: 'Shifting: to the next row', advancing: 'Advancing: forward', retreating: 'Retreating: back',
 };
-export const REACH = { inside: 'Chips inside it (lying on it)', all: 'All chips', yours: 'All yours', theirs: 'All theirs', touching: 'Chips it touches', touchingValue: 'Touching chips with value', touchingHits: 'Touching chips with strength',
+export const REACH = { lane: 'Its row, across the position (front to back)', column: 'Its column (the five spaces level with it)', inside: 'Chips inside it (lying on it)', all: 'All chips', yours: 'All yours', theirs: 'All theirs', touching: 'Chips it touches', touchingValue: 'Touching chips with value', touchingHits: 'Touching chips with strength',
   sameType: 'Chips of its own type', named: 'Chips with a given name', typed: 'Chips of a given type' };
 // triggers: { on, type? (phase, effect), what? (exposed: a chip name or kind) }
 // actions: { k, dir? (move: left, right, up, down), n? (value, hits, power), chip? (become) }
 export const TRIGGERS = { turn: 'Each turn', created: 'When it is made', removed: 'When it is removed', exposed: 'When a chip is exposed', effect: 'When an effect of a type plays', phase: 'In a phase' };
 // row 10: what a chip's effect does to the chips it reaches
+// How a Move action moves (its `how`): a hop moves each chip it reaches one space on its own; a slide, lift or slip moves
+// stacks (bout.js: pushing and shoving). steps: a number of spaces, 'all' (as far as it goes) or 'power' (a space per
+// `per` points of the roll the chip was made with). spill: a slide may push stacks off the front, into the Pit.
+export const MOVE_HOW = { hop: 'Hop: each chip it reaches, one space', slide: 'Slide: its stack along the felt, pushing the stacks in its way', lift: 'Lift: its top chip onto the next stack', slip: 'Slip: its top chip in under the next stack' };
+export const MOVE_STEPS = { 1: '1 space', 2: '2 spaces', 3: '3 spaces', all: 'As far as it goes (closing the gaps)', power: 'A space per 4 rolled' };
 export const ACTIONS = { move: 'Move them (left, right, up, down, or to an area)', value: 'Change their coin value', hits: 'Change their strength', power: 'Change their effect value', become: 'Turn them into another chip',
   pull: 'Pull chips out of a Pit (up to an amount, onto its stack)' };
 // where a Pull action takes from: the chip's own side's Pit, the other side's, or both (its own first)
@@ -52,6 +57,38 @@ export const NEW_CHIP = { name: 'New chip', text: '', value: 1, hits: 0, source:
 export const MADE_CHIPS = {
   // Stir: a wide flat chip that slips under the stacks where it lands (no stack height). When it is made it hands out
   // the roll it was made with, 1¢ at a time, round the value chips lying on it; it is gone at the end of the turn.
+  // ----- movement, as chips (round 19): the trick lays the chip, the chip does the moving, and is gone at the end of the turn -----
+  // Shove and Tug slide the stack they land on; Press, Draw Back, Rise and Drop close a whole row or column up; Hoist
+  // and Tuck carry one chip to the next stack, on top of it or in under it.
+  shove: { name: 'Shove', text: 'Slides the stack it lands on toward the front, a space per 4 rolled, pushing the stacks ahead of it. A stack pushed off the front falls into the Pit.',
+    value: 0, hits: 0, source: 'trick', lasts: 'turn', turns: 1, height: 'tiny', foot: 'basic', must: 'any', onTop: 'fits', immune: [], color: '#ff8a5c', move: 'still', reach: { to: 'touching', range: 1 },
+    triggers: [{ on: 'created' }], actions: [{ k: 'move', how: 'slide', dir: 'up', steps: 'power', per: 4, spill: true }] },
+  tug: { name: 'Tug', text: 'Slides the stack it lands on toward the back, a space per 4 rolled, pushing the stacks behind it. Nothing can be pushed off the back.',
+    value: 0, hits: 0, source: 'trick', lasts: 'turn', turns: 1, height: 'tiny', foot: 'basic', must: 'any', onTop: 'fits', immune: [], color: '#5cc8ff', move: 'still', reach: { to: 'touching', range: 1 },
+    triggers: [{ on: 'created' }], actions: [{ k: 'move', how: 'slide', dir: 'down', steps: 'power', per: 4 }] },
+  press: { name: 'Squeeze', text: 'Every stack in its row slides forward as far as it goes, closing the gaps. Nothing leaves the position.',
+    value: 0, hits: 0, source: 'trick', lasts: 'turn', turns: 1, height: 'tiny', foot: 'basic', must: 'any', onTop: 'fits', immune: [], color: '#ffc478', move: 'still', reach: { to: 'lane', range: 1 },
+    triggers: [{ on: 'created' }], actions: [{ k: 'move', how: 'slide', dir: 'up', steps: 'all' }] },
+  drawback: { name: 'Draw Back', text: 'Every stack in its row slides back as far as it goes, closing the gaps.',
+    value: 0, hits: 0, source: 'trick', lasts: 'turn', turns: 1, height: 'tiny', foot: 'basic', must: 'any', onTop: 'fits', immune: [], color: '#7dc4ff', move: 'still', reach: { to: 'lane', range: 1 },
+    triggers: [{ on: 'created' }], actions: [{ k: 'move', how: 'slide', dir: 'down', steps: 'all' }] },
+  rise: { name: 'Rise', text: 'Every stack in its column slides up to the top row, closing the gaps.',
+    value: 0, hits: 0, source: 'trick', lasts: 'turn', turns: 1, height: 'tiny', foot: 'basic', must: 'any', onTop: 'fits', immune: [], color: '#b9ffb0', move: 'still', reach: { to: 'column', range: 1 },
+    triggers: [{ on: 'created' }], actions: [{ k: 'move', how: 'slide', dir: 'left', steps: 'all' }] },
+  drop: { name: 'Drop', text: 'Every stack in its column slides down to the bottom row, closing the gaps.',
+    value: 0, hits: 0, source: 'trick', lasts: 'turn', turns: 1, height: 'tiny', foot: 'basic', must: 'any', onTop: 'fits', immune: [], color: '#d0b0ff', move: 'still', reach: { to: 'column', range: 1 },
+    triggers: [{ on: 'created' }], actions: [{ k: 'move', how: 'slide', dir: 'right', steps: 'all' }] },
+  hoist: { name: 'Hoist', text: 'Lifts the top chip of the stack it lands on onto the stack in front of it, if that stack has the height for it.',
+    value: 0, hits: 0, source: 'trick', lasts: 'turn', turns: 1, height: 'tiny', foot: 'basic', must: 'any', onTop: 'fits', immune: [], color: '#ffe27a', move: 'still', reach: { to: 'touching', range: 1 },
+    triggers: [{ on: 'created' }], actions: [{ k: 'move', how: 'lift', dir: 'up', steps: 1 }] },
+  tuck: { name: 'Tuck', text: 'Slips the top chip of the stack it lands on in under the stack behind it, if that stack has the height for it.',
+    value: 0, hits: 0, source: 'trick', lasts: 'turn', turns: 1, height: 'tiny', foot: 'basic', must: 'any', onTop: 'fits', immune: [], color: '#c9a37a', move: 'still', reach: { to: 'touching', range: 1 },
+    triggers: [{ on: 'created' }], actions: [{ k: 'move', how: 'slip', dir: 'down', steps: 1 }] },
+  // Regen, as a chip: it sits on a stack for two turns and brings your lost chips back out of your Pit onto it, up to the
+  // roll it was made with each time (the real chips, newest first, whole chips only).
+  mend: { name: 'Mend', text: 'When it is made and at the end of each turn it brings chips back out of your Pit onto its stack, up to the roll it was made with. Gone after 2 turns.',
+    value: 0, hits: 0, source: 'trick', lasts: 'turns', turns: 2, height: 'tiny', foot: 'basic', must: 'any', onTop: 'fits', immune: [], color: '#7dffb5', move: 'still', reach: { to: 'touching', range: 1 },
+    triggers: [{ on: 'created' }, { on: 'turn' }], actions: [{ k: 'pull', from: 'mine', n: 'power' }] },
   stir: { name: 'Stir', text: 'A flat chip under the stacks: the chips lying on it share the roll it was made with, 1¢ at a time. Gone at the end of the turn.',
     value: 0, hits: 0, source: 'trick', lasts: 'turn', turns: 1, height: 'tiny', foot: 'large', slip: true, must: 'bottom', onTop: 'fits', immune: ['moves'],
     color: '#b98bff', move: 'anchored', reach: { to: 'inside', range: 1 }, triggers: [{ on: 'created' }], actions: [{ k: 'value', n: 'share' }] },

@@ -274,7 +274,7 @@ export const GUIDE_BY_CLASS = [
   ['gcard.gpass', 'pass'], ['gcard.lanyard', 'lanyard'], ['gcard', 'card'], ['gjacket', 'jacket'],
   ['box.row', 'denom'], ['dye', 'dye'],
   ['tilt.challenge', 'tilt:challenge'], ['tilt.cheat', 'tilt:cheat'], ['ocell', 'opp-stack'],
-  ['band-btn', 'music'], ['pmeter', 'prep:meters'], ['bookcard', 'trick'], ['mcell', 'cell'], ['bonus-req', 'trick-dice'], ['nsign', 'sign'], ['house-sign', 'house'], ['pot', 'pit'], ['ledger', 'ledger'], ['phases', 'phase-track'], ['orbital', 'weather'], ['sfx-btn', 'sfx'], ['qd', 'quality'], ['tgt', 'aim'], ['bonus', 'trick-dice'], ['c-stack', 'trick-stack'], ['zone-title', 'zone'], ['zone-label', 'position-label'], ['b-lab', 'build-option'], ['glyph', 'sign-glyph'], ['stakeboard', 'layout-space'], ['bidslot', 'bid-space'],
+  ['band-btn', 'music'], ['pmeter', 'prep:meters'], ['bookcard', 'trick'], ['mcell', 'cell'], ['bonus-req', 'trick-dice'], ['nsign', 'sign'], ['house-sign', 'house'], ['fld', 'pit'], ['field', 'ledger'], ['pit-void', 'pit'], ['phases', 'phase-track'], ['orbital', 'weather'], ['sfx-btn', 'sfx'], ['qd', 'quality'], ['tgt', 'aim'], ['bonus', 'trick-dice'], ['c-stack', 'trick-stack'], ['zone-title', 'zone'], ['zone-label', 'position-label'], ['b-lab', 'build-option'], ['glyph', 'sign-glyph'], ['stakeboard', 'layout-space'], ['bidslot', 'bid-space'],
   ['worth', 'worth'], ['weather', 'weather'], ['table-felt', 'felt'], ['turn', 'turn'], ['house', 'house'], ['pit', 'pit'],
   ['stage-strip', 'stage'], ['run-empty', 'run'], ['okit', 'opp-kit'], ['spine.book', 'spine:book'], ['spine.dice', 'spine:dice'],
 ];

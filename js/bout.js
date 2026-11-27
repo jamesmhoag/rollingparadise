@@ -1452,7 +1452,36 @@ function settleColumn(b, s, tgt, total) {
 // ---------- the Pit ----------
 // Every chip a Roller loses, kept as it was (value, order and count), under the House's arms: fees paid (which
 // make up their Stage total, so Gather, Steal and the like work on that total) and bids taken by the House.
-function toPit(b, si, ch, from) { if (!b.pit) return; b.pit[si].push({ id: ch.id, kind: ch.kind, value: ch.value, ...(ch.resist ? { resist: ch.resist, shop: ch.shop } : {}), ...(ch.gold ? { gold: true } : {}), from, turn: b.turn }); }
+// ---------- the Pit ----------
+// A grid between the two positions. Each Roller's side has TUNING.pit.cols columns of five spaces (one a row), each a
+// stack up to TUNING.pit.stackMax high; col 0 is the front column, by the middle. A lost chip lands in the front-most
+// column with room, on a row picked among that column's rows with room (by the chip itself, so a bout replays the
+// same). Down the middle is the bottomless pit: with every space full, a lost chip falls in and is gone for good
+// (b.gone): it leaves the Stage total, so a win does not restore it and nobody is paid it.
+export const pitDims = (b) => { const P = TUNING.pit || {}; return { cols: Math.max(1, Math.round(P.cols ?? 2)), rows: b?.sides?.[0]?.dims?.cols || 5, stackMax: Math.max(1, Math.round(P.stackMax ?? 6)), bottomless: P.bottomless !== false }; };
+export const pitCapacity = (b) => { const P = pitDims(b); return P.cols * P.rows * P.stackMax; };
+const pitHeights = (b, si) => { const m = new Map(); for (const ch of pitOf(b, si)) if (ch.col != null) m.set(ch.col + ':' + ch.row, (m.get(ch.col + ':' + ch.row) || 0) + 1); return m; };
+// where the next chip a side loses would land: { col, row }, or null when its side of the Pit is full
+export function pitSpot(b, si, seed = 0) {
+  const P = pitDims(b), hts = pitHeights(b, si);
+  for (let col = 0; col < P.cols; col++) { const open = []; for (let row = 0; row < P.rows; row++) if ((hts.get(col + ':' + row) || 0) < P.stackMax) open.push(row);
+    if (open.length) return { col, row: open[Math.abs((seed * 2654435761) | 0) % open.length] }; }
+  return null;
+}
+export const pitRoom = (b, si) => pitCapacity(b) - [...pitHeights(b, si).values()].reduce((a, n) => a + n, 0);
+// what a side has lost for good down the middle: [{ id, kind, value, from, turn }]
+export const goneOf = (b, si) => b.gone?.[si] || [];
+function toPit(b, si, ch, from) {
+  if (!b.pit) return;
+  const rec = { id: ch.id, kind: ch.kind, value: ch.value, ...(ch.resist ? { resist: ch.resist, shop: ch.shop } : {}), ...(ch.gold ? { gold: true } : {}), from, turn: b.turn };
+  const P = pitDims(b), spot = pitSpot(b, si, ch.id + b.turn * 7);
+  if (!spot && P.bottomless) { // no room: down the middle, for good
+    (b.gone ||= [[], []])[si].push(rec); if (from === 'fee') b.stage.paid[si] -= ch.value; // (the caller has just added it to the Stage total)
+    b.fx[ch.id] = 'gone'; return;
+  }
+  if (spot) { rec.col = spot.col; rec.row = spot.row; }
+  b.pit[si].push(rec);
+}
 // what is in a Roller's Pit now: their fees, oldest first, as far as their Stage total still holds them (chips taken
 // back leave from the top), then every bid the House has taken
 export function pitOf(b, si) {
@@ -1503,9 +1532,9 @@ function* playChips(b, s, e, def, x) {
         if (R.foot && R.foot !== 'model') mc.foot = R.foot; if (R.flat) mc.flat = true; if (R.slip) mc.slip = true; // the trick's own size for it
         const n = footOf(mc);
         if (n > 1 && (mc.slip || MADE_CHIPS[chip].slip)) { const at = matBlock(t, sp.r, sp.c, n); if (!at) { lost++; return; } // slips under the stacks there
-          mc.mat = { r: at.r, c: at.c, n }; t.grid[at.r][at.c].chips.unshift(mc); b.fx[mc.id] = 'spawn'; made++; (s.madeNew ||= []).push(mc.id); return; }
-        if (n > 1) { const at = footBlock(t, sp.r, sp.c, n); if (!at) { lost++; return; } claimFoot(t, at.r, at.c, n); t.grid[at.r][at.c].chips.push(mc); b.fx[mc.id] = 'spawn'; made++; (s.madeNew ||= []).push(mc.id); return; }
-        if (!fits(t, cell, mc) || (MADE_CHIPS[chip].must === 'alone' && solidCount(cell)) || !placeMade(cell, mc, R.place, R.at)) { lost++; return; } b.fx[mc.id] = 'spawn'; made++; (s.madeNew ||= []).push(mc.id); return; }
+          mc.mat = { r: at.r, c: at.c, n }; t.grid[at.r][at.c].chips.unshift(mc); b.fx[mc.id] = 'spawn'; made++; (t.madeNew ||= []).push(mc.id); return; }
+        if (n > 1) { const at = footBlock(t, sp.r, sp.c, n); if (!at) { lost++; return; } claimFoot(t, at.r, at.c, n); t.grid[at.r][at.c].chips.push(mc); b.fx[mc.id] = 'spawn'; made++; (t.madeNew ||= []).push(mc.id); return; }
+        if (!fits(t, cell, mc) || (MADE_CHIPS[chip].must === 'alone' && solidCount(cell)) || !placeMade(cell, mc, R.place, R.at)) { lost++; return; } b.fx[mc.id] = 'spawn'; made++; (t.madeNew ||= []).push(mc.id); return; }
       if (capacityLeft(t, cell) <= 0) { lost++; return; }
       const ch = HAZARD_LIFE[chip] ? mkHazard(b, chip) : mkChip(b, chip, kind === 'value' ? amt : chip === 'block' || chip === 'counter' ? 1 : 0);
       if (isHazard(ch)) cell.chips.push(ch); else cell.chips.splice(placeIndex(R.place, R.at, cell.chips.filter((y) => !isHazard(y)).length), 0, ch);
@@ -2049,6 +2078,10 @@ function reachOf(b, s, at, M) {
     for (const x of allCells(s)) if (at.ch.mat ? inMat(at.ch, x.r, x.c) : x.cell === at.cell) for (const ch of x.cell.chips) if (ch !== at.ch && !isHazard(ch)) out.push({ x, ch });
     return out;
   }
+  if (R.to === 'lane' || R.to === 'column') { // every chip in its row across the position (its lane), or in its depth line (its column)
+    for (const x of allCells(s)) if (R.to === 'lane' ? x.c === at.c : x.r === at.r) for (const ch of x.cell.chips) if (ch !== at.ch && !isHazard(ch)) out.push({ x, ch });
+    return out;
+  }
   if (R.to === 'touching' || R.to === 'touchingValue' || R.to === 'touchingHits') { // above and below in its stack, and the stacks within range
     const cells = range > 1 ? allCells(s).filter(near) : [at];
     for (const x of cells) x.cell.chips.forEach((ch, i) => { if (ch === at.ch || isHazard(ch)) return; if (x.cell === at.cell && range === 1 && Math.abs(i - at.i) !== 1) return;
@@ -2064,6 +2097,79 @@ function reachOf(b, s, at, M) {
       out.push({ x: { ...x, side: t }, ch }); }
   }
   return out;
+}
+// ---------- pushing and shoving, tugging and pulling ----------
+// Three ways a stack moves. A SLIDE moves it along the felt one space: a stack in its way is pushed on ahead of it, and
+// the one ahead of that, as far as the line of stacks goes. Nothing can be pushed off the back of a position or off
+// its top or bottom rows, so a slide that would do that does not happen; the front is different: the Pit is there, and
+// a stack pushed off the front falls into it (its chips are lost as fees are). A LIFT picks chips up and sets them on
+// top of another space's stack; a SLIP slides them in under it. Neither can make a stack taller than its limit.
+// Anchored stacks, Holes, big chips, Trees and the like hold their ground: they do not move and nothing moves through them.
+const isStack = (cell) => solidCount(cell) > 0;
+const carried = (ch) => !immuneTo(ch, 'moves') && !['anchored', 'flying'].includes(madeOf(ch)?.move) && footOf(ch) === 1 && !ch.mat;
+const holdsGround = (cell) => fixedCell(cell) || cell.chips.some((ch) => !isHazard(ch) && !carried(ch) && !tiny(ch));
+// the line of stacks a slide from (r, c) would push, and how it ends: 'room' (an empty space takes the last one),
+// 'pit' (the last one goes off the front), or a reason it cannot happen
+export function slidePath(s, r, c, dr, dc) {
+  const line = []; let rr = r, cc = c;
+  for (;;) {
+    const cell = s.grid[rr]?.[cc];
+    if (rr < 0) return { line, end: line.length ? 'pit' : 'none' };
+    if (!cell || cc < 0 || cc >= s.dims.cols || rr >= s.rows) return { line, end: 'edge' };
+    if (cell.hole || cell.link) return { line, end: 'blocked' };
+    if (!isStack(cell)) return { line, end: line.length ? 'room' : 'none', to: { r: rr, c: cc } };
+    if (holdsGround(cell)) return { line, end: 'blocked' };
+    line.push({ r: rr, c: cc }); rr += dr; cc += dc;
+  }
+}
+export const canSlide = (s, r, c, dr, dc, o = {}) => { const P = slidePath(s, r, c, dr, dc); return P.end === 'room' || (P.end === 'pit' && o.spill !== false); };
+// slide the stack at (r, c) one space; returns { moved (stacks), spilled (¢ into the Pit), cells } or null
+export function slide(b, s, r, c, dr, dc, o = {}) {
+  const P = slidePath(s, r, c, dr, dc); if (!(P.end === 'room' || (P.end === 'pit' && o.spill !== false))) return null;
+  const cells = P.line.map((x) => ref(s, x.r, x.c)); let spilled = 0;
+  const carry = (cell) => { const go = cell.chips.filter((ch) => isHazard(ch) || carried(ch) || tiny(ch)); cell.chips = cell.chips.filter((ch) => !go.includes(ch)); return go; }; // a Puddle stays with its space
+  let load = null;
+  for (const at of P.line) { const cell = s.grid[at.r][at.c], out = carry(cell); if (load) cell.chips.push(...load); load = out; }
+  if (P.end === 'room') { s.grid[P.to.r][P.to.c].chips.push(...load); cells.push(ref(s, P.to.r, P.to.c)); }
+  else for (const ch of load) { // off the front: into the Pit
+    if (isPayable(ch)) { b.stage.paid[s.idx] += ch.value; b.fx[ch.id] = 'stage'; toPit(b, s.idx, ch, 'fee'); spilled += ch.value; } else b.fx[ch.id] = 'void'; }
+  for (const x of P.line) emptyOut(b, s.grid[x.r][x.c]);
+  return { moved: P.line.length, spilled, cells };
+}
+// the chips a lift or a slip picks up from a space: its top chip (or, whole, every chip that can be carried)
+const pickUp = (cell, whole) => { const able = cell.chips.filter((ch) => !isHazard(ch) && !tiny(ch) && carried(ch)); return whole ? able : able.slice(-1); };
+const tallOf = (chips) => chips.reduce((t, ch) => t + heightOf(ch), 0);
+export function canLift(s, from, to, o = {}) {
+  const a = s.grid[from.r]?.[from.c], z = s.grid[to.r]?.[to.c]; if (!a || !z || a === z) return false;
+  const up = pickUp(a, o.whole); if (!up.length || fixedCell(a) || z.hole || z.link || holdsGround(z)) return false;
+  return solidCount(z) + tallOf(up) <= s.dims.stackMax; // never over a stack's height
+}
+function carryTo(b, s, from, to, o, under) {
+  if (!canLift(s, from, to, o)) return null;
+  const a = s.grid[from.r][from.c], z = s.grid[to.r][to.c], up = pickUp(a, o.whole); a.chips = a.chips.filter((ch) => !up.includes(ch));
+  if (under) z.chips.splice(z.chips.findIndex((ch) => !ch.mat && !tiny(ch)) < 0 ? z.chips.filter((ch) => ch.mat || tiny(ch)).length : z.chips.findIndex((ch) => !ch.mat && !tiny(ch)), 0, ...up); // under the stack, over anything flat lying there
+  else for (const ch of up) pushChip(z, ch);
+  emptyOut(b, a); return { moved: up.length, cells: [ref(s, from.r, from.c), ref(s, to.r, to.c)] };
+}
+export const lift = (b, s, from, to, o = {}) => carryTo(b, s, from, to, o, false);
+export const slip = (b, s, from, to, o = {}) => carryTo(b, s, from, to, o, true);
+// A made chip's Move action, as a slide, a lift or a slip (A.how). A.dir: up (toward the front), down (back), left,
+// right. A.steps: a number of spaces, 'all' (as far as it goes), or 'power' (one space per A.per points of the roll it
+// was made with, at least one). A slide by steps moves the chip's own stack, pushing what is ahead (A.spill: it may
+// push stacks off the front into the Pit); a slide 'all' closes every stack its reach covers up in that direction and
+// spills nothing. A lift or slip carries the top chip of its stack (A.whole: the stack) that many spaces over.
+function moveStacks(b, s, at, A, list) {
+  const [dr, dc] = DIRS[A.dir || 'up'] || DIRS.up, pw = Math.max(1, Math.floor((at.ch.power || 0) / Math.max(1, A.per || 4)));
+  const steps = A.steps === 'all' ? 99 : A.steps === 'power' ? pw : Math.max(1, Math.round(A.steps || 1));
+  if (A.how === 'slide' && A.steps === 'all') {
+    const side = list[0]?.x.side || s, cells = [...new Map([{ x: { r: at.r, c: at.c } }, ...list].map((tg) => [tg.x.r + ':' + tg.x.c, { r: tg.x.r, c: tg.x.c }])).values()];
+    cells.sort((p, q) => (dr ? (p.r - q.r) * dr : (p.c - q.c) * dc) * -1); // the one furthest along goes first
+    let n = 0; for (const p of cells) { let r = p.r, c = p.c; while (isStack(side.grid[r][c]) && slidePath(side, r, c, dr, dc).line.length === 1 && slide(b, side, r, c, dr, dc, { spill: false })) { r += dr; c += dc; n++; } }
+    return n;
+  }
+  if (A.how === 'slide') { let r = at.r, c = at.c, n = 0; for (let k = 0; k < steps; k++) { const res = slide(b, s, r, c, dr, dc, { spill: !!A.spill }); if (!res) break; n += res.moved; r += dr; c += dc; if (r < 0) break; } return n; }
+  const to = { r: at.r + dr * steps, c: at.c + dc * steps }, res = A.how === 'slip' ? slip(b, s, at, to, { whole: !!A.whole }) : lift(b, s, at, to, { whole: !!A.whole });
+  return res ? res.moved : 0;
 }
 // move a chip one space; false if it cannot go there
 function moveChip(b, s, from, ch, dr, dc) {
@@ -2102,6 +2208,7 @@ const lastsOfModel = (M) => M.lasts;
 // one made chip's triggered work: its actions on everything its reach covers
 function fire(b, s, at, M) { let n = 0; const list = reachOf(b, s, at, M);
   for (const A of M.actions || []) { if (A.k === 'pull') { n += pullTo(b, s, at, A); continue; }
+    if (A.k === 'move' && A.how && A.how !== 'hop') { n += moveStacks(b, s, at, A, list); continue; } // slides, lifts and slips work on stacks
     if (A.n === 'share') { // the amount it was made with, handed out 1 at a time round the chips it reaches that can take it
       const takers = list.filter((tg) => !blockedBy(b, s, tg, M) && (A.k !== 'value' || isPayable(tg.ch) || tg.ch.kind === 'made'));
       for (let k = 0; k < (at.ch.power || 0) && takers.length; k++) n += act(b, s, { ...A, n: 1 }, takers[k % takers.length], M);
@@ -2111,7 +2218,7 @@ function fire(b, s, at, M) { let n = 0; const list = reachOf(b, s, at, M);
 // a made chip's Pull action: up to A.n¢ of real chips out of a Pit (A.from: mine, theirs or both), onto the chip's
 // stack under it, then the Bet; what finds no room goes back
 function pullTo(b, s, at, A) {
-  const n = Math.max(1, A.n ?? 1), from = A.from || 'mine', o = 1 - s.idx, side = new Map();
+  const n = A.n === 'power' ? Math.max(1, at.ch.power || 1) : Math.max(1, A.n ?? 1), from = A.from || 'mine', o = 1 - s.idx, side = new Map(); // 'power': as much as the roll it was made with
   const take = (si, amt) => { for (const ch of pullPit(b, si, amt, { bids: !!A.bids })) side.set(ch, si); };
   if (from !== 'theirs') take(s.idx, n);
   if (from !== 'mine') take(o, n - sum([...side.keys()], (ch) => ch.value));
@@ -2369,9 +2476,9 @@ export function summary(b, idx) {
     bounties: chips.filter((ch) => ch.kind === 'bounty').map((ch) => ({ creature: ch.creature, value: ch.value })),
     ownFees: b.stage.paid[idx], oppFees: b.stage.paid[1 - idx], bids: s.bidsPaid,
     pendingBids: sum(s.run.filter((e) => e.state === 'play'), (e) => e.bidValue) + sum(s.run.filter((e) => e.state === 'bid'), (e) => e.bidValue),
-    destroyed: s.destroyed, intervened: s.intervened, dealt: s.dealt,
+    destroyed: s.destroyed, intervened: s.intervened, dealt: s.dealt, gone: sum(goneOf(b, idx), (x) => x.value),
   };
 }
 
 // internals the tests drive directly
-export const _test = { addToMeter, deployHeld, creaturePhase, blockedBy, madeWork, placeMade, engage, settleAll, feeShares, setDebt, ticks, play, sidePhase, growth, strike, water, freezeTop, newCreature, setHard, arrange, chipPhase, placeFx, addToMeter };
+export const _test = { moveStacks, toPit, addToMeter, deployHeld, creaturePhase, blockedBy, madeWork, placeMade, engage, settleAll, feeShares, setDebt, ticks, play, sidePhase, growth, strike, water, freezeTop, newCreature, setHard, arrange, chipPhase, placeFx, addToMeter };

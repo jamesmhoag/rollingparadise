@@ -22,9 +22,10 @@ import { t as tx } from '../text.js';
 // SPACE: the most a position's column is wide; a side with more columns shrinks them all to fit (up to 13 a side), and its
 // chips shrink with them (CHIP is a chip's size in a SPACE_REF-wide column, so chips keep the same share of a space).
 const TOP = 128, CH = 42, PX = 570, OX = 710, CHIP = 32, STAGE_Y = 100, SPACE = 46, SPACE_REF = 52;
-const PIT = { left: PX, right: OX, top: TOP, bottom: TOP + 98 }; // the Pit's chips stack up from its floor
-const LEDGER_Y = PIT.bottom + 30; // under the pots: what each Roller has bid, and what is tapped
-const STAGE = [{ x: PX + 18, y: PIT.bottom - CHIP - 4 }, { x: OX - 50, y: PIT.bottom - CHIP - 4 }], HOUSE = { x: 624, y: 30 };
+// the Pit fills the gap between the two positions, all five rows of it: each Roller's columns of stacks on their own
+// side, and the bottomless pit down the middle (bout.js pitDims)
+const PIT = { left: PX, right: OX, top: TOP, bottom: TOP + 5 * CH };
+const STAGE = [{ x: PX + 18, y: TOP + 2 * CH }, { x: OX - 50, y: TOP + 2 * CH }], HOUSE = { x: 624, y: 30 };
 const fmtX = (m) => '×' + (m % 1 ? m.toFixed(2).replace(/0$/, '') : m);
 
 export function boutScene(root, bout, ctx, onDone) {
@@ -83,8 +84,13 @@ export function boutScene(root, bout, ctx, onDone) {
   const traySlot = (i, si = 0) => ({ x: diceAt(si) + 10 + (i % 5) * 36, y: DY.tray + 8 + Math.floor(i / 5) * 36 }); // the roll: a row per five dice kept
   // the Stage: what each Roller has paid, stacked in front of the House
   // the Pit: each Roller's lost chips, in the order they were lost, filling two stacks on their own side, then rising
-  const pitSlot = (si, k, n) => { const per = Math.ceil(n / 2), step = Math.min(4, (PIT.bottom - PIT.top - CHIP) / Math.max(1, per - 1));
-    return { x: (si === 0 ? PX + 2 : PX + 72) + (k % 2) * 34, y: PIT.bottom - CHIP - Math.floor(k / 2) * step, z: 30 + k }; };
+  // the Pit: a space a row in each of a side's columns, the front column by the middle; a chip sits where it landed
+  // (rec.col, rec.row) at its height in that stack. One with no place (a Pit without a limit that has run out of
+  // spaces) rests on the rim of the middle.
+  const PD = B.pitDims(bout), pitW = (PIT.right - PIT.left) / (2 * PD.cols + 1), pitK = Math.min(0.78, (pitW - 2) / CHIP);
+  const pitColX = (si, col) => PIT.left + (si === 0 ? PD.cols - 1 - col : PD.cols + 1 + col) * pitW;
+  const pitSlot = (si, rec, lvl) => { const mid = rec.col == null, x = mid ? PIT.left + PD.cols * pitW : pitColX(si, rec.col), row = mid ? (lvl % PD.rows) : rec.row;
+    return { x: x + pitW / 2 - CHIP / 2, y: TOP + row * CH + CH - 5 - CHIP * (1 + pitK) / 2 - Math.min(mid ? 0 : lvl, 12) * 3 * pitK, z: 30 + row * 20 + lvl, s: pitK }; };
   // a trick's bid pile sits just right of its BID ring: the ring (or the card) adds a bid, the pile gives its top chip back
   function bidSpot(el) { const s = el?.querySelector('.bidslot'); return s ? { x: s.offsetLeft + (s.offsetWidth - CHIP) / 2, y: s.offsetTop + (s.offsetHeight - CHIP) / 2 } : { x: 46, y: 80 }; } // the pile stacks in the space
 
@@ -148,12 +154,12 @@ export function boutScene(root, bout, ctx, onDone) {
     const S = { you: signs.you(), them: signs.them(), house: signs.house() };
     for (const [who, N] of Object.entries(S)) for (const part of ['border', 'name', 'cls']) N[part].forEach((c, i) => root.style.setProperty(`--${who}-${part}${i + 1}`, c));
     root.style.setProperty('--you', S.you.name[0]); root.style.setProperty('--them', S.them.name[0]);
-    const [mine, theirs] = [root.querySelector('.who.me'), root.querySelector('.who.them')];
+    const [mine, theirs] = [root.querySelector('.who.me .plate'), root.querySelector('.who.them .plate')]; // the name plate is the sign: one fixed size, the name and class only
     if (mine) dressSign(mine, S.you, 'you'); if (theirs) dressSign(theirs, S.them, 'them'); if (houseSign) dressSign(houseSign, S.house, 'house');
     for (const el of [mine, theirs]) if (el) fitSeat(el);
     marquee.style.display = S.house.frame === 'bulbs' ? '' : 'none'; }
   const header = h('div', { class: 'bout-head' },
-    h('div', { class: 'who me' }, nameSign(D.ROLLERS[me.roller || D.rollerOf(me.cls)]?.name || D.CLASSES[me.cls].name, D.CLASSES[me.cls].name, () => tx('table.sign-tip', { name: D.heroName(me.cls, me.roller), cls: D.CLASSES[me.cls].name })),
+    h('div', { class: 'who me' }, h('div', { class: 'plate' }, nameSign(D.ROLLERS[me.roller || D.rollerOf(me.cls)]?.name || D.CLASSES[me.cls].name, D.CLASSES[me.cls].name, () => tx('table.sign-tip', { name: D.heroName(me.cls, me.roller), cls: D.CLASSES[me.cls].name }))),
       h('div', { class: 'worth', tip: worthTip(me) }, 'Worth ', worthEl[0], '¢', owesEl[0]),
       h('div', { class: 'pills steps' }, STEPS.map(([k, name, stat, reward, what], i) => (pillEl[k] = h('span', { class: 'pill step', tip: pillTip(stat, reward, what, k) },
         h('em', { text: String(i + 1) }), ` ${name} `, (pill[k] = h('span'))))))),
@@ -161,20 +167,25 @@ export function boutScene(root, bout, ctx, onDone) {
       h('div', { class: 'hs-name', text: tx('table.house-sign') }),
       h('div', { class: 'turn', tip: () => tx('table.turn-both-rollers-plan', { turn: bout.turn, LASTCALL: B.LAST_CALL + 1, maxTurns: bout.rules.maxTurns }) }, 'Turn ', h('b', { class: 'num turn-n', text: '1' }))))),
     h('div', { class: `who them${opp.boss ? ' boss' : ''}` }, h('div', { class: 'worth', tip: worthTip(opp) }, 'Worth ', worthEl[1], '¢', owesEl[1]),
-      nameSign(opp.name, D.CLASSES[opp.cls].name, () => tx('table.sign-tip', { name: opp.title ? `${opp.name}, ${opp.title}` : opp.name, cls: D.CLASSES[opp.cls].name })), // the class line names its class, High Rollers' too
+      h('div', { class: 'plate' }, nameSign(opp.name, D.CLASSES[opp.cls].name, () => tx('table.sign-tip', { name: opp.title ? `${opp.name}, ${opp.title}` : opp.name, cls: D.CLASSES[opp.cls].name }))), // the class line names its class, High Rollers' too
       (oppPills = h('div', { class: 'pills' }, ['trickery', 'proficiency', 'ingenuity', 'charisma', 'cunning', 'conviction'].map((k) =>
         h('span', { class: 'pill small', 'data-k': k, tip: () => statTip(k, k in opp.tip ? B.tipOf(opp, k) : B.cOf(opp, k)) + statSplit(B.statParts(opp, k)) + (k in opp.tip ? '' : cccGate(opp)) }, `${D.STATS[k].name} `, h('b', { text: k in opp.tip ? opp.tip[k] : B.cOf(opp, k) })))))));
   // the middle of the table: the Pit right under the House's arms, each Roller's pot under it, then a ledger per
   // Roller of what is bid on tricks this turn and what is tapped (waiting to be restored)
   const ledEl = [0, 1].map((si) => ({ bid: h('b', { class: 'num' }), on: h('small'), tap: h('span', { class: 'led-tap' }) }));
+  const goneEl = [h('b', { class: 'num' }), h('b', { class: 'num' })];
+  const pitTip = () => tx('table.the-pit-every-chip') + tx('table.pit-room', { cols: PD.cols, max: PD.stackMax, mine: B.pitRoom(bout, 0), theirs: B.pitRoom(bout, 1), goneMine: sum(B.goneOf(bout, 0), (x) => x.value), goneTheirs: sum(B.goneOf(bout, 1), (x) => x.value) }) + (PD.bottomless ? '' : tx('table.pit-no-limit'));
   const stageBox = h('div', { class: 'stage-box' },
-    h('div', { class: 'pit', style: { left: PX + 'px', width: OX - PX + 'px', top: PIT.top + 'px', height: PIT.bottom - PIT.top + 'px' }, tip: tx('table.the-pit-every-chip') }, h('span', { class: 'pit-t', text: tx('table.pit') })),
-    h('div', { class: 'pot you', style: { left: PX + 3 + 'px', top: PIT.bottom + 4 + 'px' }, tip: tx('table.the-pit-every-chip') }, h('em', { text: tx('table.yours') }), stageEl[0], '¢'),
-    h('div', { class: 'pot them', style: { left: OX - 67 + 'px', top: PIT.bottom + 4 + 'px' }, tip: tx('table.the-pit-every-chip') }, h('em', { text: tx('table.theirs') }), stageEl[1], '¢'),
-    ...[0, 1].map((si) => h('div', { class: `ledger s${si}`, style: { left: (si ? OX - 67 : PX + 3) + 'px', top: LEDGER_Y + 'px' }, tip: () => ledgerTip(si) },
-      h('em', { text: si ? opp.name : D.CLASSES[me.cls].name }),
-      h('div', { class: 'led-row' }, h('span', { class: 'led-k', text: tx('table.ledger-bid') }), ledEl[si].bid, '¢'), ledEl[si].on,
-      h('div', { class: 'led-row' }, h('span', { class: 'led-k', text: tx('table.ledger-tapped') })), ledEl[si].tap)));
+    h('div', { class: 'pit grid', style: { left: PIT.left + 'px', width: PIT.right - PIT.left + 'px', top: PIT.top + 'px', height: PIT.bottom - PIT.top + 'px', '--pw': pitW + 'px', '--ph': CH + 'px' }, tip: pitTip },
+      h('span', { class: 'pit-t', text: tx('table.pit') }),
+      h('div', { class: `pit-void${PD.bottomless ? '' : ' shut'}`, style: { left: PD.cols * pitW + 'px', width: pitW + 'px' } })));
+  // each Roller's field, beside their name plate: what they have lost to the Pit (and for good), what they have bid
+  // this turn, and what is tapped
+  const fieldEl = [0, 1].map((si) => h('div', { class: `field s${si}`, tip: () => ledgerTip(si) },
+    h('span', { class: 'fld', tip: pitTip }, h('em', { text: tx('table.field-pit') }), stageEl[si], '¢'),
+    h('span', { class: 'fld gone', tip: pitTip }, h('em', { text: tx('table.field-gone') }), goneEl[si], '¢'),
+    h('span', { class: 'fld' }, h('em', { text: tx('table.ledger-bid') }), ledEl[si].bid, '¢', ledEl[si].on),
+    h('span', { class: 'fld' }, h('em', { text: tx('table.ledger-tapped') }), ledEl[si].tap)));
   function ledgerTip(si) {
     const s = bout.sides[si], bids = s.run.filter((e) => e.state === 'bid' && e.bid.length);
     return tx('table.ledger-tip', { who: si ? opp.name : tx('end.you'), list: bids.map((e) => `${trickItem(e.trick).outerHTML} ${sum(e.bid, (ch) => ch.value)}¢`).join(' ') || tx('table.ledger-none'), t: s.tapped.tricks.length, d: s.tapped.dice.length });
@@ -295,6 +306,7 @@ export function boutScene(root, bout, ctx, onDone) {
   // the match history sits up top, yours on the House's left and theirs on its right; each Roller's name, Worth,
   // steps and badges sit above their own plays, under the table, with the commit button between the two
   const seats = [...header.querySelectorAll('.who')]; for (const el of seats) el.classList.add('seat');
+  seats[0].append(fieldEl[0]); seats[1].append(fieldEl[1]);
   const frameEls = [header, ...seats, stageBox, phasesEl, feedEl, runEmpty, oppEmpty,
     h('div', { class: 'zone-title zt-book', style: { left: '16px', top: TITLE_Y + 'px' }, tip: tx('table.book-tricks-you-own'), text: tx('table.book') }),
     (ztRun = h('div', { class: 'zone-title', style: { top: TITLE_Y + 'px' }, tip: tx('table.run-tricks-you-have'), text: tx('table.your-run') })),
@@ -334,8 +346,8 @@ export function boutScene(root, bout, ctx, onDone) {
     // Charisma, Cunning and Conviction) and which columns are held (what the end of the turn restores)
     const zm = (k) => { const rows = h('span', { class: `zm-rows ${k}`, guide: k === 'bet' ? 'bet-meter' : 'stake-rows', tip: () => rowsTip(s, k) }), bonus = h('em', { class: 'zm-bonus' }),
       cols = h('span', { class: `zm-cols ${k}`, guide: 'restore', tip: () => restoreTip(s, k) }); zoneMeters[si][k] = { rows, bonus, cols }; return [rows, bonus, cols]; };
-    root.insertBefore(h('div', { class: 'zone-label bet', style: { left: x0 + 'px', width: m * cw[si] + 'px', top: yl + 'px' } }, h('b', { text: tx('prep.label.bet'), guide: 'position-label', tip: () => positionTip(s, 'meter') }), ...zm('bet')), layer);
-    root.insertBefore(h('div', { class: 'zone-label stake', style: { left: x1 + 'px', width: s.dims.barRows * cw[si] + 'px', top: yl + 'px' } }, h('b', { text: tx('prep.label.stake'), guide: 'position-label', tip: () => positionTip(s, 'bar') }), ...zm('stake')), layer);
+    root.insertBefore(h('div', { class: `zone-label bet${m * cw[si] < 130 ? ' narrow' : ''}`, style: { left: x0 + 'px', width: m * cw[si] + 'px', top: yl + 'px' } }, h('b', { text: tx('prep.label.bet'), guide: 'position-label', tip: () => positionTip(s, 'meter') }), ...zm('bet')), layer);
+    root.insertBefore(h('div', { class: `zone-label stake${s.dims.barRows * cw[si] < 130 ? ' narrow' : ''}`, style: { left: x1 + 'px', width: s.dims.barRows * cw[si] + 'px', top: yl + 'px' } }, h('b', { text: tx('prep.label.stake'), guide: 'position-label', tip: () => positionTip(s, 'bar') }), ...zm('stake')), layer);
   });
 
   // ---------- tooltips ----------
@@ -653,7 +665,8 @@ export function boutScene(root, bout, ctx, onDone) {
       want.set(x.ch.id, { ...at, z: 905 + i, ch: x.ch, side: si, unrevive: si ? null : x.uid }); }));
     const flipIds = new Set(ui.flips.map(({ r, c }) => B.bidChip(me, r, c)?.id)), handIds = new Set((B.handChips(me, ui.hand) || []).map((x) => x.ch.id));
     // the Pit: every chip each Roller has lost, as it was
-    [0, 1].forEach((si) => { const list = B.pitOf(bout, si); list.forEach((ch, k) => want.set(ch.id, { ...pitSlot(si, k, list.length), ch, side: si, pit: true })); });
+    [0, 1].forEach((si) => { const list = B.pitOf(bout, si), hts = new Map(); list.forEach((ch, k) => { const key = ch.col == null ? 'mid' : ch.col + ':' + ch.row, lvl = hts.get(key) || 0; hts.set(key, lvl + 1); void k;
+      want.set(ch.id, { ...pitSlot(si, ch, lvl), ch, side: si, pit: true }); }); });
     let n = 0;
     for (const [id, w] of want) {
       let el = els.chips.get(id); const sc = w.s || w.k || 1, extra = sc !== 1 ? `scale(${+sc.toFixed(3)})` : '';
@@ -678,6 +691,7 @@ export function boutScene(root, bout, ctx, onDone) {
       el.style.zIndex = 950; el.style.opacity = '0';
       if (how === 'stage') { sfx('pay', 0, { pan: el._side ? 0.5 : -0.3 }); el.classList.add('paying'); place(el, STAGE[el._side].x, STAGE[el._side].y, 'scale(.6)'); }
       else if (how === 'house') { el.classList.add('paying'); place(el, HOUSE.x, HOUSE.y, 'scale(.5)'); }
+      else if (how === 'gone') { sfx('pay', 0, { pan: 0 }); el.classList.add('falling'); place(el, (PIT.left + PIT.right) / 2 - CHIP / 2, y, 'scale(.12) rotate(200deg)'); } // no room left in the Pit: down the middle, for good
       else if (how === 'abduct') place(el, x, y - 190, 'scale(.7)');
       else place(el, x, y - 6, 'scale(.1) rotate(140deg)');
       els.chips.delete(id); setTimeout(() => el.remove(), 620);
@@ -708,7 +722,7 @@ export function boutScene(root, bout, ctx, onDone) {
     bout.sides.forEach((s, si) => { const big = s.sky.filter((o) => D.ORBITALS[o.kind].size === 'table'), w = weatherEls[si];
       for (const k of ['blizzard', 'sun', 'moon']) w.classList.toggle(k, big.some((o) => o.kind === k));
       w._tip = big.length ? () => big.map((o) => `<b>${D.ORBITALS[o.kind].name}</b>${o.str ? tx('table.strength', { str: o.str }) : ''}<p>${D.ORBITALS[o.kind].text}</p>`).join('') : null; });
-    bout.sides.forEach((s, si) => { const owed = owedBy(s); swapText(owesEl[si], owed ? tx('table.owes-2', { owed }) : ''); tween(worthEl[si], B.worth(s)); tween(stageEl[si], sum(B.pitOf(bout, si), (ch) => ch.value)); syncList(badgeBox[si], badges(s), (x) => x.k, (x) => h('span', { class: `badge ${x.cls || ''}`, tip: x.tip, ...(GUIDE_BADGE[x.k] ? { guide: GUIDE_BADGE[x.k] } : {}) }), (el, x) => { swapText(el, x.text); el.className = `badge ${x.cls || ''}`; }); });
+    bout.sides.forEach((s, si) => { const owed = owedBy(s); swapText(owesEl[si], owed ? tx('table.owes-2', { owed }) : ''); tween(worthEl[si], B.worth(s)); tween(stageEl[si], sum(B.pitOf(bout, si), (ch) => ch.value)); { const g = sum(B.goneOf(bout, si), (x) => x.value); tween(goneEl[si], g); goneEl[si].parentElement.classList.toggle('some', g > 0); } syncList(badgeBox[si], badges(s), (x) => x.k, (x) => h('span', { class: `badge ${x.cls || ''}`, tip: x.tip, ...(GUIDE_BADGE[x.k] ? { guide: GUIDE_BADGE[x.k] } : {}) }), (el, x) => { swapText(el, x.text); el.className = `badge ${x.cls || ''}`; }); });
     swapText(root.querySelector('.turn-n'), String(bout.turn));
     for (const el of oppPills.children) { const k = el.dataset.k, P = B.statParts(opp, k); swapText(el.lastChild, String(P.total)); tempCls(el, P); }
     const at = B.PHASES.indexOf(bout.phase);
@@ -788,7 +802,9 @@ export function boutScene(root, bout, ctx, onDone) {
       for (const k of ['bet', 'stake']) { const M = Z[k]; if (!M) continue;
         const rows = k === 'bet' ? o.betRows : o.stakeRows, cols = k === 'bet' ? o.betCols : o.stakeCols, al = k === 'bet' ? o.betAligned : o.stakeAligned, part = ob.parts.find((x) => x.zone === k), focus = ob.parts.find((x) => x.zone === 'focus');
         M.rows.replaceChildren(...rows.map((x) => h('i', { class: x.n > 0 ? 'on' : '' }))); M.rows.classList.toggle('full', !!part); M.rows.classList.toggle('aligned', al >= 0);
-        swapText(M.bonus, part ? `+${part.n + (focus ? focus.n : 0)} ${part.keys.length > 1 ? tx('table.zm-all') : D.STATS[part.keys[0]].name}` : '');
+        // a narrow zone has no room for the stat's name beside its dots and bars: it shows the amount, and the hover names it
+        const wide = (k === 'bet' ? s.dims.meterRows : s.dims.barRows) * cw[si] >= 170;
+        swapText(M.bonus, part ? `+${part.n + (focus ? focus.n : 0)}${wide ? ` ${part.keys.length > 1 ? tx('table.zm-all') : D.STATS[part.keys[0]].name}` : ''}` : '');
         M.cols.replaceChildren(...order(cols).map((x) => h('i', { class: `${x.n > 0 ? 'on' : ''}${x.r === al ? ' al' : ''}` })));
       } });
   }

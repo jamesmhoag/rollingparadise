@@ -67,5 +67,54 @@ const clear = (me) => { for (const row of me.grid) for (const cell of row) cell.
   me.grid[r0][3].chips = [std(bout, 1)]; B.revive(bout, me, 'weak', r0, 3);
   ok(me.revive[0]?.base === -1, 'a 1 chip on a quality II trick: back, at -1');
 }
+// ---------- pushing and shoving: slides push the stacks in their way; the front edge is the Pit ----------
+{
+  const { bout, me } = table(); clear(me);
+  const col = () => me.grid.map((row) => row[0].chips.map((c) => c.value).join('') || '.').join(' ');
+  me.grid[0][0].chips = [std(bout, 1)]; me.grid[1][0].chips = [std(bout, 2), std(bout, 2)]; me.grid[2][0].chips = [std(bout, 3)];
+  const last = me.rows - 1;
+  ok(B.slidePath(me, 0, 0, 1, 0).line.length === 3 && B.slide(bout, me, 0, 0, 1, 0)?.moved === 3 && col().startsWith('. 1 22 3'), 'a slide pushes the whole line of stacks ahead of it one space');
+  for (let r = 0; r < me.rows; r++) me.grid[r][1].chips = [std(bout, 1)];
+  ok(!B.canSlide(me, 0, 1, 1, 0) && !B.slide(bout, me, 0, 1, 1, 0) && me.grid[last][1].chips.length === 1, 'nothing is pushed off the back');
+  for (let c = 0; c < me.dims.cols; c++) if (!me.grid[last][c].chips.length) me.grid[last][c].chips = [std(bout, 1)];
+  ok(!B.canSlide(me, last, 1, 0, -1) && !B.canSlide(me, last, 1, 0, 1), 'or off the top or bottom rows');
+  ok(B.canSlide(me, 1, 1, -1, 0) && !B.canSlide(me, 1, 1, -1, 0, { spill: false }), 'the front is the Pit: a slide may push a stack off it, when it is allowed to spill');
+  const paid = bout.stage.paid[0], pit = B.pitOf(bout, 0).length, res = B.slide(bout, me, 1, 1, -1, 0);
+  ok(res?.spilled === 1 && bout.stage.paid[0] === paid + 1 && B.pitOf(bout, 0).length === pit + 1 && me.grid[0][1].chips.length === 1, 'the stack pushed off the front falls into the Pit, lost as a fee is');
+  // lifts and slips
+  clear(me); me.grid[1][2].chips = [std(bout, 5), std(bout, 7)]; me.grid[0][2].chips = [std(bout, 1)];
+  ok(B.lift(bout, me, { r: 1, c: 2 }, { r: 0, c: 2 }) && me.grid[0][2].chips.map((c) => c.value).join() === '1,7', 'a lift sets the top chip on top of the next stack');
+  ok(B.slip(bout, me, { r: 1, c: 2 }, { r: 0, c: 2 }) && me.grid[0][2].chips.map((c) => c.value).join() === '5,1,7' && !me.grid[1][2].chips.length, 'a slip puts it in under the stack');
+  me.grid[0][2].chips = Array.from({ length: me.dims.stackMax }, () => std(bout, 1)); me.grid[1][2].chips = [std(bout, 9)];
+  ok(!B.canLift(me, { r: 1, c: 2 }, { r: 0, c: 2 }) && !B.lift(bout, me, { r: 1, c: 2 }, { r: 0, c: 2 }) && !B.slip(bout, me, { r: 1, c: 2 }, { r: 0, c: 2 }), 'neither makes a stack taller than its height');
+}
+// ---------- movement is chip driven: the trick lays a chip, the chip moves the stacks ----------
+{
+  const play = (id, vals, tgt, setup) => { const T = table(), { bout, me, opp } = T; clear(me); clear(opp); setup(T);
+    const e = { uid: 900, trick: { id, q: 1 }, dice: vals.map((v) => ({ value: v, type: 'd6' })), bid: [], bidValue: 1, paid: [1], lingerLeft: 0, state: 'play', target: tgt };
+    me.run.push(e); me.fz = { ...me.mods }; drain(B._test.play(bout, me, e)); drain(B._test.madeWork(bout, me, 'correction', true)); drain(B._test.madeWork(bout, opp, 'correction', true)); return T; };
+  ok(['retreat', 'advance', 'lift', 'sink', 'renew', 'shove', 'tug', 'hoist', 'tuck'].every((id) => D.TRICKS[id].roll.k === 'chips' && D.MADE_CHIPS[D.TRICKS[id].roll.chip]), 'the movement and Regen tricks each lay a chip that does the work');
+  // Shove: their stack slides toward the Pit, a space per 4 rolled; what is pushed off the front is lost to their Pit
+  { const { bout, opp } = play('shove', [2, 3], { side: 1, r: 1, c: 0 }, ({ bout: b, opp: o }) => { o.grid[0][0].chips = [std(b, 2)]; o.grid[1][0].chips = [std(b, 5)]; });
+    ok(opp.grid[0][0].chips.some((c) => c.value === 5) && !opp.grid[1][0].chips.some((c) => c.kind === 'std') && B.pitOf(bout, 1).some((x) => x.value === 2), 'Shove (6, a space per 4): the stack slides to the front, and the stack that was there goes into their Pit'); }
+  // Retreat: Press chips close each row they land in up to the front, and nothing leaves the position
+  { const { me } = play('retreat', [1, 2], { side: 0, r: 2, c: 2 }, ({ bout: b, me: m }) => { m.grid[2][2].chips = [std(b, 1)]; m.grid[4][2].chips = [std(b, 2)]; });
+    ok(me.grid[0][2].chips.some((c) => c.value === 1) && me.grid[1][2].chips.some((c) => c.value === 2) && B.worth(me) === 3, 'Retreat: the stacks in the row close up to the front'); }
+  // Renew: a Mend chip brings your lost chips back out of your Pit
+  { const { bout, me } = play('renew', [3, 3], { side: 0, r: 2, c: 1 }, ({ bout: b, me: m }) => { m.grid[2][1].chips = [std(b, 1)]; for (const v of [2, 2, 5]) B._test.toPit(b, 0, std(b, v), 'fee'); b.stage.paid[0] += 9; });
+    ok(me.grid[2][1].chips.filter((c) => c.kind === 'std').length >= 2 && bout.stage.paid[0] < 9, 'Renew: the Mend chip pulls chips back out of your Pit onto its stack'); }
+}
+// ---------- the Pit: columns of stacks either side of a bottomless middle ----------
+{
+  const { bout } = table(); const P = B.pitDims(bout), cap = B.pitCapacity(bout);
+  ok(P.cols === D.TUNING.pit.cols && P.rows === 5 && cap === P.cols * 5 * P.stackMax, 'the Pit is columns × five rows × a stack height, from the tuner');
+  for (let k = 0; k < cap; k++) { bout.stage.paid[0] += 1; B._test.toPit(bout, 0, std(bout, 1), 'fee'); }
+  const pit = B.pitOf(bout, 0), front = pit.slice(0, 5 * P.stackMax);
+  ok(pit.length === cap && front.every((x) => x.col === 0) && pit.slice(5 * P.stackMax).every((x) => x.col === 1), 'lost chips fill the front column first, then the one behind it');
+  ok([0, 1, 2, 3, 4].every((row) => pit.filter((x) => x.col === 0 && x.row === row).length === P.stackMax) && B.pitRoom(bout, 0) === 0, 'each row\'s stack fills to the stack height');
+  bout.stage.paid[0] += 7; B._test.toPit(bout, 0, std(bout, 7), 'fee');
+  ok(B.pitOf(bout, 0).length === cap && B.goneOf(bout, 0).length === 1 && bout.stage.paid[0] === cap && B.summary(bout, 0).gone === 7, 'with no room left a lost chip falls in the middle and is gone for good: it leaves the Stage total');
+  ok(B.pitRoom(bout, 1) === cap, 'each Roller has a side of their own');
+}
 if (fails.length) { console.log('FAIL ' + fails.join('\nFAIL ')); process.exit(1); }
-console.log('ok, round 19: stacked tricks bid and split, zero and Debt bids, tapped tricks brought back with a base effect');
+console.log('ok, round 19: stacked tricks bid and split, zero and Debt bids, tapped tricks brought back, slides lifts and slips, movement by chips, the Pit grid');

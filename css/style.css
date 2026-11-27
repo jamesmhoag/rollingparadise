@@ -1235,3 +1235,35 @@ table.b-shop { border-collapse: collapse; width: 100%; font-size: 12px; margin-t
 .dev-num { width: 96px; } .dev-row .dev-num { width: 64px; }
 .dev-panel { min-width: 420px; gap: 12px; }
 .sign-btn.dev-toggle { font-size: 12px; opacity: .6; } .sign-btn.dev-toggle.on { opacity: 1; color: #7dffb5; }
+/* ---------- the bout: name plates, each Roller's field, the Pit as a grid ---------- */
+/* a name plate is one fixed size and holds the name and class only; Worth, the Pit, bids, tapped pieces and the step
+   pills are the Roller's field beside it */
+.who.seat { display: grid; grid-template-columns: 196px minmax(0, 1fr); grid-auto-rows: min-content; column-gap: 12px; row-gap: 3px; align-content: center; align-items: center; height: 88px; }
+.who.seat.them { grid-template-columns: minmax(0, 1fr) 196px; }
+.who.seat .plate { grid-column: 1; grid-row: 1 / span 4; width: 196px; height: 88px; box-sizing: border-box; position: relative; display: grid; place-items: center; overflow: visible; padding: var(--sign-room, 6px) calc(var(--sign-room, 6px) + 6px); }
+.who.seat.them .plate { grid-column: 2; }
+.who.seat > .worth, .who.seat > .field, .who.seat > .pills, .who.seat > .badges { grid-column: 2; min-width: 0; } .who.seat.them > .worth, .who.seat.them > .field, .who.seat.them > .pills, .who.seat.them > .badges { grid-column: 1; }
+.who.seat .plate .name.nsign { justify-items: center; text-align: center; max-width: 100%; }
+.who.seat > .worth { white-space: nowrap; }
+.field { display: flex; flex-wrap: nowrap; gap: 10px; align-items: baseline; font-size: 10.5px; color: var(--cream); cursor: help; white-space: nowrap; } .who.seat.them > .field { justify-content: flex-end; }
+.field .fld { display: inline-flex; align-items: baseline; gap: 3px; } .field .fld em { font-style: normal; font-size: 8.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+.field .num { font-family: var(--display); font-size: 13px; color: var(--you); } .field.s1 .num { color: var(--them); }
+.field .fld small { font-size: 8.5px; color: var(--dim); margin-left: 3px; } .field .fld.gone { display: none; } .field .fld.gone.some { display: inline-flex; } .field .fld.gone .num { color: #ff6a6a; }
+.field .led-tap { min-height: 0; display: inline-flex; }
+/* the Pit: columns of spaces either side of a bottomless slot */
+.pit.grid { border-radius: 10px; background: linear-gradient(90deg, rgba(0, 0, 0, .28), rgba(0, 0, 0, .5) 50%, rgba(0, 0, 0, .28)),
+  repeating-linear-gradient(90deg, transparent 0 calc(var(--pw) - 1px), rgba(255, 255, 255, .06) calc(var(--pw) - 1px) var(--pw)),
+  repeating-linear-gradient(180deg, transparent 0 calc(var(--ph) - 1px), rgba(255, 255, 255, .06) calc(var(--ph) - 1px) var(--ph)); }
+.pit.grid .pit-t { top: 3px; font-size: 7px; }
+.pit-void { position: absolute; top: 0; bottom: 0; background: radial-gradient(ellipse at 50% 50%, #000 0 55%, rgba(0, 0, 0, .7) 100%); box-shadow: inset 0 0 12px 4px #000, 0 0 0 1px rgba(255, 90, 90, .22); border-radius: 8px; }
+.pit-void.shut { background: rgba(255, 255, 255, .03); box-shadow: 0 0 0 1px rgba(255, 255, 255, .08); }
+.chip.falling { transition: transform .75s cubic-bezier(.5, 0, .9, .4), opacity .7s .1s !important; }
+.who.seat { width: 514px; } .who.seat.me { left: 10px; } .who.seat.them { right: 10px; }
+.who.seat .pills.steps .pill { font-size: 10.5px; padding: 1px 6px; } .who.seat .pills.steps { gap: 3px; }
+.who.seat.them .pills:not(.steps) { flex-wrap: wrap; justify-content: flex-end; row-gap: 2px; }
+.who.seat > .badges { display: flex; flex-wrap: nowrap; overflow: hidden; }
+.who.seat.me { width: 556px; } .who.seat .pills.steps .pill { font-size: 10px; padding: 1px 5px; } .who.seat .pills.steps { gap: 2px; }
+/* a narrow zone's label keeps to its own width: tighter letters, and the bonus amount moves into the hover */
+.zone-label.narrow { gap: 3px; } .zone-label.narrow b { letter-spacing: .08em; font-size: 9px; } .zone-label.narrow .zm-bonus { display: none; } .zone-label.narrow .zm-rows { gap: 1px; } .zone-label.narrow .zm-cols { gap: 1px; }
+/* the step prompt sits on its own plate so it reads over the House's bulbs instead of running through them */
+.feed:not(.open) .feed-line.prompt { align-self: center; padding: 0 14px; border-radius: 9px; background: rgba(9, 6, 24, .88); box-shadow: 0 0 0 1px rgba(255, 215, 106, .25); max-width: 96%; transform: translateY(3px); }

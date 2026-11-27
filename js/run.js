@@ -698,6 +698,7 @@ export function settle(run, ctx, bout) {
     if (tilt) lines.push([tilt > 0 ? tx('run.house-bounty-for-your') : tx('run.house-cut-for-your'), tilt]);
     lines.push([tx('run.bids-lost-to-the'), -(sm.bids - sm.pendingBids)]);
     if (sm.destroyed) lines.push([tx('run.chips-destroyed-by-hazards'), -sm.destroyed]);
+    if (sm.gone) lines.push([tx('run.gone-down-the-pit'), -sm.gone]); // fell into the bottomless pit: not restored
     entry.beaten = true; entry.lost = false;
     if (ctx.kind === 'table' && ctx.idx === 0) { run.fs.tables[1].seen = run.fs.tables[2].seen = true; res.news.push(tx('run.table-1-is-closed')); }
     else if (ctx.kind === 'table') { const other = run.fs.tables[3 - ctx.idx]; other.passed = true; res.news.push(tx('run.you-chose-table-at', { idx: ctx.idx + 1, name: other.opp.name, v: 4 - ctx.idx })); }

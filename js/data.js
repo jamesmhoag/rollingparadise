@@ -275,7 +275,7 @@ export const TRICKS = {
   float: { name: 'Float', type: 'insurance', cls: 'rascal', die: 'd4', count: 2, side: 'self', approach: 'any', dist: 'hit',
     roll: { k: 'feather', text: 'Turn the top chip of the target stack into a Feather chip for 1 turn per 3 rolled (at least 1): any fee larger than that stack\'s worth misses it.' }, bonus: { cond: 'match', k: 'spread', text: 'Feathers the neighbouring stacks too (Swipe).' } },
   renew: { name: 'Renew', type: 'insurance', cls: null, die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'hit',
-    roll: { k: 'regen', text: 'Regen up to the total of the value chips in the target stack, for 1 turn per 4 rolled: a Regen chip paid to the Stage comes straight back to its stack, without its Regen.' }, bonus: { cond: 'match', k: 'spread', text: 'Renews the neighbouring stacks too (Swipe).' } },
+    roll: { k: 'chips', chip: 'mend', convert: 'lump', place: 'under', deploy: 'hit', text: '' }, bonus: { cond: 'match', k: 'double', text: '' } }, // Regen as a chip: a Mend chip brings your lost chips back out of your Pit
   // --- Investments ---
   stir: { name: 'Stir', type: 'investment', cls: null, die: 'd6', count: 1, side: 'self', approach: 'any', dist: 'hit',
     roll: { k: 'chips', chip: 'stir', convert: 'lump', place: 'under', deploy: 'hit', foot: 'large', flat: true, slip: true, text: '' }, bonus: { cond: 'over:5', k: 'double', text: '' } },
@@ -304,14 +304,25 @@ export const TRICKS = {
   // Lanes run from the Stage to the edge; forward is toward the Stage. They act on the lanes (or, for Lift and
   // Sink, the rows) their spread covers. Anchored stacks, Holes and Dynamite stay put; Debt and hazards stay
   // on their space, or move to the nearest stack in the lane if their space ends up empty.
-  retreat: { name: 'Retreat', type: 'correction', cls: 'rascal', die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'swipe', arrange: 'front',
-    roll: { k: 'arrange', text: 'Push every chip in the target lanes forward, toward the Stage.' }, bonus: { cond: 'match', k: 'aura', text: 'Pushes your whole position forward.' } },
-  advance: { name: 'Advance', type: 'correction', cls: 'hustler', die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'swipe', arrange: 'back',
-    roll: { k: 'arrange', text: 'Pull every chip in the target lanes back, away from the Stage.' }, bonus: { cond: 'match', k: 'aura', text: 'Pulls your whole position back.' } },
-  lift: { name: 'Lift', type: 'correction', cls: null, die: 'd4', count: 2, side: 'self', approach: 'any', dist: 'wave', arrange: 'up',
-    roll: { k: 'arrange', text: 'Shift every stack in the target rows up to the top lane, closing the gaps.' }, bonus: { cond: 'evens', k: 'aura', text: 'Shifts every row.' } },
-  sink: { name: 'Sink', type: 'correction', cls: null, die: 'd4', count: 2, side: 'self', approach: 'any', dist: 'wave', arrange: 'down',
-    roll: { k: 'arrange', text: 'Shift every stack in the target rows down to the bottom lane, closing the gaps.' }, bonus: { cond: 'evens', k: 'aura', text: 'Shifts every row.' } },
+  // Movement is chip driven (round 19): each of these lays chips that do the moving (content/chipmaker.js), one for
+  // every point of the roll, spreading out from the target: the bigger the roll, the more rows or columns it reaches.
+  retreat: { name: 'Retreat', type: 'correction', cls: 'rascal', die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'swipe',
+    roll: { k: 'chips', chip: 'press', convert: 'petty', place: 'under', deploy: 'sides', text: '' }, bonus: { cond: 'match', k: 'double', text: '' } },
+  advance: { name: 'Advance', type: 'correction', cls: 'hustler', die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'swipe',
+    roll: { k: 'chips', chip: 'drawback', convert: 'petty', place: 'under', deploy: 'sides', text: '' }, bonus: { cond: 'match', k: 'double', text: '' } },
+  lift: { name: 'Lift', type: 'correction', cls: null, die: 'd4', count: 2, side: 'self', approach: 'any', dist: 'wave',
+    roll: { k: 'chips', chip: 'rise', convert: 'petty', place: 'under', deploy: 'line', text: '' }, bonus: { cond: 'evens', k: 'double', text: '' } },
+  sink: { name: 'Sink', type: 'correction', cls: null, die: 'd4', count: 2, side: 'self', approach: 'any', dist: 'wave',
+    roll: { k: 'chips', chip: 'drop', convert: 'petty', place: 'under', deploy: 'line', text: '' }, bonus: { cond: 'evens', k: 'double', text: '' } },
+  // pushing and shoving, tugging and pulling: one stack moved, and what it pushes
+  shove: { name: 'Shove', type: 'correction', cls: null, die: 'd6', count: 2, side: 'opp', approach: 'any', dist: 'hit',
+    roll: { k: 'chips', chip: 'shove', convert: 'lump', place: 'under', deploy: 'hit', text: '' }, bonus: { cond: 'match', k: 'double', text: '' } },
+  tug: { name: 'Tug', type: 'correction', cls: null, die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'hit',
+    roll: { k: 'chips', chip: 'tug', convert: 'lump', place: 'under', deploy: 'hit', text: '' }, bonus: { cond: 'match', k: 'double', text: '' } },
+  hoist: { name: 'Hoist', type: 'correction', cls: null, die: 'd4', count: 1, side: 'self', approach: 'any', dist: 'hit',
+    roll: { k: 'chips', chip: 'hoist', convert: 'lump', place: 'under', deploy: 'hit', text: '' }, bonus: { cond: 'over:3', k: 'extra', chip: 'block', n: 1, text: '' } },
+  tuck: { name: 'Tuck', type: 'correction', cls: null, die: 'd4', count: 1, side: 'self', approach: 'any', dist: 'hit',
+    roll: { k: 'chips', chip: 'tuck', convert: 'lump', place: 'under', deploy: 'hit', text: '' }, bonus: { cond: 'over:3', k: 'extra', chip: 'block', n: 1, text: '' } },
   bulwark: { name: 'Bulwark', type: 'correction', cls: 'technician', die: 'd8', count: 2, side: 'self', approach: 'any', dist: 'swipe', arrange: 'shields',
     roll: { k: 'arrange', text: 'Defensive: in the target lanes, Block, Counter, Petal and Clay chips move to the front, on top, and your value chips fall in behind them.' }, bonus: { cond: 'over:10', k: 'aura', text: 'Arranges your whole position.' } },
   stackup: { name: 'Stack Up', type: 'correction', cls: null, die: 'd6', count: 2, side: 'self', approach: 'any', dist: 'swipe', arrange: 'value-front',

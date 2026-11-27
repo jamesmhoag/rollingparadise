@@ -18,6 +18,16 @@ export const TUNING = {
     bossMatch: 1, // ...and the High Roller matches it: a win pays the wager back plus this many times it (all-in only)
     forcedExit: true, // with no game left on the floor that you can afford, the House shows you the door
   },
+  // The Pit, between the two positions: every chip a Roller loses (fees, bids, chips pushed off the front of a position)
+  // stacks up on their side of it, a space for each of the five rows in each of `cols` columns. New chips go to the
+  // front column (by the middle) first, on a row picked at random among those with room, then the column behind it.
+  // Down the middle runs a bottomless pit: once a side's spaces are all `stackMax` high, anything more it loses falls
+  // in and is gone for good (not restored by a win, not paid to the winner, out of reach of Gather and Steal).
+  pit: {
+    cols: 2, // columns of stacks on each Roller's side
+    stackMax: 6, // how tall a stack in the Pit can grow
+    bottomless: true, // off: the Pit has no limit and nothing is ever lost for good
+  },
   // losing
   penalty: {
     diceTaken: 2, // dice the winner takes from your pouch when you lose a table bout (you always keep one)
