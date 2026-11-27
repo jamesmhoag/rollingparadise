@@ -70,7 +70,7 @@ export function gearMaker(key, redraw) {
       field('mods', h('div', { class: 'row wrap' }, ...STATS.map((k) => h('label', { class: 'b-check' }, D.STATS[k]?.name || k, numIn(X.mods?.[k] ?? 0, (n) => { const m = { ...(X.mods || {}) }; if (n) m[k] = n; else delete m[k]; set(['mods'], m); }, { min: -3, max: 3, whole: true, blank: 0, w: '52px' })))), ['mods']),
       field('cls', select(['cls'], [[null, t('maker.anyClass')], ...Object.entries(D.CLASSES).map(([k, K]) => [k, K.name])], X.cls || null), ['cls']),
       ...sold];
-  // a wallet is shown holding a few things, as it will lie open in play: as many sample cards as it has slots (three at most) and a pass
+  // a wallet is shown holding a few things, as it will open in play: as many sample cards as it has slots (three at most) and a pass
   const sample = () => ({ cards: D.STARTER_CARDS.slice(0, Math.min(3, X.slots || 0)).map((c) => cardEl(c)), passes: [passEl(1)] });
   const preview = h('div', { class: 'gear-preview' }, wallet ? walletEl(id, '', sample()) : jacketEl(id));
   return h('div', { class: 'b-maker' }, h('div', { class: 'b-fields' }, h('span', { class: 'cap', text: t('gear.part.rules') }), ...rules, ...lookFields.filter(Boolean)),

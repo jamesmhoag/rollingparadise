@@ -315,8 +315,8 @@ function kitPanel() {
     h('div', { class: 'row', style: { alignItems: 'flex-start', gap: '18px' } }, rollerCard({ rid: run.roller || D.rollerOf(run.cls), v: st.v, dice: run.dice, tricks: run.tricks, crown: R.crownWorn(run) }),
     h('div', { class: 'col', style: { minWidth: 0, flex: 1 } },
       h('span', { class: 'cap', text: tx('floor.wallet-slots-plus-one', { name: R.walletOf(run).name, walletCardN: R.walletCards(run).length, slots: R.walletOf(run).slots, used: R.passSlotsUsed(run), passes: R.passCap(run.wallet) }) }),
-      // your wallet lies open: the cards and passes you carry are in it (click a card twice to drop it)
-      h('div', { class: 'row wrap', style: { alignItems: 'flex-end', gap: '18px' } }, walletEl(run.wallet, '', { passes: [...R.passesOf(run).map((f) => passEl(f)), ...R.keysOf(run).map((k) => keyEl(k))],
+      // your wallet: point at it and it opens on the cards and passes you carry (click a card twice to drop it); its cash slot shows your purse
+      h('div', { class: 'row wrap', style: { alignItems: 'flex-end', gap: '18px' } }, walletEl(run.wallet, '', { cash: run.purse, passes: [...R.passesOf(run).map((f) => passEl(f)), ...R.keysOf(run).map((k) => keyEl(k))],
         cards: R.walletCards(run).map((c) => { const el = cardEl(c, '', { punched: R.punchesOf(run, c) }); el._tip = () => cardTip(c, R.rollerStats(run).v) + tx('floor.takes-a-wallet-slot'); el.classList.add('has-tip');
           el.onclick = () => { if (!el._armed) { el._armed = true; el.classList.add('armed'); return toast(tx('floor.click-again-to-drop', { name: D.CARDS[c].name }), 'warn'); } if (!R.dropCard(run, c)) return toast(tx('floor.you-need-that-one'), 'warn'); closePanel(); rerender(); toast(tx('floor.dropped', { name: D.CARDS[c].name })); }; return el; }) }),
         jacketEl(run.jacket), run.drink ? drinkEl(run.drink, run.drink.sips, run.drink.max) : null),

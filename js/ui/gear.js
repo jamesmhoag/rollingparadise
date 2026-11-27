@@ -1,10 +1,12 @@
 // Wallets and jackets: drawn from their look (content/finishes.js) and held as things (ui/thing.js: a body as thick as
 // what it is made of, the lean under the pointer, the close look).
-// A wallet lies open and shows what it holds: the very cards and passes you carry (the same elements drawn anywhere
-// else), tucked into it. Three types: a billfold (cards one side, passes the other), a clasped pouch (flap up, clasp
-// undone, everything standing in it) and a clip (a band over the stack).
+// A wallet is a padded body that lies shut, with a slot along its top for cash. Under the pointer (or clicked, to
+// keep it so) it opens and shows what it holds: the very cards and passes you carry (the same elements drawn
+// anywhere else), tucked into its pockets. Three types: a billfold (its cover swings open: cards inside the cover,
+// passes in the other leaf), a clasped pouch (its flap lifts off the clasp: everything stands in it) and a clip
+// (a band over a folded wad: everything it holds is in plain sight).
 // A jacket is drawn in its style (blazer, bomber, long coat, parka), part by part: body, sleeves, collar and trim,
-// closure, pockets, emblem, each made of its own material in its own colour.
+// closure, pockets, emblem, each made of its own material in its own colour, shaded as cloth that hangs.
 import { h } from './core.js';
 import * as D from '../data.js';
 import { thing } from './thing.js';
@@ -24,56 +26,99 @@ function tuck(list, room, cls = '') {
   const lap = list.length > 1 ? Math.max(-6, (total - room) / (list.length - 1)) : 0; list.forEach((el, i) => { if (i) el.style.marginLeft = `${(-lap).toFixed(1)}px`; });
   return row;
 }
-// hold: { cards: [el], passes: [el] } (what it shows tucked in it; none: it lies open and empty)
+// the notes in the cash slot: more of them the more ¢ there is (none: the slot shows empty)
+const notesFor = (cash) => (cash > 0 ? Math.min(4, 1 + Math.floor(Math.log10(cash) / 1.4)) : 0);
+const cashEl = (cash, cls = '') => h('span', { class: `gw-cash ${cls}` }, h('i', { class: 'gw-slot' }), Array.from({ length: notesFor(cash) }, (_, i) => finishOn(h('i', { class: 'gw-note', style: { '--i': i } }), { m: 'paper', color: ['#8fbf86', '#a5cf9a', '#7fb07a', '#b4d8a6'][i] })));
+// hold: { cards: [el], passes: [el], cash: ¢ } (what it shows inside once open; none: its pockets are empty)
 function walletFace(id, cls, hold) {
   const Wl = D.WALLETS[id] || {}, L = walletLook(id, Wl), cards = hold.cards || [], passes = hold.passes || [];
   const made = (c, f = lookFinish(L)) => finishOn(h('i', { class: c }), f), pocket = (c) => made(c, lookFinish(L, { m: L.pocket.mat, color: L.pocket.color })), stitch = () => (L.stitch ? h('i', { class: 'gw-stitch' }) : null);
   const vars = { '--wc': L.color, '--w-flap': `${L.flap}px`, '--w-round': `${L.round}px`, '--w-trim': L.trim || 'color-mix(in srgb, var(--wc) 55%, #000)', '--w-lining': L.lining || 'color-mix(in srgb, var(--wc) 30%, #000)' };
+  // the outside of a cover or flap: padded, stitched, with the emblem on it · a pocketed inside holding `list`
+  const outside = (c, ...more) => h('span', { class: `gw-out ${c}` }, made('gw-skin'), h('i', { class: 'gw-pad' }), stitch(), ...more);
+  const well = (list, room) => [h('i', { class: 'gw-inside' }), tuck(list, room), pocket('gw-front'), L.stitch ? h('i', { class: 'gw-stitch low' }) : null];
   let kids;
-  if (L.type === 'clip') kids = [tuck([...cards, ...passes], 150, 'all'), made('gw-band'), h('i', { class: 'gw-band-shine' })];
-  else if (L.type === 'clasped') kids = [made('gw-flap'), h('i', { class: `gw-clasp ${L.clasp}` }), h('i', { class: 'gw-inside' }), tuck([...cards, ...passes], 156, 'all'), pocket('gw-front'), stitch()];
-  else { const leaf = (side, list) => h('span', { class: `gw-leaf ${side}` }, made('gw-panel'), h('i', { class: 'gw-inside' }), tuck(list, 100), pocket('gw-front'), stitch()); kids = [leaf('l', cards), h('i', { class: 'gw-spine' }), leaf('r', passes)]; }
-  const el = h('span', { class: `gw gw-${L.type} ${Wl.crown ? 'crown' : ''} ${cls}`, style: vars }, ...kids); const em = emblemEl(L, 'wsym'); if (em) el.append(em);
-  return el;
+  if (L.type === 'clip') kids = [h('span', { class: 'gw-wad' }, cashEl(hold.cash || 1, 'folded')), tuck([...cards, ...passes], 138, 'all'), made('gw-band'), h('i', { class: 'gw-band-shine' })];
+  else if (L.type === 'clasped') kids = [h('span', { class: 'gw-base' }, made('gw-skin'), cashEl(hold.cash), ...well([...cards, ...passes], 124), L.clasp === 'chain' ? h('i', { class: 'gw-clasp chain' }) : h('i', { class: `gw-stud ${L.clasp}` })),
+    h('span', { class: 'gw-flap' }, outside('', L.clasp === 'chain' ? null : h('i', { class: `gw-clasp ${L.clasp}` }), emblemEl(L, 'wsym')), h('span', { class: 'gw-in' }, h('i', { class: 'gw-lining' })))];
+  else kids = [h('span', { class: 'gw-base' }, made('gw-skin'), cashEl(hold.cash), ...well(passes, 100)),
+    h('span', { class: 'gw-cover' }, outside('', emblemEl(L, 'wsym')), h('span', { class: 'gw-in' }, made('gw-skin'), ...well(cards, 100)))];
+  return h('span', { class: `gw gw-${L.type} ${Wl.crown ? 'crown' : ''} ${cls}`, style: vars }, ...kids);
 }
 export function walletEl(id, cls = '', hold = {}) {
   const Wl = D.WALLETS[id] || {}, L = walletLook(id, Wl), copy = (list) => (list || []).map((el) => el.cloneNode(true));
   const clip = L.type === 'clip'; // a clip has no body of its own: it is the band, and what it holds
-  return thing(walletFace(id, cls, hold), { mat: L.mat, color: L.color, radius: L.round, scale: 2.2, name: Wl.name || id, sub: WALLET_TYPES[L.type], cls: `th-wallet ${cls}`, ...(clip ? { edge: () => h('span', { class: 'gw gw-clip' }, finishOn(h('i', { class: 'gw-band' }), lookFinish(L))) } : {}),
-    back: () => { if (clip) return h('span', { class: 'gw gw-clip' }, finishOn(h('i', { class: 'gw-band' }), lookFinish(L))); const b = finishOn(h('span', { class: `gw-back gw-${L.type}`, style: { '--w-round': `${L.round}px` } }), lookFinish(L)); const em = emblemEl(L, 'wsym big'); if (em) b.append(em); return b; },
-    make: () => walletFace(id, cls, { cards: copy(hold.cards), passes: copy(hold.passes) }) });
+  const face = walletFace(id, cls, hold);
+  const el = thing(face, { mat: L.mat, color: L.color, radius: L.round, depth: clip ? 3 : 7, name: Wl.name || id, sub: WALLET_TYPES[L.type], cls: `th-wallet th-${L.type} ${cls}`, ...(clip ? { edge: () => h('span', { class: 'gw gw-clip' }, finishOn(h('i', { class: 'gw-band' }), lookFinish(L))) } : {}),
+    back: () => { if (clip) return h('span', { class: 'gw gw-clip' }, finishOn(h('i', { class: 'gw-band' }), lookFinish(L))); const b = finishOn(h('span', { class: `gw-back gw-${L.type}`, style: { '--w-round': `${L.round}px` } }, h('i', { class: 'gw-pad' })), lookFinish(L)); const em = emblemEl(L, 'wsym big'); if (em) b.append(em); return b; },
+    make: () => { const f = walletFace(id, cls, { cards: copy(hold.cards), passes: copy(hold.passes), cash: hold.cash }); f.classList.toggle('pin', face.classList.contains('pin')); return f; } });
+  // a click keeps it open, or shuts it again (a click on something it holds is that thing's own)
+  if (!clip) el.addEventListener('click', (ev) => { if (ev.target.closest('.thing') === el) face.classList.toggle('pin'); });
+  return el;
 }
 
 // ---------- jackets ----------
 const NS = 'http://www.w3.org/2000/svg';
 const s = (tag, attrs = {}, kids = []) => { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) if (v != null) e.setAttribute(k, v); e.append(...kids.filter(Boolean)); return e; };
-const mirror = (pts) => pts.map(([x, y]) => [64 - x, y]), poly = (pts) => pts.map(([x, y]) => `${x},${y}`).join(' ');
+let shadeN = 0;
+// soft shading as SVG gradients: `stops` is [[offset, colour]...], across (x) or down (y) the shape it fills
+const grad = (svg, stops, down) => { const id = `gj-g${++shadeN}`; let defs = svg.querySelector('defs'); if (!defs) { defs = s('defs'); svg.prepend(defs); }
+  defs.append(s('linearGradient', { id, x1: 0, y1: 0, x2: down ? 0 : 1, y2: down ? 1 : 0 }, stops.map(([o, c]) => s('stop', { offset: o, 'stop-color': c })))); return `url(#${id})`; };
+const INK = 'rgba(0,0,0,', LIT = 'rgba(255,255,255,';
 // flat: one colour for every part (the outline, for the body's edge and back)
 function jacketSvg(L, flat = null) {
-  const hem = 52 + L.length, svg = s('svg', { class: 'gj-art', viewBox: `0 0 64 ${hem + 4}`, width: 64, height: hem + 4, 'aria-hidden': 'true' });
+  const hem = 52 + L.length, svg = s('svg', { class: 'gj-art', viewBox: `0 0 64 ${hem + 5}`, width: 64, height: hem + 5, 'aria-hidden': 'true' });
   const paint = (P, glint = true) => flat || svgPaint(svg, { m: P.mat, color: P.color, glint: glint && L.glint, sparkle: L.sparkle }, P.color);
-  const body = paint(L), arms = paint(L.sleeves), trimC = L.trim.color || shade(L.color, 0.55), trim = flat || (FINISHES[L.trim.mat] && L.trim.color ? svgPaint(svg, { m: L.trim.mat, color: L.trim.color }) : trimC);
-  const line = { stroke: 'rgba(0,0,0,.42)', 'stroke-width': 0.6, 'stroke-linejoin': 'round' }, P = (pts, fill, more = {}) => s('polygon', { points: poly(pts), fill, ...line, ...more });
-  const sleeve = [[17, 11], [7, 18], [3, 45], [10, 47], [15, 27], [16.5, 24]], cuff = [[3.4, 41], [10.5, 43.2], [10, 47], [3, 45]], torso = [[22, 8], [42, 8], [48, 13], [47, hem], [17, hem], [16, 13]];
-  if (L.collar === 'hood') svg.append(s('path', { d: 'M20 11C17 -5 47 -5 44 11Z', fill: body, ...line }), flat ? null : s('path', { d: 'M24 10C23 0 41 0 40 10Z', fill: L.lining || 'rgba(0,0,0,.45)' }));
-  svg.append(P(sleeve, arms), P(mirror(sleeve), arms), P(torso, body));
+  const body = paint(L), arms = paint(L.sleeves), trimC = L.trim.color || shade(L.color, 0.55), trim = flat || (FINISHES[L.trim.mat] && L.trim.color ? svgPaint(svg, { m: L.trim.mat, color: L.trim.color }) : trimC), lining = L.lining || shade(L.color, 0.28);
+  const line = { stroke: `${INK}.5)`, 'stroke-width': 0.5, 'stroke-linejoin': 'round' }, P = (d, fill, more = {}) => s('path', { d, fill, ...line, ...more });
+  const both = (make) => [make(), s('g', { transform: 'matrix(-1 0 0 1 64 0)' }, [make()])]; // a part and its mirror image
+  // the shapes: a sleeve hanging from the shoulder with a bend at the elbow, the torso with sloped shoulders and a waist
+  const sleeve = 'M17.2 10.6C11.5 11.6 7.6 16 6.6 23L2.9 44.4Q6.4 47.4 10.3 46.2L14.2 29.5Q15.6 25.6 17.4 22.6Z';
+  const torso = `M23 7.6L15.6 11.6Q17.4 17 17.3 23Q18.6 ${(hem + 23) / 2} 16.8 ${hem}Q32 ${hem + 2.4} 47.2 ${hem}Q45.4 ${(hem + 23) / 2} 46.7 23Q46.6 17 48.4 11.6L41 7.6Q32 4.4 23 7.6Z`;
+  if (L.collar === 'hood') svg.append(P('M19.4 11.4C15.4 -5.6 48.6 -5.6 44.6 11.4Z', body), flat ? null : P('M23.4 10.6C21.6 -0.6 42.4 -0.6 40.6 10.6Z', lining, { stroke: 'none' }), flat ? null : P('M23.4 10.6C21.6 -0.6 42.4 -0.6 40.6 10.6Z', grad(svg, [[0, `${INK}.7)`], [1, `${INK}.15)`]], true), { stroke: 'none' }));
+  svg.append(...both(() => P(sleeve, arms)), P(torso, body));
   if (flat) return svg;
-  if (L.ribbed || L.trim.color) svg.append(P(cuff, trim), P(mirror(cuff), trim));
-  if (L.ribbed) svg.append(s('rect', { x: 17, y: hem - 4, width: 30, height: 4, fill: trim, ...line }), ...Array.from({ length: 9 }, (_, i) => s('line', { x1: 19 + i * 3.3, y1: hem - 3.6, x2: 19 + i * 3.3, y2: hem - 0.4, stroke: 'rgba(0,0,0,.3)', 'stroke-width': 0.5 })));
-  // the collar, and how far down the front opens under it
-  let open = 10;
-  if (L.collar === 'lapel') { open = 24; const lap = [[26, 8], [32, 24], [23.5, 17.5], [22, 9]]; svg.append(P([[26, 8], [38, 8], [32, 23]], L.lining || 'rgba(0,0,0,.5)'), P(lap, trim), P(mirror(lap), trim)); }
-  else if (L.collar === 'stand') svg.append(s('rect', { x: 24.5, y: 4.5, width: 15, height: 5.5, rx: 1.2, fill: trim, ...line }));
-  else if (L.collar === 'crew') svg.append(s('path', { d: 'M25 8Q32 15 39 8', fill: 'none', stroke: trim, 'stroke-width': 2.6, 'stroke-linecap': 'round' }));
-  else svg.append(s('path', { d: 'M25 9Q32 15 39 9', fill: 'none', stroke: 'rgba(0,0,0,.4)', 'stroke-width': 0.8 }));
-  // the closure down the front
-  if (L.closure === 'open') svg.append(P([[29.5, open], [34.5, open], [35.5, hem], [28.5, hem]], L.lining || 'rgba(0,0,0,.5)'));
-  else if (L.closure === 'zip') svg.append(s('line', { x1: 32, y1: open, x2: 32, y2: hem, stroke: 'rgba(255,255,255,.75)', 'stroke-width': 0.9, 'stroke-dasharray': '0.9 0.7' }), s('rect', { x: 31, y: open + 1, width: 2, height: 3.4, rx: 0.6, fill: '#e8e8f2', stroke: 'rgba(0,0,0,.5)', 'stroke-width': 0.3 }));
-  else svg.append(s('line', { x1: 32, y1: open, x2: 32, y2: hem, stroke: 'rgba(0,0,0,.45)', 'stroke-width': 0.7 }));
-  if (L.closure === 'buttons') for (let i = 0; i < L.buttons; i++) { const y = open + 4 + i * ((hem - open - 8) / Math.max(1, L.buttons - 1 || 1)) * (L.buttons > 1 ? 1 : 0.3); svg.append(s('circle', { cx: 34.2, cy: y, r: 1.25, fill: L.buttonColor || '#f1e7c8', stroke: 'rgba(0,0,0,.55)', 'stroke-width': 0.35 })); }
-  for (let i = 0; i < L.pockets; i++) { const x = i ? 37 : 20, y = Math.min(hem - 9, 39); svg.append(s('rect', { x, y, width: 7, height: 1.8, rx: 0.5, fill: trim, ...line })); }
-  // a fold of shade down each side, so the cloth reads as cloth
-  svg.append(s('path', { d: `M17.6 16L18.4 ${hem - 1}M46.4 16L45.6 ${hem - 1}`, fill: 'none', stroke: 'rgba(0,0,0,.18)', 'stroke-width': 1.4 }));
+  // the inside of the back, seen through the neck (with its label), behind everything at the front
+  svg.append(P('M24.4 8.3Q32 5.6 39.6 8.3Q32 13.4 24.4 8.3Z', lining, { stroke: 'none' }), s('rect', { x: 30.2, y: 7.3, width: 3.6, height: 1.7, rx: 0.3, fill: `${LIT}.7)` }));
+  // how cloth hangs: each sleeve a tube (dark at its edges), the body round across the chest and darker to the hem,
+  // the armholes in shadow, and a few folds
+  svg.append(...both(() => P(sleeve, grad(svg, [[0, `${INK}.46)`], [0.42, `${LIT}.14)`], [0.75, `${INK}.08)`], [1, `${INK}.4)`]]), { stroke: 'none' })),
+    P(torso, grad(svg, [[0, `${INK}.44)`], [0.2, `${INK}.04)`], [0.38, `${LIT}.13)`], [0.62, `${LIT}.08)`], [0.82, `${INK}.06)`], [1, `${INK}.44)`]]), { stroke: 'none' }),
+    P(torso, grad(svg, [[0, `${LIT}.12)`], [0.3, `${LIT}0)`], [1, `${INK}.26)`]], true), { stroke: 'none' }),
+    ...both(() => s('path', { d: 'M17.4 12.6Q18.6 18 17.6 23', fill: 'none', stroke: `${INK}.2)`, 'stroke-width': 1.1, 'stroke-linecap': 'round' })),
+    ...both(() => s('path', { d: `M19.6 ${hem - 15}Q21.4 ${hem - 8} 20.2 ${hem - 1.4}M8.3 29.4Q10.6 30.8 12.8 29.6M6.6 34.6Q8.8 36 11.4 34.9`, fill: 'none', stroke: `${INK}.2)`, 'stroke-width': 0.7, 'stroke-linecap': 'round' })),
+    ...both(() => s('path', { d: 'M22.6 8.2L16.4 11.5', fill: 'none', stroke: `${LIT}.28)`, 'stroke-width': 0.6, 'stroke-linecap': 'round' })));
+  // cuffs and hem
+  const cuff = 'M3.5 40.4Q7.2 42.6 11.3 42L10.3 46.2Q6.4 47.4 2.9 44.4Z', ribs = (x0, x1, y0, y1, n) => Array.from({ length: n }, (_, i) => { const x = x0 + ((x1 - x0) * (i + 0.5)) / n; return s('line', { x1: x, y1: y0, x2: x, y2: y1, stroke: `${INK}.32)`, 'stroke-width': 0.45 }); });
+  if (L.ribbed || L.trim.color) svg.append(...both(() => P(cuff, trim)), ...both(() => s('path', { d: 'M3.5 40.4Q7.2 42.6 11.3 42', fill: 'none', stroke: `${INK}.45)`, 'stroke-width': 0.9 })));
+  else svg.append(...both(() => s('path', { d: 'M3.4 41.2Q7.2 43.3 11.2 42.7', fill: 'none', stroke: `${INK}.3)`, 'stroke-width': 0.5 })));
+  if (L.ribbed) svg.append(P(`M17 ${hem - 4.2}Q32 ${hem - 2.4} 47 ${hem - 4.2}L47.2 ${hem}Q32 ${hem + 2.4} 16.8 ${hem}Z`, trim), ...ribs(18.5, 45.5, hem - 3.2, hem + 0.6, 12));
+  else svg.append(s('path', { d: `M17.2 ${hem - 1.6}Q32 ${hem + 0.8} 46.8 ${hem - 1.6}`, fill: 'none', stroke: `${INK}.26)`, 'stroke-width': 0.5 }));
+  // the closure down the front, under the collar; `open` is how far down the collar opens
+  const open = L.collar === 'lapel' ? 24 : 9.6;
+  if (L.closure === 'open') svg.append(P(`M29.4 ${open}L34.6 ${open}L36 ${hem + 0.8}Q32 ${hem + 1.6} 28 ${hem + 0.8}Z`, lining), P(`M29.4 ${open}L34.6 ${open}L36 ${hem + 0.8}Q32 ${hem + 1.6} 28 ${hem + 0.8}Z`, grad(svg, [[0, `${INK}.55)`], [0.5, `${INK}.1)`], [1, `${INK}.55)`]]), { stroke: 'none' }));
+  else if (L.closure === 'zip') svg.append(s('path', { d: `M30.9 ${open}L30.9 ${hem + 1.3}M33.1 ${open}L33.1 ${hem + 1.3}`, fill: 'none', stroke: `${INK}.34)`, 'stroke-width': 0.5 }), s('line', { x1: 32, y1: open, x2: 32, y2: hem + 1.4, stroke: '#d9dbe6', 'stroke-width': 1, 'stroke-dasharray': '0.7 0.6' }),
+    s('rect', { x: 31.1, y: open + 0.6, width: 1.8, height: 2.2, rx: 0.5, fill: '#eceef6', stroke: `${INK}.6)`, 'stroke-width': 0.3 }), s('rect', { x: 31.5, y: open + 2.6, width: 1, height: 3, rx: 0.5, fill: '#c6c9d6', stroke: `${INK}.6)`, 'stroke-width': 0.3 }));
+  else svg.append(s('path', { d: `M33.2 ${open}Q34 ${(open + hem) / 2} 33.4 ${hem + 1.2}`, fill: 'none', stroke: `${INK}.5)`, 'stroke-width': 0.6 }), s('path', { d: `M33.9 ${open}Q34.7 ${(open + hem) / 2} 34.1 ${hem + 1.2}`, fill: 'none', stroke: `${LIT}.16)`, 'stroke-width': 0.5 }));
+  if (L.closure === 'buttons') for (let i = 0; i < L.buttons; i++) { const y = open + 4 + (L.buttons > 1 ? (i * (hem - open - 10)) / (L.buttons - 1) : (hem - open) * 0.28), c = L.buttonColor || '#f1e7c8';
+    svg.append(s('ellipse', { cx: 31.5, cy: y + 0.5, rx: 1.5, ry: 1.3, fill: `${INK}.35)` }), s('circle', { cx: 31.3, cy: y, r: 1.3, fill: c, stroke: `${INK}.6)`, 'stroke-width': 0.35 }), s('circle', { cx: 30.9, cy: y - 0.4, r: 0.5, fill: `${LIT}.6)` }), s('path', { d: `M30.9 ${y}h0.01M31.7 ${y}h0.01`, stroke: `${INK}.7)`, 'stroke-width': 0.35, 'stroke-linecap': 'round' })); }
+  // the collar, over the closure, with the shadow it throws on the chest
+  if (L.collar === 'lapel') { const lap = 'M25.6 7.4Q23.4 8.2 22.4 9.6L20.6 16.2L24.4 17.4L23.4 19.2L32.6 24.4Q29 15 25.6 7.4Z';
+    svg.append(P('M25.6 7.6Q32 12 38.4 7.6L32.6 24.2Z', lining), P('M25.6 7.6Q32 12 38.4 7.6L32.6 24.2Z', grad(svg, [[0, `${INK}.6)`], [1, `${INK}.05)`]], true), { stroke: 'none' }),
+      ...both(() => s('path', { d: lap, fill: `${INK}.3)`, transform: 'translate(0.5 1.1)' })), ...both(() => P(lap, trim)), ...both(() => P(lap, grad(svg, [[0, `${LIT}.2)`], [0.6, `${LIT}0)`], [1, `${INK}.3)`]]), { stroke: 'none' })),
+      ...both(() => s('path', { d: 'M25.9 9Q28.6 16 32 23', fill: 'none', stroke: `${LIT}.2)`, 'stroke-width': 0.45 }))); }
+  else if (L.collar === 'stand') svg.append(P('M24 9.6Q23.4 5.4 25.4 4.4Q32 2.6 38.6 4.4Q40.6 5.4 40 9.6Q32 12.6 24 9.6Z', trim), P('M24 9.6Q23.4 5.4 25.4 4.4Q32 2.6 38.6 4.4Q40.6 5.4 40 9.6Q32 12.6 24 9.6Z', grad(svg, [[0, `${INK}.4)`], [0.5, `${LIT}.14)`], [1, `${INK}.4)`]]), { stroke: 'none' }),
+    ...(L.ribbed ? ribs(25, 39, 4.4, 10.4, 9) : []), s('path', { d: 'M24.2 10.4Q32 13.6 39.8 10.4', fill: 'none', stroke: `${INK}.35)`, 'stroke-width': 0.9 }));
+  else if (L.collar === 'crew') svg.append(s('path', { d: 'M24.4 8.2Q32 15.6 39.6 8.2', fill: 'none', stroke: `${INK}.35)`, 'stroke-width': 3.4, 'stroke-linecap': 'round', transform: 'translate(0 0.7)' }), s('path', { d: 'M24.4 8.2Q32 15.6 39.6 8.2', fill: 'none', stroke: trim, 'stroke-width': 2.6, 'stroke-linecap': 'round' }), s('path', { d: 'M24.6 7.6Q32 14.6 39.4 7.6', fill: 'none', stroke: `${LIT}.22)`, 'stroke-width': 0.5 }));
+  else if (L.collar === 'hood') svg.append(s('path', { d: 'M23.6 9.6Q32 15 40.4 9.6', fill: 'none', stroke: `${INK}.45)`, 'stroke-width': 1 }), ...both(() => s('path', { d: 'M29.4 11.6Q28.8 16 29.6 19.6', fill: 'none', stroke: `${LIT}.75)`, 'stroke-width': 0.5, 'stroke-linecap': 'round' })), ...both(() => s('circle', { cx: 29.6, cy: 20, r: 0.6, fill: '#d9dbe6' })));
+  else svg.append(s('path', { d: 'M24.6 8.4Q32 14.4 39.4 8.4', fill: 'none', stroke: `${INK}.4)`, 'stroke-width': 0.8 }));
+  // pockets, as the style cuts them: a blazer's and a coat's flaps, a bomber's slanted welts, a parka's patch pockets
+  const py = Math.min(hem - 10, 38.5);
+  const pocketOf = () => (L.style === 'bomber' ? [s('path', { d: `M19.6 ${py + 4.4}L24.4 ${py - 1.6}`, fill: 'none', stroke: `${INK}.4)`, 'stroke-width': 1.7, 'stroke-linecap': 'round' }), s('path', { d: `M19.6 ${py + 4.4}L24.4 ${py - 1.6}`, fill: 'none', stroke: trim, 'stroke-width': 1, 'stroke-linecap': 'round' })]
+    : L.style === 'parka' ? [P(`M19 ${py - 1}h8.4v6.6q-4.2 1.4-8.4 0Z`, body), P(`M19 ${py - 1}h8.4v6.6q-4.2 1.4-8.4 0Z`, grad(svg, [[0, `${LIT}.1)`], [1, `${INK}.26)`]], true), { stroke: 'none' }), P(`M18.6 ${py - 1.6}h9.2v2.6q-4.6 1.2-9.2 0Z`, trim)]
+      : [s('path', { d: `M19.2 ${py + 0.2}h8.2v2.5q-4.1 1-8.2 0Z`, fill: `${INK}.3)`, transform: 'translate(0.3 0.8)' }), P(`M19.2 ${py}h8.2v2.5q-4.1 1-8.2 0Z`, trim), s('path', { d: `M19.4 ${py + 0.5}h7.8`, fill: 'none', stroke: `${LIT}.25)`, 'stroke-width': 0.4 })]);
+  if (L.pockets > 0) svg.append(s('g', {}, pocketOf())); if (L.pockets > 1) svg.append(s('g', { transform: 'matrix(-1 0 0 1 64 0)' }, pocketOf()));
+  if (L.collar === 'lapel' && L.pockets > 0) svg.append(s('path', { d: 'M37.4 21.6l5.6 -0.7', fill: 'none', stroke: `${INK}.42)`, 'stroke-width': 0.9, 'stroke-linecap': 'round' })); // the breast pocket's welt
   return svg;
 }
 function jacketFace(id, cls) {
@@ -83,7 +128,7 @@ function jacketFace(id, cls) {
 }
 export function jacketEl(id, cls = '') {
   const J = D.JACKETS[id] || {}, L = jacketLook(id, J), dark = shade(L.color, 0.62);
-  return thing(jacketFace(id, cls), { mat: L.mat, color: L.color, scale: 1.8, name: J.name || id, sub: `${JACKET_STYLES[L.style]} · ${J.effect || ''}`, cls: `th-jacket ${cls}`,
+  return thing(jacketFace(id, cls), { mat: L.mat, color: L.color, depth: 4.5, name: J.name || id, sub: `${JACKET_STYLES[L.style]} · ${J.effect || ''}`, cls: `th-jacket ${cls}`,
     edge: () => h('span', { class: 'gj' }, jacketSvg(L, dark)), back: () => { const b = h('span', { class: 'gj gj-backside' }, jacketSvg({ ...L, collar: L.collar === 'hood' ? 'hood' : 'none', closure: 'none', buttons: 0, pockets: 0 })); const em = emblemEl(L, 'jsym big'); if (em) b.append(em); return b; },
     make: () => jacketFace(id, cls) });
 }

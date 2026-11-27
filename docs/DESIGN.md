@@ -947,8 +947,13 @@ for a close look, to be turned over (`ui/spin.js`, the look a die gets).
   look as cards do, set in the Cards section.
 - A business card is a card (kind `business`), one for every High Roller, carrying their name sign. It takes a wallet
   slot; while it is in your wallet you play by their trait, and every business card you hold counts. A High Roller whose card you hold does not sit down again that run.
-- A wallet is a billfold, a clasped pouch or a clip, and lies open holding the cards and passes you carry (the same
-  elements drawn anywhere else). No slot marks.
+- A wallet is a billfold, a clasped pouch or a clip: a padded body with a slot along the top for cash (your purse
+  shows as notes in it). A billfold and a pouch lie shut; under the pointer, or clicked to keep them so, the cover
+  swings open or the flap lifts, and what you carry is inside (the same elements drawn anywhere else). A clip holds a
+  folded wad with everything in plain sight. No slot marks.
+- Wallets and jackets rest a little turned so their body shows. A jacket is drawn as cloth that hangs: curved
+  sleeves and shoulders, shading round the chest and each sleeve, the lining seen through the neck, collar and pocket
+  shadows, each part still in its own material and colour.
 - A jacket has a style (blazer, bomber, long coat, parka) and parts (body, sleeves, trim, collar, closure, pockets,
   emblem), each with its own material and colour.
 

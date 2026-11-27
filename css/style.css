@@ -1335,7 +1335,7 @@ table.b-shop { border-collapse: collapse; width: 100%; font-size: 12px; margin-t
 @keyframes finSvgSpark { 0% { opacity: 1; } 33% { opacity: .78; } 66% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .fin-glint, .fin-swirling, .fin-sparkle::after, .fin-svg { animation: none !important; } }
 /* wallets and jackets, made of a finish */
-.gear-preview { display: grid; place-items: center; padding: 26px 20px 34px; min-height: 190px; } .gear-preview > .th-jacket { zoom: 3; } .gear-preview > .th-wallet { zoom: 1.5; }
+.gear-preview { display: grid; place-items: center; padding: 26px 20px 34px; min-height: 190px; } .gear-preview > .th-jacket { zoom: 3; } .gear-preview > .th-wallet { zoom: 2; margin-right: 110px; }
 .fin-swatch { display: inline-block; width: 46px; height: 28px; border-radius: 6px; position: relative; vertical-align: middle; }
 .gcard .card-fin { position: absolute; inset: 0; border-radius: inherit; z-index: 0; mix-blend-mode: hard-light; opacity: .92; pointer-events: none; }
 .fin-pick { gap: 4px; max-width: 460px; } .btn.fin-btn { display: inline-grid; justify-items: center; gap: 2px; padding: 3px 4px; height: auto; } .btn.fin-btn small { font-size: 8.5px; letter-spacing: 0; text-transform: none; } .btn.fin-btn.on { box-shadow: 0 0 0 2px var(--gold); }
@@ -1381,6 +1381,7 @@ body.carrying-now #tooltip { display: none !important; } /* nothing explains its
 .thing .th-back > * { width: 100%; height: 100%; box-sizing: border-box; }
 .thing:not(.th-still):hover { z-index: 40; }
 .thing:not(.th-still):hover:not(:has(.thing:not(.th-still):hover)) > .th-body { transform: translateZ(14px) rotateX(var(--th-rx)) rotateY(var(--th-ry)) scale(1.1); }
+.thing.th-wallet > .th-body, .thing.th-jacket > .th-body { transform: rotateX(9deg) rotateY(-13deg); } /* gear rests a little turned, so its body shows */
 body.spinning .thing > .th-body, body.carrying-now .thing > .th-body { transition: none; }
 .th-look { display: grid; place-items: center; perspective: 900px; } .th-look .th-zoom { transform-style: preserve-3d; } .th-look .thing { cursor: inherit; }
 .th-look .thing > .th-body { transition: none; }
@@ -1398,31 +1399,52 @@ body.spinning .thing > .th-body, body.carrying-now .thing > .th-body { transitio
 .thing.armed .gcard { box-shadow: 0 0 0 2px var(--bad), 0 3px 8px rgba(0, 0, 0, .45); }
 
 /* ---------- wallets and jackets (ui/gear.js) ---------- */
-/* a wallet lies open with what it holds tucked in: .gw-tuck is the row of cards and passes, .gw-front the pocket over
-   their lower halves, .gw-inside the lining behind them */
-.gw { position: relative; display: inline-block; --wr: var(--w-round, 6px); }
-.gw i { position: absolute; display: block; pointer-events: none; } .gw .fin { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16), inset 0 -8px 14px rgba(0, 0, 0, .28); }
-.gw-tuck { position: absolute; left: 6px; top: 7px; display: flex; align-items: flex-start; z-index: 2; } .gw-tuck > .thing { flex: none; }
-.gw .gw-inside { background: var(--w-lining); box-shadow: inset 0 6px 12px rgba(0, 0, 0, .55); z-index: 1; }
-.gw .gw-front { z-index: 3; border-top: 1.5px solid var(--w-trim); } .gw .gw-stitch { z-index: 4; inset: 3px; border: 1px dashed rgba(255, 255, 255, .34); border-radius: calc(var(--wr) - 2px); }
-.gw-billfold { display: inline-flex; gap: 0; } .gw-leaf { position: relative; display: block; width: 112px; height: 90px; }
-.gw-leaf .gw-panel { inset: 0; border-radius: var(--wr) 2px 2px var(--wr); } .gw-leaf.r .gw-panel { border-radius: 2px var(--wr) var(--wr) 2px; }
-.gw-leaf .gw-inside { left: 4px; right: 4px; top: 4px; bottom: 40px; border-radius: 3px; } .gw-leaf .gw-front { left: 0; right: 0; bottom: 0; height: 44px; border-radius: 0 0 2px var(--wr); } .gw-leaf.r .gw-front { border-radius: 0 0 var(--wr) 2px; }
-.gw .gw-spine { position: relative; width: 5px; height: 90px; background: linear-gradient(90deg, rgba(0, 0, 0, .55), var(--w-trim), rgba(0, 0, 0, .55)); }
-.gw-clasped { width: 168px; height: calc(92px + var(--w-flap) * 1.6); }
-.gw-clasped .gw-flap { left: 0; right: 0; top: 0; height: calc(var(--w-flap) * 1.6 + 8px); border-radius: 50% 50% 0 0 / 100% 100% 0 0; filter: brightness(.82); }
-.gw-clasped .gw-inside { left: 0; right: 0; top: calc(var(--w-flap) * 1.6); bottom: 0; border-radius: 2px 2px var(--wr) var(--wr); }
-.gw-clasped .gw-tuck { top: calc(var(--w-flap) * 1.6 + 6px); } .gw-clasped .gw-front { left: 0; right: 0; bottom: 0; height: 46px; border-radius: 2px 2px var(--wr) var(--wr); }
-.gw-clasped .gw-stitch { top: calc(var(--w-flap) * 1.6 + 49px); border-top: 0; border-radius: 0 0 calc(var(--wr) - 2px) calc(var(--wr) - 2px); }
-.gw .gw-clasp { left: 50%; top: 3px; translate: -50% 0; z-index: 5; } .gw-clasp.snap, .gw-clasp.magnet { width: 10px; height: 10px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #b9c0cc 45%, #5a6170); box-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
-.gw-clasp.magnet { border-radius: 2px; width: 14px; height: 8px; background: linear-gradient(180deg, #7b8496, #2b3040); } .gw-clasp.zip { left: 8px; right: 8px; translate: 0 0; top: calc(var(--w-flap) * 1.6 + 6px); height: 3px; background: repeating-linear-gradient(90deg, #e8e8f2 0 2px, #6a6f7d 2px 4px); border-radius: 2px; }
+/* a wallet: a padded body that lies shut and opens under the pointer (or pinned open by a click: .pin). .gw-base is
+   the leaf that stays put, .gw-cover (billfold) or .gw-flap (clasped) the part that swings: .gw-out its outside,
+   .gw-in its inside. Inside: .gw-inside the lining, .gw-cash the slot along the top and the notes in it, .gw-tuck the
+   row of cards and passes, .gw-front the pocket over their lower halves. */
+.gw { position: relative; display: inline-block; --wr: var(--w-round, 6px); transform-style: preserve-3d; }
+.gw i { position: absolute; display: block; pointer-events: none; } .gw span.gw-base, .gw span.gw-cover, .gw span.gw-flap, .gw span.gw-out, .gw span.gw-in { position: absolute; display: block; transform-style: preserve-3d; }
+.gw .gw-skin { inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14), inset 0 -10px 16px rgba(0, 0, 0, .34), inset 0 7px 10px rgba(255, 255, 255, .1); }
+/* the padding: light on the swell, shade toward the seams */
+.gw .gw-pad { inset: 0; border-radius: inherit; background: radial-gradient(120% 90% at 42% 30%, rgba(255, 255, 255, .22), transparent 46%), radial-gradient(140% 120% at 50% 50%, transparent 52%, rgba(0, 0, 0, .34)); box-shadow: inset 0 0 6px rgba(0, 0, 0, .45); }
+.gw .gw-stitch { inset: 4px; border: 1px dashed rgba(255, 255, 255, .36); border-radius: calc(var(--wr) - 2px); } .gw .gw-stitch.low { inset: auto 4px 4px 4px; height: 36px; border-top: 0; border-radius: 0 0 calc(var(--wr) - 2px) calc(var(--wr) - 2px); transform: translateZ(1.3px); }
+.gw-tuck { position: absolute; left: 7px; top: 12px; display: flex; align-items: flex-start; transform: translateZ(.8px); } .gw-tuck > .thing { flex: none; }
+.gw .gw-inside { inset: 5px 5px 38px; border-radius: 3px; background: var(--w-lining); box-shadow: inset 0 6px 12px rgba(0, 0, 0, .6); transform: translateZ(.2px); }
+.gw .gw-front { left: 0; right: 0; bottom: 0; height: 46px; border-radius: 2px 2px var(--wr) var(--wr); border-top: 1.5px solid var(--w-trim); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12), inset 0 -8px 12px rgba(0, 0, 0, .3), 0 -2px 4px rgba(0, 0, 0, .35); transform: translateZ(1.2px); }
+/* cash: a slot along the top edge, and the notes standing in it */
+.gw span.gw-cash { position: absolute; display: block; left: 9px; right: 9px; top: -5px; height: 11px; transform: translateZ(.5px); pointer-events: none; }
+.gw .gw-slot { left: -3px; right: -3px; top: 7px; height: 4px; border-radius: 2px; background: #05030a; box-shadow: inset 0 1px 2px #000, 0 1px 0 rgba(255, 255, 255, .14); }
+.gw .gw-note { left: calc(var(--i) * 3px); right: calc(6px - var(--i) * 2px); top: calc(var(--i) * 1.3px); bottom: 0; border-radius: 1.5px 1.5px 0 0; box-shadow: inset 0 0 0 1px rgba(20, 60, 30, .55), inset 0 2px 0 rgba(255, 255, 255, .35), 0 -1px 2px rgba(0, 0, 0, .4); }
+/* billfold: shut it is one leaf wide; the cover is hinged down its right edge and swings out flat beside the base */
+.gw-billfold { width: 118px; height: 92px; } .gw-billfold .gw-base, .gw-billfold .gw-cover { inset: 0; border-radius: var(--wr) 3px 3px var(--wr); }
+.gw-billfold .gw-cover { transform-origin: 100% 50%; transform: translateZ(6px); transition: transform .5s var(--ease); border-radius: var(--wr) 3px 3px var(--wr); }
+.gw-billfold .gw-out, .gw-billfold .gw-in { inset: 0; border-radius: inherit; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.gw-billfold .gw-in { transform: rotateY(180deg); border-radius: 3px var(--wr) var(--wr) 3px; } .gw-billfold .gw-out { transform: translateZ(3px); box-shadow: 0 0 0 .6px rgba(0, 0, 0, .5); }
+.thing.th-wallet:hover > .th-body > .gw-billfold > .gw-cover, .gw-billfold.pin > .gw-cover { transform: translateZ(.6px) rotateY(180deg); }
+/* the fold: the spine swells between the leaves while it is shut */
+.gw-billfold .gw-base::after { content: ''; position: absolute; right: -2.5px; top: 2px; bottom: 2px; width: 5px; border-radius: 0 3px 3px 0; background: linear-gradient(90deg, rgba(0, 0, 0, .5), var(--w-trim) 60%, rgba(0, 0, 0, .55)); transform: translateZ(3px); }
+/* clasped: a pouch; the flap is hinged along the top, comes down over the front to its clasp, and lifts to open */
+.gw-clasped { width: 138px; height: 92px; } .gw-clasped .gw-base { inset: 0; border-radius: 3px 3px var(--wr) var(--wr); }
+.gw-clasped .gw-flap { left: 0; right: 0; top: 0; height: calc(var(--w-flap) * 1.5 + 30px); transform-origin: 50% 0; transform: translateZ(3.2px); transition: transform .5s var(--ease); border-radius: 3px 3px 46% 46% / 3px 3px 34% 34%; }
+.gw-clasped .gw-out, .gw-clasped .gw-in { inset: 0; border-radius: inherit; backface-visibility: hidden; -webkit-backface-visibility: hidden; } .gw-clasped .gw-in { transform: rotateX(180deg); }
+.gw-clasped .gw-out { transform: translateZ(2px); filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .45)); } .gw .gw-lining { inset: 0; border-radius: inherit; background: color-mix(in srgb, var(--w-lining) 70%, var(--wc)); box-shadow: inset 0 0 0 1.5px var(--w-trim), inset 0 0 0 3px rgba(255, 255, 255, .08), inset 0 -8px 12px rgba(0, 0, 0, .4); }
+.thing.th-wallet:hover > .th-body > .gw-clasped > .gw-flap, .gw-clasped.pin > .gw-flap { transform: translateZ(.6px) rotateX(138deg); }
+.gw .gw-clasp { left: 50%; bottom: 5px; translate: -50% 0; } .gw-clasp.snap, .gw-clasp.magnet, .gw-stud.snap, .gw-stud.magnet { width: 10px; height: 10px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #b9c0cc 45%, #5a6170); box-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
+.gw-clasp.magnet, .gw-stud.magnet { border-radius: 2px; width: 14px; height: 8px; background: linear-gradient(180deg, #7b8496, #2b3040); } .gw-clasp.zip { left: 10%; right: 10%; translate: 0 0; bottom: 3px; height: 3px; background: repeating-linear-gradient(90deg, #e8e8f2 0 2px, #6a6f7d 2px 4px); border-radius: 2px; }
+.gw .gw-stud { left: 50%; top: calc(var(--w-flap) * 1.5 + 16px); translate: -50% 0; transform: translateZ(1.6px); filter: brightness(.7); } .gw-stud.zip { left: 10%; right: 10%; translate: 0 0; top: 47px; height: 2px; background: repeating-linear-gradient(90deg, #cfd2dc 0 2px, #4a4f5d 2px 4px); }
 .gw-clasp.chain { left: auto; right: -14px; top: 30%; translate: 0 0; width: 26px; height: 22px; border: 2px dotted #cfd5df; border-radius: 0 0 50% 50%; border-top: 0; }
-.gw-clip { width: 162px; height: 84px; } .gw-clip .gw-tuck { left: 6px; top: 6px; } .gw-clip .gw-band { left: 50%; top: -4px; bottom: 8px; width: 20px; translate: -50% 0; border-radius: 5px 5px 9px 9px; z-index: 3; box-shadow: 0 2px 5px rgba(0, 0, 0, .6), inset 0 0 0 1px rgba(255, 255, 255, .3); }
-.gw-clip .gw-band-shine { left: calc(50% - 6px); top: 0; bottom: 14px; width: 3px; border-radius: 2px; background: linear-gradient(180deg, rgba(255, 255, 255, .7), rgba(255, 255, 255, .1)); z-index: 4; }
-.gw.crown .gw-front, .gw.crown .gw-band { box-shadow: inset 0 0 0 1.5px #ffd76a, 0 0 8px rgba(255, 215, 106, .45); }
-.gw .wsym { position: absolute; right: 8px; bottom: 8px; width: 15px; height: 15px; z-index: 5; pointer-events: none; } .gw-back { display: block; position: relative; border-radius: var(--w-round, 6px); } .gw-back .wsym.big { position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: 30%; height: auto; aspect-ratio: 1; }
-/* a wallet shown small (a shop's shelf, the library): the same wallet, scaled */
-.thing.mini.th-wallet, .item .thing.th-wallet, .lib .thing.th-wallet { zoom: .42; }
+/* clip: a folded wad of notes, what it holds on top, and the band over it all */
+.gw-clip { width: 150px; height: 86px; } .gw-clip .gw-tuck { left: 8px; top: 6px; transform: translateZ(2.4px); }
+.gw span.gw-wad { position: absolute; display: block; inset: 16px 2px 0 2px; transform-style: preserve-3d; } .gw-wad span.gw-cash { inset: 0; height: auto; left: 0; right: 0; top: 0; } .gw-wad .gw-slot { display: none; }
+.gw-wad .gw-note { left: calc(var(--i) * 1.5px); right: calc(var(--i) * 1.5px); top: calc(var(--i) * 2px); bottom: calc(var(--i) * 1.5px); border-radius: 3px 3px 7px 7px; transform: translateZ(calc(var(--i) * .5px)); box-shadow: inset 0 0 0 1px rgba(20, 60, 30, .55), inset 0 -6px 8px rgba(0, 0, 0, .25), 0 1px 2px rgba(0, 0, 0, .5); }
+.gw-clip .gw-band { left: 50%; top: -4px; bottom: 10px; width: 20px; translate: -50% 0; border-radius: 5px 5px 9px 9px; transform: translateZ(5px); box-shadow: 0 2px 5px rgba(0, 0, 0, .6), inset 0 0 0 1px rgba(255, 255, 255, .3), 3px 3px 5px rgba(0, 0, 0, .35); }
+.gw-clip .gw-band-shine { left: calc(50% - 6px); top: 0; bottom: 16px; width: 3px; border-radius: 2px; background: linear-gradient(180deg, rgba(255, 255, 255, .7), rgba(255, 255, 255, .1)); transform: translateZ(5.2px); }
+.gw.crown .gw-out .gw-skin, .gw.crown .gw-band { box-shadow: inset 0 0 0 1.5px #ffd76a, 0 0 8px rgba(255, 215, 106, .45); }
+.gw .wsym { position: absolute; right: 9px; bottom: 9px; width: 16px; height: 16px; pointer-events: none; transform: translateZ(.3px); } .gw-clasped .gw-out .wsym { right: auto; left: 10px; bottom: auto; top: 8px; width: 13px; height: 13px; }
+.gw-back { display: block; position: relative; border-radius: var(--w-round, 6px); } .gw-back .wsym.big { position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: 30%; height: auto; aspect-ratio: 1; }
+@media (prefers-reduced-motion: reduce) { .gw .gw-cover, .gw .gw-flap { transition: none; } }
+.thing.mini.th-wallet, .item .thing.th-wallet, .lib .thing.th-wallet { zoom: .6; }
 /* a jacket: the drawing, the changes it makes to your attributes under it, its emblem on the chest */
 .gj { position: relative; display: inline-block; line-height: 0; } .gj .gj-art { display: block; overflow: visible; }
 .gj .mods { position: absolute; left: 0; right: 0; bottom: -7px; display: flex; justify-content: center; gap: 2px; line-height: 1; }

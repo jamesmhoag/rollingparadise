@@ -40,8 +40,8 @@ export const finishOf = (f) => (f && FINISHES[f.m] ? { m: f.m, color: /^#[0-9a-f
 // read from the entry as it was before looks: its colour, and a material guessed from its name.
 // A wallet is one of three types, and a jacket one of a few styles; within each, its parts can be set: what each is
 // made of and its colour, and the details its shape has.
-//   billfold  folds in two and lies open: your cards in one side, your passes in the other
-//   clasped   a pouch with a flap, held shut by its clasp, and lying open: cards and passes stand in it
+//   billfold  folds in two; its cover swings open: your cards inside the cover, your passes in the other leaf
+//   clasped   a pouch with a flap, held shut by its clasp; the flap lifts: cards and passes stand in it
 //   clip      a band over the stack: everything it holds is in plain sight
 export const WALLET_TYPES = { billfold: 'Billfold', clasped: 'Clasped', clip: 'Clip' };
 export const WALLET_CLASPS = { snap: 'Snap', zip: 'Zip', chain: 'Chain', magnet: 'Magnet' };
