@@ -49,7 +49,7 @@ for (const id of D.SHOP_IDS()) assert(!D.makerOf(id), `${D.SHOP_CHIPS[id].name} 
   assert(!x.cell.chips.some((ch) => B.isFx(ch) && ch.resist === 'reducer'), 'a one-turn effect chip is gone after the turn');
 }
 
-// ---------- overload: full stacks cannot be aimed at, and Meter overflow is lost like overkill ----------
+// ---------- overload: full stacks cannot be aimed at, and Meter overflow is lost ----------
 {
   const { bout, me } = table(7);
   const full = cells(me).find((x) => B.solidCount(x.cell) && B.capacityLeft(me, x.cell) <= 0);

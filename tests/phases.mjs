@@ -1,5 +1,5 @@
 // The phased turn (draw, roll, bid), hidden same-phase moves, and Debt: one marker per stack, settled
-// chip by chip, overkill down the lane, and a forecast that matches what the House actually does.
+// chip by chip, what is not paid staying where it was laid, and a forecast that matches what the House actually does.
 import * as R from '../js/run.js'; import * as B from '../js/bout.js'; import * as D from '../js/data.js';
 import { planPhase, seen, autoTurn } from '../js/ai.js';
 const assert = (ok, msg) => { if (!ok) { console.error('FAIL', msg); process.exit(1); } };
@@ -61,14 +61,16 @@ const settle = (bout) => { for (const _ of settleAll(bout, 'expense')); }; // es
   const front = opp.grid[m][0], back = opp.grid[m + 1][0];
   front.chips = [std(bout, 5), std(bout, 5), std(bout, 1)]; back.chips = [std(bout, 2), std(bout, 2), std(bout, 2)];
   engage(bout, me, opp, m, 0, 14, {}); settle(bout);
-  assert(!front.chips.length && bout.stage.paid[1] === 13, '14¢ on 5,5,1 pays all three chips (11¢), and 2¢ more behind');
-  assert(B.debtOf(back) === 1 && back.chips.filter((c) => c.kind === 'std').length === 2, 'the 3¢ overkill goes to the stack behind: one 2¢ chip paid, 1¢ stays as Debt');
-  assert(back.chips.filter((c) => c.kind === 'debt').length === 1, 'a stack shows one Debt marker with the exact amount');
+  assert(!front.chips.some((c) => c.kind === 'std') && bout.stage.paid[1] === 11, '14¢ on 5,5,1 pays all three chips (11¢)');
+  assert(B.debtOf(front) === 3 && !B.debtOf(back) && back.chips.length === 3, 'the 3¢ still owed stays where it was laid: nothing goes on to the stack behind');
+  assert(front.chips.filter((c) => c.kind === 'debt').length === 1 && B.cellWorth(front) === 0, 'a space shows one Debt marker with the exact amount, and is worth nothing, not less');
   engage(bout, me, opp, m + 1, 0, 1, {}); settle(bout);
-  assert(!B.debtOf(back) && back.chips.length === 1 && bout.stage.paid[1] === 15, 'a later 1¢ fee tops the Debt up to 2¢ and the next chip is paid');
+  assert(B.debtOf(back) === 1 && back.chips.filter((c) => c.kind === 'std').length === 3, '1¢ of Debt on a 2¢ chip waits');
+  engage(bout, me, opp, m + 1, 0, 1, {}); settle(bout);
+  assert(!B.debtOf(back) && back.chips.length === 2 && bout.stage.paid[1] === 13, 'a later 1¢ fee tops the Debt up to 2¢ and the chip is paid');
   const side = opp.grid[m][1]; side.chips = [std(bout, 1)];
   engage(bout, me, opp, m, 1, 6, {}); settle(bout);
-  assert(!opp.grid[m][2].chips.length && !opp.grid[m][0].chips.length, 'overkill never moves sideways');
+  assert(!opp.grid[m][2].chips.length && B.debtOf(opp.grid[m][0]) === 3, 'nothing moves sideways');
   const cell = opp.grid[m][3]; cell.chips = [std(bout, 1)]; setDebt(bout, cell, 7); setDebt(bout, cell, 3);
   assert(cell.chips.filter((c) => c.kind === 'debt').length === 1 && B.debtOf(cell) === 3, 'setting Debt keeps one marker');
 }

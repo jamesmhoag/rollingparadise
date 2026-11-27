@@ -437,16 +437,15 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
   assert(fo.find((t) => t.key === 'enfeeble' && t.zone === 'bar' && !t.good), 'harmful effects lie in the Bar');
 }
 
-// ---------- ghost Debt, overkill spreading at once, totals, paid bids ----------
+// ---------- a fee stays where it is laid, totals, paid bids ----------
 {
   const { bout, me, opp } = table({});
-  // a lane with one small stack: the overkill spreads to the stack behind at once, the rest is wasted on show
+  // a lane with one small stack: the fee stays on the stack it is laid on
   const c = 0, rows = [...Array(me.rows).keys()];
   for (const r of rows) me.grid[r][c].chips = [];
   const m = me.dims.meterRows; me.grid[m][c].chips = [{ id: 8e6, kind: 'std', value: 2 }]; me.grid[m + 1][c].chips = [{ id: 8e6 + 1, kind: 'std', value: 1 }];
   const g = engage(bout, opp, me, m, c, 7, {});
-  assert(B.debtOf(me.grid[m][c]) === 2 && B.debtOf(me.grid[m + 1][c]) === 1, 'overkill spreads down the lane as the fee lands');
-  assert(g.placed === 3 && me.grid.slice(m + 2).some((row) => row[c].chips.some((ch) => ch.kind === 'stray' && ch.value === 4)), 'what has nowhere to go shows as a ghost Debt chip on the next empty space');
+  assert(B.debtOf(me.grid[m][c]) === 7 && B.debtOf(me.grid[m + 1][c]) === 0 && g.placed === 7, 'a fee is one Debt chip where it is laid: nothing spreads down the lane');
   drain(B._test.settleAll(bout, 'expense'));
   assert(!me.grid.flat().some((cell) => cell.chips.some((ch) => ch.kind === 'stray')), 'the House clears strays as it settles');
 }

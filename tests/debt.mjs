@@ -1,8 +1,9 @@
-// Debt is a chip with a negative value. It owes; it is paid by the chips it reaches, each worth no more than what
-// is still owed (a bigger chip is never broken for change); paid off, it is gone. Plain Debt touches only the chip
-// under it. A made chip of negative value is a debt chip under its own name, and reaches as the chip maker says.
+// Negative value is a chip parameter: the chip owes. It stays where it is laid (nothing spills on to another stack),
+// is paid by the chips it reaches, each worth no more than what is still owed (a bigger chip is never broken for
+// change), and is gone once paid off. Debt is one such chip (it touches only the chip under it); any chip made with
+// a negative value is another, under its own name, reaching as the chip maker says.
 import * as R from '../js/run.js'; import * as B from '../js/bout.js'; import * as D from '../js/data.js';
-import { makeKind, owesPer } from '../js/trickmaker.js';
+import { makeKind, owesOf } from '../js/trickmaker.js';
 import { NEW_CHIP } from '../js/content/chipmaker.js';
 
 const fails = [], ok = (c, m) => { if (!c) fails.push(m); };
@@ -23,7 +24,7 @@ const debts = (cell) => cell.chips.filter((ch) => ch.kind === 'debt');
 D.MADE_CHIPS._lien = { ...NEW_CHIP, name: 'Lien', value: -2, reach: { to: 'touching', range: 2 } };
 D.MADE_CHIPS._tab = { ...NEW_CHIP, name: 'Tab', value: -1 };
 try {
-  ok(makeKind('_lien') === 'fee' && owesPer('_lien') === 2 && owesPer('debt') === 1, 'a made chip with a negative value is laid as a fee: it owes its value for each point');
+  ok(makeKind('_lien') === 'fee' && owesOf('_lien') === 2 && owesOf('debt') === 0, 'a made chip with a negative value is laid as a fee, one chip an instance, owing its own value');
   { // its own marker, its own name; with the default reach it is paid exactly as Debt is
     const { bout, me, opp, r, c } = table(), cell = opp.grid[r][c]; cell.chips = [std(5, 9001)];
     B._test.engage(bout, me, opp, r, c, 2); B._test.engage(bout, me, opp, r, c, 2, { model: '_tab' });
@@ -31,19 +32,27 @@ try {
     drain(B._test.settleAll(bout, 'expense')); ok(B.debtOf(cell) === 4 && cell.chips.some((ch) => ch.id === 9001), 'together they owe 4¢: the 5¢ chip stays');
     B._test.engage(bout, me, opp, r, c, 1, { model: '_tab' }); drain(B._test.settleAll(bout, 'expense')); ok(!cell.chips.length, 'at 5¢ the chip is taken and both are paid off');
   }
-  { // a wider reach: any chip it reaches that it can cover, never change from a bigger one; it does not spill down the lane
+  { // a wider reach: any chip it reaches that it can cover, never change from a bigger one
     const { bout, me, opp, r, c } = table(), cell = opp.grid[r][c], side = opp.grid[r][c + 1], behind = opp.grid[r + 1][c];
     cell.chips = [std(25, 9001)]; side.chips = [std(25, 9002), std(1, 9003), std(5, 9004)]; behind.chips = [std(5, 9005)];
     const paid0 = bout.stage.paid[1]; B._test.engage(bout, me, opp, r, c, 7, { model: '_lien' });
     ok(B.debtOf(cell) === 7 && B.debtOf(behind) === 0, 'what it owes stays with it: its reach does the collecting');
+    ok(B.cellWorth(cell) === 18, 'it counts against the worth of its own space');
     drain(B._test.settleAll(bout, 'expense'));
     const left = [...cell.chips, ...side.chips, ...behind.chips].filter((ch) => ch.kind === 'std').map((ch) => ch.id).sort().join();
     ok(bout.stage.paid[1] - paid0 === 6 && B.debtOf(cell) === 1, `7¢ owed takes 5¢ and 1¢ from the chips it reaches (paid ${bout.stage.paid[1] - paid0}, owes ${B.debtOf(cell)})`);
     ok(left.includes('9001') && left.includes('9002'), 'the 25¢ chips are not broken for change');
   }
+  { // more than the stack holds: it stays where it was laid, on the bare space if need be, and takes what comes
+    const { bout, me, opp, r, c } = table(), cell = opp.grid[r][c], behind = opp.grid[r + 1][c]; cell.chips = [std(1, 9001)]; behind.chips = [std(5, 9002)];
+    const w0 = B.worth(opp); B._test.engage(bout, me, opp, r, c, 6); drain(B._test.settleAll(bout, 'expense'));
+    ok(B.debtOf(cell) === 5 && !cell.chips.some((ch) => ch.kind === 'std') && behind.chips.length === 1 && !B.debtOf(behind), 'no overkill: 5¢ still owed waits on the emptied space, and the stack behind is untouched');
+    ok(B.worth(opp) === w0 - 1, 'a bare space that owes is worth nothing, not less');
+    cell.chips.unshift(std(5, 9003)); drain(B._test.ticks(bout)); ok(!cell.chips.length, 'a chip it can cover, put on the space, pays it off');
+  }
   { // laid by hand it is the same chip
     const { bout, opp, r, c } = table(), cell = opp.grid[r][c]; cell.chips = [std(5, 9001)];
-    ok(B.sandboxChip(bout, 1, r, c, { made: '_lien' }) && debts(cell)[0]?.model === '_lien' && debts(cell)[0].value === 2, 'painted on a stack, a made debt chip owes its value');
+    ok(B.sandboxChip(bout, 1, r, c, { made: '_lien' }) && debts(cell)[0]?.model === '_lien' && debts(cell)[0].value === 2, 'painted on a stack, a made chip of negative value owes its value');
   }
 } finally { delete D.MADE_CHIPS._lien; delete D.MADE_CHIPS._tab; }
 if (fails.length) { console.log('FAIL ' + fails.join('\nFAIL ')); process.exit(1); }

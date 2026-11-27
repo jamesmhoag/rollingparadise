@@ -1713,7 +1713,7 @@ export const CHIP_LIST = [
 "source": "",
 "text": "Very Spooky, like transparent chip",
 "status": "built",
-"note": "Ghost creature: fear. No trick can aim at its row (only spreads reach it), it cannot be damaged, and no overkill passes into or through its row. Bad for both Rollers.",
+"note": "Ghost creature: fear. No trick can aim at its row (only spreads reach it), it cannot be damaged. Bad for both Rollers.",
 "show": null,
 "list": {
 "type": "Creature",

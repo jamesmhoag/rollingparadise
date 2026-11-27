@@ -27,12 +27,12 @@ const stackOf = (n) => { const x = cells().find((y) => !y.cell.hole && !y.cell.l
   ok(!B.fits(me, x.cell, chip('pushy', { immune: ['blocks'] })), 'immunity to blocking does not open a closed stack');
   ok(!B.fits(me, x.cell, chip('flat', { height: 'tiny' })), 'not even a chip with no height goes on a closed stack');
   ok(B.fits(me, x.cell, chip('bird2', { move: 'flying' })), 'a flying chip hovers over a closed stack'); }
-// nothing on top refuses Debt: a fee aimed at a closed stack goes on down the lane
+// nothing on top refuses Debt: a fee aimed at a closed stack is not laid at all
 { const opp = bout.sides[1], col = 2; for (let r = 0; r < opp.rows; r++) opp.grid[r][col].chips = [];
   const front = opp.grid[opp.dims.meterRows][col], back = opp.grid[opp.dims.meterRows + 1][col];
   front.chips = [{ id: 8e6, kind: 'std', value: 5 }, chip('lid2', { onTop: 'none' })]; back.chips = [{ id: 8e6 + 1, kind: 'std', value: 5 }];
   B._test.engage(bout, me, opp, opp.dims.meterRows, col, 3, {});
-  ok(!front.chips.some((ch) => ch.kind === 'debt') && back.chips.some((ch) => ch.kind === 'debt'), 'Debt cannot sit on a closed stack: the fee lands behind it'); }
+  ok(!front.chips.some((ch) => ch.kind === 'debt') && !back.chips.some((ch) => ch.kind === 'debt'), 'Debt cannot sit on a closed stack, and goes nowhere else'); }
 // footprints: a big chip claims n×n empty spaces and frees them when it goes
 { for (const x of cells()) { x.cell.chips = []; delete x.cell.link; delete x.cell.anchor; delete x.cell.hole; }
   B.sandboxChip(bout, 0, 1, 1, { made: chip('slab', { foot: 'large' }).model }, 'add');

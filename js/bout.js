@@ -8,7 +8,7 @@
 // Fees go out as Debt first; the House then settles every stack that took Debt.
 import { RNG, sum, clone, clamp, order1D, steps, nearestTo } from './util.js';
 import { stackEdit } from './stackedit.js';
-import { instances, deployOrder, placeIndex, makeKind, owesPer, isFxChip } from './trickmaker.js';
+import { instances, deployOrder, placeIndex, makeKind, owesOf, isFxChip } from './trickmaker.js';
 import { MAKES as MAKES_TABLE } from './content/trickmaker.js';
 const MAKES_OF = (chip) => MAKES_TABLE[chip] || {};
 import { MADE_CHIPS, HEIGHT } from './content/chipmaker.js';
@@ -56,7 +56,9 @@ const SPREAD = { scorch: 'drop' };
 
 // ---------- position helpers ----------
 // every chip with a value counts toward Worth, whether or not a fee can take it (a chip that lasts the match too)
-export const cellWorth = (cell) => sum(cell.chips, (ch) => (isPayable(ch) ? ch.value : ch.kind === 'debt' ? -ch.value : ch.kind === 'made' || lastsOf(ch) === 'match' ? ch.value || 0 : 0));
+// what a space is worth: its chips, less what the negative chips on it owe, and never less than nothing (what is
+// owed beyond the chips there waits on the space for chips to come; it is not taken from the rest of the position)
+export const cellWorth = (cell) => Math.max(0, sum(cell.chips, (ch) => (isPayable(ch) ? ch.value : ch.kind === 'debt' ? -ch.value : ch.kind === 'made' || lastsOf(ch) === 'match' ? ch.value || 0 : 0)));
 export const debtOf = (cell) => sum(cell.chips, (ch) => (ch.kind === 'debt' ? ch.value : 0));
 export const worth = (s) => sum(s.grid.flat(), cellWorth);
 export const occupied = (cell, payOnly) => cell.chips.some((ch) => isPayable(ch) || (!payOnly && isShield(ch)));
@@ -184,7 +186,7 @@ const charge = (cell, ch) => { const i = cell.chips.indexOf(ch); return cell.chi
 function tops(s, id) { const out = []; for (const x of allCells(s)) { const i = topSolid(x.cell); if (i >= 0 && x.cell.chips[i].shop === id) out.push({ ...x, ch: x.cell.chips[i], n: x.cell.chips.slice(0, i).filter((y) => !isHazard(y)).length, charge: charge(x.cell, x.cell.chips[i]) }); } return out; }
 export const spying = (s) => tops(s, 'spy').length;
 export const sunny = (s) => (s.sky || []).some((o) => o.kind === 'sun');
-// a Ghost haunts a row: no trick aims at it and no overkill passes into or through it
+// a Ghost haunts a row: no trick aims at it
 export const haunted = (b, side) => new Set((b.creatures || []).filter((cr) => cr.kind === 'ghost' && cr.side === side.idx && !cr.gone && cr.arrive <= b.turn && cr.r >= 0).map((cr) => cr.r));
 export const tipOf = (s, k) => Math.max(0, s.tip[k] + (s.turnBonus[k] || 0));
 // Charisma, Cunning and Conviction: what occupying rows earns (occBonus) plus gear (a jacket: s.c) and food or a sip
@@ -197,8 +199,8 @@ const mkHazard = (b, kind, life) => mkChip(b, kind, 0, { life: life ?? HAZARD_LI
 // On an empty space nothing can be played until it dries; frozen over (ice), it grounds the Frozen chips above it.
 export const puddleOf = (cell) => cell?.puddle || null;
 function setPuddle(b, cell, ice) { const p = cell.puddle; cell.puddle = p ? { ...p, t: b.turn, ice: ice ?? p.ice } : mkChip(b, 'puddle', 0, { t: b.turn, ice: !!ice }); return cell.puddle; }
-// Debt is a chip with a negative value: it owes. A stack carries one marker for each name of debt chip on it (plain
-// Debt, or a made chip of negative value: `model`), each showing exactly what it owes. Make the stack's total n: more
+// Negative value is a chip parameter: such a chip owes. Debt is one of them by name; any made chip of negative value
+// is another (`model`). Engine kind 'debt' is the marker of any of them. A stack carries one marker for each name, each showing exactly what it owes. Make the stack's total n: more
 // is added to the marker of that name; less is paid off the newest marker first, and a marker paid off is gone.
 function setDebt(b, cell, n, how, model) {
   const cur = cell.chips.filter((ch) => ch.kind === 'debt'), have = sum(cur, (ch) => ch.value), name = (model && MADE_CHIPS[model] && model) || null;
@@ -209,9 +211,9 @@ function setDebt(b, cell, n, how, model) {
   for (const d of cur.reverse()) { if (cut <= 0) break; const take = Math.min(cut, d.value); d.value -= take; cut -= take; if (!d.value) { cell.chips.splice(cell.chips.indexOf(d), 1); b.fx[d.id] = 'void'; } }
 }
 // a chip paid away: to the Stage, and on to its Roller's Pit
-const payStage = (b, si, ch) => { b.stage.paid[si] += ch.value; b.fx[ch.id] = 'stage'; toPit(b, si, ch, 'fee'); };
-// A debt chip is paid by the chips its reach covers. Plain Debt touches only the chip under it (the House pays that
-// from the top down). A made debt chip reaches as the chip maker says (its stack's neighbours, its lane, every chip
+const payStage = (b, si, ch) => { if (!(ch.value > 0)) { b.fx[ch.id] = 'void'; return; } /* a chip worth nothing is just taken off */ b.stage.paid[si] += ch.value; b.fx[ch.id] = 'stage'; toPit(b, si, ch, 'fee'); };
+// A chip that owes is paid by the chips its reach covers. Debt touches only the chip under it (the House pays that
+// from the top down). A made chip of negative value reaches as the chip maker says (its stack's neighbours, its lane, every chip
 // of a name...): any value chip it reaches that is worth no more than what is still owed pays, whole; a bigger chip
 // is never broken for change. → what was paid
 function reachPays(b, s, r, c, pool, pierce) { const cell = s.grid[r][c]; let got = 0;
@@ -220,14 +222,15 @@ function reachPays(b, s, r, c, pool, pierce) { const cell = s.grid[r][c]; let go
       if (!isPayable(ch) || !(ch.value > 0) || ch.value > pool - got || (hardOf(x.cell) > 0 && !pierce) || !x.cell.chips.includes(ch)) continue;
       x.cell.chips.splice(x.cell.chips.indexOf(ch), 1); payStage(b, (x.side || s).idx, ch); got += ch.value; if (x.cell !== cell) emptyOut(b, x.cell); } }
   return got; }
-// a made debt chip whose reach goes past the chip under it: what it owes stays with it (it does not spill down the lane when laid)
-const reachesWide = (model) => { const R = MADE_CHIPS[model]?.reach; return !!R && !(['touching', 'touchingValue', 'touchingHits'].includes(R.to) && (R.range || 1) <= 1); };
 // the chip a stack's Debt is working towards: the top standard or Opportunity chip
 export function debtTarget(cell) { const i = topPayableIdx(cell); return i < 0 ? null : cell.chips[i]; }
 // A step carries who acted, which trick, and which phase the House is calling, so the table can show it.
 // the player's side is named "You", so fix the grammar once here
 const say = (t) => t.replace(/\bYou's\b/g, 'Your').replace(/\bYou (plays|pays|charges|steals|gains|resists|evades|reflects|holds|wins|owes|takes|restores)\b/g, (m, v) => tx('feed.you', { slice: v.slice(0, -1) })).replace(/\bYou is\b/g, 'You are').replace(/\bYou has\b/g, 'You have').replace(/(?<=[a-z,:] )Your\b/g, 'your').replace(/^You .*/, (m) => m.replace(/, (gain|steal)s /g, ', $1 '));
-function step(b, text, cells = [], kind = '') { text = say(text); const st = { text, cells, kind, fx: b.fx, ...(b.ctx || {}) }; b.fx = {}; if (text) b.log.push(text); return st; }
+// a chip that waits on an empty space ends up on top of whatever is put there (hazards and markers lie on the stack)
+const floatOwed = (b) => { for (const s of b.sides || []) for (const row of s.grid || []) for (const cell of row) { const i = cell.chips.findIndex((ch) => ch.kind === 'debt'); if (i < 0 || !cell.chips.slice(i).some((ch) => !isHazard(ch))) continue;
+  const owed = cell.chips.filter((ch) => ch.kind === 'debt'); cell.chips = cell.chips.filter((ch) => ch.kind !== 'debt').concat(owed); } };
+function step(b, text, cells = [], kind = '') { floatOwed(b); text = say(text); const st = { text, cells, kind, fx: b.fx, ...(b.ctx || {}) }; b.fx = {}; if (text) b.log.push(text); return st; }
 const ref = (s, r, c) => ({ side: s.idx, r, c });
 
 // Chips an effect puts on the Bet go front to back, left to right, the same for every Roller: a class's deployment
@@ -248,12 +251,12 @@ function addToMeter(b, s, chips, origin, from) {
     pushChip(s.grid[spot.r][spot.c], ch);
     if (from) b.fx[ch.id] = from;
   }
-  if (left.length) s.overflow = (s.overflow || 0) + left.length; // an overloaded Bet: like overkill, the effect plays but the extra is lost
+  if (left.length) s.overflow = (s.overflow || 0) + left.length; // an overloaded Bet: the effect plays but the extra is lost
   return left;
 }
 const overText = (left) => (left.length ? tx('feed.had-no-room-on', { leftN: left.length }) : '');
 // Put an effect chip a maker trick made onto a stack: on top for chips that work from the top (Mimic), otherwise at
-// the base (above a Magic Hat). A full stack takes nothing: the chip is lost, like overkill.
+// the base (above a Magic Hat). A full stack takes nothing: the chip is lost.
 // a made chip, fresh from its MADE_CHIPS entry
 export function mkMade(b, id) { const M = MADE_CHIPS[id]; return mkChip(b, 'made', M.value || 0, { model: id, hits: M.hits || 0, life: M.lasts === 'turns' ? M.turns || 3 : undefined, name: M.name }); }
 function placeMade(cell, ch, place, at) {
@@ -420,13 +423,13 @@ function placeCalamity(b, s, cal) {
 export const lostShare = (b, s) => clamp(b.stage.paid[s.idx] / Math.max(1, s.startWorth || 1), 0, 1);
 export const gainShare = (b, s) => lostShare(b, b.sides[1 - s.idx]);
 // What the House reads off a Roller's table when it plays a tilt (weights in TILT_PRESSURE): what they have lost to
-// the House, the overkill and Bet overflow wasted on their side, how full their Bet is and the worth in it.
+// the House, the Bet overflow wasted on their side, how full their Bet is and the worth in it.
 const meterCells = (s) => allCells(s).filter((x) => x.r < s.dims.meterRows);
 export const meterFill = (s) => { const cells = meterCells(s), cap = cells.length * s.dims.stackMax; return cap ? clamp(sum(cells, (x) => solidCount(x.cell)) / cap, 0, 1) : 0; };
 export const meterWorth = (s) => sum(meterCells(s), (x) => Math.max(0, cellWorth(x.cell)));
 export function pressure(b, s) {
   const start = Math.max(1, s.startWorth || 1);
-  const parts = { lost: lostShare(b, s), overkill: clamp(((s.wasted || 0) + (s.overflow || 0)) / start, 0, 1), fill: meterFill(s), value: clamp(meterWorth(s) / start, 0, 1) };
+  const parts = { lost: lostShare(b, s), overkill: clamp((s.overflow || 0) / start, 0, 1), fill: meterFill(s), value: clamp(meterWorth(s) / start, 0, 1) };
   return { ...parts, total: clamp(sum(Object.keys(TILT_PRESSURE), (k) => TILT_PRESSURE[k] * parts[k]), 0, 1) };
 }
 // Challenges read your pressure, Cheats your opponent's
@@ -598,7 +601,7 @@ export function advance(b, force = false) {
 // ---------- what a passed phase gives back ----------
 // Draws, rolls and bids left unused pay as soon as their phase is passed, as chips on the Bet at random spaces with
 // room: unused draws make a Steal chip (Charisma) that steals from the Stage in the House phase, unused rolls Power
-// chips (Conviction) for the turn, unused bids Opportunity chips (Cunning). What has no room is lost, like overkill.
+// chips (Conviction) for the turn, unused bids Opportunity chips (Cunning). What has no room is lost.
 // `deploy`: the House phase the chips go out in (Power is an Investment, Opportunity an Insurance, Steal an Expense)
 export const REWARD = { draw: { stat: 'trickery', c: 'charisma', what: 'Steal', deploy: 'expense' }, roll: { stat: 'proficiency', c: 'conviction', what: 'Power', deploy: 'investment' }, bid: { stat: 'ingenuity', c: 'cunning', what: 'Opportunity', deploy: 'insurance' } };
 export function rewardOf(s, phase) {
@@ -1184,13 +1187,12 @@ export function forecastFee(b, s, e, origin) {
   const lite = (x) => ({ idx: x.idx, name: x.name, dims: x.dims, rows: x.rows, deploy: x.deploy, grid: clone(x.grid), status: clone(x.status), dealt: 0, destroyed: 0 });
   const sim = { rng: new RNG(1), fx: {}, log: [], nextId: 1e9, turn: b.turn, stage: { paid: [0, 0] }, rules: b.rules, sides: b.sides.map(lite), trace: [], creatures: clone(b.creatures || []) };
   const att = sim.sides[s.idx], def = sim.sides[1 - s.idx], out = new Map();
-  const at = (r, c) => { const k = r + ':' + c; if (!out.has(k)) out.set(k, { r, c, fee: 0, paid: 0, paidChips: [], owed: 0, carryIn: 0, carryOut: 0, blocked: 0, lost: 0 }); return out.get(k); };
+  const at = (r, c) => { const k = r + ':' + c; if (!out.has(k)) out.set(k, { r, c, fee: 0, paid: 0, paidChips: [], owed: 0, blocked: 0 }); return out.get(k); };
   for (const { r, c, amt } of plan.shares) at(r, c).fee += engage(sim, att, def, r, c, amt, { pierce: plan.pierce }).placed;
   for (let pass = 0; pass < 4 && anyDue(def); pass++) for (const _ of settleSide(sim, def)); // eslint-disable-line no-unused-vars
   for (const t of sim.trace) {
     if (t.side !== def.idx) continue;
-    const x = at(t.r, t.c); x.paid += t.paid; x.paidChips.push(...t.paidChips); x.blocked += t.blocked; x.owed = t.left; x.lost += Math.max(0, t.lost);
-    if (t.carry) { x.carryOut += t.carry; at(t.behind, t.c).carryIn += t.carry; }
+    const x = at(t.r, t.c); x.paid += t.paid; x.paidChips.push(...t.paidChips); x.blocked += t.blocked; x.owed = t.left;
   }
   return [...out.values()];
 }
@@ -1239,14 +1241,9 @@ function freezeTop(b, cell) {
   for (const ch of take) { cell.chips.splice(cell.chips.indexOf(ch), 1); b.fx[ch.id] = 'void'; }
   pushChip(cell, mkChip(b, 'std', sum(take, (ch) => ch.value), { frozen: true })); return take.length;
 }
-// What a stack can pay before a fee spills on down the lane: its chips and 1¢ shields, less the Debt it already owes.
-const canTake = (cell, pierce) => sum(cell.chips, (ch) => (isPayable(ch) ? ch.value : !pierce && (ch.kind === 'block' || ch.kind === 'counter') ? 1 : 0)) - debtOf(cell);
 function engage(b, att, def, r, c, amount, o = {}) {
   ({ r, c } = homeOf(def, r, c));
-  if (closed(def.grid[r][c])) { // 'nothing on top': no Debt can sit on it, so the fee goes on down the lane
-    for (let rr = r + 1; rr < def.rows; rr++) if (occupied(def.grid[rr][c]) && !closed(def.grid[rr][c])) { const x = engage(b, att, def, rr, c, amount, o); return { ...x, notes: [tx('feed.closed-past'), ...(x.notes || [])] }; }
-    return { placed: 0, notes: [tx('feed.closed-stops')] };
-  }
+  if (closed(def.grid[r][c])) return { placed: 0, notes: [tx('feed.closed-stops')] }; // 'nothing on top': no chip can sit on it, a negative one included
   const cell = def.grid[r][c], st = def.status, notes = [];
   if (o.pierce && hardOf(cell)) { unHard(b, cell); notes.push('the Hardened chip is pierced'); }
   const open = !o.pierce && !o.reflected;
@@ -1255,7 +1252,7 @@ function engage(b, att, def, r, c, amount, o = {}) {
   const rr = Math.max(0, ...cell.chips.filter((ch) => ch.kind === 'resist').map((ch) => ch.r));
   if (open && amount < rr) return { placed: 0, notes: [`deterred by a Resist chip (r ${rr})`] };
   { // a creature over the stack takes the fee as one hit instance; the blow that drives it off spills the rest of
-    // the fee onto the stack beneath (overkill)
+    // the fee onto the stack beneath it
     const cr = (b.creatures || []).find((x) => x.side === def.idx && !x.gone && x.r === r && x.c === c && x.arrive <= (b.turn ?? 0) && CREATURES[x.kind]?.hits);
     if (cr && !o.pierce) { if (!hurt(b, def, cr, notes)) return { placed: 0, notes }; amount -= 1; if (amount <= 0 || !occupied(cell, o.pierce)) return { placed: 0, notes }; }
   }
@@ -1287,29 +1284,11 @@ function engage(b, att, def, r, c, amount, o = {}) {
       if (cols.length) notes.push(n > 1 ? tx('feed.zapped-back-times', { n }) : tx('feed.zapped-back')); }
     else { cell.chips.splice(cell.chips.indexOf(zaps[0]), 1); b.fx[zaps[0].id] = 'void'; notes.push('a Zap chip shorts out'); }
   }
-  const due = { pierce: o.pierce, glean: o.glean && att ? att.idx : null, att: att ? att.idx : null }, wide = reachesWide(o.model);
-  // overkill spreads right away: what this stack cannot pay goes on down the lane to the stacks behind it
-  const fear = haunted(b, def), past = [...Array(def.rows).keys()].filter((y) => y > r), stop = fear.has(r) ? r : past.find((y) => fear.has(y)); // no overkill into or through a Ghost's row
-  const lane = [r, ...past.filter((y) => (stop == null || y < stop) && !def.grid[y][c].hole && !def.grid[y][c].link && occupied(def.grid[y][c], o.pierce))];
-  let left = amount, last = r;
-  for (let k = 0; k < lane.length && left > 0; k++) {
-    const y = lane[k], x = def.grid[y][c], hard = hardOf(x) > 0 && !o.pierce;
-    const keep = hard || wide ? left : Math.min(left, Math.max(0, canTake(x, o.pierce)));
-    if (k === 0 || keep > 0) markDue(x, { ...due, element: k === 0 ? o.element : null });
-    if (keep > 0) setDebt(b, x, debtOf(x) + keep, 'debt', o.model);
-    left -= keep; last = y;
-    if (hard) { left = 0; break; }
-    const next = lane[k + 1];
-    if (left > 0 && next != null) { b.trace?.push({ side: def.idx, r: y, c, owed: 0, paid: 0, paidChips: [], blocked: 0, left: debtOf(x), carry: left, behind: next, lost: 0 }); if (k === 0) notes.push(tx('feed.overkill-spills-down-the', { left })); }
-  }
-  if (left > 0) { // nothing behind: the overkill is wasted, shown on the space past the last stack
-    const back = [...Array(def.rows).keys()].filter((y) => y > last && (stop == null || y < stop) && !def.grid[y][c].hole && !def.grid[y][c].link && !def.grid[y][c].chips.length)[0];
-    if (back != null) stray(b, def, back, c, left, stop != null ? 'a Ghost stops it passing on' : 'overkill with no stack behind');
-    def.wasted = (def.wasted || 0) + left;
-    b.trace?.push({ side: def.idx, r: last, c, owed: 0, paid: 0, paidChips: [], blocked: 0, left: debtOf(def.grid[last][c]), carry: 0, behind: -1, lost: left });
-    notes.push(tx('feed.overkill-wasted', { left }));
-  }
-  return { placed: amount - left, notes };
+  // the chip goes where it is laid, whole: nothing spills on to another stack (no overkill). What the chips it
+  // reaches cannot pay stays with it until they can.
+  markDue(cell, { pierce: o.pierce, glean: o.glean && att ? att.idx : null, att: att ? att.idx : null, element: o.element });
+  setDebt(b, cell, debtOf(cell) + amount, 'debt', o.model);
+  return { placed: amount, notes };
 }
 function markDue(cell, o) {
   const due = cell.due || (cell.due = { prior: debtOf(cell), pierce: false, glean: null, element: null, att: null });
@@ -1319,9 +1298,9 @@ const anyDue = (s) => allCells(s).some((x) => x.cell.due);
 // The House settles one Roller's stacks, front to back. On each stack that owes:
 //   1. shields on top absorb 1¢ each;
 //   2. chips are paid from the top, each only if the Debt covers its whole value;
-//   3. what cannot cover the next chip stays on the stack as Debt, until a later fee tops it up;
-//   4. if the stack runs out of chips, the rest (overkill) moves to the next stack behind it in the same lane
-//      (column). It never moves sideways. A Hardened stack pays one chip a fee and nothing carries on.
+//   3. what cannot cover the next chip stays where it was laid, until a later fee tops it up or a chip it can
+//      cover comes under it. Nothing moves on to another stack (no overkill): a chip goes only where it is laid.
+//      A Hardened stack pays one chip a fee.
 // Ward chips: the House cancels the largest fees charged to this position this turn before settling.
 function* ward(b, s) {
   const per = shopVars('ward').per || 1, have = sum(allCells(s), (x) => shopCount(x.cell, 'ward')) * per;
@@ -1339,7 +1318,7 @@ function* settleSide(b, s) {
   for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) {
     const cell = s.grid[r][c], due = cell.due; if (!due) continue; cell.due = null;
     const att = due.att != null ? b.sides[due.att] : null, owed = debtOf(cell);
-    let pool = owed, blocked = 0, counters = 0, hardStop = false, carry = 0, behind = -1, knocked = 0;
+    let pool = owed, blocked = 0, counters = 0, hardStop = false, knocked = 0;
     const paidChips = [], shieldNames = []; let regen = [];
     while (pool > 0) {
       const i = nextPay(cell, due.pierce); if (i < 0) break;
@@ -1350,27 +1329,20 @@ function* settleSide(b, s) {
       if (hardOf(cell) > 0 && !due.pierce) { cell.chips.splice(i, 1); paidChips.push(ch); pool = Math.min(pool, due.prior); hardStop = true; break; }
       if (pool >= ch.value) { cell.chips.splice(i, 1); pool -= ch.value; paidChips.push(ch); } else break;
     }
-    const reached = pool > 0 && !hardStop ? reachPays(b, s, r, c, pool, due.pierce) : 0; pool -= reached; // a made debt chip also takes what its reach covers
+    const reached = pool > 0 && !hardStop ? reachPays(b, s, r, c, pool, due.pierce) : 0; pool -= reached; // a made chip of negative value also takes what its reach covers
     const paid = sum(paidChips, (ch) => ch.value); s.paidTurn = (s.paidTurn || 0) + paid + reached;
     regen = paidChips.filter((ch) => ch.regen > 0); // Regen: a paid chip comes straight back, without its Regen
     for (const ch of regen) { paidChips.splice(paidChips.indexOf(ch), 1); delete ch.regen; if (capacityLeft(s, cell) > 0) pushChip(cell, ch); else addToMeter(b, s, [ch], { r, c }, null); b.fx[ch.id] = 'mutate'; }
     for (const ch of paidChips) { if (due.glean != null && !addToMeter(b, b.sides[due.glean], [ch], null, null).length) continue; payStage(b, s.idx, ch); }
-    if (pool > 0 && topPayableIdx(cell) < 0) { // nothing left here to owe against: overkill goes down the lane
-      const fear = haunted(b, s); if (!hardStop && !fear.has(r)) for (let rr = r + 1; rr < s.rows; rr++) { if (fear.has(rr)) break; if (occupied(s.grid[rr][c], due.pierce)) { behind = rr; break; } }
-      if (behind >= 0) { carry = pool; const nx = s.grid[behind][c]; markDue(nx, { pierce: due.pierce, glean: due.glean, att: due.att }); setDebt(b, nx, debtOf(nx) + carry, 'debt'); }
-      pool = 0;
-    }
     if (paidChips.length && topPayableIdx(cell) < 0) for (const ch of cell.chips.filter(isFx)) { cell.chips.splice(cell.chips.indexOf(ch), 1); b.fx[ch.id] = 'void'; knocked++; } // a stack paid out drops its effect chips
-    const lost = owed - paid - reached - blocked - pool - carry - sum(regen, (ch) => ch.value); // overkill with nowhere to go, or stopped by Hardening
-    if (lost > 0 && !hardStop) s.wasted = (s.wasted || 0) + lost;
     setDebt(b, cell, pool);
     const next = debtTarget(cell);
-    if (!solidCount(cell)) for (const ch of cell.chips.splice(0)) b.fx[ch.id] = 'void';
+    emptyOut(b, cell);
     if (due.element === 'shock') strike(b, s, { r, c, cell });
     else if (due.element && solidCount(cell) && !iced(cell) && !hasResist(cell, due.element) && !cell.chips.some((ch) => ch.kind === due.element) && !(wet(cell) && (due.element === 'burn' || due.element === 'lava'))) cell.chips.push(mkHazard(b, due.element));
     if (due.element === 'frost' && (wet(cell) || b.cold)) freezeTop(b, cell);
     if (att) att.dealt += paid + reached;
-    b.trace?.push({ side: s.idx, r, c, owed, paid, paidChips: paidChips.map((ch) => ch.value), blocked, left: pool, carry, behind, lost, hardStop });
+    b.trace?.push({ side: s.idx, r, c, owed, paid: paid + reached, paidChips: paidChips.map((ch) => ch.value), blocked, left: pool, hardStop });
     for (let k = 0; k < counters && att; k++) { // each Counter chip sends 1¢ of Debt back; it is settled in the next pass
       const cols = [...Array(att.dims.cols).keys()].filter((x) => frontRow(att, x) >= 0);
       if (cols.length) { const cc = b.rng.pick(cols); engage(b, s, att, frontRow(att, cc), cc, 1, { reflected: true }); }
@@ -1382,8 +1354,6 @@ function* settleSide(b, s) {
     if (reached) bits.push(tx('feed.reach-pays', { reached }));
     if (regen.length) bits.push(tx('feed.regen-chip-straight-back', { regenN: regen.length, v: regen.length > 1 ? 's come' : ' comes' }));
     if (pool) bits.push(tx('feed.stays-as-debt', { pool, v: next ? tx('feed.until-it-reaches-the', { value: next.value }) : '' }));
-    if (carry) bits.push(tx('feed.overkill-carries-to-the', { carry }));
-    else if (lost > 0 && !hardStop) bits.push(tx('feed.overkill-has-no-stack', { lost }));
     const list = paidChips.length > 1 ? ` (${paidChips.map((ch) => ch.value).join(' + ')})` : '';
     const head = paid ? tx('feed.pays', { name: s.name, paid, list, v: due.glean != null ? ` straight to ${b.sides[due.glean].name}'s Bet` : ' to the Stage' })
       : tx('feed.owes', { name: s.name, owed, v: next && pool ? tx('feed.short-of-the-chip', { value: next.value }) : '' });
@@ -1576,7 +1546,7 @@ function* playChips(b, s, e, def, x) {
   const make = (chip, list) => { let made = 0, fees = 0, lost = 0; const hit = new Map();
     list.forEach((amt, i) => { const sp = spaces[i % (spaces.length || 1)]; if (!sp) { lost++; return; } const cell = t.grid[sp.r][sp.c]; hit.set(`${sp.r}:${sp.c}`, sp);
       const kind = makeKind(chip);
-      if (kind === 'fee') { fees += engage(b, s, t, sp.r, sp.c, amt * owesPer(chip), { pierce: x.pierce, model: MADE_CHIPS[chip] ? chip : null }).placed; return; } // Debt, or a made chip of negative value
+      if (kind === 'fee') { fees += engage(b, s, t, sp.r, sp.c, MADE_CHIPS[chip] ? owesOf(chip) : amt, { pierce: x.pierce, model: MADE_CHIPS[chip] ? chip : null }).placed; return; } // Debt is worth the instance (as Royal Paradise chips are); a made chip of negative value is one chip an instance, at its own value
       if (kind === 'water') { if (cell.puddle) { lost++; return; } water(b, t, { cell, r: sp.r, c: sp.c }); made++; return; } // a Puddle chip goes under the stack
       if (isFxChip(chip)) { if (placeFx(b, t, cell, chip, fxLife(chip), e.trick.id)) made++; else lost++; return; }
       if (MADE_CHIPS[chip]) { const mc = mkMade(b, chip); mc.power = amt; // the instance it was made with: what a 'share' action hands out
@@ -1687,7 +1657,7 @@ const FX = {
   block: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { const kind = bonus === 'counter' ? 'counter' : 'block'; const n = Math.min(total, 60);
         const left = addToMeter(b, s, Array.from({ length: n }, () => mkChip(b, kind)), origin, 'spawn');
         yield step(b, tx('feed.chips-to-the-bet', { tag, n, v: kind === 'counter' ? 'Counter' : 'Block', overText: overText(left) }), origin ? [origin] : [], 'play'); return; },
-  make: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { // effect chips on the target stacks; a full stack takes none (the overflow is lost, like overkill)
+  make: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { // effect chips on the target stacks; a full stack takes none (the overflow is lost)
         const M = make, X = SHOP_CHIPS[M.chip], n = M.n[0] + Math.floor(total / M.n[1]), life = M.life[0] + Math.floor(total / M.life[1]); let put = 0, over = 0;
         for (const { r, c } of cells) { const cell = s.grid[r][c]; let k = 0; while (k < n && placeFx(b, s, cell, M.chip, life, e?.trick.id ?? null)) k++; put += k; over += n - k; }
         yield step(b, tx('feed.placed', { tag, put, name: X.name, v: put ? ` for ${life >= 99 ? 'the bout' : tx('feed.line-2', { life })}` : '', v2: over ? tx('feed.had-no-room-and-3', { over }) : '' }), cells.map((x) => ref(s, x.r, x.c)), put ? 'play' : 'miss'); return; },
@@ -1778,7 +1748,8 @@ function layFx(b, s, t, origin, chip, total) {
 
 // ---------- end of turn ----------
 const around = (s, r, c) => allCells(s).filter((x) => (x.r !== r || x.c !== c) && Math.abs(x.r - r) <= 1 && Math.abs(x.c - c) <= 1);
-const emptyOut = (b, cell) => { if (!solidCount(cell) && cell.chips.length) for (const ch of cell.chips.splice(0)) b.fx[ch.id] = 'void'; };
+// a stack with nothing solid left: what lay on it goes with it. A chip that still owes stays on the space until it is paid.
+const emptyOut = (b, cell) => { if (!solidCount(cell) && cell.chips.length) for (const ch of cell.chips.splice(0)) { if (ch.kind === 'debt') cell.chips.push(ch); else b.fx[ch.id] = 'void'; } };
 // a Fairy or Unicorn turns a chip into a random chip of any type
 function transform(b, cell, i) {
   const v = cell.chips[i]; if (!v || stuckIce(v, cell) || v.big || ['volcano', 'hat', 'egg', 'hive', 'doom', 'fx'].includes(v.kind)) return; // a grounded Frozen chip and Big chips cannot be turned into another chip
@@ -2064,7 +2035,7 @@ function* ticks(b) {
     yield* sky(b, s);
     for (const { r, c, cell } of allCells(s)) {
       if (cell.black) { const near = around(s, r, c).filter((x) => solidCount(x.cell) && !anchored(x.cell) && !fixedCell(x.cell)); if (!near.length) continue;
-        const x = b.rng.pick(near), v = x.cell.chips.splice(x.cell.chips.findIndex((ch) => !isHazard(ch)), 1)[0]; // it takes the bottom chip b.fx[v.id] = 'void'; if (isPayable(v)) s.destroyed += v.value; emptyOut(b, x.cell);
+        const x = b.rng.pick(near), v = x.cell.chips.splice(x.cell.chips.findIndex((ch) => !isHazard(ch)), 1)[0]; /* it takes the bottom chip */ b.fx[v.id] = 'void'; if (isPayable(v)) s.destroyed += v.value; emptyOut(b, x.cell);
         yield step(b, tx('feed.a-chip-is-pulled', { name: CALAMITIES.blackhole.name, name2: s.name }), [ref(s, x.r, x.c), ref(s, r, c)], 'hazard'); }
       if (cell.volcano > 0) { const live = allCells(s).filter((x) => solidCount(x.cell) && !x.cell.chips.some((ch) => ch.kind === 'burn') && !hasResist(x.cell, 'burn'));
         const x = live.length ? b.rng.pick(live) : null; if (x) x.cell.chips.push(mkHazard(b, 'burn'));

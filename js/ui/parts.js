@@ -74,7 +74,7 @@ export function chipText(ch) {
   return extra + (ch.value === 1 ? tx('parts.basic-value-chip-bid') : tx('parts.basic-value-chip-a', { value: ch.value })) + feather;
 }
 // a made chip's rules, in a sentence
-// a debt chip (a made chip of negative value): what it owes, and which chips pay it
+// a made chip of negative value: what it owes, and which chips pay it
 const owesRule = (M) => tx('parts.owes-rule', { value: -M.value, reach: (CM.REACH[M.reach?.to || 'touching'] || '').toLowerCase() });
 export function madeRules(M, ch = {}) {
   if (M.value < 0) return owesRule(M);

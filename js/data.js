@@ -611,7 +611,7 @@ export const CREATURES = {
   mole: { name: 'Mole', glyph: '🐭', type: 'correction', hits: 1, life: 2, layer: 'ground', text: 'Digs up a random empty space and leaves a Hole, then sits in it.' },
   unicorn: { name: 'Unicorn', glyph: '🦄', type: 'correction', hits: 1, life: 1, layer: 'ground', text: 'Converts every chip in a random stack into random chips. Chaos reigns!' },
   mothership: { name: 'Mothership', glyph: '👾', type: 'expense', hits: 10, life: 5, layer: 'flying', text: 'Flying. Hovers over one stack and beams up a chip every turn until the stack is gone. Chips taken are lost.' },
-  ghost: { name: 'Ghost', glyph: '👻', type: 'insurance', hits: 0, life: 3, layer: 'flying', text: 'Very spooky. Fear: no trick can aim at its row, only spreads reach it. It cannot be damaged, and no overkill passes into or through its row.' },
+  ghost: { name: 'Ghost', glyph: '👻', type: 'insurance', hits: 0, life: 3, layer: 'flying', text: 'Very spooky. Fear: no trick can aim at its row, only spreads reach it. It cannot be damaged.' },
   ghostship: { name: 'Ghost Ship', glyph: '🏴‍☠️', type: 'expense', hits: 100, life: 6, layer: 'flying', text: 'A vehicle that sails across empty spaces to a stack with a Gold chip on top and steals it. Takes 100 fee instances to sink; sunk, it drops a Treasure chip with everything it stole.' },
 };
 for (const C of Object.values(CREATURES)) C.bounty = C.hits * BOUNTY_PER_HIT;
@@ -660,7 +660,7 @@ export const TILTS = {
   intervention: { kind: 'cheat', name: 'Intervention', floor: 3, mult: 0.3, base: 0, per: 0, text: 'Once, when you would go broke, the House restores your paid fees: half of them, up to all of them the more your opponent has lost to the House. It costs half your wager.' },
 };
 // What the House reads when it plays a tilt: a Roller's pressure is a weighted mix of the share of their starting
-// chips they have paid to the House (`lost`), the overkill and Bet overflow wasted on their side as a share of what
+// chips they have paid to the House (`lost`), the Bet overflow wasted on their side as a share of what
 // they started with (`overkill`), how full their Bet is (`fill`, 0 to 1) and the worth sitting in it as a share of
 // what they started with (`value`). Challenges read your pressure, Cheats your opponent's.
 export const TILT_PRESSURE = { lost: 1, overkill: 0.5, fill: 0.2, value: 0.3 };

@@ -77,7 +77,7 @@ Library under **Chip list**, with each chip's traits (see **Traits**). Statuses 
 | 62 | Upgrade Chip | Upgrade chip: made at the table by Tinker (Investment), on a Bet space. Each one puts a random die upgrade on every roll, for that roll only (a risk). |
 | 63 | Tornado Chip | Tornado chip: the Tornado Calamity moves over your position with a strength of 2d6; a stack under it shorter than that is thrown about. |
 | 64 | Blizzard Chip | Blizzard: orbital weather as big as the table, from Polar tables (now and then) and the Blizzard Calamity (every fourth turn). It lasts a turn, then freezes every stack shorter than its strength (2d6), wet chips and Puddles. |
-| 65 | Ghost Chip | Ghost creature: fear. No trick can aim at its row (only spreads reach it), it cannot be damaged, and no overkill passes into or through its row. Bad for both Rollers. |
+| 65 | Ghost Chip | Ghost creature: fear. No trick can aim at its row (only spreads reach it), it cannot be damaged. Bad for both Rollers. |
 | 66 | Puddle Chip | Puddle: water on an empty space (a Cloud's rain, a Sprinkler) makes one; nothing can be played on it until it dries after a turn without water. Wet stacks cannot burn, pass electricity on, freeze in the cold and grow plants faster. |
 | 67 | Ghost Ship Chip | Ghost Ship creature: a vehicle with 100 hit instances. Sails across empty spaces to a Gold-topped stack and steals the Gold; sunk, it drops a Treasure chip with all it stole. |
 | 68 | Chip Chip | Chip Chip: food (+1 Steal for a turn, doubled when dipped). |

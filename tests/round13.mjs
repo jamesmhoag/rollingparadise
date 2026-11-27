@@ -77,12 +77,11 @@ const stackOf = (n, v = 1) => Array.from({ length: n }, () => std(v));
   assert(cr.gone && me.grid.flat().some((x) => x.chips.some((ch) => ch.kind === 'bounty')), 'a Bumble Bee stings a creature off your table');
   engage(bout, null, me, 4, 0, 40, {}); assert(me.grid[4][0].chips.filter((ch) => ch.kind === 'hive').length === 1, 'a Hive chip takes a whole fee like a Petal');
 }
-{ // the Ghost: its row cannot be aimed at, and overkill does not pass into it
+{ // the Ghost: its row cannot be aimed at
   const { bout, me, opp } = table(); clear(opp); for (const r of [3, 4]) opp.grid[r][0].chips = stackOf(2);
   bout.creatures.push(newCreature(bout, 'ghost', 1, 1, { r: 4, c: 0 }));
   const e = { trick: { id: 'scorch', q: 1, up: 0 }, dice: [{ value: 3, type: 'd4' }], state: 'bid' };
   assert(!B.validTargets(bout, me, e).some((v) => v.r === 4), 'no trick can aim at a Ghost\'s row');
-  const g = engage(bout, me, opp, 3, 0, 9, {}); assert(g.placed === 2 && !B.debtOf(opp.grid[4][0]), 'overkill stops at the Ghost\'s row');
 }
 { // the Ghost Ship: 100 hits, steals Gold, sinks into Treasure
   const { bout, me } = table(); clear(me); me.grid[3][1].chips = [std(1), std(5, { gold: true })];

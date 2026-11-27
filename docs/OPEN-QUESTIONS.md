@@ -69,7 +69,7 @@ comes from and the specific gaps.
     after a sip that raises Proficiency)?
 34. When every chip you could bid is your last, the required bid is waived. Should the House instead force the
     bid (and the loss), or charge something else?
-35. Overkill goes only down its own lane and is wasted when nothing is behind. Should wasted overkill do anything
+35. (Settled in round 21: there is no overkill.) Overkill went only down its own lane and was wasted when nothing was behind. Should wasted overkill do anything
     (spill to a neighbouring lane, go to the House, pay Power to the attacker)?
 36. The required draw, roll and bid each cost something every turn, so the AI now clears floor 1 less often in the
     simulations. Should the rewards for unused actions or opponent strength be retuned around the requirements?
@@ -208,7 +208,7 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
   trick), and could a fee or a Correction then touch them?
 - **Hive from the Familiar tilt.** One play in three sets a Hive (1 to 3 chips) on an empty space, as a Cheat. Should
   Hives come from the Spawner tilt instead, as a challenge that also helps?
-- **Overload.** Chips with no room are lost, like overkill, and count with wasted overkill as Bet overflow toward
+- **Overload.** Chips with no room are lost, and count as Bet overflow toward
   the House's pressure. Should overflow instead spill to the next stack in the lane, or go to the Stage?
 - **Pressure weights** (`TILT_PRESSURE`: lost 1, overkill 0.5, Bet fill 0.2, Bet value 0.3). A full, rich Bet
   makes the House lean on you harder. Is that the intent, or should a full Bet make Cheats easier for your
@@ -355,18 +355,17 @@ Not built yet, or only in part:
 
 ## Round 20
 
-- **Debt chips.** Settled: Debt is a chip with a negative value, and the chip does the collecting (the trick only
-  lays it). Any chip made with a negative value is a debt chip under its own name; its reach says which chips can
-  pay it; a chip pays only whole and only if it is worth no more than what is still owed; paid off, it is gone.
-  Still open:
-  - A debt chip with **nothing it can take** (an empty space, or only bigger chips in reach). Today: on a stack it
-    waits; on an empty space it is shown and gone when the House settles. Should it wait on the empty space too?
-  - **Overkill.** Plain Debt beyond what a stack holds still goes on down the lane when it is laid. Should that be
-    a reach the Debt chip names (so a debt chip could also be made that never spills)?
-  - An Expense's **aim, spread and element** (the hazard a fee leaves) are still the trick's. Should the hazard be
-    laid by the debt chip?
-  - A made debt chip owes its value **for each point of the roll** (a −2 chip on a roll of 6 owes 12¢). Or should
-    it owe its value flat, one chip per instance?
+- **Negative value.** Settled: it is a chip parameter (Debt is one named chip that has it); the chip does the
+  collecting; no overkill, a chip stays where it is laid until paid off; a made chip is laid by the trick's own
+  formation at its own value; hazards hit unless they say they lay Debt. Still open:
+  - **Worth.** A space is worth its chips less what is owed there, never less than nothing. (Counted in full, a big
+    fee on a small stack ended bouts in about 4 turns.) Say if what is owed beyond the space's chips should count.
+  - **Several negative chips on one stack** of the same name pool into one marker (petty cash laying five 1¢ Debt
+    chips on a stack owes 5¢ and can take a 5¢ chip). Should each stay its own chip, taking only chips it can cover?
+  - **The hazards that lay Debt today** (Shocking, Corrupting, Poison, Boom, Doom, the Audit) are kept as the ones
+    that say so. Say which should hit instead.
+  - A space holding only a chip that owes is **not empty** for things that need an empty space (Dynamite, big chips,
+    creatures landing).
 - **Several business cards.** Settled: every business card in your wallet counts. Each High Roller has their own
   card, and one whose card you hold (won this run, or kept and brought back in) stays away for the run, so a card is
   never held twice; two cards with the same kind of trait both count (two Resists add up). If you hold the card of

@@ -862,20 +862,15 @@ export function boutScene(root, bout, ctx, onDone) {
       if (x.paid) bits.push(`<b class="paid">−${x.paid}</b>`);
       if (x.blocked) bits.push(`<b class="blk">${x.blocked}▣</b>`);
       if (x.owed) bits.push(tx('table.owed', { owed: x.owed }));
-      if (x.carryOut) bits.push(`<b class="carry">${x.carryOut}→</b>`);
-      if (x.lost) bits.push(tx('table.wasted', { lost: x.lost }));
       if (!bits.length) bits.push(`<b class="miss">${x.fee ? '0' : '—'}</b>`);
-      el.classList.toggle('in', !!x.carryIn && !x.fee);
       el.style.left = p.x + 'px'; el.style.top = p.y + 'px'; el.style.width = p.w + 'px'; el.innerHTML = bits.join('');
     }
   }
   function fcSummary(list) {
-    const fee = sum(list, (x) => x.fee), paid = sum(list, (x) => x.paid), chips = list.flatMap((x) => x.paidChips), owed = sum(list, (x) => x.owed), carried = sum(list, (x) => x.carryOut), blocked = sum(list, (x) => x.blocked), lost = sum(list, (x) => x.lost);
+    const fee = sum(list, (x) => x.fee), paid = sum(list, (x) => x.paid), chips = list.flatMap((x) => x.paidChips), owed = sum(list, (x) => x.owed), blocked = sum(list, (x) => x.blocked);
     const bits = [tx('table.paid', { paid, v: chips.length ? ` (${chips.join(' + ')})` : '' })];
     if (blocked) bits.push(tx('table.blocked', { blocked }));
-    if (carried) bits.push(tx('table.overkill-carried-down-the', { carried }));
     if (owed) bits.push(tx('table.left-as-debt', { owed }));
-    if (lost) bits.push(tx('table.overkill-wasted-no-stack', { lost }));
     return tx('table.a-fee', { fee, join: bits.join(', ') });
   }
   function hint() {

@@ -144,9 +144,9 @@ A stack holds `3 + Balance` chips. When it is full:
 - A trick that adds chips to the stack it aims at (Block on the Bet, the maker tricks, Foretell, Conjure, Hand Off)
   cannot aim at it: while aiming, full stacks are marked **FULL**.
 - Chips that would land there anyway (a Block trick's chips spilling past a full Bet, the Shield tilt, Opportunity
-  chips, a maker's spread onto a full neighbour) are **lost, like overkill**: the trick plays, the feed says how many
-  had no room, and nothing extra is added. This **Bet overflow** counts with wasted overkill toward the pressure the
-  House reads for its tilts.
+  chips, a maker's spread onto a full neighbour) are **lost**: the trick plays, the feed says how many
+  had no room, and nothing extra is added. This **Bet overflow** counts toward the pressure the House reads for its
+  tilts.
 
 ### Debt
 A fee is paid in whole chips, from the top of the stack it lands on. The rule, in the order the House applies it:
@@ -156,23 +156,23 @@ A fee is paid in whole chips, from the top of the stack it lands on. The rule, i
 3. What cannot cover the next chip stays on that stack as **Debt**: one red marker showing the exact amount, with
    a tag such as "3 of 5¢" (3¢ owed towards the 5¢ chip it sits on). It already counts against Worth, blocks
    bidding from that stack, and the chip is paid as soon as later fees bring the Debt up to its value.
-4. If the stack runs out of chips, the rest (**overkill**) moves to the next stack behind it in the same **lane**:
-   the line of stacks running from the Stage out to the edge of the table. Overkill never spreads to another lane.
-   With no stack behind, it is wasted. A Hardened stack pays one chip per fee and nothing carries on.
+4. Nothing moves on to another stack: there is **no overkill**. A chip goes only where it is laid, by its own rules
+   and the trick's (lump sum: one chip; other formations and spreads: several). What a stack cannot pay stays on its
+   space, even once the stack is gone, and takes a chip it can cover as soon as one comes there. A space is worth its
+   chips less what is owed on it, and never less than nothing. A Hardened stack pays one chip per fee.
 
 Worked example (this is checked in `tests/phases.mjs`): a stack of 5, 5 and 1 (top) takes a 14¢ fee. The 1, 5 and 5
-are paid (11¢); the stack is empty, so 3¢ carries to the stack behind, a 2, 2, 2. One 2 is paid and 1¢ stays there
-as Debt ("1 of 2¢"). A later 1¢ fee on that stack makes it 2¢ and the next 2 is paid.
+are paid (11¢); the stack is empty, and the 3¢ still owed stays on its space. The stack behind is untouched.
 
 How this is shown:
 - While aiming an Expense (or hovering a bid one), every stack it touches shows the forecast: gold **−n** paid,
-  red **n owed** left as Debt, pink **n→** carried down the lane, **n wasted** overkill with nowhere to go. The
+  red **n owed** left as Debt. The
   forecast runs the House's own settle on a copy of the table, so it matches what happens unless the other
   Roller's tricks change the table first.
 - Worth shows what is owed beside it; each indebted stack carries its "x of y¢" tag; the stack tooltip states the
   rule and how much more Debt takes its top chip.
 - When the House settles, the feed lists the chips paid and where the rest went, for example "Low Ball pays 11¢
-  (1 + 5 + 5) to the Stage: 3¢ overkill carries to the stack behind."
+  (1 + 5 + 5) to the Stage: 3¢ stays as Debt."
 
 ### Chips (**Chips**, **Shop**)
 The chip list from the workbook is kept in `docs/CHIP-LIST.tsv`; chips built from it name their row (`list`). The list
@@ -205,7 +205,7 @@ the ones that cannot be built yet, what is missing; `docs/CHIP-STATUS.md` is the
   space), Honey only from Bumble Bees pollinating Flowers, Dragon Eggs from a Dragon on its Roost (the Spawner tilt).
 - **Bounties**: a creature hovering over a stack soaks the fees that land there, and your Expenses can aim at
   creatures on either side. Once its Debt reaches its bounty (Fairy 25, UFO 50, Unicorn and Dragon 250, Mothership
-  500) it is driven off and drops a Bounty chip worth that much; overkill past it goes on to the stack beneath and
+  500) it is driven off and drops a Bounty chip worth that much; what is left of the fee goes on to the stack beneath it and
   down the lane as usual. The chip can be bid but breaks if any fee reaches it; still on your table when the bout
   ends, win or lose, it pays its worth.
 - **Zap** (electric: a fee of 3¢ or less shocks the attacker, a bigger one shorts it out), **Boosted** (+1 to every
@@ -326,15 +326,21 @@ nothing flickers on the way on. Lit, each tube breathes and now and then buzzes 
 own clock; the sign never blinks as a whole. Left idle for 40 seconds it fades down, last lit first,
 and lights again.
 
-### Debt: chips with a negative value
-Debt is a chip, and the chip does the work: a trick (usually an Expense) only lays it. A debt chip has a negative
-value (it owes) and a reach (the chips that can pay it). It counts against Worth while it stands. A chip in its reach
-pays it only whole, and only if it is worth no more than what is still owed: a bigger chip is never broken for change.
-What cannot be paid stays as the chip's state; paid off, the chip is gone. Plain **Debt** touches only the chip under
-it, from the top down. Any chip made in the chip maker with a negative value is a debt chip under its own name and
-colour (its own marker on the stack): laid by a trick it owes its value for each point of the roll, and it is paid
-through its own reach (the stacks around it, its lane, chips of a name...). A wider reach keeps what it owes with the
-chip (no spill down the lane when laid). One function pays every debt chip (`reachPays`, bout.js); `tests/debt.mjs`.
+### Negative value
+Negative value is a chip parameter, set in the chip maker like any other. A chip that has it owes: it sits on its
+space as a marker under its own name and colour and counts against that space's worth. **Debt** is one such chip
+(just a name): the one an Expense lays, worth the fee. The chip does the work, never the trick. The trick only lays
+it, in the formation and spread the trick names; that is the only way a chip gets anywhere.
+- It is paid by the chips its **reach** covers (Debt: the chip under it, from the top down; another chip may reach the
+  stacks around it, its lane, chips of a name...). A chip pays only whole, and only if it is worth no more than what
+  is still owed: a bigger chip is never broken for change.
+- It stays where it was laid until it is paid off, then it is gone.
+- A made chip with a negative value is laid one chip an instance at its own value (lump sum: one chip), as any made
+  chip is; Debt is worth the instance, as Royal Paradise chips are.
+- Hazards are their own chips and do not owe by default: they hit (chips broken or lost, and a broken chip's value is
+  lost with it). Only a hazard that says so lays Debt: today Shocking, Corrupting, Poison, Boom and Doom chips and
+  the Audit calamity do.
+One function pays every such chip (`reachPays`, bout.js); `tests/debt.mjs`.
 
 ### Reading a trick
 A trick in the Book shows the chip it makes (or what stands for its effect: Debt for a fee, the hazard an element fee
@@ -345,11 +351,9 @@ A Grand or Royal card shows its quality die (`d10:7`): red when it is a dud, glo
 shows `⧉ ×n` by its name and the copies under it as a shadow. Tricks still lingering mark the spaces they will land
 on, for both Rollers: blue outlines for yours, red for your opponent's, with the trick's name and copies left.
 
-### Fees on nothing, and overkill
-A fee spreads its overkill as it lands: what a stack cannot pay goes straight on to the stacks behind it in the
-lane, so the table shows where every ¢ is headed before the House settles. A fee whose target is gone keeps its
-aim (the same lane, or the same space) and lands there as a ghost Debt chip that comes to nothing when the House
-settles; overkill with no stack behind shows the same way on the next empty space.
+### Fees on nothing
+A fee whose target is gone keeps its aim (the same lane, or the same space) and lands there as a ghost Debt chip that
+comes to nothing when the House settles.
 
 While a phase is on, the parts of the table you cannot use (the Book outside Draw, the Pouch outside Roll, everything
 while the House plays) look inactive but keep their numbers and hovers.
@@ -463,7 +467,7 @@ what you own, carry or wear is marked.
   wagered.
 - **Tilts are played by the House.** A tilt that is on opens the bout once, then in each House phase from turn 2 the
   House may play it again. Its chance is `base + per × pressure`. A Roller's **pressure** is a weighted mix
-  (`TILT_PRESSURE`) of the share of their starting chips paid to the House, the overkill and Bet overflow wasted on
+  (`TILT_PRESSURE`) of the share of their starting chips paid to the House, the Bet overflow wasted on
   their side (as a share of their start), how full their Bet is, and the worth sitting in it (as a share of their
   start). Challenges read your pressure, Cheats your opponent's; each tilt chip's hover shows the breakdown. Pressure
   also sets the
@@ -685,7 +689,7 @@ soaked), `interest` (a 1¢ chip on its Bet each turn per so many ¢ of Worth, ca
 | Do Rollers act in turn or together? | Together, phase by phase (Draw, Roll, Bid). Each sees the other's move in a phase only once both have made it. Then everything resolves by effect type. |
 | The nine turn phases (Opening, Deal, Drop, Decision, Dance, Bow) | Folded into Draw, Roll, Bid and the House's play. There is no separate hand, and no Toss or Reroll in the Bow. |
 | How many throws a turn? | One. Everything you will roll is picked first and lands together. |
-| How a fee meets a chip | See **Debt** above: whole chips from the top, the remainder stays as Debt, overkill goes down the lane only. |
+| How a fee meets a chip | See **Debt** above: whole chips from the top, the remainder stays as Debt where it was laid. |
 | How strong a tilt is | Set by the bout, not bought: tiers and slot counts are gone; a tilt is on or off. |
 | How a bout ends if neither side breaks | "Last call" is an addition: from turn 9 every Expense is multiplied by a factor that grows each turn. At turn 40 the most Worth wins. |
 | Debt (the **Debt** tab's five concepts) | "Knocked out by debt": reaching zero Worth loses the bout. |

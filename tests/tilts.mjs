@@ -25,8 +25,8 @@ R.setTilt(run, prep, 'shield', true); assert(R.multiplier(run, prep) < m0 + D.TI
   assert(me.tilts.hazard && me.tilts.shield, 'the tilts that are on go to the table');
   const r0 = B.tiltRate(bout, me, 'hazard'); bout.stage.paid[0] = me.startWorth * 0.6; const r1 = B.tiltRate(bout, me, 'hazard');
   assert(r1 > r0 && Math.abs(r0 - D.tiltChance('hazard', B.pressure(bout, me).total - (0.6 * D.TILT_PRESSURE.lost))) < 1e-9, 'losing to the House makes Challenges more likely');
-  { const p0 = B.pressure(bout, me).total; me.wasted = me.startWorth * 0.5; const p1 = B.pressure(bout, me).total;
-    assert(p1 > p0 && B.pressure(bout, me).overkill === 0.5, 'overkill wasted on your side adds to the pressure the House reads'); me.wasted = 0;
+  { const p0 = B.pressure(bout, me).total; me.overflow = me.startWorth * 0.5; const p1 = B.pressure(bout, me).total;
+    assert(p1 > p0 && B.pressure(bout, me).overkill === 0.5, 'chips lost to a full Bet on your side add to the pressure the House reads'); me.overflow = 0;
     const f0 = B.meterFill(me); B._test.addToMeter(bout, me, Array.from({ length: 4 }, (_, k) => ({ id: 8e6 + k, kind: 'std', value: 2 })));
     assert(B.meterFill(me) > f0 && B.pressure(bout, me).value > 0 && B.pressure(bout, me).total > p0, 'a fuller, richer Meter adds to it as well'); }
   const g0 = B.tiltRate(bout, me, 'shield'); bout.stage.paid[1] = bout.sides[1].startWorth * 0.8; assert(B.tiltRate(bout, me, 'shield') > g0, 'your opponent losing to the House makes Cheats stronger');

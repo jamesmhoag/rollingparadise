@@ -74,7 +74,7 @@ export function chipMaker(id, classic, redraw, onCopy) {
       : x.k === 'pull' ? h('span', { class: 'row' }, smallSelect(Object.entries(PULL_FROM), x.from || 'mine', (v) => upd({ ...x, from: v })), amount(x.n ?? 5, (v) => upd({ ...x, n: v }), { min: 1, blank: 1, title: t('chipmaker.pull.amount') }), tick(t('chipmaker.pull.bids'), x.bids, (v) => upd({ ...x, bids: v || undefined })))
         : amount(x.n ?? 1, (v) => upd({ ...x, n: v }), { blank: 0, title: t('chipmaker.amount') }))), ['actions']),
   ];
-  const sample = m.value < 0 ? { kind: 'debt', model: id, value: -m.value } : { kind: 'made', model: id, value: m.value, hits: m.hits, life: m.lasts === 'turns' ? m.turns : undefined }; // a negative value: a debt chip
+  const sample = m.value < 0 ? { kind: 'debt', model: id, value: -m.value } : { kind: 'made', model: id, value: m.value, hits: m.hits, life: m.lasts === 'turns' ? m.turns : undefined }; // a negative value: it is shown as the marker it is laid as
   return makerPage(parts,
     previewCol(h('div', { class: 'b-card' }, h('div', { class: 'row' }, chipEl(sample), h('b', { text: m.name })),
       h('p', { text: m.text || t('chipmaker.noText') }), h('p', { class: 'dim', text: madeRules(m, sample) })),
