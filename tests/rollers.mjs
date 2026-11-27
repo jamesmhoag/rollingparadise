@@ -29,6 +29,9 @@ ok(Object.values(D.ROSTER).every((X) => D.CLASSES[X.cls]), 'every opponent and H
   ok(B.bossTrait(me)?.name === D.BOSS_TRAITS[card].name, 'and it plays for you at the next table');
   { const other = Object.keys(D.ROSTER).find((r) => D.ROSTER[r].boss && D.ROSTER[r].trait && D.ROSTER[r].trait !== card); run.cards.push(D.bizCardId(other)); // (past its slots, to hold two for the check)
     const two = R.startTable(run, R.newPrep(run, 'table', 2)).bout.sides[0]; ok(B.bossTraits(two).length === 2 && B.bossTraits(two)[1].name === D.BOSS_TRAITS[D.ROSTER[other].trait].name, 'two business cards: you play by both traits'); run.cards.pop(); }
+  { const held = D.CARDS[cid].roller; let met = 0, all = 0; // the High Roller whose card you hold stays away
+    for (let seed = 1; seed <= 12; seed++) for (const f of [1, 2, 3]) { const r2 = R.newRun('technician', 'standard', seed); r2.cards = [cid]; R.enterFloor(r2, f); const others = R.rosterFor(f, 'boss').filter((id) => id !== held); if (!others.length) continue; all++; if (R.rosterIdOf(r2.fs.boss.opp) === held) met++; }
+    ok(all > 0 && met === 0, `hold a High Roller's card and they do not sit down again (${met} of ${all})`); }
   ok(R.dropCard(run, cid) && R.traitsOf(run).length === 0, 'drop the card and the trait goes with it');
   run.cards = R.walletCards(run).slice(); while (!R.walletFull(run)) run.cards.push(Object.keys(D.CARDS).find((k) => D.CARDS[k].kind === 'note' && !run.cards.includes(k)));
   ok(!R.addCard(run, cid) && run.pendingCard === cid, 'with a full wallet it waits for you to make room, as any card does'); }

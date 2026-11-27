@@ -54,8 +54,11 @@ export const hasCard = (run, id) => run.cards.includes(id);
 // The wallet: everything you collect is a card or a pass. A card (discounts, punch cards, memberships, notes, trading
 // cards...) takes one of the wallet's card slots; a pass (a floor's pass, a Suite Key) takes one of its pass slots.
 // Nothing rides anywhere else: there is no lanyard.
-// The traits you play by: one for every High Roller's business card in your wallet (two cards of one trait are that trait once)
-export const traitsOf = (run) => (run.cards || []).filter((c) => D.CARDS[c]?.kind === 'business').map((c) => D.ROSTER[D.CARDS[c].roller]?.trait).filter((t, i, a) => t && a.indexOf(t) === i);
+// The traits you play by: one for every High Roller's business card in your wallet. Each High Roller has their own
+// card, and one whose card you hold stays away for the run (newFloor), so no card is ever held twice; two cards with
+// the same kind of trait both count.
+export const bizRollers = (run) => [...new Set((run.cards || []).filter((c) => D.CARDS[c]?.kind === 'business').map((c) => D.CARDS[c].roller))];
+export const traitsOf = (run) => bizRollers(run).map((r) => D.ROSTER[r]?.trait).filter(Boolean);
 export const walletCards = (run) => run.cards.filter((id) => D.CARDS[id]?.kind !== 'key');
 export const walletOf = (run) => D.WALLETS[run.wallet] || D.WALLETS.worn_cloth;
 export const walletFull = (run) => walletCards(run).length >= walletOf(run).slots;
@@ -200,7 +203,8 @@ export function enterFloor(run, floor) {
   const rng = run.rng, F = D.FLOORS[floor], names = rng.shuffle(D.OPPONENTS);
   // roster entries take their seats in the shuffled name order, so an unchanged roster deals the floor as before
   const byName = new Map(names.map((n, i) => [n, i])), pool = rosterFor(floor, null).sort((x, y) => (byName.get(D.ROSTER[x].name) ?? 1e9) - (byName.get(D.ROSTER[y].name) ?? 1e9)), seat = (i) => { const k = pool.findIndex((id) => !D.ROSTER[id].tables || D.ROSTER[id].tables.includes(i)); return k < 0 ? null : pool.splice(k, 1)[0]; };
-  const bosses = rosterFor(floor, 'boss');
+  // a High Roller whose business card you hold (won this run, or kept and brought back in) does not sit down again
+  const held = bizRollers(run), every = rosterFor(floor, 'boss'), free = every.filter((id) => !held.includes(id)), bosses = free.length ? free : every;
   run.floor = floor; run.phase = 'floor'; run.suiteKey = false;
   run.fs = {
     tables: F.worth.map((w, i) => ({ opp: genOpponent(run, floor, Math.round(w * (0.9 + rng.next() * 0.2)), rosterOpts(seat(i), { name: names[i] })), beaten: false, seen: i === 0, felt: rng.pick(D.FELT_POOL) })),

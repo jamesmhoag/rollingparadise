@@ -326,6 +326,16 @@ nothing flickers on the way on. Lit, each tube breathes and now and then buzzes 
 own clock; the sign never blinks as a whole. Left idle for 40 seconds it fades down, last lit first,
 and lights again.
 
+### Debt: chips with a negative value
+Debt is a chip, and the chip does the work: a trick (usually an Expense) only lays it. A debt chip has a negative
+value (it owes) and a reach (the chips that can pay it). It counts against Worth while it stands. A chip in its reach
+pays it only whole, and only if it is worth no more than what is still owed: a bigger chip is never broken for change.
+What cannot be paid stays as the chip's state; paid off, the chip is gone. Plain **Debt** touches only the chip under
+it, from the top down. Any chip made in the chip maker with a negative value is a debt chip under its own name and
+colour (its own marker on the stack): laid by a trick it owes its value for each point of the roll, and it is paid
+through its own reach (the stacks around it, its lane, chips of a name...). A wider reach keeps what it owes with the
+chip (no spill down the lane when laid). One function pays every debt chip (`reachPays`, bout.js); `tests/debt.mjs`.
+
 ### Reading a trick
 A trick in the Book shows the chip it makes (or what stands for its effect: Debt for a fee, the hazard an element fee
 leaves, the effect chip a maker places) beside its name, and its Bonus requirement as a gold ★ badge: how many dice of
@@ -932,7 +942,7 @@ for a close look, to be turned over (`ui/spin.js`, the look a die gets).
   own colours, pattern, border, symbol and the lines it shows (name, rule, flavour, serial, a note). Passes have a
   look as cards do, set in the Cards section.
 - A business card is a card (kind `business`), one for every High Roller, carrying their name sign. It takes a wallet
-  slot; while it is in your wallet you play by their trait, and every business card you hold counts.
+  slot; while it is in your wallet you play by their trait, and every business card you hold counts. A High Roller whose card you hold does not sit down again that run.
 - A wallet is a billfold, a clasped pouch or a clip, and lies open holding the cards and passes you carry (the same
   elements drawn anywhere else). No slot marks.
 - A jacket has a style (blazer, bomber, long coat, parka) and parts (body, sleeves, trim, collar, closure, pockets,

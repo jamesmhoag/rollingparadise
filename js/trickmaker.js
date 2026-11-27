@@ -6,7 +6,10 @@ import { t as tx } from './text.js';
 
 export const isMade = (def) => def?.roll?.k === 'chips';
 export const makeName = (chip) => MAKES[chip]?.name || (MADE_CHIPS[chip] ? MADE_CHIPS[chip].name : SHOP_CHIPS[chip] ? `${SHOP_CHIPS[chip].name}s` : chip);
-export const makeKind = (chip) => MAKES[chip]?.kind || 'count';
+// a made chip with a negative value is a debt chip: laid, it owes (a fee) like Debt, under its own name and reach
+export const makeKind = (chip) => MAKES[chip]?.kind || (MADE_CHIPS[chip]?.value < 0 ? 'fee' : 'count');
+// what one point of a fee's instance owes as that chip (Debt: 1; a made chip of value −n: n)
+export const owesPer = (chip) => (MADE_CHIPS[chip]?.value < 0 ? -MADE_CHIPS[chip].value : 1);
 // an effect chip (SHOP_CHIPS) rather than one of the table's own chips: it is placed with a life in turns
 export const isFxChip = (chip) => !MAKES[chip] && !MADE_CHIPS[chip] && !!SHOP_CHIPS[chip];
 // the area a deployment pattern covers, as the older DIST shapes (for hovers and highlights)

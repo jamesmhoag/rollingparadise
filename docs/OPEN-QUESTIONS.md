@@ -355,10 +355,22 @@ Not built yet, or only in part:
 
 ## Round 20
 
-- **Expenses.** Every other trick effect is now a chip's work. An Expense still charges its fee directly: the fee is
-  Debt chips and takes chips, so it was read as chip-driven already. Say if an Expense should lay a chip that then
-  charges the fee.
-- **Several business cards.** Settled: every business card in your wallet counts (two cards of the same trait are that trait once; two Resist traits add up).
+- **Debt chips.** Settled: Debt is a chip with a negative value, and the chip does the collecting (the trick only
+  lays it). Any chip made with a negative value is a debt chip under its own name; its reach says which chips can
+  pay it; a chip pays only whole and only if it is worth no more than what is still owed; paid off, it is gone.
+  Still open:
+  - A debt chip with **nothing it can take** (an empty space, or only bigger chips in reach). Today: on a stack it
+    waits; on an empty space it is shown and gone when the House settles. Should it wait on the empty space too?
+  - **Overkill.** Plain Debt beyond what a stack holds still goes on down the lane when it is laid. Should that be
+    a reach the Debt chip names (so a debt chip could also be made that never spills)?
+  - An Expense's **aim, spread and element** (the hazard a fee leaves) are still the trick's. Should the hazard be
+    laid by the debt chip?
+  - A made debt chip owes its value **for each point of the roll** (a −2 chip on a roll of 6 owes 12¢). Or should
+    it owe its value flat, one chip per instance?
+- **Several business cards.** Settled: every business card in your wallet counts. Each High Roller has their own
+  card, and one whose card you hold (won this run, or kept and brought back in) stays away for the run, so a card is
+  never held twice; two cards with the same kind of trait both count (two Resists add up). If you hold the card of
+  every High Roller a floor has, one of them sits down anyway.
 - **A full wallet when you win a business card.** It waits, as any card does, and you are asked to drop a card for it.
 - **Wallet types.** Each existing wallet's type is read from its name (clip, zip, snap and chain are a clip or a
   clasped pouch, the rest billfolds) until its look sets one.

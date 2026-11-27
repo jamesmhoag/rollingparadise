@@ -22,7 +22,7 @@ function madeColours() {
   if (css === madeCss || typeof document === 'undefined') return; madeCss = css;
   let el = document.getElementById('made-chips'); if (!el) { el = document.createElement('style'); el.id = 'made-chips'; document.head.append(el); } el.textContent = css;
 }
-export const chipSig = (ch) => `${ch.kind === 'made' ? (madeColours(), `mc-${ch.model} `) : ''}${ch.kind === 'fx' ? 'k-fx k-std' : 'k-' + ch.kind} v${ch.value}${ch.gold ? ' gold' : ''}${ch.frozen ? ' frozen' : ''}${ch.feather > 0 ? ' feather' : ''}${ch.resist ? ' r-' + ch.resist : ''}${ch.wet > 0 ? ' wet' : ''}${ch.regen > 0 ? ' regen' : ''}${ch.big ? ' big' : ''}${ch.treasure ? ' treasure' : ''}`;
+export const chipSig = (ch) => `${ch.kind === 'made' || (ch.kind === 'debt' && D.MADE_CHIPS[ch.model]) ? (madeColours(), `mc-${ch.model} `) : ''}${ch.kind === 'fx' ? 'k-fx k-std' : 'k-' + ch.kind} v${ch.value}${ch.gold ? ' gold' : ''}${ch.frozen ? ' frozen' : ''}${ch.feather > 0 ? ' feather' : ''}${ch.resist ? ' r-' + ch.resist : ''}${ch.wet > 0 ? ' wet' : ''}${ch.regen > 0 ? ' regen' : ''}${ch.big ? ' big' : ''}${ch.treasure ? ' treasure' : ''}`;
 // how a chip looks to the Roller on side `viewer`: Doom chips look like 1¢ chips to their victim, a Spy to its
 // owner's opponent, a Cursed chip like Gold to everyone
 export function seenAs(ch, side, viewer = 0) {
@@ -34,7 +34,7 @@ export function seenAs(ch, side, viewer = 0) {
 export const chipGlyph = (ch) => (ch.kind === 'made' ? (ch.value ? String(ch.value) : (D.MADE_CHIPS[ch.model]?.name || '?')[0]) : ch.kind === 'fx' ? D.SHOP_CHIPS[ch.shop]?.glyph || '✦' : ch.kind === 'stray' ? '−' + ch.value : ch.kind === 'sticky' ? '◍' + ch.value : ch.kind === 'egg' ? '🥚' : ch.treasure ? '💰' : ch.big ? String(ch.value) : ch.kind === 'bounty' ? D.CREATURES[ch.creature]?.glyph || '★' : ch.kind === 'resist' ? `r${ch.r}` : ['food', 'dip'].includes(ch.kind) && ch.shop ? D.SHOP_CHIPS[ch.shop]?.glyph || '🍪' : ch.kind === 'std' ? (ch.resist ? (D.SHOP_CHIPS[ch.resist]?.seq ? `${D.SHOP_CHIPS[ch.resist].glyph}${ch.value}` : D.SHOP_CHIPS[ch.resist]?.glyph || '◆') : ch.frozen ? `❄${ch.value}` : D.denomOf(ch.value)?.glyph || String(ch.value)) : ch.kind === 'debt' ? '−' + ch.value : GLYPH[ch.kind] || '');
 export function chipName(ch) {
   if (ch.kind === 'made') return `${D.MADE_CHIPS[ch.model]?.name || tx('parts.made-chip')}${ch.value ? ` (${ch.value}¢)` : ''}`;
-  if (ch.kind === 'debt') return tx('parts.debt-chip', { value: ch.value });
+  if (ch.kind === 'debt') return D.MADE_CHIPS[ch.model] ? tx('parts.owes-chip', { name: D.MADE_CHIPS[ch.model].name, value: ch.value }) : tx('parts.debt-chip', { value: ch.value });
   if (ch.kind === 'stray') return tx('parts.of-debt-on-nothing', { value: ch.value });
   if (ch.kind === 'hard') return tx('parts.hardened-chip', { life: ch.life });
   if (ch.kind === 'sticky') return tx('parts.sticky-chip', { value: ch.value, v: ch.stuck ? ` on ${ch.stuck}` : '' });
@@ -52,6 +52,7 @@ export function chipName(ch) {
   return `${ch.gold ? 'Gold ' : ''}${D.denomOf(ch.value)?.name ? tx('parts.chip', { name: D.denomOf(ch.value).name, toLocaleString: ch.value.toLocaleString('en-US') }) : tx('parts.royal-paradise-chip', { value: ch.value })}${ch.feather > 0 ? ' (Feathered)' : ''}`;
 }
 export function chipText(ch) {
+  if (ch.kind === 'debt' && D.MADE_CHIPS[ch.model]) { const M = D.MADE_CHIPS[ch.model]; return `${M.text || tx('parts.a-chip-made-in')} <span class="dim keep">${owesRule(M)}</span>`; } // a made chip of negative value
   if (ch.kind === 'made') { const M = D.MADE_CHIPS[ch.model] || {};
     return `${M.text || tx('parts.a-chip-made-in')} <span class="dim keep">${madeRules(M, ch)}</span>`; }
   const hits = ch.hits != null && ch.kind !== 'std' ? tx('parts.left-in-it', { hits: ch.hits }) : '';
@@ -73,7 +74,10 @@ export function chipText(ch) {
   return extra + (ch.value === 1 ? tx('parts.basic-value-chip-bid') : tx('parts.basic-value-chip-a', { value: ch.value })) + feather;
 }
 // a made chip's rules, in a sentence
+// a debt chip (a made chip of negative value): what it owes, and which chips pay it
+const owesRule = (M) => tx('parts.owes-rule', { value: -M.value, reach: (CM.REACH[M.reach?.to || 'touching'] || '').toLowerCase() });
 export function madeRules(M, ch = {}) {
+  if (M.value < 0) return owesRule(M);
   const parts = [tx('parts.worth-2', { v: ch.value ?? M.value ?? 0 })];
   const lasts = { paid: 'stays until a fee takes it', match: 'lasts the whole match: hits and fees cannot remove it', turn: 'gone at the end of the turn', turns: `lasts ${ch.life ?? M.turns ?? 3} more turn${(ch.life ?? M.turns) === 1 ? '' : 's'}`, hits: `takes ${ch.hits ?? M.hits} more whole fee${(ch.hits ?? M.hits) === 1 ? '' : 's'}` }[M.lasts];
   if (lasts) parts.push(lasts);
