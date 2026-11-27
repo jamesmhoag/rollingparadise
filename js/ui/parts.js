@@ -1,5 +1,7 @@
 // Small visual pieces and the tooltip text used across screens.
 import { h, fitText } from './core.js';
+import { embody } from './gear3d.js';
+import { drinkLook } from '../content/finishes.js';
 import { thing } from './thing.js';
 import { nameSign, signOf } from './sign.js';
 import * as D from '../data.js';
@@ -319,7 +321,9 @@ export function symEl(id, color = '#fff', cls = '') {
 }
 // sips left are shown as how full the glass is
 export function drinkEl(d, sips = d.sips, max = d.max || d.sips, cls = '') {
-  return h('span', { class: `gdrink ${cls}`, style: { '--dk': d.color || '#ff86ea', '--fill': `${Math.round(100 * Math.max(0, sips) / Math.max(1, max))}%` } }, h('i', { class: 'liquid' }), h('b', { text: sips }));
+  const fill = Math.round(100 * Math.max(0, sips) / Math.max(1, max)), el = h('span', { class: `gdrink ${cls}`, style: { '--dk': d.color || '#ff86ea', '--fill': `${fill}%` } }, h('i', { class: 'liquid' }), h('b', { text: sips }));
+  embody(el, el, { kind: 'drink', look: drinkLook(d), notes: fill, name: d.name || '', sub: d.verb || '' }); // the glass and what is in it, as a body (ui/gear3d.js); this drawing stands in without it
+  return el;
 }
 export function feltEl(id, cls = '') { const F = D.feltOf(id); return h('span', { class: `gfelt ${cls}`, style: { '--fa': F.a, '--fb': F.b, '--fr': F.rim } }); }
 export const feltStyle = (id) => { const F = D.feltOf(id), tex = textureOf('felt:' + id); return { '--fa': F.a, '--fb': F.b, '--fr': F.rim, ...(tex ? { '--ftex': `url("${tex}")` } : {}) }; };

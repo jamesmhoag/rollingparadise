@@ -1016,8 +1016,21 @@ for a close look, to be turned over (`ui/spin.js`, the look a die gets).
   picture. Jackets show no numbers. Without WebGL the drawn pieces (`ui/gear.js`) stand in; both are cut from the
   same shapes (`JACKET_CUT`).
 - A **swirling** die is cool clear glass with brush strokes of coloured glass through it (flattened bands that
-  wander and twist, deepest along their middle and paling to their edges), under a low index so the stroke is seen
-  where it is from every side.
+  wander and twist, deepest along their middle and paling to their edges, filling well over half the inside), under
+  a low index so the stroke is seen where it is from every side. A **glimmering** die is clear glass with a light at
+  its heart: a glow thinning away round it, rays reaching out, sparks through the glass, under a film of shifting
+  colour. A **d4** carries its three numbers a face larger and lighter than the other dice, cut narrow, and kept on
+  the flat of the face. Rolled dice sit in the tray larger than dice in the Pouch, four to a row.
+- **Every body is closed and can be folded.** A part is two faces and a rounded rim, all of points close together,
+  each face running right out to its rim. A wallet's sheet is thin at its edge, where outside and lining are sewn
+  together, and swells from there. Inside it is lined, with a long hemmed pocket for the cash behind three hemmed
+  card slots a leaf; a pouch has a pleated gusset at each side.
+- **Drinks** are bodies too (`drinkLook`, content/finishes.js: vessel, what it is made of, rim, liquid, head, fizz,
+  ice, straw, garnish, glow). `turned()` spins a profile into a vessel and the drink that fills it to the sips left.
+  Two liquids join the materials: `liquid` (you see through it; it takes its colour with depth) and `cream` (you do
+  not). The renderer shows nothing clear through a clear body, so a clear vessel is drawn as a sheer film over what
+  it holds, and ice and fizz inside a clear drink are solid to the eye.
+- Right click lets go of anything held up close (as Esc does).
 - Still a flat picture of the same material, not a body of it: cards and passes, sign letters, symbols and crowns.
 - A jacket has a style (blazer, bomber, long coat, parka) and parts (body, sleeves, trim, collar, closure, pockets,
   emblem), each with its own material and colour.

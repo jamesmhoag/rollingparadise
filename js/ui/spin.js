@@ -67,7 +67,7 @@ function swallowClick() {
 export function initSpin() {
   document.addEventListener('pointerdown', (ev) => {
     if (ev.button !== 0 || ev.carried) return; // a die being carried to a trick is not being turned over
-    const node = ev.target.closest?.('.die, .thing'); if (!node || !(node._die || node._look) || node.classList.contains('flipc')) return;
+    const node = ev.target.closest?.('.die, .thing, .gdrink'); if (!node || !(node._die || node._look) || node.classList.contains('flipc')) return;
     const x0 = ev.clientX, y0 = ev.clientY, k = scaleOf(); let spinning = false;
     const move = (e) => {
       if (!spinning) { if (Math.hypot(e.clientX - x0, e.clientY - y0) / k < GRAB) return; spinning = true; open(node); view.held = true; }
@@ -78,6 +78,8 @@ export function initSpin() {
     document.addEventListener('pointermove', move); document.addEventListener('pointerup', up); document.addEventListener('pointercancel', up);
   });
   document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') close(); });
+  // a right click anywhere lets go of what is held up close (and brings up no menu)
+  document.addEventListener('contextmenu', (ev) => { if (!view) return; ev.preventDefault(); ev.stopPropagation(); close(); }, true);
   // a die that leaves the screen (a new scene, a closed panel) takes its spin with it
   new MutationObserver(() => { if (view && !view.held && !document.body.contains(view.node)) close(true); }).observe(stage(), { childList: true, subtree: true });
 }

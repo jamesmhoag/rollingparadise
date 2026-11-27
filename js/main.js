@@ -1,6 +1,6 @@
 // Entry point: boots the stage, owns navigation between screens.
 import { h, fit, initTips, go as show, btn, toast, closePanel, openPanel, guided, watchText } from './ui/core.js';
-import { walletLook, jacketLook } from './content/finishes.js';
+import { walletLook, jacketLook, drinkLook } from './content/finishes.js';
 import { app } from './ui/app.js';
 import { jacketTip } from './ui/parts.js';
 import { hubScene } from './ui/floor.js';
@@ -141,7 +141,7 @@ function ready() {
   return (heavy = (async () => {
     try { const [M3, G3] = await Promise.all([import('./ui/dice3d.js'), import('./ui/gear3d.js')]);
       await M3.preload(show(0, 0.6)); line.textContent = t('boot.gear');
-      await G3.prepare([...Object.entries(D.WALLETS).map(([id, W]) => ({ kind: 'wallet', look: walletLook(id, W) })), ...Object.entries(D.JACKETS).map(([id, J]) => ({ kind: 'jacket', look: jacketLook(id, J) }))], show(0.6, 0.4));
+      await G3.prepare([...Object.entries(D.WALLETS).map(([id, W]) => ({ kind: 'wallet', look: walletLook(id, W) })), ...Object.entries(D.JACKETS).map(([id, J]) => ({ kind: 'jacket', look: jacketLook(id, J) })), ...D.DRINKS.map((d) => ({ kind: 'drink', look: drinkLook(d) }))], show(0.6, 0.4));
     } catch { /* no renderer: the drawn looks stand */ }
     line.textContent = t('boot.ready'); bar.style.width = '100%'; await new Promise((r) => setTimeout(r, 180));
   })());

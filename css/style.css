@@ -1447,6 +1447,7 @@ body.spinning .thing > .th-body, body.carrying-now .thing > .th-body { transitio
 .gw.g3d .gw-tuck { transition: opacity .16s; } .gw.g3d:not(.shown) .gw-tuck { opacity: 0; visibility: hidden; }
 .gw .g3-em { display: none; left: var(--g3-ex, 0); top: var(--g3-ey, 0); right: auto; bottom: auto; transform: translateZ(4px); } .gw.g3d.shut .g3-em { display: block; }
 .gj.g3d .gj-art { visibility: hidden; }
+.gdrink.g3d { clip-path: none; background: none; box-shadow: none; cursor: grab; } .gdrink.g3d .liquid { display: none; } .gdrink.g3d b { inset: auto -4px -4px auto; min-width: 13px; height: 13px; padding: 0 2px; border-radius: 7px; font-size: 10px; line-height: 13px; background: rgba(10, 6, 24, .72); box-shadow: 0 0 0 1px rgba(255, 255, 255, .25); z-index: 1; }
 .thing.g3d > .th-body { transform: none !important; } .thing.g3d > .th-body > .th-edge, .thing.g3d > .th-body > .th-back { display: none; }
 .g3-look { display: grid; place-items: center; }
 .thing.mini.th-wallet, .item .thing.th-wallet, .lib .thing.th-wallet { zoom: .6; }

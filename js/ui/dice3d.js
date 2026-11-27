@@ -11,7 +11,7 @@
 //                  glass       clear, refracting what is behind it, tinted through its depth
 //                  metal       polished, mirroring the room
 //                  sparkling   glitter: metal flakes, each its own tiny mirror, under a clear coat
-//                  glimmering  frosted glass with a fine shimmer in it
+//                  glimmering  clear glass with a light at its heart: a glow, rays and sparks, under a film of shifting colour
 //                  swirling    cool clear glass with a brush stroke of coloured glass bleeding through it, turning slowly
 //                  diamond     cut sharp, high index, splitting light into colour (dispersion), glinting
 //                  bone        warm ivory, a little worn
@@ -118,7 +118,7 @@ const PIPS = { 1: [[0, 0]], 2: [[-1, -1], [1, 1]], 3: [[-1, -1], [0, 0], [1, 1]]
 // clear glass cannot be read once the die is rolled): the paint blocks the light through it and glows a little.
 const LOOK = {
   plastic: { ink: '#1b1622', round: 1 }, glass: { ink: '#ffffff', frost: true, paint: true }, metal: { ink: '#14161c' }, sparkling: { ink: '#2a1a05', flakes: 0.9 },
-  glimmering: { ink: '#ffffff', frost: true, flakes: 0.35, paint: true }, swirling: { ink: '#ffffff', frost: true, paint: true }, diamond: { ink: '#ffffff', frost: true, paint: true }, bone: { ink: '#4a3420', grain: true },
+  glimmering: { ink: '#ffffff', frost: true, flakes: 0.12, paint: true }, swirling: { ink: '#ffffff', frost: true, paint: true }, diamond: { ink: '#ffffff', frost: true, paint: true }, bone: { ink: '#4a3420', grain: true },
 };
 export const CLEAR = Object.keys(LOOK).filter((k) => LOOK[k].paint); // the see-through materials
 const MAPS = new Map();
@@ -130,17 +130,17 @@ function faceMaps(type, mat, labels, F, atlas, base) {
     const [tu, tv] = atlas.tile(i), cx = (tu + 0.5) * tile, cy = (tv + 0.5) * tile, k = (tile * 0.98) / (2 * f.R) * f.ins * 0.8; // k: the face's inscribed radius in px, less the rounded rim
     const val = String(labels[i] ?? '');
     if (type === 'd4') { // a number at each corner, its top toward the corner: the one at the top point is the roll
-      const sc = (tile * 0.98) / (2 * f.R), fsz = k * 0.62; hx.font = `800 ${fsz}px "Rubik", "Inter", "Segoe UI", system-ui, sans-serif`; hx.textAlign = 'center'; hx.textBaseline = 'middle';
+      const sc = (tile * 0.98) / (2 * f.R), fsz = k * 0.9; hx.font = `600 ${fsz}px "Rubik", "Inter", "Segoe UI", system-ui, sans-serif`; // (larger and lighter than the other dice: three numbers share a face) hx.textAlign = 'center'; hx.textBaseline = 'middle';
       for (const { p, k: vi } of d4Corners(i)) { const la = dot(sub(p, f.c), f.u) * sc, lb = dot(sub(p, f.c), f.v) * sc, L0 = Math.hypot(la, lb) || 1, t = String(labels[vi] ?? '');
-        hx.save(); hx.translate(cx + la * 0.5, cy + lb * 0.5); hx.rotate(Math.atan2(la / L0, -lb / L0)); hx.fillText(t, 0, fsz * 0.04);
-        if (t === '6' || t === '9') hx.fillRect(-fsz * 0.22, fsz * 0.46, fsz * 0.44, fsz * 0.08); hx.restore(); }
+        const far = sc * f.R * 0.205; hx.save(); hx.translate(cx + (la / L0) * far, cy + (lb / L0) * far); /* (as large as three numbers can be on the flat of a face, and close in: its rounded edges cut off anything nearer a corner) */ hx.rotate(Math.atan2(la / L0, -lb / L0)); hx.fillText(t, 0, fsz * 0.04);
+        if (t === '6' || t === '9') hx.fillRect(-fsz * 0.2, fsz * 0.44, fsz * 0.4, fsz * 0.06); hx.restore(); }
     } else if (type === 'd6' && PIPS[val]) for (const [px, py] of PIPS[val]) { hx.beginPath(); hx.arc(cx + px * k * 0.52, cy + py * k * 0.52, k * 0.17, 0, Math.PI * 2); hx.fill(); }
     else { const fsz = k * (val.length > 2 ? 0.62 : val.length > 1 ? 0.8 : 0.98) * (type === 'd4' ? 0.8 : 1); hx.font = `800 ${fsz}px "Rubik", "Inter", "Segoe UI", system-ui, sans-serif`; hx.textAlign = 'center'; hx.textBaseline = 'middle';
       hx.fillText(val, cx, cy + (type === 'd4' ? k * 0.12 : 0) + fsz * 0.04);
       if (val === '6' || val === '9') hx.fillRect(cx - fsz * 0.22, cy + fsz * 0.46, fsz * 0.44, fsz * 0.08); }
   });
   // soften the recess walls a little (a rounded engraving, not a cut-out)
-  const soft = document.createElement('canvas'); soft.width = soft.height = S; const sx = soft.getContext('2d'); sx.filter = `blur(${Math.max(1, tile / 110)}px)`; sx.drawImage(hc, 0, 0);
+  const soft = document.createElement('canvas'); soft.width = soft.height = S; const sx = soft.getContext('2d'); sx.filter = `blur(${Math.max(1, tile / (type === 'd4' ? 240 : 110))}px)`; // (a d4's cut is kept narrow: its numbers are thin) sx.drawImage(hc, 0, 0);
   const H = sx.getImageData(0, 0, S, S).data, sharp = hx.getImageData(0, 0, S, S).data;
   // glitter: a field of tiny flakes, each tilted its own way
   const flake = new Float32Array(S * S * 2);
@@ -179,10 +179,14 @@ function material(mat, maps, base) {
   const c = new T.Color(base), common = { map: maps.map, normalMap: maps.normalMap, roughnessMap: maps.roughnessMap, normalScale: new T.Vector2(1, 1),
     ...(maps.paintMap ? { transmissionMap: maps.transmissionMap, emissive: new T.Color(0xffffff), emissiveMap: maps.paintMap, emissiveIntensity: 0.6 } : {}) };
   switch (mat) {
+    // liquids: one you see through (it takes its colour with depth, as a drink does in its glass), and one you do not (milk, cream)
+    case 'liquid': return new T.MeshPhysicalMaterial({ ...common, color: 0xffffff, transmission: 1, thickness: 0.8, ior: 1.33, roughness: 0.03, attenuationColor: c, attenuationDistance: 0.35, clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: 1.6 });
+    case 'cream': return new T.MeshPhysicalMaterial({ ...common, color: c, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.08, sheen: 0.5, sheenColor: c });
     case 'glass': return new T.MeshPhysicalMaterial({ ...common, color: 0xffffff, transmission: 1, thickness: 0.9, ior: 1.52, roughness: 0.04, attenuationColor: c, attenuationDistance: 2.2, specularIntensity: 1, clearcoat: 0.4, envMapIntensity: 1.8 });
     case 'metal': return new T.MeshPhysicalMaterial({ ...common, color: new T.Color(c).lerp(new T.Color(0xffffff), 0.35), metalness: 1, roughness: 0.22, envMapIntensity: 2.1, clearcoat: 0.25 });
     case 'sparkling': return new T.MeshPhysicalMaterial({ ...common, color: c, metalness: 0.9, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 1.6 });
-    case 'glimmering': return new T.MeshPhysicalMaterial({ ...common, color: 0xffffff, transmission: 0.9, thickness: 1.3, ior: 1.46, roughness: 0.32, attenuationColor: c, attenuationDistance: 1.1, sheen: 0.6, sheenColor: c, clearcoat: 0.7, clearcoatRoughness: 0.05 });
+    // (clear enough to see the light at its heart, with a film of colour that shifts as it turns: not frosted like ice)
+    case 'glimmering': return new T.MeshPhysicalMaterial({ ...common, color: 0xffffff, transmission: 0.94, thickness: 0.6, ior: 1.2, roughness: 0.12, attenuationColor: c, attenuationDistance: 2.2, emissive: rich(base).multiplyScalar(0.14), iridescence: 1, iridescenceIOR: 1.7, iridescenceThicknessRange: [180, 620], clearcoat: 1, clearcoatRoughness: 0.03 });
     // (a low index and little depth: the stroke inside is seen where it is, from every side, not thrown off to one edge)
     case 'swirling': return new T.MeshPhysicalMaterial({ ...common, color: 0xffffff, transmission: 1, thickness: 0.35, ior: 1.12, roughness: 0.03, attenuationColor: new T.Color(0xe6f3ff), attenuationDistance: 4, clearcoat: 1, clearcoatRoughness: 0.02 });
     case 'diamond': return new T.MeshPhysicalMaterial({ ...common, color: 0xffffff, transmission: 1, thickness: 0.8, ior: 2.42, dispersion: 1.2, roughness: 0, specularIntensity: 1, envMapIntensity: 3, iridescence: 0.25, iridescenceIOR: 1.6 });
@@ -210,7 +214,7 @@ function material(mat, maps, base) {
 // a colour at full strength (a swirling die's own colour is the pale cast of the whole die: the stroke in it is the dye itself)
 const rich = (c) => { const k = new T.Color(c), hsl = k.getHSL({}); return k.setHSL(hsl.h, Math.max(hsl.s, 0.85), Math.min(hsl.l, 0.5)); };
 function stroke(seed, wide, tint, pale) {
-  const N = 72, M = 14, pos = [], col = [], idx = [], deep = rich(tint), thin = rich(tint).lerp(new T.Color(0xeaf4ff), 0.72), at = (t) => new T.Vector3(0.3 * Math.sin(t * 4.1 + seed * 2.3) + 0.1 * Math.sin(t * 9.7 + seed), (t - 0.5) * 0.98 + 0.06 * Math.sin(t * 7.3 + seed * 1.7), 0.28 * Math.sin(t * 3.3 + seed * 4.1 + 1.2) + 0.08 * Math.cos(t * 11 + seed));
+  const N = 72, M = 14, pos = [], col = [], idx = [], deep = rich(tint), thin = rich(tint).lerp(new T.Color(0xeaf4ff), 0.72), at = (t) => new T.Vector3(0.36 * Math.sin(t * 4.1 + seed * 2.3) + 0.12 * Math.sin(t * 9.7 + seed), (t - 0.5) * 1.08 + 0.07 * Math.sin(t * 7.3 + seed * 1.7), 0.34 * Math.sin(t * 3.3 + seed * 4.1 + 1.2) + 0.1 * Math.cos(t * 11 + seed));
   for (let i = 0; i <= N; i++) { const t = i / N, p = at(t), tan = at(Math.min(1, t + 0.01)).sub(at(Math.max(0, t - 0.01))).normalize(), ref = Math.abs(tan.y) > 0.9 ? new T.Vector3(1, 0, 0) : new T.Vector3(0, 1, 0);
     const nrm = new T.Vector3().crossVectors(tan, ref).normalize(), bin = new T.Vector3().crossVectors(tan, nrm), tw = t * 4.4 + seed, w = wide * Math.sin(Math.PI * t) ** 0.7 * (0.62 + 0.38 * Math.sin(t * 13 + seed * 3)), th = w * 0.2;
     const a = nrm.clone().multiplyScalar(Math.cos(tw)).addScaledVector(bin, Math.sin(tw)), b = nrm.clone().multiplyScalar(-Math.sin(tw)).addScaledVector(bin, Math.cos(tw));
@@ -219,9 +223,22 @@ function stroke(seed, wide, tint, pale) {
   for (let i = 0; i < N; i++) for (let j = 0; j < M; j++) { const k = i * M + j, k2 = i * M + ((j + 1) % M); idx.push(k, k2, k + M, k2, k2 + M, k + M); }
   const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new T.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals(); return g;
 }
+// The light inside a glimmering die: a bright heart, a glow thinning away round it, rays reaching out from it, and
+// sparks scattered through the glass, all turning slowly so they catch and lose the eye.
+function glimmer(scale, tint) {
+  const g = new T.Group(), c = rich(tint), white = new T.Color(0xffffff), lit = (k, opacity = 1) => new T.MeshBasicMaterial({ color: new T.Color(c).lerp(white, k), opacity, alphaHash: opacity < 1 });
+  g.add(new T.Mesh(new T.SphereGeometry(0.17, 20, 14), lit(0.8)));
+  for (const [rad, op] of [[0.27, 0.5], [0.4, 0.24], [0.56, 0.1]]) g.add(new T.Mesh(new T.SphereGeometry(rad, 20, 14), lit(0.35, op)));
+  let seed = 11; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647), dir = () => new T.Vector3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).normalize();
+  for (let i = 0; i < 16; i++) { const len = 0.5 + rnd() * 0.42, ray = new T.Mesh(new T.ConeGeometry(0.02 + rnd() * 0.015, len, 5), lit(0.6, 0.7)), d = dir(); ray.geometry.translate(0, len / 2, 0); ray.quaternion.setFromUnitVectors(new T.Vector3(0, -1, 0), d.clone().negate()); ray.position.copy(d.multiplyScalar(0.1)); g.add(ray); }
+  for (let i = 0; i < 70; i++) { const sp = new T.Mesh(new T.OctahedronGeometry(0.014 + rnd() * 0.022), lit(rnd() < 0.5 ? 1 : 0.5)); sp.position.copy(dir().multiplyScalar(0.25 + rnd() * 0.62)); sp.rotation.set(rnd() * 3, rnd() * 3, 0); g.add(sp); }
+  g.scale.setScalar(scale); return g;
+}
+// what turns inside a die of a material, if anything does
+const insideOf = (mat, scale, tint) => (mat === 'swirling' ? swirl(scale, tint) : mat === 'glimmering' ? glimmer(scale * 0.86, tint) : null);
 function swirl(scale, tint) {
   const g = new T.Group(), glass = new T.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.04, emissive: rich(tint).multiplyScalar(0.16), side: T.DoubleSide });
-  for (const [seed, wide, pale] of [[0.4, 0.2, 0], [0.75, 0.07, 0.35], [2.9, 0.11, 0.2], [3.3, 0.045, 0.5]]) g.add(new T.Mesh(stroke(seed, wide, tint, pale), glass));
+  for (const [seed, wide, pale] of [[0.4, 0.3, 0], [0.75, 0.11, 0.35], [2.9, 0.2, 0.15], [3.3, 0.08, 0.45], [5.2, 0.14, 0.3]]) /* strokes enough to fill well over half the inside */ g.add(new T.Mesh(stroke(seed, wide, tint, pale), glass));
   g.scale.setScalar(scale); return g;
 }
 
@@ -230,11 +247,18 @@ const lookOf = (d) => { const mat = matOf(d); return { mat: LOOK[mat] ? mat : 'p
 // A body of geometry `g` made of a material: what every die is, and every other thing made of the same materials
 // (ui/gear3d.js: wallets, jackets). A clear one shows its own far faces through itself: a mirror-bright shell of them
 // inside, which the front refracts.
-const SEE_THROUGH = ['glass', 'diamond', 'glimmering', 'swirling'];
-function bodyOf(g, mat, tint, maps) {
+const SEE_THROUGH = ['glass', 'diamond', 'glimmering', 'swirling', 'liquid'];
+// A vessel: a thin wall of a clear material round something else that is clear (a glass round its drink). The renderer
+// shows nothing clear through a clear body, so a vessel's wall is drawn as a sheer film over what it holds: the
+// material's colour and shine, laid on after its contents.
+const vesselOf = (mat, tint) => new T.MeshPhysicalMaterial({ color: mat === 'diamond' ? 0xffffff : new T.Color(tint).lerp(new T.Color(0xffffff), 0.7), transparent: true, opacity: mat === 'diamond' ? 0.34 : 0.2, roughness: mat === 'glimmering' ? 0.25 : 0.02, clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: mat === 'diamond' ? 4 : 2.4, iridescence: mat === 'diamond' || mat === 'glimmering' ? 1 : 0, iridescenceIOR: 1.8, side: T.DoubleSide, depthWrite: false });
+function bodyOf(g, mat, tint, maps, vessel) {
   const grp = new T.Group();
-  if (SEE_THROUGH.includes(mat)) {
-    const inner = new T.Mesh(g, new T.MeshPhysicalMaterial({ side: T.BackSide, color: mat === 'diamond' ? 0xffffff : new T.Color(tint).lerp(new T.Color(0xffffff), 0.5), metalness: 1, roughness: mat === 'glimmering' ? 0.35 : 0.03, envMapIntensity: mat === 'diamond' ? 4 : 2.2, emissive: new T.Color(mat === 'diamond' ? 0x3a3550 : 0x20283a), normalMap: maps.normalMap }));
+  if (vessel && SEE_THROUGH.includes(mat)) { const m = new T.Mesh(g, vesselOf(mat, tint)); m.renderOrder = 2; grp.add(m); return grp; }
+  if (mat === 'liquid') { // a drink's depth: its own colour within, lit a little from inside, under the clear surface
+    const deep = new T.Mesh(g, new T.MeshPhysicalMaterial({ side: T.BackSide, color: rich(tint).lerp(new T.Color(tint), 0.5), roughness: 0.55, metalness: 0, envMapIntensity: 0.5, emissive: rich(tint).multiplyScalar(0.3) })); deep.renderOrder = -1; grp.add(deep);
+  } else if (SEE_THROUGH.includes(mat)) {
+    const inner = new T.Mesh(g, new T.MeshPhysicalMaterial({ side: T.BackSide, color: mat === 'diamond' ? 0xffffff : new T.Color(tint).lerp(new T.Color(0xffffff), 0.5), metalness: 1, roughness: mat === 'glimmering' ? 0.16 : 0.03, envMapIntensity: mat === 'diamond' ? 4 : 2.2, emissive: mat === 'glimmering' ? rich(tint).multiplyScalar(0.3) : new T.Color(mat === 'diamond' ? 0x3a3550 : 0x20283a), normalMap: maps.normalMap }));
     inner.renderOrder = -1; grp.add(inner);
   }
   grp.add(new T.Mesh(g, material(mat, maps, tint))); return grp;
@@ -244,7 +268,7 @@ function model(d, labels) {
   const L = lookOf(d), key = `${d.type}|${L.mat}|${labels.join(',')}`; if (MODELS.has(key)) return MODELS.get(key);
   const { g, F, atlas, s } = roundedGeometry(d.type, L.mat), maps = faceMaps(d.type, L.mat, labels, F, atlas, L.base);
   const grp = bodyOf(g, L.mat, L.tint, maps);
-  if (L.mat === 'swirling') { const sw = swirl(s * 0.94, L.tint); grp.add(sw); grp.userData.swirl = sw; }
+  { const sw = insideOf(L.mat, s * 1.08, L.tint); if (sw) { grp.add(sw); grp.userData.swirl = sw; } }
   grp.matrixAutoUpdate = false; MODELS.set(key, grp); return grp;
 }
 
@@ -279,7 +303,7 @@ function grainMap(mat) {
     img.data[i] = (n[0] * 0.5 + 0.5) * 255; img.data[i + 1] = (n[1] * 0.5 + 0.5) * 255; img.data[i + 2] = (n[2] * 0.5 + 0.5) * 255; img.data[i + 3] = 255; }
   cx.putImageData(img, 0, 0); const tex = new T.CanvasTexture(cv); tex.wrapS = tex.wrapT = T.RepeatWrapping; tex.repeat.set(1.6, 1.6); GRAINS.set(mat, tex); return tex;
 }
-export const MATERIAL_IDS = [...new Set(['plastic', 'glass', 'metal', 'sparkling', 'glimmering', 'swirling', 'diamond', 'bone', ...Object.keys(GRAIN)])]; // every material the renderer knows
+export const MATERIAL_IDS = [...new Set(['plastic', 'glass', 'metal', 'sparkling', 'glimmering', 'swirling', 'diamond', 'bone', 'liquid', 'cream', ...Object.keys(GRAIN)])]; // every material the renderer knows
 const SWATCHES = new Map();
 // A picture of the material in a colour, as a URL (a data: image), or null where the renderer is not there (the CSS
 // look stands). The slab is a little pillowed and turned, so the room's lights run across it as they do a die's face.
@@ -293,7 +317,7 @@ export async function swatch(mat, color = '#b9b2c8', px = 192) {
     const mesh = new T.Mesh(g, material(mat, { map: null, normalMap: grainMap(mat), roughnessMap: null }, color)); mesh.rotation.set(-0.16, 0.2, 0);
     // what a clear slab is seen against: a bright foil behind it, in its own tint, as a clear die has its far faces
     if (clear) { const back = new T.Mesh(new T.PlaneGeometry(4, 4, 24, 24), new T.MeshPhysicalMaterial({ color: mat === 'diamond' ? 0xffffff : hi(color, 0.45), metalness: 1, roughness: mat === 'glimmering' ? 0.4 : 0.12, envMapIntensity: mat === 'diamond' ? 3.5 : 2 })); back.position.z = -0.7; back.rotation.set(0.3, -0.35, 0.2); grp.add(back); }
-    grp.add(mesh); if (mat === 'swirling') { const sw = swirl(1.5, color); sw.rotation.z = 1.2; sw.position.z = -0.3; grp.add(sw); }
+    grp.add(mesh); { const sw = insideOf(mat, 1.5, color); if (sw) { sw.rotation.z = 1.2; sw.position.z = -0.3; grp.add(sw); } }
     scene.add(grp); if (canvas.width !== px || canvas.height !== px) renderer.setSize(px, px, false);
     renderer.render(scene, camera); scene.remove(grp); const url = canvas.toDataURL('image/png'); g.dispose(); return url;
   })();
@@ -303,10 +327,10 @@ export async function swatch(mat, color = '#b9b2c8', px = 192) {
 // ---------- drawing ----------
 const flipY = () => new T.Matrix4().makeScale(1, -1, 1);
 // For the other things made of these materials (ui/gear3d.js): three.js itself, a body of any geometry in a material
-// and colour (the material's own grain as its relief), and a picture of a group of them: turned by m (a DOMMatrix in
+// and colour (the material's own grain as its relief; vessel: a thin wall round something clear), and a picture of a group of them: turned by m (a DOMMatrix in
 // CSS's axes), seen square on over the rectangle `view` ([left, bottom, right, top], in the scene's units), w × h pixels.
 export const three = () => T;
-export const body = (g, mat, color) => bodyOf(g, mat, color, { map: null, normalMap: grainMap(mat), roughnessMap: null });
+export const body = (g, mat, color, vessel = false) => bodyOf(g, mat, color, { map: null, normalMap: grainMap(mat), roughnessMap: null }, vessel);
 let flatCam = null;
 export function renderGroup(grp, { w, h, view, turn }) {
   const { renderer, scene, canvas } = R3; flatCam ||= new T.OrthographicCamera(-1, 1, 1, -1, 0.1, 80);

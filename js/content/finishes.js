@@ -78,3 +78,27 @@ export function jacketLook(id, J = {}) {
 // a new wallet or jacket from the Gear maker starts as this
 export const NEW_WALLET = { name: 'New Wallet', color: '#7a4b2a', slots: 2, keep: 8, passes: 1, price: 1000, level: 0, look: { type: 'billfold', mat: 'leather', stitch: true } };
 export const NEW_JACKET = { name: 'New Jacket', color: '#5b6378', effect: 'New · Untested', mods: {}, price: 200, level: 0, look: { style: 'blazer', mat: 'wool' } };
+
+// ---------- drinks ----------
+// A drink is a vessel and what is in it. vessel: its shape (DRINK_VESSELS) · mat, color: what the vessel is made of
+// (any material) · rim: a band round its lip · liquid: { mat: 'liquid' (you see through it) or 'cream' (you do not),
+// color, top: a second colour floating on it } · foam: a head on it (0 to 1) · bubbles: it fizzes · ice: cubes in it ·
+// straw: a straw's colour · garnish: 'cherry', 'slice', 'umbrella' · glow: a light in it
+export const DRINK_VESSELS = { tumbler: 'Tumbler', tall: 'Tall glass', mug: 'Mug', cup: 'Cup and saucer', goblet: 'Goblet', coupe: 'Coupe' };
+export const DRINK_GARNISHES = { cherry: 'A cherry', slice: 'A slice of fruit', umbrella: 'A paper umbrella' };
+const DRINK_LOOKS = {
+  soda: { vessel: 'tall', bubbles: true, foam: 0.35, straw: '#ff5b6e' },
+  water: { vessel: 'tumbler', ice: 3 },
+  coffee: { vessel: 'tall', ice: 2, liquid: { top: '#e8d9c2' }, straw: '#2b2b33' },
+  milk: { vessel: 'mug', mat: 'plastic', color: '#f3ead8', liquid: { mat: 'cream' }, foam: 0.2 },
+  tea: { vessel: 'cup', mat: 'plastic', color: '#f6f1e6', rim: { mat: 'metal', color: '#d9b45a' }, garnish: 'slice' },
+  juice: { vessel: 'goblet', garnish: 'slice', straw: '#3fb86b' },
+  special: { vessel: 'coupe', garnish: 'umbrella', bubbles: true },
+  royal: { vessel: 'goblet', rim: { mat: 'metal', color: '#e8c35a' }, bubbles: true, garnish: 'cherry' },
+  diamond: { vessel: 'coupe', mat: 'diamond', glow: true },
+};
+export function drinkLook(d = {}) {
+  const K = { ...(DRINK_LOOKS[d.id] || {}), ...(d.look || {}) }, color = d.color || '#ff86ea';
+  return { vessel: DRINK_VESSELS[K.vessel] ? K.vessel : 'tumbler', mat: FINISHES[K.mat] || ['glass', 'diamond'].includes(K.mat) ? K.mat : 'glass', color: K.color || '#dff2ff', rim: K.rim || null,
+    liquid: { mat: K.liquid?.mat === 'cream' ? 'cream' : 'liquid', color: K.liquid?.color || color, top: K.liquid?.top || null }, foam: +K.foam || 0, bubbles: !!K.bubbles, ice: K.ice | 0, straw: K.straw || null, garnish: DRINK_GARNISHES[K.garnish] ? K.garnish : null, glow: !!K.glow };
+}

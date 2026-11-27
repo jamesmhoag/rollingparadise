@@ -79,13 +79,14 @@ export function boutScene(root, bout, ctx, onDone) {
   // a dice column, top-aligned with the Run: the Roll's tray, then the Pouch (titles sit on the row above)
   // just under the commit button, five dice a row. The roll keeps dice from turn to turn, so it grows a row at a
   // time and the Pouch moves down under it.
-  const trayRows = (si = 0) => Math.max(2, Math.ceil(sideOf(si).tray.length / 5));
+  // rolled dice are shown larger than dice in the Pouch (ROLLED): four to a row in the tray
+  const ROLLED = 1.38, TRAY_STEP = 46, trayRows = (si = 0) => Math.max(2, Math.ceil((Math.ceil(sideOf(si).tray.length / 4) * TRAY_STEP) / 36));
   const DY = { tray: DICE_Y, get pouch() { return DICE_Y + trayRows() * 36 + 14; }, get dice() { return this.pouch + 18; } };
   const pouchSlot = (i, n) => { const x0 = diceAt() + 6;
     if (!diceOpen() && ui.peek !== 'dice') return { x: runSpan().dice + 3, y: DICE_Y + 22 + Math.min(i, 30) * 6, folded: true }; // folded into its spine
     if (bout.phase === 'roll' && me.thrown && ui.peek !== 'dice') return { x: x0 + Math.min(i, 30) * Math.min(10, 150 / Math.max(1, n)), y: DY.dice + 4 - (i % 2) * 2 }; // thrown: the rest of the Pouch closes up
     const per = n > 15 ? 6 : 5, st = n > 15 ? 30 : 36; return { x: x0 + (i % per) * st, y: DY.dice + Math.floor(i / per) * st }; };
-  const traySlot = (i, si = 0) => ({ x: diceAt(si) + 10 + (i % 5) * 36, y: DY.tray + 8 + Math.floor(i / 5) * 36 }); // the roll: a row per five dice kept
+  const traySlot = (i, si = 0) => ({ x: diceAt(si) + 12 + (i % 4) * TRAY_STEP, y: DY.tray + 13 + Math.floor(i / 4) * TRAY_STEP, big: ROLLED }); // the roll: a row per four dice kept
   // the Stage: what each Roller has paid, stacked in front of the House
   // the Pit: each Roller's lost chips, in the order they were lost, filling two stacks on their own side, then rising
   // the Pit: a space a row in each of a side's columns, the front column by the middle; a chip sits where it landed
@@ -627,7 +628,7 @@ export function boutScene(root, bout, ctx, onDone) {
     for (const [id, w] of wantDice) {
       let el = els.dice.get(id); if (!el) { el = mkDie(w.d, w.si); els.dice.set(id, el); const from = (w.d.chip && els.flipFrom?.get(id)) || { x: w.x, y: w.y - 16 }; spawn(el, from.x, from.y, 'scale(.4)'); }
       const from = /translate\(([-\d.]+)px, ([-\d.]+)px\)/.exec(el.style.transform);
-      el.style.opacity = w.folded ? '0' : '1'; el.style.pointerEvents = w.folded ? 'none' : ''; place(el, w.x, w.y, w.folded ? 'scale(.5)' : ''); el.style.zIndex = w.on ? 6 : ui.peek === 'dice' ? 9 : 4; el.classList.toggle('on', !!w.on); el.classList.toggle('rolled', !!w.rolled); el.classList.toggle('sel', (ui.mode === 'die' && ui.die === id) || !!w.picked);
+      el.style.opacity = w.folded ? '0' : '1'; el.style.pointerEvents = w.folded ? 'none' : ''; place(el, w.x, w.y, w.folded ? 'scale(.5)' : w.big ? `scale(${w.big})` : w.on ? 'scale(1.1)' : ''); el.style.zIndex = w.on ? 6 : ui.peek === 'dice' ? 9 : 4; el.classList.toggle('on', !!w.on); el.classList.toggle('rolled', !!w.rolled); el.classList.toggle('sel', (ui.mode === 'die' && ui.die === id) || !!w.picked);
       el.classList.toggle('fixed', !!w.on && (!!w.si || !B.canMove(bout, me, id))); el.classList.toggle('tapped', !!w.tapped); el.classList.toggle('restoring', !!w.restoring); el.classList.toggle('bonusd', !!w.bonus);
       el.classList.toggle('lit', !!w.lit); el.classList.toggle('spent', !!w.spent); if (w.lc) el.style.setProperty('--lc', w.lc);
       const label = el.firstChild, text = w.rolled ? String(w.value) : w.d.type.slice(1);
