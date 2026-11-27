@@ -1,6 +1,6 @@
 // Negative value is a chip parameter: the chip owes. It stays where it is laid (nothing spills on to another stack),
 // is paid by the chips it reaches, each worth no more than what is still owed (a bigger chip is never broken for
-// change), and is gone once paid off. Debt is one such chip (it touches only the chip under it); any chip made with
+// change), stands alone (chips that owe do not add up unless stuck together), and is gone once paid off. Debt is one such chip (it touches only the chip under it); any chip made with
 // a negative value is another, under its own name, reaching as the chip maker says.
 import * as R from '../js/run.js'; import * as B from '../js/bout.js'; import * as D from '../js/data.js';
 import { makeKind, owesOf } from '../js/trickmaker.js';
@@ -18,8 +18,9 @@ const debts = (cell) => cell.chips.filter((ch) => ch.kind === 'debt');
   B._test.engage(bout, me, opp, r, c, 3); ok(B.debtOf(cell) === 3 && !debts(cell)[0].model, 'a fee goes out as a Debt chip');
   drain(B._test.settleAll(bout, 'expense')); ok(B.debtOf(cell) === 3 && cell.chips.some((ch) => ch.id === 9002), '3¢ of Debt on a 5¢ chip takes nothing: no change is made');
   B._test.engage(bout, me, opp, r, c, 2); drain(B._test.settleAll(bout, 'expense'));
-  ok(!cell.chips.some((ch) => ch.id === 9002) && B.debtOf(cell) === 0 && !debts(cell).length, 'topped up to 5¢ it takes the chip, and paid off it is gone');
-  ok(cell.chips.some((ch) => ch.id === 9001), 'the chip beneath is left');
+  ok(cell.chips.some((ch) => ch.id === 9002) && debts(cell).map((ch) => ch.value).join() === '3,2', 'a second Debt chip is its own chip: 3¢ and 2¢ do not add up to take a 5¢ chip');
+  B._test.engage(bout, me, opp, r, c, 6); drain(B._test.settleAll(bout, 'expense'));
+  ok(!cell.chips.some((ch) => ch.kind === 'std') && debts(cell).map((ch) => ch.value).join() === '3,2', 'a 6¢ Debt chip takes the 5¢ chip and then the 1¢ chip, and paid off it is gone');
 }
 D.MADE_CHIPS._lien = { ...NEW_CHIP, name: 'Lien', value: -2, reach: { to: 'touching', range: 2 } };
 D.MADE_CHIPS._tab = { ...NEW_CHIP, name: 'Tab', value: -1 };
@@ -30,7 +31,9 @@ try {
     B._test.engage(bout, me, opp, r, c, 2); B._test.engage(bout, me, opp, r, c, 2, { model: '_tab' });
     ok(debts(cell).length === 2 && debts(cell).find((ch) => ch.model === '_tab')?.value === 2 && B.debtOf(cell) === 4, 'each name of debt chip is its own marker on the stack');
     drain(B._test.settleAll(bout, 'expense')); ok(B.debtOf(cell) === 4 && cell.chips.some((ch) => ch.id === 9001), 'together they owe 4¢: the 5¢ chip stays');
-    B._test.engage(bout, me, opp, r, c, 1, { model: '_tab' }); drain(B._test.settleAll(bout, 'expense')); ok(!cell.chips.length, 'at 5¢ the chip is taken and both are paid off');
+    B._test.engage(bout, me, opp, r, c, 3, { model: '_tab' }); drain(B._test.settleAll(bout, 'expense')); ok(debts(cell).length === 3 && cell.chips.some((ch) => ch.id === 9001), 'another of the same name is another chip: nothing adds up');
+    D.MADE_CHIPS._tab.sticky = true; B._test.engage(bout, me, opp, r, c, 1, { model: '_tab' }); ok(debts(cell).filter((ch) => ch.model === '_tab').map((ch) => ch.value).join() === '6', 'stuck together (a sticky chip) they are one chip worth their sum');
+    drain(B._test.settleAll(bout, 'expense')); ok(!cell.chips.some((ch) => ch.id === 9001) && debts(cell).some((ch) => ch.model === '_tab' && ch.value === 1), 'and that one chip takes the 5¢ chip'); delete D.MADE_CHIPS._tab.sticky;
   }
   { // a wider reach: any chip it reaches that it can cover, never change from a bigger one
     const { bout, me, opp, r, c } = table(), cell = opp.grid[r][c], side = opp.grid[r][c + 1], behind = opp.grid[r + 1][c];

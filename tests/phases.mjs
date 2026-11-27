@@ -67,7 +67,9 @@ const settle = (bout) => { for (const _ of settleAll(bout, 'expense')); }; // es
   engage(bout, me, opp, m + 1, 0, 1, {}); settle(bout);
   assert(B.debtOf(back) === 1 && back.chips.filter((c) => c.kind === 'std').length === 3, '1¢ of Debt on a 2¢ chip waits');
   engage(bout, me, opp, m + 1, 0, 1, {}); settle(bout);
-  assert(!B.debtOf(back) && back.chips.length === 2 && bout.stage.paid[1] === 13, 'a later 1¢ fee tops the Debt up to 2¢ and the chip is paid');
+  assert(B.debtOf(back) === 2 && back.chips.filter((c) => c.kind === 'debt').length === 2 && back.chips.filter((c) => c.kind === 'std').length === 3, 'a second 1¢ Debt chip is its own chip: two of 1¢ do not add up to take a 2¢ chip');
+  engage(bout, me, opp, m + 1, 0, 2, {}); settle(bout);
+  assert(B.debtOf(back) === 2 && back.chips.filter((c) => c.kind === 'std').length === 2 && bout.stage.paid[1] === 13, 'a 2¢ Debt chip takes the 2¢ chip');
   const side = opp.grid[m][1]; side.chips = [std(bout, 1)];
   engage(bout, me, opp, m, 1, 6, {}); settle(bout);
   assert(!opp.grid[m][2].chips.length && B.debtOf(opp.grid[m][0]) === 3, 'nothing moves sideways');

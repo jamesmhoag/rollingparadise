@@ -358,10 +358,8 @@ Not built yet, or only in part:
 - **Negative value.** Settled: it is a chip parameter (Debt is one named chip that has it); the chip does the
   collecting; no overkill, a chip stays where it is laid until paid off; a made chip is laid by the trick's own
   formation at its own value; hazards hit unless they say they lay Debt. Still open:
-  - **Worth.** A space is worth its chips less what is owed there, never less than nothing. (Counted in full, a big
-    fee on a small stack ended bouts in about 4 turns.) Say if what is owed beyond the space's chips should count.
-  - **Several negative chips on one stack** of the same name pool into one marker (petty cash laying five 1¢ Debt
-    chips on a stack owes 5¢ and can take a 5¢ chip). Should each stay its own chip, taking only chips it can cover?
+  - (Settled: a space is worth its chips less what is owed there, never less than nothing; and chips that owe
+    stand alone, adding up only when stuck together.)
   - **The hazards that lay Debt today** (Shocking, Corrupting, Poison, Boom, Doom, the Audit) are kept as the ones
     that say so. Say which should hit instead.
   - A space holding only a chip that owes is **not empty** for things that need an empty space (Dynamite, big chips,

@@ -153,9 +153,9 @@ A fee is paid in whole chips, from the top of the stack it lands on. The rule, i
 
 1. Block and Counter chips on top absorb 1¢ each.
 2. The top chip is paid to the Stage if the Debt covers its whole value; repeat with the next chip.
-3. What cannot cover the next chip stays on that stack as **Debt**: one red marker showing the exact amount, with
-   a tag such as "3 of 5¢" (3¢ owed towards the 5¢ chip it sits on). It already counts against Worth, blocks
-   bidding from that stack, and the chip is paid as soon as later fees bring the Debt up to its value.
+3. What cannot cover the next chip stays on that stack as **Debt**: a red marker showing the exact amount, with
+   a tag such as "3 of 5¢" (a 3¢ Debt chip on a 5¢ chip). It already counts against Worth and blocks bidding from
+   that stack. Later fees are their own Debt chips: they do not add to it.
 4. Nothing moves on to another stack: there is **no overkill**. A chip goes only where it is laid, by its own rules
    and the trick's (lump sum: one chip; other formations and spreads: several). What a stack cannot pay stays on its
    space, even once the stack is gone, and takes a chip it can cover as soon as one comes there. A space is worth its
@@ -335,6 +335,9 @@ it, in the formation and spread the trick names; that is the only way a chip get
   stacks around it, its lane, chips of a name...). A chip pays only whole, and only if it is worth no more than what
   is still owed: a bigger chip is never broken for change.
 - It stays where it was laid until it is paid off, then it is gone.
+- Each stands alone, worth what it was laid as: chips that owe do not add up on a stack. Only chips stuck together do
+  (a made chip with the sticky trait, or a gummed stack): same-named ones become one chip worth their sum.
+- A space is worth its chips less what is owed on it, never less than nothing.
 - A made chip with a negative value is laid one chip an instance at its own value (lump sum: one chip), as any made
   chip is; Debt is worth the instance, as Royal Paradise chips are.
 - Hazards are their own chips and do not owe by default: they hit (chips broken or lost, and a broken chip's value is

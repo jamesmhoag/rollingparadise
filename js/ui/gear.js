@@ -123,7 +123,7 @@ function jacketSvg(L, flat = null) {
 }
 function jacketFace(id, cls) {
   const J = D.JACKETS[id] || {}, L = jacketLook(id, J);
-  const el = h('span', { class: `gj gj-${L.style} ${cls}` }, jacketSvg(L), h('span', { class: 'mods' }, Object.entries(J.mods || {}).map(([k, n]) => h('b', { class: n > 0 ? 'p' : 'n', text: `${n > 0 ? '+' : ''}${n}` }))));
+  const el = h('span', { class: `gj gj-${L.style} ${cls}` }, jacketSvg(L));
   const em = emblemEl(L, 'jsym'); if (em) el.append(em); return el;
 }
 export function jacketEl(id, cls = '') {

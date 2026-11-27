@@ -1447,8 +1447,6 @@ body.spinning .thing > .th-body, body.carrying-now .thing > .th-body { transitio
 .thing.mini.th-wallet, .item .thing.th-wallet, .lib .thing.th-wallet { zoom: .6; }
 /* a jacket: the drawing, the changes it makes to your attributes under it, its emblem on the chest */
 .gj { position: relative; display: inline-block; line-height: 0; } .gj .gj-art { display: block; overflow: visible; }
-.gj .mods { position: absolute; left: 0; right: 0; bottom: -7px; display: flex; justify-content: center; gap: 2px; line-height: 1; }
-.gj .mods b { font-size: 8.5px; padding: 0 3px; border-radius: 4px; background: rgba(4, 2, 12, .85); } .gj .mods b.p { color: var(--good); } .gj .mods b.n { color: var(--bad); }
 .gj .jsym { position: absolute; left: 60%; top: 26%; width: 11px; height: 11px; pointer-events: none; } .gj .jsym.big { left: 50%; top: 38%; translate: -50% -50%; width: 22px; height: 22px; }
 .thing.th-jacket span.th-edge, .thing.th-wallet span.th-edge { filter: brightness(.75); }
 /* a shop row that shows the thing it sells beside its name */

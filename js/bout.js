@@ -200,13 +200,18 @@ const mkHazard = (b, kind, life) => mkChip(b, kind, 0, { life: life ?? HAZARD_LI
 export const puddleOf = (cell) => cell?.puddle || null;
 function setPuddle(b, cell, ice) { const p = cell.puddle; cell.puddle = p ? { ...p, t: b.turn, ice: ice ?? p.ice } : mkChip(b, 'puddle', 0, { t: b.turn, ice: !!ice }); return cell.puddle; }
 // Negative value is a chip parameter: such a chip owes. Debt is one of them by name; any made chip of negative value
-// is another (`model`). Engine kind 'debt' is the marker of any of them. A stack carries one marker for each name, each showing exactly what it owes. Make the stack's total n: more
-// is added to the marker of that name; less is paid off the newest marker first, and a marker paid off is gone.
+// is another (`model`). Engine kind 'debt' is the marker of any of them. Each is its own chip, worth what it was laid
+// as: chips on one stack do not add up. Only chips stuck together do (a sticky made chip, or a stack that is gummed):
+// same-named ones become one chip worth their sum.
+const gluesOwed = (cell, name) => !!MADE_CHIPS[name]?.sticky || cell.chips.some((ch) => ch.kind === 'sticky');
+function fuseOwed(b, cell) { const seen = new Map();
+  for (const d of cell.chips.filter((ch) => ch.kind === 'debt')) { const name = d.model || null, to = seen.get(name); if (!gluesOwed(cell, name)) continue;
+    if (!to) { seen.set(name, d); continue; } to.value += d.value; cell.chips.splice(cell.chips.indexOf(d), 1); b.fx[d.id] = 'void'; } }
+// Make what a stack owes total n: more is laid as a new chip of that name; less is paid off the newest chip first,
+// and a chip paid off is gone.
 function setDebt(b, cell, n, how, model) {
   const cur = cell.chips.filter((ch) => ch.kind === 'debt'), have = sum(cur, (ch) => ch.value), name = (model && MADE_CHIPS[model] && model) || null;
-  if (n > have) { let d = cur.find((ch) => (ch.model || null) === name);
-    if (d) { d.value += n - have; cell.chips.splice(cell.chips.indexOf(d), 1); } else { d = mkChip(b, 'debt', n - have, name ? { model: name } : {}); if (how) b.fx[d.id] = how; }
-    cell.chips.push(d); return; }
+  if (n > have) { const d = mkChip(b, 'debt', n - have, name ? { model: name } : {}); if (how) b.fx[d.id] = how; cell.chips.push(d); fuseOwed(b, cell); return; }
   let cut = have - n;
   for (const d of cur.reverse()) { if (cut <= 0) break; const take = Math.min(cut, d.value); d.value -= take; cut -= take; if (!d.value) { cell.chips.splice(cell.chips.indexOf(d), 1); b.fx[d.id] = 'void'; } }
 }
@@ -216,13 +221,14 @@ const payStage = (b, si, ch) => { if (!(ch.value > 0)) { b.fx[ch.id] = 'void'; r
 // from the top down). A made chip of negative value reaches as the chip maker says (its stack's neighbours, its lane, every chip
 // of a name...): any value chip it reaches that is worth no more than what is still owed pays, whole; a bigger chip
 // is never broken for change. → what was paid
-function reachPays(b, s, r, c, pool, pierce) { const cell = s.grid[r][c]; let got = 0;
-  for (const d of cell.chips.filter((ch) => ch.kind === 'debt' && MADE_CHIPS[ch.model])) {
-    for (const { x, ch } of reachOf(b, s, { r, c, cell, i: cell.chips.indexOf(d), ch: d }, MADE_CHIPS[d.model])) {
-      if (!isPayable(ch) || !(ch.value > 0) || ch.value > pool - got || (hardOf(x.cell) > 0 && !pierce) || !x.cell.chips.includes(ch)) continue;
-      x.cell.chips.splice(x.cell.chips.indexOf(ch), 1); payStage(b, (x.side || s).idx, ch); got += ch.value; if (x.cell !== cell) emptyOut(b, x.cell); } }
+function reachPays(b, s, r, c, d, pool, pierce) { const cell = s.grid[r][c]; let got = 0; if (!MADE_CHIPS[d.model]) return 0;
+  for (const { x, ch } of reachOf(b, s, { r, c, cell, i: cell.chips.indexOf(d), ch: d }, MADE_CHIPS[d.model])) {
+    if (!isPayable(ch) || !(ch.value > 0) || ch.value > pool - got || (hardOf(x.cell) > 0 && !pierce) || !x.cell.chips.includes(ch)) continue;
+    x.cell.chips.splice(x.cell.chips.indexOf(ch), 1); payStage(b, (x.side || s).idx, ch); got += ch.value; if (x.cell !== cell) emptyOut(b, x.cell); }
   return got; }
-// the chip a stack's Debt is working towards: the top standard or Opportunity chip
+// the biggest single chip that owes on a stack (each stands alone: this is the most any one of them can take)
+export const owedTop = (cell) => Math.max(0, ...cell.chips.filter((ch) => ch.kind === 'debt').map((ch) => ch.value));
+// the chip a stack's Debt is up against: the top standard or Opportunity chip
 export function debtTarget(cell) { const i = topPayableIdx(cell); return i < 0 ? null : cell.chips[i]; }
 // A step carries who acted, which trick, and which phase the House is calling, so the table can show it.
 // the player's side is named "You", so fix the grammar once here
@@ -1318,24 +1324,28 @@ function* settleSide(b, s) {
   for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) {
     const cell = s.grid[r][c], due = cell.due; if (!due) continue; cell.due = null;
     const att = due.att != null ? b.sides[due.att] : null, owed = debtOf(cell);
-    let pool = owed, blocked = 0, counters = 0, hardStop = false, knocked = 0;
+    let pool = 0, blocked = 0, counters = 0, hardStop = false, knocked = 0, reached = 0;
     const paidChips = [], shieldNames = []; let regen = [];
-    while (pool > 0) {
-      const i = nextPay(cell, due.pierce); if (i < 0) break;
-      const ch = cell.chips[i];
-      if (isInstance(ch)) { blocked += pool; pool = 0; ch.hits = (ch.hits || 1) - 1; if (ch.hits <= 0) { cell.chips.splice(i, 1); b.fx[ch.id] = 'void'; } shieldNames.push(ch.kind); break; }
-      if (isShield(ch)) { cell.chips.splice(i, 1); b.fx[ch.id] = 'void'; pool--; blocked++; if (ch.kind === 'counter') counters++; continue; }
-      if (isFx(ch)) { cell.chips.splice(i, 1); b.fx[ch.id] = 'void'; knocked++; continue; } // an effect chip is knocked off; it pays nothing
-      if (hardOf(cell) > 0 && !due.pierce) { cell.chips.splice(i, 1); paidChips.push(ch); pool = Math.min(pool, due.prior); hardStop = true; break; }
-      if (pool >= ch.value) { cell.chips.splice(i, 1); pool -= ch.value; paidChips.push(ch); } else break;
+    fuseOwed(b, cell);
+    for (const d of cell.chips.filter((ch) => ch.kind === 'debt')) { // each chip that owes, oldest first, on its own
+      let left = d.value; if (hardStop) { pool += left; continue; }
+      while (left > 0) {
+        const i = nextPay(cell, due.pierce); if (i < 0) break;
+        const ch = cell.chips[i];
+        if (isInstance(ch)) { blocked += left; left = 0; ch.hits = (ch.hits || 1) - 1; if (ch.hits <= 0) { cell.chips.splice(i, 1); b.fx[ch.id] = 'void'; } shieldNames.push(ch.kind); break; }
+        if (isShield(ch)) { cell.chips.splice(i, 1); b.fx[ch.id] = 'void'; left--; blocked++; if (ch.kind === 'counter') counters++; continue; }
+        if (isFx(ch)) { cell.chips.splice(i, 1); b.fx[ch.id] = 'void'; knocked++; continue; } // an effect chip is knocked off; it pays nothing
+        if (hardOf(cell) > 0 && !due.pierce) { cell.chips.splice(i, 1); paidChips.push(ch); left = 0; hardStop = true; break; } // a Hardened stack: one chip, and the fee is spent
+        if (left >= ch.value) { cell.chips.splice(i, 1); left -= ch.value; paidChips.push(ch); } else break;
+      }
+      if (left > 0 && !hardStop) { const got = reachPays(b, s, r, c, d, left, due.pierce); left -= got; reached += got; } // a made chip of negative value also takes what its reach covers
+      d.value = left; pool += left; if (!left) { cell.chips.splice(cell.chips.indexOf(d), 1); b.fx[d.id] = 'void'; }
     }
-    const reached = pool > 0 && !hardStop ? reachPays(b, s, r, c, pool, due.pierce) : 0; pool -= reached; // a made chip of negative value also takes what its reach covers
     const paid = sum(paidChips, (ch) => ch.value); s.paidTurn = (s.paidTurn || 0) + paid + reached;
     regen = paidChips.filter((ch) => ch.regen > 0); // Regen: a paid chip comes straight back, without its Regen
     for (const ch of regen) { paidChips.splice(paidChips.indexOf(ch), 1); delete ch.regen; if (capacityLeft(s, cell) > 0) pushChip(cell, ch); else addToMeter(b, s, [ch], { r, c }, null); b.fx[ch.id] = 'mutate'; }
     for (const ch of paidChips) { if (due.glean != null && !addToMeter(b, b.sides[due.glean], [ch], null, null).length) continue; payStage(b, s.idx, ch); }
     if (paidChips.length && topPayableIdx(cell) < 0) for (const ch of cell.chips.filter(isFx)) { cell.chips.splice(cell.chips.indexOf(ch), 1); b.fx[ch.id] = 'void'; knocked++; } // a stack paid out drops its effect chips
-    setDebt(b, cell, pool);
     const next = debtTarget(cell);
     emptyOut(b, cell);
     if (due.element === 'shock') strike(b, s, { r, c, cell });
@@ -2054,9 +2064,11 @@ function* ticks(b) {
     if (anyDue(s)) yield* settleSide(b, s);
     // Debt that has reached the value of the chip beneath it collects that chip
     for (const { r, c, cell } of allCells(s)) {
-      for (;;) { const i = topPayableIdx(cell), d = debtOf(cell); if (i < 0 || !d || d < cell.chips[i].value) break;
-        const ch = cell.chips.splice(i, 1)[0]; payStage(b, s.idx, ch); setDebt(b, cell, d - ch.value); }
-      { const d = debtOf(cell), got = d ? reachPays(b, s, r, c, d) : 0; if (got) setDebt(b, cell, d - got); }
+      fuseOwed(b, cell);
+      for (const d of cell.chips.filter((ch) => ch.kind === 'debt')) { // each chip that owes takes what it alone can cover
+        for (;;) { const i = topPayableIdx(cell); if (i < 0 || !d.value || d.value < cell.chips[i].value) break; const ch = cell.chips.splice(i, 1)[0]; payStage(b, s.idx, ch); d.value -= ch.value; }
+        if (d.value) d.value -= reachPays(b, s, r, c, d, d.value);
+        if (!d.value) { cell.chips.splice(cell.chips.indexOf(d), 1); b.fx[d.id] = 'void'; } }
       emptyOut(b, cell);
     }
   }
