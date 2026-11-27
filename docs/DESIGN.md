@@ -1069,8 +1069,11 @@ for a close look, to be turned over (`ui/spin.js`, the look a die gets).
 - **Faces.** Ten typefaces (content/assets.js `FONTS`; all open licence), each offered wherever a face is chosen (a
   sign's name and class line, a card's print): the three the game began with, and a bent neon tube, a theatre
   marquee, thin deco, a fine joined script, sign capitals with an inline, a saloon poster and the dots of a tote board.
-- **The title sign** runs a pulse every few seconds once lit: each letter and piece swells brighter in turn, in the
-  order they came on.
+- **The title sign** has three orders, each as likely as the others whether it is coming on or pulsing: a letter
+  and a piece at a time (as it is written), all at once in a wave from the top down, and from the middle of the top
+  down and outward. It comes on in one of them; lit, a pulse runs it every few seconds in another (never the same
+  twice running), each tube swelling brighter in its turn. With a wave or a burst a light crosses the title behind
+  the sign: a band coming down, or a ring opening from the top.
 - **Your drink stands on the table** by your seat (your opponent's by theirs), on a coaster: the glass, as full as
   the sips left. A click on yours in the Drink phase takes a sip; there is no Sip button.
 - **The Library shows a trick as the trick**: the whole card, as a hover shows it, with under it only what the card
