@@ -41,4 +41,14 @@ R.setTilt(run, prep, 'shield', true); assert(R.multiplier(run, prep) < m0 + D.TI
   for (let t = 2; t < 30 && me.calamities.length === n0; t++) { bout.turn = t; drain(ticks(bout)); }
   assert(n0 === 1 && me.calamities.length === 2, 'having lost everything, a second Calamity comes');
 }
+{ // a tilt lays the chips set for it (any chip the game has), so many a play, where it lays; own: false plays only those
+  const T = D.TILTS.shield, was = { ...T }; Object.assign(T, { chips: ['counter', 'mend'], count: 2, countPer: 0, own: false, base: 1, cap: 1 });
+  const run2 = R.newRun('technician', 'standard', 8); R.enterFloor(run2, 3); run2.purse = 3000; const p2 = R.newPrep(run2, 'table', 0); R.setTilt(run2, p2, 'shield', true);
+  const { bout } = R.startTable(run2, p2); const me = bout.sides[0], blocks = () => me.grid.flat().reduce((n, x) => n + x.chips.filter((ch) => ch.kind === 'block').length, 0), b0 = blocks();
+  bout.turn = 2; drain(ticks(bout));
+  const all = me.grid.flat().flatMap((x) => x.chips);
+  assert(all.some((ch) => ch.kind === 'counter') && all.some((ch) => ch.model === 'mend' && ch.by === 0), 'the Shield tilt lays the chips set for it: a Counter chip and a Mend chip that works for you');
+  assert(blocks() === b0, 'and with its own play off, no Block chips');
+  Object.assign(T, was);
+}
 console.log('ok, chips and tilts');

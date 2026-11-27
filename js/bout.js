@@ -15,7 +15,7 @@ import { MADE_CHIPS, HEIGHT } from './content/chipmaker.js';
 import { TUNING } from './content/tuning.js';
 import { rollDie, boutCopy, facesOf, upgrade as upgradeFaces } from './dice.js';
 export { rollDie };
-import { CLASSES as CLASS_BASE, DEFAULT_MAT, DIE_UPGRADES, TRICKS, TYPES, QDIE, FOIL, WEAR, defOf, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, CREATURES, ORBITALS, FELTS, TILTS, TILT_PRESSURE, tiltFrom, DENOM_VALUES, tiltChance, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS, primaryC, BOSS_TRAITS } from './data.js';
+import { CLASSES as CLASS_BASE, DEFAULT_MAT, DIE_UPGRADES, TRICKS, TYPES, QDIE, FOIL, WEAR, defOf, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, CREATURES, ORBITALS, FELTS, TILTS, layWhat, layName, TILT_PRESSURE, tiltFrom, DENOM_VALUES, tiltChance, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS, primaryC, BOSS_TRAITS } from './data.js';
 import { t as tx } from './text.js';
 
 // The turn: Draw tricks; Roll (pick the dice; they are thrown as the Bid opens); Bid on tricks, seeing both rolls;
@@ -426,7 +426,14 @@ function tiltSpots(b, s, key, list) {
 // The House plays the tilts that are on, in the House phase from the second turn.
 function* houseTilts(b, s) {
   if (b.turn < 2) return; // (each tilt's own first turn is read by tiltRate)
-  const L = pressure(b, s).total, G = pressure(b, b.sides[1 - s.idx]).total, on = (k) => s.tilts?.[k] && b.turn >= tiltFrom(k) && b.rng.chance(tiltRate(b, s, k));
+  const L = pressure(b, s).total, G = pressure(b, b.sides[1 - s.idx]).total, rolled = {};
+  // one roll a tilt a turn, whoever asks: its usual play and the chips set for it go together
+  const plays = (k) => (rolled[k] ??= !!(s.tilts?.[k] && b.turn >= tiltFrom(k) && b.rng.chance(tiltRate(b, s, k)))), on = (k) => plays(k) && TILTS[k].own !== false;
+  for (const [k, T] of Object.entries(TILTS)) { if (!T.chips?.length || !plays(k)) continue; // the chips set for it, laid where it lays
+    const n = Math.max(1, Math.round((T.count ?? 1) + (T.countPer || 0) * (T.kind === 'challenge' ? L : G))), by = T.kind === 'challenge' ? 1 - s.idx : s.idx, hit = []; let laid = 0;
+    for (let i = 0; i < n; i++) { const what = layWhat(T.chips[i % T.chips.length]);
+      const x = tiltSpots(b, s, k, allCells(s).filter((y) => !y.cell.hole && !y.cell.link)).find((y) => sandboxChip(b, s.idx, y.r, y.c, what, 'add', null, by)); if (x) { laid++; hit.push(ref(s, x.r, x.c)); } }
+    if (laid) yield step(b, tx('feed.the-house-plays', { name: T.name, what: tx('feed.tilt-chips', { n: laid, names: [...new Set(T.chips.map(layName))].join(', ') }) }), hit, T.kind === 'challenge' ? 'hazard' : 'bonus'); }
   const say = (k, what, kind) => step(b, tx('feed.the-house-plays', { name: TILTS[k].name, what }), [], kind);
   if (on('hazard')) { const n = 1 + Math.floor(L * 3), free = tiltSpots(b, s, 'hazard', allCells(s).filter((x) => !x.cell.chips.length && !x.cell.hole && !x.cell.roost && !x.cell.link && !x.cell.worm)); let holes = 0, hats = 0;
     for (let k = 0; k < n; k++) { if (b.rng.chance(1 / 3)) { const st = allCells(s).filter((x) => solidCount(x.cell) && capacityLeft(s, x.cell) > 0 && !x.cell.link && !x.cell.anchor && !x.cell.roost && !x.cell.chips.some((ch) => ch.kind === 'hat'));
@@ -2069,13 +2076,13 @@ function* ticks(b) {
 // effect chip (lasting the bout) or a made chip. op is one of the chip painter's four (stackedit.js): 'add' on top,
 // 'insert' below the chip pointed at, 'change' that chip into it, 'remove' it. `at`: the id of the chip pointed at in
 // that stack; without it Change and Remove work on the top chip (hazards aside) and Insert goes under the stack.
-export function sandboxChip(b, side, r, c, what, op = 'add', at = null) {
+export function sandboxChip(b, side, r, c, what, op = 'add', at = null, by = null) { // by: the Roller a made chip works for (the House's tilts: against you, or for you)
   const s = b.sides[side], cell = s.grid[r]?.[c]; if (!cell) return false;
   const atI = at == null ? -1 : cell.chips.findIndex((ch) => ch.id === at);
   const topI = (() => { for (let i = cell.chips.length - 1; i >= 0; i--) if (!isHazard(cell.chips[i])) return i; return cell.chips.length - 1; })();
   if (op === 'remove') { const e = stackEdit(cell.chips, 'remove', null, atI, topI); if (!e) return false; b.fx[e.old.id] = 'void'; if (e.old.kind === 'puddle') delete cell.puddle; return true; }
   const make = () => {
-    if (what.made && MADE_CHIPS[what.made]) return mkMade(b, what.made);
+    if (what.made && MADE_CHIPS[what.made]) { const mc = mkMade(b, what.made); if (by != null) mc.by = by; return mc; }
     if (what.shop && SHOP_CHIPS[what.shop]) return mkChip(b, 'fx', 0, { shop: what.shop, resist: what.shop, life: 99, maker: null });
     if (what.kind && HAZARD_LIFE[what.kind]) return mkHazard(b, what.kind);
     if (what.kind === 'debt') return null;

@@ -2545,4 +2545,5 @@ export default {
   "trick.maker.turns": "They last {life} turns, +1 per {per} rolled.",
   "trick.maker.bout": "They last the bout.",
   "parts.plays": "plays a trick effect: {what}",
+  "feed.tilt-chips": "{n} laid on the position ({names})",
 };

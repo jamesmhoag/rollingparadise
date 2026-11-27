@@ -1233,10 +1233,10 @@ export function boutScene(root, bout, ctx, onDone) {
   // what the test table's rack holds: every chip the game has, each as { key, what (for the engine), look (to draw) }
   function chipChoices() {
     const it = (key, what, look) => ({ key, what, look }), k = (kind) => it(`k:${kind}`, { kind }, { kind, value: 0 });
-    return [{ cap: tt('test.tools.table') }, ...D.DENOM_VALUES.map((v) => it(`std:${v}`, { kind: 'std', value: v }, { kind: 'std', value: v })), it('debt', { kind: 'debt', value: 1 }, { kind: 'stray', value: 1 }), k('block'), k('counter'), k('opp'),
-      { cap: tt('test.tools.hazards') }, ...['burn', 'acid', 'shock', 'corrupt', 'poison', 'boom', 'frost', 'lava', 'puddle'].map(k),
-      ...(Object.keys(D.MADE_CHIPS).length ? [{ cap: tt('test.tools.made') }, ...Object.entries(D.MADE_CHIPS).map(([id, M]) => it(`made:${id}`, { made: id }, { kind: 'made', model: id, value: M.value || 0, name: M.name }))] : []),
-      { cap: tt('test.tools.effect') }, ...Object.keys(D.SHOP_CHIPS).map((id) => it(`shop:${id}`, { shop: id }, { kind: 'fx', value: 0, shop: id, resist: id }))];
+    return [{ cap: tt('test.tools.table') }, ...D.DENOM_VALUES.map((v) => it(`std:${v}`, { kind: 'std', value: v }, { kind: 'std', value: v })), it('debt', { kind: 'debt', value: 1 }, { kind: 'stray', value: 1 }), ...D.LAY_TABLE.map(k),
+      { cap: tt('test.tools.hazards') }, ...D.LAY_HAZARDS.map(k),
+      ...(Object.keys(D.MADE_CHIPS).length ? [{ cap: tt('test.tools.made') }, ...Object.entries(D.MADE_CHIPS).map(([id, M]) => it(`made:${id}`, D.layWhat(id), { kind: 'made', model: id, value: M.value || 0, name: M.name }))] : []),
+      { cap: tt('test.tools.effect') }, ...Object.keys(D.SHOP_CHIPS).map((id) => it(`shop:${id}`, D.layWhat(id), { kind: 'fx', value: 0, shop: id, resist: id }))];
   }
   async function finish() {
     document.removeEventListener('keydown', onKey); if (rightClick.take) rightClick.take = null;

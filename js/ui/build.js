@@ -40,6 +40,7 @@ const LIST_REFS = {
   tricks: () => named(D.TRICKS), mats: () => named(D.MATERIALS), from: (path) => (path.startsWith('DYES') ? named(D.DYES) : named(D.MATERIALS)), needs: () => named(D.DYES),
   also: () => named(D.CHIPS), weather: () => [...named(D.ORBITALS), ...named(D.CALAMITIES)], immune: () => named(IMMUNE),
   pair: () => [...new Set(Object.values(D.CASTS).map((c) => c.fx).filter((x) => x && x !== 'pair'))].map((k) => [k, k]),
+  chips: (path) => (path.startsWith('TILTS') ? D.layIds().map((k) => [k, D.layName(k)]) : null),
   floors: () => [1, 2, 3, 4].map((n) => [n, D.FLOORS[n]?.name || `Floor ${n}`]), cards: () => named(D.CARDS), dice: () => Object.keys(D.DICE).map((k) => [k, k]),
 };
 function listRef(path, v) {
