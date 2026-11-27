@@ -66,7 +66,7 @@ function swallowClick() {
 
 export function initSpin() {
   document.addEventListener('pointerdown', (ev) => {
-    if (ev.button !== 0) return;
+    if (ev.button !== 0 || ev.carried) return; // a die being carried to a trick is not being turned over
     const node = ev.target.closest?.('.die, .thing'); if (!node || !(node._die || node._look) || node.classList.contains('flipc')) return;
     const x0 = ev.clientX, y0 = ev.clientY, k = scaleOf(); let spinning = false;
     const move = (e) => {

@@ -112,7 +112,7 @@ export function carry(root, { source, target, drop }) {
     const eat = (e) => { e.stopPropagation(); e.preventDefault(); }; root.addEventListener('click', eat, { capture: true, once: true }); setTimeout(() => root.removeEventListener('click', eat, { capture: true }), 0); // the click that ends the carry (if the browser sends one) is not a click on what it ends over
     if (t) drop(src, t);
   }
-  root.addEventListener('pointerdown', (ev) => { if (ev.button !== 0 || st) return; const src = source(ev.target, ev); if (!src) return; st = { src, x: ev.clientX, y: ev.clientY, g: null, over: null }; document.addEventListener('pointermove', move); document.addEventListener('pointerup', up); });
+  root.addEventListener('pointerdown', (ev) => { if (ev.button !== 0 || st) return; const src = source(ev.target, ev); if (!src) return; ev.carried = true; st = { src, x: ev.clientX, y: ev.clientY, g: null, over: null }; /* carried: this press is a carry's, so nothing else takes the drag (see spin.js) */ document.addEventListener('pointermove', move); document.addEventListener('pointerup', up); });
 }
 
 // ---------- hover mode ----------
