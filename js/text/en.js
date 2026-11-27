@@ -2547,7 +2547,7 @@ export default {
   "help.cards.f.finish.symbol": "What the card's symbol and edge symbols are made of: any finish, rendered as the dice are, with a glint and a sparkle. Printed: their ink colours.",
   "card.back.serial": "No. {n}",
   "card.kind.business": "Business",
-  "card.rule.business": "{name}'s card. While it is in your wallet you play by their trait, <b>{trait}</b>: {rule}",
+  "card.rule.business": "{name}'s card. While it is in your wallet you play by their trait, <b>{trait}</b>: {rule} Every business card you hold counts.",
   "gear.part.same": "As the piece",
   "gear.f.type": "Type",
   "help.gear.f.type": "Which kind of wallet it is. A billfold folds in two and lies open, cards in one side and passes in the other; a clasped pouch has a flap and a clasp, and everything stands in it; a clip is a band over the stack. Whichever it is, it lies open and shows what you carry.",

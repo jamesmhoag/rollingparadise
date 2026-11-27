@@ -119,7 +119,7 @@ export const GUIDE = {
   'bone-die': { name: 'Bone die', def: 'A die carved with a fixed trait.',
     how: ['Buy it for its trait: Bone dice can never be melted or changed.', 'Read the trait in its hover before you pay.'] },
   card: { name: 'Card', def: 'A card that sits in your wallet and changes the run.',
-    how: ['Keep it in a wallet slot; it works on its own. A High Roller\'s business card is a card like any other: while it is in your wallet you play by their trait.', 'A better wallet keeps more cards when the run ends in the alley.', 'Point at it and it leans toward you, so you can see how thick it is and what it is made of; press and drag to bring it up close and turn it over.'] },
+    how: ['Keep it in a wallet slot; it works on its own. A High Roller\'s business card is a card like any other: while it is in your wallet you play by their trait, and every one you hold counts.', 'A better wallet keeps more cards when the run ends in the alley.', 'Point at it and it leans toward you, so you can see how thick it is and what it is made of; press and drag to bring it up close and turn it over.'] },
   pass: { name: 'Pass', def: 'A pass that gets you past a floor check.',
     how: ['It travels in its own wallet slot; on your next run it can take the elevator straight up.', 'Point at it and it leans toward you, so you can see how thick it is and what it is made of; press and drag to bring it up close and turn it over.'] },
   jacket: { name: 'Jacket', def: 'What you wear at the tables. Each changes your attributes.',

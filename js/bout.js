@@ -355,7 +355,7 @@ export const barCapacity = (dims, holes = 0) => (dims.barRows * dims.cols - hole
 function mkSide(b, spec, idx) {
   const d = spec.dims, rows = d.meterRows + d.barRows;
   const s = {
-    idx, name: spec.name, cls: spec.cls, roller: spec.roller || null, crown: spec.crown || null, floor: spec.floor || null, roster: spec.roster || null, ai: !!spec.ai, trait: spec.trait && BOSS_TRAITS[spec.trait] ? spec.trait : null, boss: !!spec.boss, sign: spec.sign || null, title: spec.title || '', deploy: spec.deploy, why: spec.why || null,
+    idx, name: spec.name, cls: spec.cls, roller: spec.roller || null, crown: spec.crown || null, floor: spec.floor || null, roster: spec.roster || null, ai: !!spec.ai, traits: [].concat(spec.trait || []).filter((t, i, a) => BOSS_TRAITS[t] && a.indexOf(t) === i), get trait() { return this.traits[0] || null; }, boss: !!spec.boss, sign: spec.sign || null, title: spec.title || '', deploy: spec.deploy, why: spec.why || null,
     tip: { ...spec.tip }, c: { ...spec.c }, dims: { ...d }, rows,
     grid: Array.from({ length: rows }, () => Array.from({ length: d.cols }, () => ({ chips: [], hole: false, hard: 0 }))),
     book: spec.tricks.map((t) => ({ ...t })), run: [], pouch: spec.dice.map(boutCopy), tapped: { tricks: [], dice: [] }, turnSrc: [], held: [],
@@ -511,9 +511,10 @@ function startTurn(b) {
     s.paidLast = s.paidTurn || 0; s.paidTurn = 0; // fees paid last turn, for Vengeance
     s.status.enfeebleNext = 0; s.absorbUsed = {}; s.forgotUsed = {};
     const curses = allCells(s).reduce((n, x) => n + x.cell.chips.filter((ch) => ch.cursed).length, 0); s.cursed = curses; // a Cursed chip in your pile: Draw, Roll or Bid 1 lower
-    const T = bossTrait(s); // a High Roller's trait, turn by turn
-    if (T?.k === 'tempo' && b.turn % Math.max(2, T.vars.every || 3) === 0) for (const k of ['trickery', 'proficiency', 'ingenuity']) temp(k, 1, T.name);
-    if (T?.k === 'resist') s.status.resist = Math.max(s.status.resist || 0, T.vars.n || 1);
+    let hold = 0; for (const T of bossTraits(s)) { // every trait it plays by, turn by turn (a High Roller's own; yours, one for each business card in your wallet)
+      if (T.k === 'tempo' && b.turn % Math.max(2, T.vars.every || 3) === 0) for (const k of ['trickery', 'proficiency', 'ingenuity']) temp(k, 1, T.name);
+      if (T.k === 'resist') hold += T.vars.n || 1; }
+    if (hold) s.status.resist = Math.max(s.status.resist || 0, hold);
     for (let k = 0; k < curses; k++) { const can = ['trickery', 'proficiency', 'ingenuity'].filter((x) => tipOf(s, x) > 1); if (can.length) temp(b.rng.pick(can), -1, 'Curse'); }
   }
   b.creatures = b.creatures.filter((cr) => !cr.gone);
@@ -1901,18 +1902,20 @@ function* sky(b, s) {
     { s.sky.push({ id: b.nextId++, kind: 'blizzard', r: -1, c: -1, str: str() }); yield step(b, tx('feed.a-blizzard-rolls-in', { name: s.name }), [], 'weather'); }
 }
 // ---------- High Roller traits (content/bosstraits.js) ----------
-export const bossTrait = (s) => (s?.trait && BOSS_TRAITS[s.trait]) || null;
-const fireproof = (s) => bossTrait(s)?.k === 'fireproof';
+// the traits a Roller plays by (bossTrait: the first of them, the one a High Roller's card is named for)
+export const bossTraits = (s) => (s?.traits || []).map((t) => BOSS_TRAITS[t]).filter(Boolean);
+export const bossTrait = (s) => bossTraits(s)[0] || null;
+const fireproof = (s) => bossTraits(s).some((T) => T.k === 'fireproof');
 // what a trait does, written from its rule and numbers
 export const traitRule = (T) => (T ? tx(`trait.${T.k}`, { ...T.vars }) : '');
-function traitStart(b, s) {
-  const T = bossTrait(s); if (!T) return;
+function traitStart(b, s) { for (const T of bossTraits(s)) traitBegins(b, s, T); }
+function traitBegins(b, s, T) {
   if (T.k === 'fireproof') for (const { cell } of allCells(s)) if (solidCount(cell) && !cell.chips.some((ch) => ch.kind === 'burn')) cell.chips.push(mkHazard(b, 'burn', 99));
   if (T.k === 'wet') for (const { cell } of allCells(s)) for (const ch of cell.chips) if (!isHazard(ch)) ch.wet = 99;
   if (T.k === 'hardened') for (let c = 0; c < s.dims.cols; c++) { const r = frontRow(s, c); if (r >= 0) setHard(b, s.grid[r][c], T.vars.turns || 3); }
 }
-function* traitTurn(b, s) {
-  const T = bossTrait(s); if (!T || worth(s) <= 0) return;
+function* traitTurn(b, s) { if (worth(s) > 0) for (const T of bossTraits(s)) yield* traitPlays(b, s, T); }
+function* traitPlays(b, s, T) {
   if (T.k === 'pitback') { const back = pullPit(b, s.idx, T.vars.n || 1, { bids: true }), left = addToMeter(b, s, back, null, 'from-pit'); backToPit(b, s.idx, left); // fees or bids, its own
     const got = sum(back.filter((ch) => !left.includes(ch)), (ch) => ch.value); if (got) yield step(b, tx('feed.trait-pitback', { name: s.name, trait: T.name, n: got }), [], 'bonus'); }
   if (T.k === 'interest') { const n = Math.min(T.vars.max || 3, Math.floor(worth(s) / Math.max(1, T.vars.per || 20)));

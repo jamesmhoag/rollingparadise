@@ -54,8 +54,8 @@ export const hasCard = (run, id) => run.cards.includes(id);
 // The wallet: everything you collect is a card or a pass. A card (discounts, punch cards, memberships, notes, trading
 // cards...) takes one of the wallet's card slots; a pass (a floor's pass, a Suite Key) takes one of its pass slots.
 // Nothing rides anywhere else: there is no lanyard.
-// The trait you play by: the High Roller's whose business card is in your wallet (the first, if you hold several)
-export const traitOf = (run) => { const id = (run.cards || []).find((c) => D.CARDS[c]?.kind === 'business'); return id ? D.ROSTER[D.CARDS[id].roller]?.trait || null : null; };
+// The traits you play by: one for every High Roller's business card in your wallet (two cards of one trait are that trait once)
+export const traitsOf = (run) => (run.cards || []).filter((c) => D.CARDS[c]?.kind === 'business').map((c) => D.ROSTER[D.CARDS[c].roller]?.trait).filter((t, i, a) => t && a.indexOf(t) === i);
 export const walletCards = (run) => run.cards.filter((id) => D.CARDS[id]?.kind !== 'key');
 export const walletOf = (run) => D.WALLETS[run.wallet] || D.WALLETS.worn_cloth;
 export const walletFull = (run) => walletCards(run).length >= walletOf(run).slots;
@@ -581,7 +581,7 @@ function planGroups(run, counts, resist) {
 // ---------- bouts ----------
 function playerSpec(run, counts, extra = {}, dimsOverride) {
   const st = rollerStats(run, extra), K = D.CLASSES[run.cls];
-  return { name: 'You', title: K.name, cls: run.cls, roller: run.roller || D.rollerOf(run.cls), trait: traitOf(run), crown: crownWorn(run), sign: D.ROLLERS[run.roller]?.sign || null, tip: st.tip, c: st.c, dims: dimsOverride || st.dims, why: dimsOverride ? { note: tx('run.a-bar-table-one') } : dimsWhy(run, extra), deploy: K.deploy, tricks: run.tricks, dice: run.dice,
+  return { name: 'You', title: K.name, cls: run.cls, roller: run.roller || D.rollerOf(run.cls), trait: traitsOf(run), crown: crownWorn(run), sign: D.ROLLERS[run.roller]?.sign || null, tip: st.tip, c: st.c, dims: dimsOverride || st.dims, why: dimsOverride ? { note: tx('run.a-bar-table-one') } : dimsWhy(run, extra), deploy: K.deploy, tricks: run.tricks, dice: run.dice,
     plan: { chips: planGroups(run, counts, extra.resist), spacing: run.plan.spacing, stacking: run.plan.stacking, ...(validLayout(run, dimsOverride || st.dims) ? { layout: validLayout(run, dimsOverride || st.dims) } : {}), resistChips: run.cards.map((id) => D.CARDS[id]?.resist).filter(Boolean) }, drink: run.drink && run.drink.sips > 0 ? run.drink : null, ...extra.side };
 }
 const committed = (bout) => sum(bout.sides[0].grid.flat().flatMap((c) => c.chips).filter((ch) => ch.kind === 'std' && !ch.resist), (ch) => ch.value);

@@ -322,7 +322,8 @@ each with a `-glow` twin that gives its blur). `tools/title-sign.py` cuts them i
 It lights one way, a tube after another: ROLLING a letter at a time, one die then the other, Paradise a run of joined
 script at a time (P, ar, a, di: outlines that touch are one tube and come on together), the s with the swash and the
 palm's trunk as the one tube they are, the e, then the fronds in a sweep. A tube comes up once with a short warm-up;
-nothing flickers on the way on, and the lit sign only breathes. Left idle for 40 seconds it fades down, last lit first,
+nothing flickers on the way on. Lit, each tube breathes and now and then buzzes (a quick shiver of brightness) on its
+own clock; the sign never blinks as a whole. Left idle for 40 seconds it fades down, last lit first,
 and lights again.
 
 ### Reading a trick
@@ -931,7 +932,7 @@ for a close look, to be turned over (`ui/spin.js`, the look a die gets).
   own colours, pattern, border, symbol and the lines it shows (name, rule, flavour, serial, a note). Passes have a
   look as cards do, set in the Cards section.
 - A business card is a card (kind `business`), one for every High Roller, carrying their name sign. It takes a wallet
-  slot; while it is in your wallet you play by their trait (the first, if you hold several).
+  slot; while it is in your wallet you play by their trait, and every business card you hold counts.
 - A wallet is a billfold, a clasped pouch or a clip, and lies open holding the cards and passes you carry (the same
   elements drawn anywhere else). No slot marks.
 - A jacket has a style (blazer, bomber, long coat, parka) and parts (body, sleeves, trim, collar, closure, pockets,

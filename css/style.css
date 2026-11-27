@@ -270,12 +270,12 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .tsign .on { opacity: 0; mix-blend-mode: plus-lighter; }
 .sign.go .tsign .on { animation: tubeOn .42s ease-out var(--at, 0s) both; }
 .sign.go .tsign .long .on { animation-duration: .6s; }
-.sign.lit .tsign .on { animation: tubeHum 5.6s ease-in-out infinite; opacity: 1; }
-.sign.lit .tsign .pink .on { animation-duration: 7.1s; }
+.sign.lit .tsign .on { animation: tubeHum var(--hum, 5.6s) ease-in-out var(--lag, 0s) infinite, tubeBuzz var(--buzz, 13s) linear var(--lag, 0s) infinite; opacity: 1; }
 .sign.off .tsign .on { animation: tubeOff .5s ease-in var(--back, 0s) both; }
 @keyframes tubeOn { 0% { opacity: 0; filter: brightness(.6); } 45% { opacity: 1; filter: brightness(1.5); } 100% { opacity: 1; filter: brightness(1); } }
 @keyframes tubeOff { 0% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes tubeHum { 0%, 100% { opacity: 1; } 50% { opacity: .9; } }
+@keyframes tubeBuzz { 0%, 96.4%, 100% { filter: brightness(1); } 96.9% { filter: brightness(.78); } 97.4% { filter: brightness(1.12); } 97.9% { filter: brightness(.84); } 98.5% { filter: brightness(1.08); } 99.1% { filter: brightness(.92); } }
 @media (prefers-reduced-motion: reduce) { .sign .tsign .on { animation: none !important; opacity: 1; } }
 .title .hotel { font-family: var(--display); font-size: 13px; letter-spacing: .62em; margin-bottom: 6px; opacity: 0; animation: fadeUp 1s 2.1s forwards; }
 .title .tagline { font-family: var(--script); font-size: 30px; margin: 2px 0 24px; opacity: 0; animation: fadeUp 1s 2.4s forwards; }

@@ -24,10 +24,12 @@ ok(Object.values(D.ROSTER).every((X) => D.CLASSES[X.cls]), 'every opponent and H
   run.cards = []; bout.over = true; bout.winner = 0; R.settle(run, ctx, bout); // (an empty wallet: there is room for it)
   const rid = R.rosterIdOf(ctx.opp), cid = D.bizCardId(rid);
   ok(D.CARDS[cid]?.kind === 'business' && D.CARDS[cid].roller === rid, 'which is a card like any other, carrying its Roller');
-  ok(run.cards.includes(cid) && R.walletCards(run).includes(cid) && R.traitOf(run) === card, 'you keep it in a wallet slot, and its trait is yours');
+  ok(run.cards.includes(cid) && R.walletCards(run).includes(cid) && R.traitsOf(run).join() === card, 'you keep it in a wallet slot, and its trait is yours');
   const me = R.startTable(run, R.newPrep(run, 'table', 1)).bout.sides[0];
   ok(B.bossTrait(me)?.name === D.BOSS_TRAITS[card].name, 'and it plays for you at the next table');
-  ok(R.dropCard(run, cid) && R.traitOf(run) === null, 'drop the card and the trait goes with it');
+  { const other = Object.keys(D.ROSTER).find((r) => D.ROSTER[r].boss && D.ROSTER[r].trait && D.ROSTER[r].trait !== card); run.cards.push(D.bizCardId(other)); // (past its slots, to hold two for the check)
+    const two = R.startTable(run, R.newPrep(run, 'table', 2)).bout.sides[0]; ok(B.bossTraits(two).length === 2 && B.bossTraits(two)[1].name === D.BOSS_TRAITS[D.ROSTER[other].trait].name, 'two business cards: you play by both traits'); run.cards.pop(); }
+  ok(R.dropCard(run, cid) && R.traitsOf(run).length === 0, 'drop the card and the trait goes with it');
   run.cards = R.walletCards(run).slice(); while (!R.walletFull(run)) run.cards.push(Object.keys(D.CARDS).find((k) => D.CARDS[k].kind === 'note' && !run.cards.includes(k)));
   ok(!R.addCard(run, cid) && run.pendingCard === cid, 'with a full wallet it waits for you to make room, as any card does'); }
 { // a Roller's starting position is the run's first plan; an opponent's is fitted to its own position

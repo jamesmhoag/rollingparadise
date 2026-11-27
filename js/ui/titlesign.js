@@ -1,7 +1,8 @@
 // The title sign: neon tubes drawn from the design's own pieces (content/titlesign.js, cut by tools/title-sign.py),
 // lit one after another. ROLLING a letter at a time, one die then the other, Paradise a run of joined script at a
 // time (P, ar, a, di), the s with the swash and the palm's trunk as the one tube they are, the e, then the fronds
-// in a sweep. Each tube comes up once, cleanly (no flicker on the way on), over its dark glass, which is always there.
+// in a sweep. Each tube comes up once, cleanly (no flicker on the way on), over its dark glass, which is always there. Lit, each
+// tube hums and now and then buzzes (a quick shiver of brightness) on its own clock; the sign never blinks as a whole.
 import { TITLE_SIGN } from '../content/titlesign.js';
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -34,7 +35,9 @@ export function titleSign({ label = '' } = {}) {
   const svg = s('svg', { viewBox: view.join(' '), class: 'tsign', role: 'img', 'aria-label': label },
     s('defs', {}, ...blurs.map((n) => s('filter', { id: blurId(n), x: '-30%', y: '-30%', width: '160%', height: '160%', 'color-interpolation-filters': 'sRGB' }, s('feGaussianBlur', { stdDeviation: n })))));
   // stacked as drawn: ROLLING, the palm's dark board, the palm, the script, the dice
-  const layer = (z) => parts.map((p, i) => [p, i]).filter(([p]) => p.z === z).map(([p, i]) => { const g = s('g', { class: `tube ${p.tone}${p.long ? ' long' : ''}`, 'data-tube': p.id }, tube(p, 'glass'), tube(p, 'on')); g.style.setProperty('--at', `${when[i].toFixed(2)}s`); g.style.setProperty('--back', `${((parts.length - 1 - i) * 0.035).toFixed(2)}s`); return g; });
+  const layer = (z) => parts.map((p, i) => [p, i]).filter(([p]) => p.z === z).map(([p, i]) => { const g = s('g', { class: `tube ${p.tone}${p.long ? ' long' : ''}`, 'data-tube': p.id }, tube(p, 'glass'), tube(p, 'on')); g.style.setProperty('--at', `${when[i].toFixed(2)}s`); g.style.setProperty('--back', `${((parts.length - 1 - i) * 0.035).toFixed(2)}s`);
+    /* lit, each tube hums and buzzes to its own clock, so no two shiver together and the sign never blinks as one */
+    g.style.setProperty('--hum', `${(4.6 + ((i * 37) % 23) / 10).toFixed(1)}s`); g.style.setProperty('--buzz', `${9 + ((i * 53) % 17)}s`); g.style.setProperty('--lag', `${(-((i * 29) % 31) / 2).toFixed(1)}s`); return g; });
   svg.append(...layer(1), ...back.map((x) => s('path', { d: x.d, transform: at(x), class: 'board' })), ...layer(3), ...layer(4), ...layer(5));
   const el = document.createElement('div'); el.className = 'sign'; const glow = document.createElement('div'); glow.className = 'glow'; el.append(glow, svg);
   let timer = 0;

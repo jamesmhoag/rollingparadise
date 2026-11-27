@@ -358,12 +358,12 @@ Not built yet, or only in part:
 - **Expenses.** Every other trick effect is now a chip's work. An Expense still charges its fee directly: the fee is
   Debt chips and takes chips, so it was read as chip-driven already. Say if an Expense should lay a chip that then
   charges the fee.
-- **Several business cards.** The engine plays one trait a Roller. With several business cards in your wallet, the
-  first one counts. Say if all of them should.
+- **Several business cards.** Settled: every business card in your wallet counts (two cards of the same trait are that trait once; two Resist traits add up).
 - **A full wallet when you win a business card.** It waits, as any card does, and you are asked to drop a card for it.
 - **Wallet types.** Each existing wallet's type is read from its name (clip, zip, snap and chain are a clip or a
   clasped pouch, the rest billfolds) until its look sets one.
 - **Jacket styles.** Likewise read from the name until its look sets one (Long, Reading and Regal are long coats;
   Bomber, Down, Sports and Leather are bombers; Rain is a parka; the rest blazers).
-- **The lit title sign** only breathes once it is on (no buzz or flicker at all). Say if a rare flicker should come back.
+- **The lit title sign.** Settled: it never blinks as a whole (no all-off, all-on). Each lit tube breathes and now and
+  then buzzes on its own clock, a quick shiver of brightness. Say if the buzz should be rarer or stronger.
 - **Materials on dice.** The cloths, card stock and skins are in the renderer but are not offered as dice castings.
