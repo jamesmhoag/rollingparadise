@@ -830,4 +830,5 @@ export function applyContent(changes = {}) {
   for (const [path, v] of Object.entries(changes)) if (TABLES[splitPath(path)[0]]) setPath(path, isObj(v) ? JSON.parse(JSON.stringify(v)) : v);
   refreshDerived();
 }
-applyContent(OVERRIDES);
+// RP_CONTENT=stock (tests of the rules): the content as written in the tables, without the Build-mode changes
+applyContent(globalThis.process?.env?.RP_CONTENT === 'stock' ? {} : OVERRIDES);

@@ -10,9 +10,22 @@ const KEY = 'rollingparadise.build.draft.v1';
 const store = () => { try { return globalThis.localStorage || null; } catch { return null; } };
 const clone = (v) => (v && typeof v === 'object' ? JSON.parse(JSON.stringify(v)) : v);
 
+// Changes written by an older build of the game: fields the content no longer has are dropped, so an old export or a
+// draft kept in a browser still loads cleanly. (A class's `hero`: the Roller is named in ROLLERS now.)
+const GONE = [/^CLASSES\.[^.]+\.hero$/];
+const GONE_IN = { CLASSES: ['hero'] };
+export function migrate(changes) {
+  const out = {};
+  for (const [p, v] of Object.entries(changes || {})) {
+    if (GONE.some((re) => re.test(p))) continue;
+    const ks = p.split('.'), drop = ks.length === 2 && GONE_IN[ks[0]];
+    out[p] = drop && v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([k]) => !drop.includes(k))) : v;
+  }
+  return out;
+}
 export const draft = { changes: {}, orig: {} }; // orig: each changed path's value before the draft touched it
 export function loadDraft() {
-  try { draft.changes = JSON.parse(store()?.getItem(KEY) || '{}') || {}; } catch { draft.changes = {}; }
+  try { draft.changes = migrate(JSON.parse(store()?.getItem(KEY) || '{}') || {}); } catch { draft.changes = {}; }
   for (const [p, v] of Object.entries(draft.changes)) { if (!(p in draft.orig)) draft.orig[p] = clone(D.getPath(p)); D.setPath(p, clone(v)); }
   D.refreshDerived(); return draft;
 }
@@ -52,7 +65,7 @@ export function parseChanges(text) {
   const body = text.includes('OVERRIDES') ? text.slice(text.indexOf('{', text.indexOf('OVERRIDES'))).replace(/;\s*$/, '') : text;
   const json = body.replace(/,(\s*})\s*$/, '$1'); // the trailing comma an export leaves
   const out = JSON.parse(json); if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('Not a set of content changes.');
-  return out;
+  return migrate(out);
 }
 // load changes into the draft; only paths into known tables are taken
 export function importChanges(changes) {
