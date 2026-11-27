@@ -14,7 +14,7 @@ import { MADE_CHIPS, HEIGHT } from './content/chipmaker.js';
 import { TUNING } from './content/tuning.js';
 import { rollDie, boutCopy, facesOf, upgrade as upgradeFaces } from './dice.js';
 export { rollDie };
-import { CLASSES as CLASS_BASE, DEFAULT_MAT, DIE_UPGRADES, TRICKS, TYPES, QDIE, FOIL, WEAR, defOf, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, CREATURES, ORBITALS, FELTS, TILTS, TILT_PRESSURE, DENOM_VALUES, tiltChance, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS, primaryC, BOSS_TRAITS } from './data.js';
+import { CLASSES as CLASS_BASE, DEFAULT_MAT, DIE_UPGRADES, TRICKS, TYPES, QDIE, FOIL, WEAR, defOf, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, CREATURES, ORBITALS, FELTS, TILTS, TILT_PRESSURE, tiltFrom, DENOM_VALUES, tiltChance, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS, primaryC, BOSS_TRAITS } from './data.js';
 import { t as tx } from './text.js';
 
 // The turn: Draw tricks; Roll (pick the dice; they are thrown as the Bid opens); Bid on tricks, seeing both rolls;
@@ -385,7 +385,7 @@ function mkSide(b, spec, idx) {
 const emptyBar = (s) => allCells(s).filter((x) => x.r >= s.dims.meterRows && !x.cell.chips.length && !x.cell.hole && !x.cell.roost && !x.cell.link && !x.cell.anchor && !x.cell.puddle);
 function placeSpawner(b, s) {
   const free = emptyBar(s);
-  if (b.rng.chance(0.5) && free.length) { b.rng.pick(free).cell.roost = { id: b.nextId++ }; return 'a Dragon Roost'; }
+  if (b.rng.chance(0.5) && free.length) { tiltSpots(b, s, 'spawner', free)[0].cell.roost = { id: b.nextId++ }; return 'a Dragon Roost'; }
   s.spawners++; return 'a Nest';
 }
 function placeCalamity(b, s, cal) {
@@ -416,15 +416,21 @@ export function pressure(b, s) {
 }
 // Challenges read your pressure, Cheats your opponent's
 export const tiltPressure = (b, s, key) => pressure(b, TILTS[key].kind === 'challenge' ? s : b.sides[1 - s.idx]);
-export function tiltRate(b, s, key) { return tiltChance(key, tiltPressure(b, s, key).total); }
+export function tiltRate(b, s, key) { return tiltChance(key, tiltPressure(b, s, key).total, b.turn); } // (before its first turn the House does not play it: houseTilts)
+// the spaces a tilt may lay something on, in the order its `where` asks (random among equals)
+function tiltSpots(b, s, key, list) {
+  const w = TILTS[key].where || 'random', m = s.dims.meterRows, out = b.rng.shuffle(list);
+  const rank = { front: (x) => x.r, back: (x) => -x.r, bet: (x) => (x.r < m ? 0 : 1), stake: (x) => (x.r < m ? 1 : 0) }[w];
+  return rank ? out.map((x, i) => ({ x, i })).sort((a, c) => rank(a.x) - rank(c.x) || a.i - c.i).map((y) => y.x) : out;
+}
 // The House plays the tilts that are on, in the House phase from the second turn.
 function* houseTilts(b, s) {
-  if (b.turn < 2) return;
-  const L = pressure(b, s).total, G = pressure(b, b.sides[1 - s.idx]).total, on = (k) => s.tilts?.[k] && b.rng.chance(tiltRate(b, s, k));
+  if (b.turn < 2) return; // (each tilt's own first turn is read by tiltRate)
+  const L = pressure(b, s).total, G = pressure(b, b.sides[1 - s.idx]).total, on = (k) => s.tilts?.[k] && b.turn >= tiltFrom(k) && b.rng.chance(tiltRate(b, s, k));
   const say = (k, what, kind) => step(b, tx('feed.the-house-plays', { name: TILTS[k].name, what }), [], kind);
-  if (on('hazard')) { const n = 1 + Math.floor(L * 3), free = b.rng.shuffle(allCells(s).filter((x) => !x.cell.chips.length && !x.cell.hole && !x.cell.roost && !x.cell.link && !x.cell.worm)); let holes = 0, hats = 0;
+  if (on('hazard')) { const n = 1 + Math.floor(L * 3), free = tiltSpots(b, s, 'hazard', allCells(s).filter((x) => !x.cell.chips.length && !x.cell.hole && !x.cell.roost && !x.cell.link && !x.cell.worm)); let holes = 0, hats = 0;
     for (let k = 0; k < n; k++) { if (b.rng.chance(1 / 3)) { const st = allCells(s).filter((x) => solidCount(x.cell) && capacityLeft(s, x.cell) > 0 && !x.cell.link && !x.cell.anchor && !x.cell.roost && !x.cell.chips.some((ch) => ch.kind === 'hat'));
-        if (st.length) { const h0 = mkChip(b, 'hat', 0); b.rng.pick(st).cell.chips.unshift(h0); b.fx[h0.id] = 'spawn'; hats++; continue; } }
+        if (st.length) { const h0 = mkChip(b, 'hat', 0); tiltSpots(b, s, 'hazard', st)[0].cell.chips.unshift(h0); b.fx[h0.id] = 'spawn'; hats++; continue; } }
       const x = free.shift(); if (x) { x.cell.hole = true; delete x.cell.puddle; holes++; } }
     if (holes || hats) yield say('hazard', [holes ? tx('feed.line', { holes }) : '', hats ? tx('feed.magic', { hats }) : ''].filter(Boolean).join(' and '), 'hazard'); }
   if (on('creature') && b.creatures.filter((cr) => cr.side === s.idx && !cr.gone).length < 1 + Math.floor(L * 3)) {
@@ -436,7 +442,7 @@ function* houseTilts(b, s) {
   if (on('shield')) { const n = 1 + Math.floor(G * 4); addToMeter(b, s, Array.from({ length: n }, () => mkChip(b, 'block')), null, 'spawn'); yield say('shield', tx('feed.block-on-your-bet', { n }), 'bonus'); }
   if (on('familiar')) { // one play in three sets a Hive (Bumble Bees, and Honey from your Flowers) instead of a Familiar
     const hives = allCells(s).some((x) => x.cell.chips.some((ch) => ch.kind === 'hive')), free = emptyBar(s).concat(meterCells(s).filter((x) => !x.cell.chips.length && !x.cell.hole && !x.cell.worm && !x.cell.puddle));
-    if (!hives && free.length && b.rng.chance(1 / 3)) { const x = b.rng.pick(free), n = 1 + Math.floor(G * 2);
+    if (!hives && free.length && b.rng.chance(1 / 3)) { const x = tiltSpots(b, s, 'familiar', free)[0], n = 1 + Math.floor(G * 2);
       for (let k = 0; k < Math.min(n, s.dims.stackMax); k++) { const hv = mkChip(b, 'hive', 0, { hits: 1, shop: 'hive', resist: 'hive' }); x.cell.chips.push(hv); b.fx[hv.id] = 'spawn'; }
       yield step(b, tx('feed.the-house-plays-a', { name: TILTS.familiar.name, n: Math.min(n, s.dims.stackMax) }), [ref(s, x.r, x.c)], 'familiar'); }
     else if (s.familiars < 1 + Math.floor(G * 2)) { s.familiars++; yield say('familiar', `a Familiar joins (${s.familiars})`, 'familiar'); } }

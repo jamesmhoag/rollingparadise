@@ -229,9 +229,9 @@ export function buildScene(root, opts = {}) {
       h('div', { class: 'row' }, btn(t('build.discard.keep'), () => closePanel(), null, 'go'), btn(t('build.delete'), () => { const used = B.removeEntry(table, id); closePanel();
         if (used.length) return toast(t('build.delete.used', { name, list: used.slice(0, 4).join(', '), more: used.length > 4 ? t('build.delete.more', { n: used.length - 4 }) : '' }), 'warn');
         ui.key = null; toast(t('build.delete.done', { name })); draw(); }, null, 'danger'))));
-    const bar = h('div', { class: 'row b-organise' }, h('span', { class: 'cap', text: t('build.organise') }),
-      guided(btn('▲', () => move(-1), t('build.move.up'), `small ${i <= 0 ? 'off' : ''}`), 'build-option'), guided(btn('▼', () => move(1), t('build.move.down'), `small ${i >= keys.length - 1 ? 'off' : ''}`), 'build-option'),
-      guided(btn(t('build.delete'), ask, t('build.delete.tip'), 'small danger'), 'build-option'));
+    const up = btn('▲', () => move(-1), t('build.move.up'), `small ${i <= 0 ? 'off' : ''}`), down = btn('▼', () => move(1), t('build.move.down'), `small ${i >= keys.length - 1 ? 'off' : ''}`), del = btn(t('build.delete'), ask, t('build.delete.tip'), 'small danger');
+    for (const b of [up, down, del]) guided(b, 'build-option');
+    const bar = h('div', { class: 'row b-organise' }, h('span', { class: 'cap', text: t('build.organise') }), up, down, del);
     editor.prepend(bar);
   }
   function draw() { drawStatus(); drawTables(); drawEntries(); drawEditor(); organise(); }

@@ -650,12 +650,12 @@ export const PRIZES = { bonus: 0.25 };
 // the same share of the opponent's worth is also paid on a win: a House bounty for a Challenge, a House cut for a Cheat.
 // `base` and `per`: the House's chance to play it each turn, base + per × pressure.
 export const TILTS = {
-  hazard: { kind: 'challenge', name: 'Hazard', floor: 1, mult: 0.25, base: 0.25, per: 0.6, text: 'The House digs Holes in empty spaces of your position (one in three is a Magic Hat slipped under a stack). More of them, more often, the more you have lost to the House.' },
-  creature: { kind: 'challenge', name: 'Creature', floor: 1, mult: 0.35, base: 0.2, per: 0.6, text: 'The House sends creatures to your position. The more you have lost to the House, the more often, and the bigger the creatures it can call.' },
-  spawner: { kind: 'challenge', name: 'Spawner', floor: 2, mult: 0.4, base: 0.15, per: 0.5, text: 'The House sets nests on your position that send a creature every third turn (every second, once you have lost a third of your chips). One in two is a Dragon Roost: it takes a Stake space and calls a Dragon that lays eggs on it.' },
-  calamity: { kind: 'challenge', name: 'Calamity', floor: 3, mult: 0.5, base: 0.12, per: 0.45, text: 'The House starts disasters on your position: a Worm Hole, Inferno, Audit, Black Hole, Volcano, Tornado, Blizzard or B-52. A second one comes once you have lost half your chips.' },
-  shield: { kind: 'cheat', name: 'Shield', floor: 1, mult: 0.25, base: 0.3, per: 0.6, text: 'The House drops Block chips on your Bet: more, and more often, the more your opponent has lost to the House.' },
-  familiar: { kind: 'cheat', name: 'Familiar', floor: 1, mult: 0.1, base: 0.35, per: 0.6, text: 'The House sends you a little friend that removes one Debt or hazard chip each turn and may chase creatures away. Up to three, as your opponent loses to the House. One play in three sets a Hive on an empty space of your position instead: it sends out Bumble Bees that sting creatures and pollinate your Flowers into Honey.' },
+  hazard: { kind: 'challenge', name: 'Hazard', floor: 1, mult: 0.25, base: 0.25, per: 0.6, from: 2, ramp: 0, cap: 0.95, where: 'random', text: 'The House digs Holes in empty spaces of your position (one in three is a Magic Hat slipped under a stack). More of them, more often, the more you have lost to the House.' },
+  creature: { kind: 'challenge', name: 'Creature', floor: 1, mult: 0.35, base: 0.2, per: 0.6, from: 2, ramp: 0, cap: 0.95, where: 'random', text: 'The House sends creatures to your position. The more you have lost to the House, the more often, and the bigger the creatures it can call.' },
+  spawner: { kind: 'challenge', name: 'Spawner', floor: 2, mult: 0.4, base: 0.15, per: 0.5, from: 2, ramp: 0, cap: 0.95, where: 'random', text: 'The House sets nests on your position that send a creature every third turn (every second, once you have lost a third of your chips). One in two is a Dragon Roost: it takes a Stake space and calls a Dragon that lays eggs on it.' },
+  calamity: { kind: 'challenge', name: 'Calamity', floor: 3, mult: 0.5, base: 0.12, per: 0.45, from: 2, ramp: 0, cap: 0.95, where: 'random', text: 'The House starts disasters on your position: a Worm Hole, Inferno, Audit, Black Hole, Volcano, Tornado, Blizzard or B-52. A second one comes once you have lost half your chips.' },
+  shield: { kind: 'cheat', name: 'Shield', floor: 1, mult: 0.25, base: 0.3, per: 0.6, from: 2, ramp: 0, cap: 0.95, where: 'random', text: 'The House drops Block chips on your Bet: more, and more often, the more your opponent has lost to the House.' },
+  familiar: { kind: 'cheat', name: 'Familiar', floor: 1, mult: 0.1, base: 0.35, per: 0.6, from: 2, ramp: 0, cap: 0.95, where: 'random', text: 'The House sends you a little friend that removes one Debt or hazard chip each turn and may chase creatures away. Up to three, as your opponent loses to the House. One play in three sets a Hive on an empty space of your position instead: it sends out Bumble Bees that sting creatures and pollinate your Flowers into Honey.' },
   position: { kind: 'cheat', name: 'Position', floor: 1, mult: 0.15, base: 0, per: 0, text: 'Adds +1 to Balance, Versatility and Depth for this bout. The House plays it when you sit down, so it does not grow during the bout.' },
   intervention: { kind: 'cheat', name: 'Intervention', floor: 3, mult: 0.3, base: 0, per: 0, text: 'Once, when you would go broke, the House restores your paid fees: half of them, up to all of them the more your opponent has lost to the House. It costs half your wager.' },
 };
@@ -664,7 +664,16 @@ export const TILTS = {
 // they started with (`overkill`), how full their Bet is (`fill`, 0 to 1) and the worth sitting in it as a share of
 // what they started with (`value`). Challenges read your pressure, Cheats your opponent's.
 export const TILT_PRESSURE = { lost: 1, overkill: 0.5, fill: 0.2, value: 0.3 };
-export const tiltChance = (key, pressure) => Math.min(0.95, TILTS[key].base + TILTS[key].per * pressure);
+// A tilt's chance over the bout, and where what it lays lands (each tilt's own, in the TILTS table):
+//   from    the first turn the House may play it (2 unless set)
+//   ramp    chance added for every turn past `from`: the curve over the bout (0: flat; negative: it fades)
+//   cap     the most its chance reaches (0.95 unless set)
+//   where   where its Holes, hats, nests and Hives land: 'random', 'front' (nearest the Pit first), 'back', 'bet' (Bet
+//           spaces first) or 'stake'. Among equals the pick is still random.
+export const TILT_WHERE = ['random', 'front', 'back', 'bet', 'stake'];
+export const tiltFrom = (key) => Math.max(1, Math.round(TILTS[key].from ?? 2));
+export const tiltChance = (key, pressure, turn = 0) => { const T = TILTS[key]; if (!(T.base || T.per || T.ramp)) return 0;
+  return Math.max(0, Math.min(T.cap ?? 0.95, T.base + T.per * pressure + (T.ramp || 0) * Math.max(0, turn - tiltFrom(key)))); };
 
 // ---------- Floors and opponents ----------
 // `worth`: each table's opponent's worth; `wager`: what each table costs to sit at (the wager the multiplier pays on);
