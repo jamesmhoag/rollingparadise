@@ -17,7 +17,7 @@ const entry = (id, vals, extra = {}) => ({ uid: 'x' + id, trick: { id, q: 1, up:
 for (const [id, X] of Object.entries(D.SHOP_CHIPS)) {
   if (X.sold !== false) continue;
   assert(X.from, `${X.name} says what makes it`);
-  if (X.from.startsWith('trick:')) { const t = D.TRICKS[X.from.slice(6)]; assert(t, `${X.name}'s trick exists`); if (id !== 'crown') assert(t.make?.chip === id, `${t.name} makes ${X.name}s`); }
+  if (X.from.startsWith('trick:')) { const t = D.TRICKS[X.from.slice(6)]; assert(t, `${X.name}'s trick exists`); if (id !== 'crown') assert(B.makeOf(t)?.chip === id, `${t.name} makes ${X.name}s`); }
   assert(D.madeBy(id), `${X.name} names its maker`);
 }
 for (const id of D.SHOP_IDS()) assert(!D.makerOf(id), `${D.SHOP_CHIPS[id].name} is sold, so no trick makes it`);

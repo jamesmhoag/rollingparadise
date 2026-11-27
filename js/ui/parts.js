@@ -3,7 +3,7 @@ import { h } from './core.js';
 import * as D from '../data.js';
 import * as CM from '../content/chipmaker.js';
 import { cents, cap } from '../util.js';
-import { multOf } from '../bout.js';
+import { multOf, makeOf, fxOf } from '../bout.js';
 import { facesOf, faceValue, matOf, dieName, petName } from '../dice.js';
 import { traitsOf, traitsHtml } from '../traits.js';
 import { iconStyle, textureOf } from './icons.js';
@@ -83,7 +83,7 @@ export function madeRules(M, ch = {}) {
   if (M.move && M.move !== 'still') parts.push(CM.MOVES[M.move].toLowerCase());
   if (M.triggers?.length && M.actions?.length) {
     const when = M.triggers.map((x) => (x.on === 'phase' || x.on === 'effect') && x.type ? `${CM.TRIGGERS[x.on].toLowerCase()} (${D.TYPES[x.type]?.name})` : x.on === 'exposed' && x.what ? `when a ${x.what} is exposed` : CM.TRIGGERS[x.on].toLowerCase()).join(' or ');
-    const what = M.actions.map((x) => ({ move: `moves them ${x.dir || 'right'}`, value: `${(x.n ?? 1) >= 0 ? '+' : ''}${x.n ?? 1}¢ value`, hits: tx('parts.strength', { v: (x.n ?? 1) >= 0 ? '+' : '', v2: x.n ?? 1 }), power: tx('parts.effect', { v: (x.n ?? 1) >= 0 ? '+' : '', v2: x.n ?? 1 }), become: `turns them into ${D.MADE_CHIPS[x.chip]?.name || D.CHIPS[x.chip]?.name || tx('library.royal-paradise-chips')}`, pull: tx('parts.pulls-up-to-of', { v: x.n ?? 5, v2: x.from === 'theirs' ? 'the other' : x.from === 'both' ? 'either' : 'its own', v3: x.bids ? tx('parts.bids-too') : '' }) }[x.k])).join(', ');
+    const what = M.actions.map((x) => ({ fx: tx('parts.plays', { what: `${CM.EFFECTS[x.fx] || x.fx}${x.by ? ` (${CM.ARRANGES[x.by] || x.by})` : ''}`.toLowerCase() }), move: `moves them ${x.dir || 'right'}`, value: `${(x.n ?? 1) >= 0 ? '+' : ''}${x.n ?? 1}¢ value`, hits: tx('parts.strength', { v: (x.n ?? 1) >= 0 ? '+' : '', v2: x.n ?? 1 }), power: tx('parts.effect', { v: (x.n ?? 1) >= 0 ? '+' : '', v2: x.n ?? 1 }), become: `turns them into ${D.MADE_CHIPS[x.chip]?.name || D.CHIPS[x.chip]?.name || tx('library.royal-paradise-chips')}`, pull: tx('parts.pulls-up-to-of', { v: x.n ?? 5, v2: x.from === 'theirs' ? 'the other' : x.from === 'both' ? 'either' : 'its own', v3: x.bids ? tx('parts.bids-too') : '' }) }[x.k])).join(', ');
     parts.push(tx('parts.on', { when, what, toLowerCase: (CM.REACH[M.reach?.to || 'touching'] || '').toLowerCase(), v: M.reach?.to === 'named' ? ` "${M.reach.name}"` : '', v2: (M.reach?.range || 1) > 1 ? ` within ${M.reach.range}` : '' }));
   }
   return parts.join(' · ') + '.';
@@ -97,10 +97,11 @@ const CHIP_FOR = { block: { kind: 'block', value: 1 }, fence: { kind: 'counter',
   gild: { kind: 'std', value: 5, gold: true }, gather: { kind: 'std', value: 5 }, scatter: { kind: 'std', value: 1 }, settle: { kind: 'counter', value: 1 }, sweep: { kind: 'block', value: 1 },
   doom: { kind: 'dynamite' }, freeze: { kind: 'frost' }, boost: { kind: 'fx', shop: 'power', resist: 'power' }, press: { kind: 'fx', shop: 'power', resist: 'power' }, enfeeble: { kind: 'fx', shop: 'control', resist: 'control' } };
 export function trickChip(def) {
-  if (def.make?.chip && D.SHOP_CHIPS[def.make.chip]) return { kind: 'fx', shop: def.make.chip, resist: def.make.chip };
+  const mk = makeOf(def); if (mk) return { kind: 'fx', shop: mk.chip, resist: mk.chip };
+  if (fxOf(def)) return CHIP_FOR[fxOf(def)] || { kind: 'made', model: def.roll.chip, value: 0 }; // the chip its effect leaves, or the effect's own chip
   if (def.roll.k === 'chips' && def.roll.chip) return D.MADE_CHIPS[def.roll.chip] ? { kind: 'made', model: def.roll.chip, value: D.MADE_CHIPS[def.roll.chip].value || 0 } : { kind: def.roll.chip, value: 1 };
   if (def.roll.k === 'fee') return def.element ? { kind: def.element } : def.plant ? { kind: def.plant } : { kind: 'debt', value: def.count };
-  return CHIP_FOR[def.roll.k] || null;
+  return null;
 }
 // a line of flavour for a hover (content/flavor.js), or nothing
 const esc = (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;');

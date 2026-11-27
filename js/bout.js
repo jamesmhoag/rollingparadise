@@ -133,7 +133,7 @@ export const shopCount = (cell, id) => cell.chips.filter((ch) => ch.resist === i
 const anchored = (cell) => shopCount(cell, 'anchor') > 0;
 const allCells = (s) => { const out = []; for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) out.push({ r, c, cell: s.grid[r][c] }); return out; };
 // solid chips go under the hazards, and under any Little chips unless they are Little themselves
-const pushChip = (cell, ch) => { if (isHazard(ch)) cell.chips.push(ch); else { const i = cell.chips.findIndex((x) => isHazard(x) || (!tiny(ch) && tiny(x))); if (i < 0) cell.chips.push(ch); else cell.chips.splice(i, 0, ch); } };
+const pushChip = (cell, ch) => { if (isHazard(ch)) cell.chips.push(ch); else { const i = cell.chips.findIndex((x) => isHazard(x) || (!tiny(ch) && tiny(x) && madeOf(x)?.must !== 'bottom')); /* a chip that must lie at the bottom stays there */ if (i < 0) cell.chips.push(ch); else cell.chips.splice(i, 0, ch); } };
 // a Big chip or Volcano covers two spaces by two: the top-left one (`anchor`) holds the stack, the others `link` to it
 const homeOf = (s, r, c) => { const l = s.grid[r]?.[c]?.link; return l ? { r: l.r, c: l.c } : { r, c }; };
 function freeBlock(s, rows) { for (const r of rows) for (let c = 0; c + 1 < s.dims.cols; c++) { if (r + 1 >= s.rows) continue;
@@ -531,7 +531,7 @@ export const sizeOn = (e) => e.dice.find((d) => !d.chip)?.type || null;
 export const bidVal = (ch) => (ch.kind === 'debt' ? -ch.value : ch.value || 0);
 // A chip that can be bid: anything a fee could take, a stack's Debt marker, and a made chip whose value is set to 0
 // (a value left unset is no value at all, and cannot be bid).
-export const isBiddable = (ch) => isPayable(ch) || ch.kind === 'debt' || (ch.kind === 'made' && madeOf(ch)?.value === 0 && lastsOf(ch) !== 'match');
+export const isBiddable = (ch) => isPayable(ch) || ch.kind === 'debt' || (ch.kind === 'made' && madeOf(ch)?.value === 0 && lastsOf(ch) !== 'match' && !fxAction(ch.model)); // an effect's chip is at work: it is not yours to bid
 const spare = (s, ch) => worth(s) - bidVal(ch) > 0; // spending this chip does not leave you broke
 export function flippable(s) { const out = []; for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const ch = bidChip(s, r, c); if (ch?.kind === 'std' && spare(s, ch)) out.push({ r, c, ch }); } return out; }
 export function biddable(s) { const out = []; for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const ch = bidChip(s, r, c); if (ch && spare(s, ch)) out.push({ r, c, ch }); } return out; }
@@ -1058,7 +1058,7 @@ function validOn(b, s, def, t, payOnly) {
   return out;
 }
 // tricks whose roll effect puts chips on the stack they aim at
-export const addsChips = (def) => !!def.make || ['doom', 'hat', 'handoff', 'block'].includes(def.roll.k) || (def.roll.k === 'chips' && !['fee', 'water'].includes(makeKind(def.roll.chip))); // a Puddle has no thickness: it needs no room
+export const addsChips = (def) => !!makeOf(def) || ['doom', 'hat', 'handoff', 'block'].includes(fxOf(def)) || (def.roll.k === 'chips' && !fxOf(def) && !['fee', 'water'].includes(makeKind(def.roll.chip))); // a Puddle has no thickness: it needs no room
 export function setTarget(b, s, e, tgt) {
   if (b.phase !== 'aim' && b.phase !== 'bid') return false;
   if (!validTargets(b, s, e).some((v) => v.side === tgt.side && v.r === tgt.r && v.c === tgt.c)) return false;
@@ -1070,7 +1070,7 @@ export function setTarget(b, s, e, tgt) {
 // add chips name the spaces they cover.
 export function landing(b, s, e, at) {
   const def = TRICKS[e.trick.id], R = def.roll, t = at ? b.sides[at.side] : null; if (!t) return [];
-  if (R.k !== 'chips') return addsChips(def) ? affected(b, t, def, at, e.dice.length).map((x) => ({ side: t.idx, r: x.r, c: x.c, n: 0, chip: def.make?.chip || R.k })) : [];
+  if (R.k !== 'chips' || fxOf(def) || makeOf(def)) return addsChips(def) ? affected(b, t, def, at, e.dice.length).map((x) => ({ side: t.idx, r: x.r, c: x.c, n: 0, chip: makeOf(def)?.chip || fxOf(def) })) : []; // an effect or a maker covers its spread
   const total = previewTotal(s, e), vals = e.dice.map((d) => d.value);
   let inst = total > 0 ? instances(R.convert, vals.length ? vals : [total], total) : []; if (bonusMet(s, e) && def.bonus.k === 'multiply') inst = Array.from({ length: def.bonus.x || 2 }, () => inst).flat();
   const spaces = deployOrder(t.rows, t.dims.cols, at, R.deploy).filter(({ r, c }) => !t.grid[r][c].hole && !t.grid[r][c].link); if (!spaces.length) return [];
@@ -1406,8 +1406,7 @@ const ARRANGE = {
   shields: { dir: 'front', key: (ch) => (isShield(ch) ? 0 : 1) },
   'value-front': { dir: 'front', key: (ch) => -valueOf(ch) },
   'value-back': { dir: 'front', key: (ch) => valueOf(ch) },
-  'opp-value-front': { dir: 'front', key: (ch) => -valueOf(ch) },
-  'opp-shields-back': { dir: 'back', key: (ch) => (isShield(ch) ? 0 : 1) },
+  'shields-back': { dir: 'back', key: (ch) => (isShield(ch) ? 0 : 1) },
 };
 export function arrange(b, s, mode, cells) {
   if (mode === 'up' || mode === 'down') return slideRows(b, s, mode, cells);
@@ -1540,6 +1539,12 @@ function recoup(b, s, n, both) {
 // in that stack. A fee instance charges Debt there instead. Bonuses: multiply (more instances), bid multiplier (in the total), extra chip (more of another chip).
 function* playChips(b, s, e, def, x) {
   const R = def.roll, t = x.t, origin = x.origin || { r: 0, c: 0 };
+  const A = fxAction(R.chip), M0 = makeOf(def);
+  if (A || M0) { // an effect's chip, or a maker's effect chips: the chip is laid and does its work now
+    const ctx = { b, s, o: x.o || b.sides[1 - s.idx], t, cells: x.cells || [], total: x.total, bonus: x.bonus, e, origin: x.origin, tag: x.tag, by: A?.by, make: M0 };
+    if (A) layFx(b, s, t, x.origin, R.chip, x.total);
+    yield* FX[A ? A.fx : 'make'](ctx); return;
+  }
   let inst = instances(R.convert, x.vals, x.total);
   if (x.bonus === 'multiply') inst = Array.from({ length: def.bonus.x || 2 }, () => inst).flat();
   const spaces = deployOrder(t.rows, t.dims.cols, origin, R.deploy).filter(({ r, c }) => !t.grid[r][c].hole && !t.grid[r][c].link);
@@ -1586,7 +1591,7 @@ function* play(b, s, e, opt = {}) {
   }
 
   // Roll effect
-  const own = def.roll.k === 'bend' || def.roll.k === 'parlay';
+  const own = ['bend', 'parlay'].includes(fxOf(def));
   const fz = s.fz || s.mods; // mods as they stood when the phase was called
   const vals = e.dice.map((d) => (!own && fz.bend != null ? fz.bend : d.value));
   const bonus = opt.bonus !== undefined ? opt.bonus : bonusMet(s, e) ? def.bonus.k : null;
@@ -1642,91 +1647,108 @@ function* play(b, s, e, opt = {}) {
       }
       yield step(b, placed ? tx('feed.of-debt-on-2', { tag, placed, hitN: hit.length, tail: tail() }) : tx('feed.the-fee-is', { tag, v: [...notes].join(', ') || 'lost' }), hit.map((x) => ref(t || o, x.r, x.c)), placed || notes.size ? 'play' : 'miss'); return;
     }
-    case 'chips': yield* playChips(b, s, e, def, { t: t || o, origin, total, vals, bonus, pierce, tag, again: opt.again }); return;
-    case 'block': { const kind = bonus === 'counter' ? 'counter' : 'block'; const n = Math.min(total, 60);
-      const left = addToMeter(b, s, Array.from({ length: n }, () => mkChip(b, kind)), origin, 'spawn');
-      yield step(b, tx('feed.chips-to-the-bet', { tag, n, v: kind === 'counter' ? 'Counter' : 'Block', overText: overText(left) }), origin ? [origin] : [], 'play'); return; }
-    case 'make': { // effect chips on the target stacks; a full stack takes none (the overflow is lost, like overkill)
-      const M = def.make, X = SHOP_CHIPS[M.chip], n = M.n[0] + Math.floor(total / M.n[1]), life = M.life[0] + Math.floor(total / M.life[1]); let put = 0, over = 0;
-      for (const { r, c } of cells) { const cell = s.grid[r][c]; let k = 0; while (k < n && placeFx(b, s, cell, M.chip, life, e.trick.id)) k++; put += k; over += n - k; }
-      yield step(b, tx('feed.placed', { tag, put, name: X.name, v: put ? ` for ${life >= 99 ? 'the bout' : tx('feed.line-2', { life })}` : '', v2: over ? tx('feed.had-no-room-and-3', { over }) : '' }), cells.map((x) => ref(s, x.r, x.c)), put ? 'play' : 'miss'); return; }
-    case 'harden': { const turns = clamp(Math.floor(total / 4), 1, 5); for (const { r, c } of cells) if (solidCount(s.grid[r][c])) setHard(b, s.grid[r][c], turns);
-      yield step(b, tx('feed.stacks-hardened-for', { tag, turns }), cells.map((x) => ref(s, x.r, x.c)), 'play'); return; }
-    case 'resist': s.status.resist += total; if (bonus === 'extend') s.status.resistNext = total;
-      yield step(b, tx('feed.resist', { tag, total }), [], 'play'); return;
-    case 'evade': s.status.evade = s.status.evade == null ? total : Math.min(s.status.evade, total); if (bonus === 'extend') s.status.evadeNext = total;
-      yield step(b, tx('feed.fees-over-will-miss', { tag, total }), [], 'play'); return;
-    case 'reflect': s.status.reflect = total; s.status.reflectAll = bonus === 'extend';
-      yield step(b, tx('feed.reflect', { tag, total }), [], 'play'); return;
-    case 'boost': s.mods.boost += total; if (bonus === 'extend') addPower(b, s, total);
-      yield step(b, tx('feed.other-roll-effects-gain', { tag, total }), [], 'play'); return;
-    case 'enfeeble': o.mods.enfeeble += total; if (bonus === 'extend') o.status.enfeebleNext = Math.floor(total / 2);
-      yield step(b, tx('feed.s-roll-effects-lose', { tag, name: o.name, total }), [], 'play'); return;
-    case 'bend': { const v = e.dice[0]?.value ?? total; // no die on it: the total stands in if (bonus === 'bendopp') o.mods.bend = v; else s.mods.bend = v;
-      yield step(b, tx('feed.every-die-in-play', { tag, v: bonus === 'bendopp' ? o.name + ' has' : 'they have', v2: v }), [], 'play'); return; }
-    case 'press': s.mods.press += total; s.mods.pierce = true; if (bonus === 'extend') addPower(b, s, Math.floor(total / 2));
-      yield step(b, tx('feed.expenses-gain-and-pierce', { tag, total }), [], 'play'); return;
-    case 'parlay': { const even = (e.dice[0]?.value ?? total) % 2 === 0; s.mods.mul *= even ? 2 : 0.5;
-      yield step(b, `${tag}: ${even ? tx('feed.even-effects-doubled') : tx('feed.odd-effects-halved')}.`, [], 'play'); return; }
-    case 'freeze': { let n = 0;
-      for (const { r, c } of cells) { const st = s.grid[r][c].chips, take = [];
-        for (let i = st.length - 1; i >= 0 && take.length < total; i--) { const ch = st[i]; if (isHazard(ch) || ch.kind === 'debt') continue; if (ch.kind !== 'std' || ch.gold || ch.resist) break; take.push(ch); } // Chill brings its own water: it wets what it freezes
-        for (const ch of st) if (ORGANIC.includes(ch.kind) && !ch.frozen) { ch.frozen = true; n++; }
-        if (take.length < 2) continue;
-        if (s.grid[r][c].puddle) s.grid[r][c].puddle.ice = true;
-        const sumv = sum(take, (ch) => ch.value); for (const ch of take) { st.splice(st.indexOf(ch), 1); b.fx[ch.id] = 'void'; }
-        pushChip(s.grid[r][c], mkChip(b, 'std', sumv, { frozen: true })); n += take.length; }
-      yield step(b, `${tag}: ${n ? tx('feed.chips-frozen-together', { n }) : 'nothing to freeze'}.`, cells.map((x) => ref(s, x.r, x.c)), n ? 'play' : 'miss'); return; }
-    case 'regen': { const turns = Math.max(1, Math.floor(total / 4)); let n = 0;
-      for (const { r, c } of cells) { const st = s.grid[r][c].chips; for (let i = st.length - 1, left = total; i >= 0 && left > 0; i--) if (isPayable(st[i])) { st[i].regen = Math.max(st[i].regen || 0, turns); left -= st[i].value; n++; } }
-      yield step(b, tx('feed.regen-for', { tag, n, turns }), cells.map((x) => ref(s, x.r, x.c)), n ? 'play' : 'miss'); return; }
-    case 'sticky': { let n = 0;
-      for (const { r, c } of cells) { const cell = t.grid[r][c]; if (!solidCount(cell) || cell.chips.some((ch) => ch.kind === 'sticky')) continue;
-        const st = mkChip(b, 'sticky', solidCount(cell), { stuck: firstMod(cell) }); cell.chips.push(st); b.fx[st.id] = 'spawn'; bind(b, cell); n++; }
-      yield step(b, tx('feed.gummed-with-a-sticky', { tag, n }), cells.map((x) => ref(t, x.r, x.c)), n ? 'play' : 'miss'); return; }
-    case 'doom': { let n = 0; const list = bonus === 'aura' ? allCells(t) : cells.map(({ r, c }) => ({ r, c, cell: t.grid[r][c] }));
-      for (const x of list) { if (n >= total || !solidCount(x.cell) || capacityLeft(t, x.cell) <= 0 || x.cell.chips[topSolid(x.cell)]?.kind === 'doom') continue; const d = mkChip(b, 'doom', 0, { owner: s.idx }); pushChip(x.cell, d); b.fx[d.id] = 'spawn'; n++; }
-      yield step(b, tx('feed.planted', { tag, n }), list.map((x) => ref(t, x.r, x.c)), n ? 'play' : 'miss'); return; }
-    case 'hat': { let n = 0; if (total >= 8) for (const { r, c } of cells) { const cell = t.grid[r][c]; if (!solidCount(cell) || capacityLeft(t, cell) <= 0 || cell.chips.some((ch) => ch.kind === 'hat') || cell.link || cell.anchor) continue; const hat = mkChip(b, 'hat', 0, { owner: s.idx }); cell.chips.unshift(hat); b.fx[hat.id] = 'spawn'; n++; }
-      yield step(b, `${tag}: ${n ? tx('feed.magic-slipped-under-s', { n, name: o.name }) : 'the trick needs a total of 8'}.`, cells.map((x) => ref(t, x.r, x.c)), n ? 'play' : 'miss'); return; }
-    case 'handoff': { let n = 0;
-      for (const { r, c } of cells) { const cell = t.grid[r][c], from = allCells(s).find((x) => x.cell.chips.some((ch) => ch.shop === 'uranium')); if (!from || capacityLeft(t, cell) <= 0) continue;
-        const u = from.cell.chips.find((ch) => ch.shop === 'uranium'); from.cell.chips.splice(from.cell.chips.indexOf(u), 1); emptyOut(b, from.cell); pushChip(cell, u); n++; }
-      yield step(b, `${tag}: ${n ? tx('feed.uranium-handed-to', { n, name: o.name }) : 'no Uranium to hand off'}.`, cells.map((x) => ref(t, x.r, x.c)), n ? 'play' : 'miss'); return; }
-    case 'feather': { const turns = Math.max(1, Math.floor(total / 3)); let n = 0;
-      for (const { r, c } of cells) { const i = topPayableIdx(s.grid[r][c]); if (i < 0) continue; const ch = s.grid[r][c].chips[i]; ch.feather = Math.max(ch.feather || 0, turns); n++; }
-      yield step(b, tx('feed.feathered-for', { tag, n, turns }), cells.map((x) => ref(s, x.r, x.c)), n ? 'play' : 'miss'); return; }
-    case 'saturate': { s.mods.boost += total; const had = o.mods.boost; o.mods.boost = 0; o.mods.subdued = true; if (bonus === 'extend') dropPower(b, o);
-      yield step(b, tx('feed.other-roll-effects-gain-2', { tag, total, name: o.name, v: had ? ` (${had})` : '', v2: bonus === 'extend' ? ' and their Power drained' : '' }), [], 'play'); return; }
-    case 'arrange': { const side = def.side === 'opp' ? o : s, all = bonus === 'aura';
-      const moved = arrange(b, side, def.arrange, all ? null : cells);
-      yield step(b, tx('feed.moved-in-s-position', { tag, moved, name: side.name }), moved ? (all ? allCells(side) : cells).map((x) => ref(side, x.r, x.c)) : [], moved ? 'play' : 'miss'); return; }
-    case 'gild': { let n = 0; for (const { r, c } of cells) { let left = total; const st = s.grid[r][c].chips;
-        for (let i = st.length - 1; i >= 0 && left > 0; i--) if (st[i].kind === 'std' && !st[i].gold && !stuckIce(st[i], s.grid[r][c])) { st[i].gold = true; left--; n++; } }
-      yield step(b, tx('feed.turned-to-gold', { tag, n }), cells.map((x) => ref(s, x.r, x.c)), 'play'); return; }
-    case 'settle': { const n = settleColumn(b, s, e.target, total);
-      if (bonus === 'blocks') addToMeter(b, s, [mkChip(b, 'block'), mkChip(b, 'block')], null, 'spawn');
-      yield step(b, tx('feed.cleansed-stake-organized', { tag, n }), [], 'play'); return; }
-    case 'gather': { const n = recoup(b, s, total, bonus === 'both');
-      yield step(b, tx('feed.recovered-from-the-stage', { tag, n }), [], 'play'); return; }
-    case 'fence': { let n = 0; for (const { cell } of allCells(s)) { const d = debtOf(cell); if (!d || n >= total) continue; const take = Math.min(d, total - n); setDebt(b, cell, d - take); n += take; }
-      const left = addToMeter(b, s, Array.from({ length: n }, () => mkChip(b, 'opp', 1)), null, 'spawn');
-      if (bonus === 'blocks') left.push(...addToMeter(b, s, [mkChip(b, 'block'), mkChip(b, 'block')], null, 'spawn'));
-      yield step(b, tx('feed.of-debt-fenced-into', { tag, n, overText: overText(left) }), [], 'play'); return; }
-    case 'sweep': { let n = 0; for (let r = 0; r < o.dims.meterRows; r++) for (let c = 0; c < o.dims.cols; c++) { const st = o.grid[r][c].chips;
-        for (let i = st.length - 1; i >= 0 && n < total; i--) if (isShield(st[i]) || st[i].kind === 'opp') { b.fx[st[i].id] = 'void'; st.splice(i, 1); n++; }
-        if (!solidCount(o.grid[r][c])) for (const ch of st.splice(0)) b.fx[ch.id] = 'void'; }
-      if (bonus === 'unharden') for (const { cell } of allCells(o)) unHard(b, cell);
-      yield step(b, tx('feed.swept-off-s-bet', { tag, n, name: o.name }), [], 'play'); return; }
-    case 'scatter': { const picked = [];
-      for (let r = 0; r < o.rows && picked.length < total; r++) for (let c = 0; c < o.dims.cols && picked.length < total; c++) { const cell = o.grid[r][c]; if (anchored(cell)) continue;
-        while (picked.length < total && topSolid(cell) >= 0) picked.push(cell.chips.splice(topSolid(cell), 1)[0]);
-        if (!solidCount(cell)) for (const ch of cell.chips.splice(0)) b.fx[ch.id] = 'void'; }
-      let lost = 0;
-      for (const ch of picked) { const free = allCells(o).filter((x) => capacityLeft(o, x.cell) > 0 && b.rng.chance(0.6));
-        if (free.length) pushChip(b.rng.pick(free).cell, ch); else if (isPayable(ch)) { b.stage.paid[o.idx] += ch.value; b.fx[ch.id] = 'stage'; toPit(b, o.idx, ch, 'fee'); lost += ch.value; } else b.fx[ch.id] = 'void'; }
-      yield step(b, tx('feed.chips-scattered', { tag, pickedN: picked.length, v: lost ? tx('feed.fell-to-the-stage', { lost }) : '' }), [], 'play'); return; }
+    default: yield* playChips(b, s, e, def, { t: t || o, o, origin, cells, total, vals, bonus, pierce, tag, again: opt.again }); return;
   }
+}
+
+// ---------- trick effects, as chip effects ----------
+// Every effect a trick has (but an Expense's fee, which is Debt chips already) is the work of a chip: the trick lays
+// the chip (content/chipmaker.js, an action { k: 'fx', fx }) and the chip does this. Anything that lays the chip gets
+// the effect: a trick, another chip, a tilt, the chip painter. x: s the Roller it works for, o the other, t the position
+// it works on, cells the spaces it reaches there, total its strength (the roll it was made with), bonus the trick's
+// Bonus when met, origin the space it was aimed at, tag who to name in the feed; e the trick's Run entry (none when
+// no trick laid it), by an arrangement's name, make a maker's { chip, n, life }.
+const FX = {
+  block: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { const kind = bonus === 'counter' ? 'counter' : 'block'; const n = Math.min(total, 60);
+        const left = addToMeter(b, s, Array.from({ length: n }, () => mkChip(b, kind)), origin, 'spawn');
+        yield step(b, tx('feed.chips-to-the-bet', { tag, n, v: kind === 'counter' ? 'Counter' : 'Block', overText: overText(left) }), origin ? [origin] : [], 'play'); return; },
+  make: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { // effect chips on the target stacks; a full stack takes none (the overflow is lost, like overkill)
+        const M = make, X = SHOP_CHIPS[M.chip], n = M.n[0] + Math.floor(total / M.n[1]), life = M.life[0] + Math.floor(total / M.life[1]); let put = 0, over = 0;
+        for (const { r, c } of cells) { const cell = s.grid[r][c]; let k = 0; while (k < n && placeFx(b, s, cell, M.chip, life, e?.trick.id ?? null)) k++; put += k; over += n - k; }
+        yield step(b, tx('feed.placed', { tag, put, name: X.name, v: put ? ` for ${life >= 99 ? 'the bout' : tx('feed.line-2', { life })}` : '', v2: over ? tx('feed.had-no-room-and-3', { over }) : '' }), cells.map((x) => ref(s, x.r, x.c)), put ? 'play' : 'miss'); return; },
+  harden: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { const turns = clamp(Math.floor(total / 4), 1, 5); for (const { r, c } of cells) if (solidCount(s.grid[r][c])) setHard(b, s.grid[r][c], turns);
+        yield step(b, tx('feed.stacks-hardened-for', { tag, turns }), cells.map((x) => ref(s, x.r, x.c)), 'play'); return; },
+  resist: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { s.status.resist += total; if (bonus === 'extend') s.status.resistNext = total;
+        yield step(b, tx('feed.resist', { tag, total }), [], 'play'); return; },
+  evade: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { s.status.evade = s.status.evade == null ? total : Math.min(s.status.evade, total); if (bonus === 'extend') s.status.evadeNext = total;
+        yield step(b, tx('feed.fees-over-will-miss', { tag, total }), [], 'play'); return; },
+  reflect: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { s.status.reflect = total; s.status.reflectAll = bonus === 'extend';
+        yield step(b, tx('feed.reflect', { tag, total }), [], 'play'); return; },
+  enfeeble: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { o.mods.enfeeble += total; if (bonus === 'extend') o.status.enfeebleNext = Math.floor(total / 2);
+        yield step(b, tx('feed.s-roll-effects-lose', { tag, name: o.name, total }), [], 'play'); return; },
+  bend: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { const v = e?.dice[0]?.value ?? total; // no die on it: the total stands in if (bonus === 'bendopp') o.mods.bend = v; else s.mods.bend = v;
+        yield step(b, tx('feed.every-die-in-play', { tag, v: bonus === 'bendopp' ? o.name + ' has' : 'they have', v2: v }), [], 'play'); return; },
+  press: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { s.mods.press += total; s.mods.pierce = true; if (bonus === 'extend') addPower(b, s, Math.floor(total / 2));
+        yield step(b, tx('feed.expenses-gain-and-pierce', { tag, total }), [], 'play'); return; },
+  parlay: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { const even = (e?.dice[0]?.value ?? total) % 2 === 0; s.mods.mul *= even ? 2 : 0.5;
+        yield step(b, `${tag}: ${even ? tx('feed.even-effects-doubled') : tx('feed.odd-effects-halved')}.`, [], 'play'); return; },
+  freeze: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { let n = 0;
+        for (const { r, c } of cells) { const st = s.grid[r][c].chips, take = [];
+          for (let i = st.length - 1; i >= 0 && take.length < total; i--) { const ch = st[i]; if (isHazard(ch) || ch.kind === 'debt') continue; if (ch.kind !== 'std' || ch.gold || ch.resist) break; take.push(ch); } // Chill brings its own water: it wets what it freezes
+          for (const ch of st) if (ORGANIC.includes(ch.kind) && !ch.frozen) { ch.frozen = true; n++; }
+          if (take.length < 2) continue;
+          if (s.grid[r][c].puddle) s.grid[r][c].puddle.ice = true;
+          const sumv = sum(take, (ch) => ch.value); for (const ch of take) { st.splice(st.indexOf(ch), 1); b.fx[ch.id] = 'void'; }
+          pushChip(s.grid[r][c], mkChip(b, 'std', sumv, { frozen: true })); n += take.length; }
+        yield step(b, `${tag}: ${n ? tx('feed.chips-frozen-together', { n }) : 'nothing to freeze'}.`, cells.map((x) => ref(s, x.r, x.c)), n ? 'play' : 'miss'); return; },
+  sticky: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { let n = 0;
+        for (const { r, c } of cells) { const cell = t.grid[r][c]; if (!solidCount(cell) || cell.chips.some((ch) => ch.kind === 'sticky')) continue;
+          const st = mkChip(b, 'sticky', solidCount(cell), { stuck: firstMod(cell) }); cell.chips.push(st); b.fx[st.id] = 'spawn'; bind(b, cell); n++; }
+        yield step(b, tx('feed.gummed-with-a-sticky', { tag, n }), cells.map((x) => ref(t, x.r, x.c)), n ? 'play' : 'miss'); return; },
+  doom: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { let n = 0; const list = bonus === 'aura' ? allCells(t) : cells.map(({ r, c }) => ({ r, c, cell: t.grid[r][c] }));
+        for (const x of list) { if (n >= total || !solidCount(x.cell) || capacityLeft(t, x.cell) <= 0 || x.cell.chips[topSolid(x.cell)]?.kind === 'doom') continue; const d = mkChip(b, 'doom', 0, { owner: s.idx }); pushChip(x.cell, d); b.fx[d.id] = 'spawn'; n++; }
+        yield step(b, tx('feed.planted', { tag, n }), list.map((x) => ref(t, x.r, x.c)), n ? 'play' : 'miss'); return; },
+  hat: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { let n = 0; if (total >= 8) for (const { r, c } of cells) { const cell = t.grid[r][c]; if (!solidCount(cell) || capacityLeft(t, cell) <= 0 || cell.chips.some((ch) => ch.kind === 'hat') || cell.link || cell.anchor) continue; const hat = mkChip(b, 'hat', 0, { owner: s.idx }); cell.chips.unshift(hat); b.fx[hat.id] = 'spawn'; n++; }
+        yield step(b, `${tag}: ${n ? tx('feed.magic-slipped-under-s', { n, name: o.name }) : 'the trick needs a total of 8'}.`, cells.map((x) => ref(t, x.r, x.c)), n ? 'play' : 'miss'); return; },
+  handoff: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { let n = 0;
+        for (const { r, c } of cells) { const cell = t.grid[r][c], from = allCells(s).find((x) => x.cell.chips.some((ch) => ch.shop === 'uranium')); if (!from || capacityLeft(t, cell) <= 0) continue;
+          const u = from.cell.chips.find((ch) => ch.shop === 'uranium'); from.cell.chips.splice(from.cell.chips.indexOf(u), 1); emptyOut(b, from.cell); pushChip(cell, u); n++; }
+        yield step(b, `${tag}: ${n ? tx('feed.uranium-handed-to', { n, name: o.name }) : 'no Uranium to hand off'}.`, cells.map((x) => ref(t, x.r, x.c)), n ? 'play' : 'miss'); return; },
+  feather: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { const turns = Math.max(1, Math.floor(total / 3)); let n = 0;
+        for (const { r, c } of cells) { const i = topPayableIdx(s.grid[r][c]); if (i < 0) continue; const ch = s.grid[r][c].chips[i]; ch.feather = Math.max(ch.feather || 0, turns); n++; }
+        yield step(b, tx('feed.feathered-for', { tag, n, turns }), cells.map((x) => ref(s, x.r, x.c)), n ? 'play' : 'miss'); return; },
+  saturate: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { s.mods.boost += total; const had = o.mods.boost; o.mods.boost = 0; o.mods.subdued = true; if (bonus === 'extend') dropPower(b, o);
+        yield step(b, tx('feed.other-roll-effects-gain-2', { tag, total, name: o.name, v: had ? ` (${had})` : '', v2: bonus === 'extend' ? ' and their Power drained' : '' }), [], 'play'); return; },
+  arrange: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { const side = t, all = bonus === 'aura';
+        const moved = arrange(b, side, by, all ? null : cells);
+        yield step(b, tx('feed.moved-in-s-position', { tag, moved, name: side.name }), moved ? (all ? allCells(side) : cells).map((x) => ref(side, x.r, x.c)) : [], moved ? 'play' : 'miss'); return; },
+  gild: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { let n = 0; for (const { r, c } of cells) { let left = total; const st = s.grid[r][c].chips;
+          for (let i = st.length - 1; i >= 0 && left > 0; i--) if (st[i].kind === 'std' && !st[i].gold && !stuckIce(st[i], s.grid[r][c])) { st[i].gold = true; left--; n++; } }
+        yield step(b, tx('feed.turned-to-gold', { tag, n }), cells.map((x) => ref(s, x.r, x.c)), 'play'); return; },
+  settle: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { const n = settleColumn(b, s, origin, total);
+        if (bonus === 'blocks') addToMeter(b, s, [mkChip(b, 'block'), mkChip(b, 'block')], null, 'spawn');
+        yield step(b, tx('feed.cleansed-stake-organized', { tag, n }), [], 'play'); return; },
+  gather: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { const n = recoup(b, s, total, bonus === 'both');
+        yield step(b, tx('feed.recovered-from-the-stage', { tag, n }), [], 'play'); return; },
+  fence: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { let n = 0; for (const { cell } of allCells(s)) { const d = debtOf(cell); if (!d || n >= total) continue; const take = Math.min(d, total - n); setDebt(b, cell, d - take); n += take; }
+        const left = addToMeter(b, s, Array.from({ length: n }, () => mkChip(b, 'opp', 1)), null, 'spawn');
+        if (bonus === 'blocks') left.push(...addToMeter(b, s, [mkChip(b, 'block'), mkChip(b, 'block')], null, 'spawn'));
+        yield step(b, tx('feed.of-debt-fenced-into', { tag, n, overText: overText(left) }), [], 'play'); return; },
+  sweep: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { let n = 0; for (let r = 0; r < o.dims.meterRows; r++) for (let c = 0; c < o.dims.cols; c++) { const st = o.grid[r][c].chips;
+          for (let i = st.length - 1; i >= 0 && n < total; i--) if (isShield(st[i]) || st[i].kind === 'opp') { b.fx[st[i].id] = 'void'; st.splice(i, 1); n++; }
+          if (!solidCount(o.grid[r][c])) for (const ch of st.splice(0)) b.fx[ch.id] = 'void'; }
+        if (bonus === 'unharden') for (const { cell } of allCells(o)) unHard(b, cell);
+        yield step(b, tx('feed.swept-off-s-bet', { tag, n, name: o.name }), [], 'play'); return; },
+  scatter: function* ({ b, s, o, t, cells, total, bonus, e, origin, tag, by, make }) { const picked = [];
+        for (let r = 0; r < o.rows && picked.length < total; r++) for (let c = 0; c < o.dims.cols && picked.length < total; c++) { const cell = o.grid[r][c]; if (anchored(cell)) continue;
+          while (picked.length < total && topSolid(cell) >= 0) picked.push(cell.chips.splice(topSolid(cell), 1)[0]);
+          if (!solidCount(cell)) for (const ch of cell.chips.splice(0)) b.fx[ch.id] = 'void'; }
+        let lost = 0;
+        for (const ch of picked) { const free = allCells(o).filter((x) => capacityLeft(o, x.cell) > 0 && b.rng.chance(0.6));
+          if (free.length) pushChip(b.rng.pick(free).cell, ch); else if (isPayable(ch)) { b.stage.paid[o.idx] += ch.value; b.fx[ch.id] = 'stage'; toPit(b, o.idx, ch, 'fee'); lost += ch.value; } else b.fx[ch.id] = 'void'; }
+        yield step(b, tx('feed.chips-scattered', { tag, pickedN: picked.length, v: lost ? tx('feed.fell-to-the-stage', { lost }) : '' }), [], 'play'); return; },
+};
+export const FX_KINDS = Object.keys(FX);
+// the effect a chip model plays, if it is one of these ({ k: 'fx', fx, by? }), and the effect a trick lays
+export const fxAction = (chip) => MADE_CHIPS[chip]?.actions?.find((A) => A.k === 'fx' && FX[A.fx]) || null;
+export const fxOf = (def) => (def?.roll?.k === 'chips' ? fxAction(def.roll.chip)?.fx || null : null);
+// a maker: a trick that lays effect chips, so many and for so long by the roll (roll: { chip, n: [base, per], life: [base, per] })
+export const makeOf = (def) => (def?.roll?.k === 'chips' && def.roll.n && SHOP_CHIPS[def.roll.chip] ? def.roll : null);
+// Lay an effect's chip: under the stack it was aimed at, or (an effect with no aim) on the first space of its Roller's
+// Bet. It has done its work when a trick lays it (spent), and is gone at the end of the turn like any chip that lasts one.
+function layFx(b, s, t, origin, chip, total) {
+  const side = origin ? t : s, at = origin || meterOrder(s).find(({ r, c }) => !s.grid[r][c].hole && !s.grid[r][c].link); if (!at) return null;
+  const mc = mkMade(b, chip); mc.power = total; mc.by = s.idx; mc.spent = true; side.grid[at.r][at.c].chips.unshift(mc); b.fx[mc.id] = 'spawn'; return mc;
 }
 
 // ---------- end of turn ----------
@@ -2063,6 +2085,7 @@ export function sandboxChip(b, side, r, c, what, op = 'add', at = null) {
   if (what.kind === 'puddle') { if (cell.link) return false; if (op === 'change' && cell.puddle) { delete cell.puddle; return true; } water(b, s, { cell, r, c }); return true; } // the Puddle chip goes under the stack
   const ch = make(); if (!ch) return false;
   if (op === 'change') { const e = stackEdit(cell.chips, 'change', ch, atI, topI); if (!e) return false; b.fx[e.old.id] = 'void'; b.fx[ch.id] = 'mutate'; return true; }
+  if (ch.kind === 'made') (s.madeNew ||= []).push(ch.id); // it fires 'when made' at the end of the phase, like any other
   if (ch.kind === 'made' && footOf(ch) > 1) { const at = footBlock(s, r, c, footOf(ch)); if (!at) return false; claimFoot(s, at.r, at.c, footOf(ch)); s.grid[at.r][at.c].chips.push(ch); b.fx[ch.id] = 'spawn'; return true; }
   if (ch.kind === 'made' ? !fits(s, cell, ch) : (cell.hole || cell.link || (!isHazard(ch) && capacityLeft(s, cell) <= 0))) return false;
   if (op === 'add' && ch.kind === 'made') placeMade(cell, ch, 'over') || cell.chips.push(ch); // a made chip takes the place its own rules give it
@@ -2234,6 +2257,9 @@ const lastsOfModel = (M) => M.lasts;
 // one made chip's triggered work: its actions on everything its reach covers
 function fire(b, s, at, M) { let n = 0; const list = reachOf(b, s, at, M);
   for (const A of M.actions || []) { if (A.k === 'pull') { n += pullTo(b, s, at, A); continue; }
+    if (A.k === 'fx') { if (at.ch.spent || !FX[A.fx]) continue; at.ch.spent = true; // laid by something other than a trick: it works for the Roller it was laid for, on the space it sits on
+      const me = b.sides[at.ch.by ?? s.idx], x = { b, s: me, o: b.sides[1 - me.idx], t: s, cells: [{ r: at.r, c: at.c }], total: Math.max(1, at.ch.power || M.value || 1), bonus: null, e: null, origin: { side: s.idx, r: at.r, c: at.c }, tag: M.name, by: A.by, make: null };
+      for (const st of FX[A.fx](x)) void st; n++; continue; }
     if (A.k === 'move' && A.how && A.how !== 'hop') { n += moveStacks(b, s, at, A, list); continue; } // slides, lifts and slips work on stacks
     if (A.n === 'share') { // the amount it was made with, handed out 1 at a time round the chips it reaches that can take it
       const takers = list.filter((tg) => !blockedBy(b, s, tg, M) && (A.k !== 'value' || isPayable(tg.ch) || tg.ch.kind === 'made'));

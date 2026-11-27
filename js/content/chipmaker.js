@@ -43,7 +43,15 @@ export const TRIGGERS = { turn: 'Each turn', created: 'When it is made', removed
 export const MOVE_HOW = { hop: 'Hop: each chip it reaches, one space', slide: 'Slide: its stack along the felt, pushing the stacks in its way', lift: 'Lift: its top chip onto the next stack', slip: 'Slip: its top chip in under the next stack' };
 export const MOVE_STEPS = { 1: '1 space', 2: '2 spaces', 3: '3 spaces', all: 'As far as it goes (closing the gaps)', power: 'A space per 4 rolled' };
 export const ACTIONS = { move: 'Move them (left, right, up, down, or to an area)', value: 'Change their coin value', hits: 'Change their strength', power: 'Change their effect value', become: 'Turn them into another chip',
-  pull: 'Pull chips out of a Pit (up to an amount, onto its stack)' };
+  pull: 'Pull chips out of a Pit (up to an amount, onto its stack)', fx: 'Play a trick effect (as strong as the roll it was made with)' };
+// The trick effects a chip can play (an action { k: 'fx', fx }; bout.js FX does the work). Every trick but an Expense
+// plays through one of these: it lays the chip, the chip plays the effect. An arrangement also names its order (by).
+export const EFFECTS = {
+  block: 'Lay Block chips on the Bet', harden: 'Harden stacks', resist: 'Resist fees this turn', evade: 'Evade big fees this turn', reflect: 'Reflect a fee', freeze: 'Freeze chips together', feather: 'Feather a top chip',
+  enfeeble: 'Weaken the other Roller\'s rolls', bend: 'Bend the dice in play', gild: 'Gild chips', press: 'Strengthen Expenses and pierce', parlay: 'Double or halve on evens or odds', saturate: 'Boost your rolls and subdue theirs',
+  settle: 'Clear a column and pack it', gather: 'Recover fees paid', scatter: 'Scatter front chips', sweep: 'Sweep shields off a Bet', arrange: 'Sort lanes into an order', sticky: 'Gum a stack', doom: 'Plant Doom chips',
+  hat: 'Slip a Magic Hat under', handoff: 'Hand off Uranium', fence: 'Fence Debt into Opportunity chips' };
+export const ARRANGES = { front: 'Everything forward', back: 'Everything back', shields: 'Shields to the front', 'shields-back': 'Shields to the back', 'value-front': 'Biggest chips at the front', 'value-back': 'Biggest chips at the back' };
 // where a Pull action takes from: the chip's own side's Pit, the other side's, or both (its own first)
 export const PULL_FROM = { mine: 'Its own Pit', theirs: 'The other Pit', both: 'Both Pits' };
 
@@ -52,6 +60,10 @@ export const PULL_FROM = { mine: 'Its own Pit', theirs: 'The other Pit', both: '
 export const SLIP = { no: 'Needs empty spaces', yes: 'Slips under the stacks there' };
 export const NEW_CHIP = { name: 'New chip', text: '', value: 1, hits: 0, source: 'trick', lasts: 'paid', turns: 3, height: 'basic', foot: 'basic', must: 'any', onTop: 'fits', immune: [],
   color: '#7df3ff', move: 'still', reach: { to: 'touching', range: 1 }, triggers: [], actions: [] };
+
+// a chip that plays a trick effect when it is made, and is gone at the end of the turn
+const fxChip = (name, fx, color, text, more = {}) => ({ name, text, value: 0, hits: 0, source: 'trick', lasts: 'turn', turns: 1, height: 'tiny', foot: 'basic', must: 'bottom', onTop: 'fits', immune: [],
+  color, move: 'still', reach: { to: 'touching', range: 1 }, triggers: [{ on: 'created' }], actions: [{ k: 'fx', fx, ...more }] });
 
 // Chips made in the build mode, by id. The trick maker can make any of them.
 export const MADE_CHIPS = {
@@ -84,6 +96,63 @@ export const MADE_CHIPS = {
   tuck: { name: 'Tuck', text: 'Slips the top chip of the stack it lands on in under the stack behind it, if that stack has the height for it.',
     value: 0, hits: 0, source: 'trick', lasts: 'turn', turns: 1, height: 'tiny', foot: 'basic', must: 'any', onTop: 'fits', immune: [], color: '#c9a37a', move: 'still', reach: { to: 'touching', range: 1 },
     triggers: [{ on: 'created' }], actions: [{ k: 'move', how: 'slip', dir: 'down', steps: 1 }] },
+  // ----- every other trick effect, as a chip: the trick lays it (under the stack it is aimed at, or on your Bet), it
+  // plays the effect with the roll it was made with, and it is gone at the end of the turn. Laid by anything else
+  // (another chip, a tilt, the chip painter) it plays the same effect on the space it sits on. -----
+  guard: fxChip('Guard', 'block', '#7fd0ee',
+    'Add Block chips equal to the total to your Bet, starting at the target space.'),
+  brace: fxChip('Brace', 'harden', '#7fd0ee',
+    'Harden the target stacks: each fee costs them only one chip. Lasts 1 turn per 4 rolled (at least 1).'),
+  endure: fxChip('Endure', 'resist', '#7fd0ee',
+    'Resist: every fee charged to you this turn is reduced by the total.'),
+  hop: fxChip('Hop', 'evade', '#7fd0ee',
+    'Evade: this turn, any fee larger than the total misses you entirely. Roll low.'),
+  shine: fxChip('Shine', 'reflect', '#7fd0ee',
+    'Reflect: up to the total of the next fee charged to you this turn is sent back at the attacker.'),
+  chill: fxChip('Chill', 'freeze', '#7fd0ee',
+    'Wet and freeze up to the total chips of the target stack into one Frozen chip worth their sum, and freeze any plants on it. In an iced-over Puddle the Frozen chip is frozen to the ground: it cannot be bid, burned, corrupted or shocked. A fee smaller than it only leaves Debt.'),
+  float: fxChip('Float', 'feather', '#7fd0ee',
+    'Turn the top chip of the target stack into a Feather chip for 1 turn per 3 rolled (at least 1): any fee larger than that stack\'s worth misses it.'),
+  rattle: fxChip('Rattle', 'enfeeble', '#b9a2ee',
+    'Enfeeble: your opponent\'s roll effects this turn lose the total.'),
+  bend: fxChip('Bend', 'bend', '#b9a2ee',
+    'Bend: this roll replaces every die on your own played tricks this turn.'),
+  gild: fxChip('Gild', 'gild', '#b9a2ee',
+    'Gild up to the total chips in the target stack. Gold chips cannot be bid, but pay double if they survive the bout.'),
+  bear: fxChip('Bear Down', 'press', '#b9a2ee',
+    'Press: your Expenses this turn gain the total and ignore Block chips, Resist and Hardened stacks.'),
+  parlay: fxChip('Parlay', 'parlay', '#b9a2ee',
+    'Gamble: on an even roll your other roll effects this turn are doubled. On an odd roll they are halved.'),
+  saturate: fxChip('Saturate', 'saturate', '#b9a2ee',
+    'Your other roll effects this turn gain the total, and your opponent\'s boosts this turn are subdued to nothing.'),
+  settle: fxChip('Settle', 'settle', '#8fd6a4',
+    'In the targeted column, remove Debt and hazard chips up to the total, then gather that column\'s chips into full stacks starting at the targeted space, filling outward from it.'),
+  gather: fxChip('Gather', 'gather', '#8fd6a4',
+    'Recover up to the total in ¢ from the fees you have paid to the Stage, back onto your Bet.'),
+  scatter: fxChip('Scatter', 'scatter', '#8fd6a4',
+    'Scatter chips from the front of your opponent\'s position, up to the total, to random spaces. Chips with nowhere to land fall to the Stage.'),
+  sweep: fxChip('Sweep', 'sweep', '#8fd6a4',
+    'Sweep Block, Counter and Opportunity chips off your opponent\'s Bet, up to the total.'),
+  bulwark: fxChip('Bulwark', 'arrange', '#8fd6a4',
+    'Defensive: in the target lanes, Block, Counter, Petal and Clay chips move to the front, on top, and your value chips fall in behind them.', { by: 'shields' }),
+  stackup: fxChip('Stack Up', 'arrange', '#8fd6a4',
+    'In the target lanes, sort chips by value with the biggest at the front: small fees only leave Debt on them.', { by: 'value-front' }),
+  stash: fxChip('Stash', 'arrange', '#8fd6a4',
+    'In the target lanes, sort chips by value with the biggest at the back, behind the small ones.', { by: 'value-back' }),
+  expose: fxChip('Expose', 'arrange', '#8fd6a4',
+    'Aggressive: in your opponent\'s target lanes, drag their biggest chips to the front where your fees land first.', { by: 'value-front' }),
+  rout: fxChip('Rout', 'arrange', '#8fd6a4',
+    'Aggressive: in your opponent\'s target lanes, push their Block, Counter, Petal and Clay chips to the back, out of the way.', { by: 'shields-back' }),
+  gum: fxChip('Gum Up', 'sticky', '#8fd6a4',
+    'Stick a Sticky chip on the target stack: its first timed modifier (a buff or a debuff) stops counting down.'),
+  foretell: fxChip('Foretell', 'doom', '#8fd6a4',
+    'Plant a Doom chip on top of each target stack, up to the total. Your opponent sees plain 1¢ chips. Once every one of their stacks is topped with Doom, each Doom chip charges 1¢ of Debt a turn.'),
+  conjure: fxChip('Conjure', 'hat', '#8fd6a4',
+    'Slip a Magic Hat under the target stack (a total of 8 or more). Each turn the chip on it falls in and is lost.'),
+  handoff: fxChip('Hand Off', 'handoff', '#8fd6a4',
+    'Move one of your Uranium chips onto the target stack. Its radiation is their problem now.'),
+  fence: fxChip('Fence', 'fence', '#8fd6a4',
+    'Convert Debt chips on your position, up to the total, into Opportunity chips on your Bet.'),
   // Regen, as a chip: it sits on a stack for two turns and brings your lost chips back out of your Pit onto it, up to the
   // roll it was made with each time (the real chips, newest first, whole chips only).
   mend: { name: 'Mend', text: 'When it is made and at the end of each turn it brings chips back out of your Pit onto its stack, up to the roll it was made with. Gone after 2 turns.',

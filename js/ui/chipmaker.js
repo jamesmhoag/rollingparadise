@@ -6,7 +6,7 @@ import * as D from '../data.js';
 import * as B from '../build/draft.js';
 import { chipEl, madeRules } from './parts.js';
 import { t } from '../text.js';
-import { SOURCES, LASTS, HEIGHT, FOOTPRINT, MUST, ON_TOP, STICKY, IMMUNE, MOVES, REACH, TRIGGERS, ACTIONS, PULL_FROM, NEW_CHIP, MOVE_HOW, MOVE_STEPS } from '../content/chipmaker.js';
+import { SOURCES, LASTS, HEIGHT, FOOTPRINT, MUST, ON_TOP, STICKY, IMMUNE, MOVES, REACH, TRIGGERS, ACTIONS, PULL_FROM, NEW_CHIP, MOVE_HOW, MOVE_STEPS, EFFECTS, ARRANGES } from '../content/chipmaker.js';
 import { asMade } from '../chipmodel.js';
 
 const path = (id, ...ks) => ks.reduce((p, k) => D.subPath(p, k), D.subPath('MADE_CHIPS', id));
@@ -69,6 +69,7 @@ export function chipMaker(id, classic, redraw, onCopy) {
         x.how && x.how !== 'hop' ? smallSelect(Object.entries(MOVE_STEPS).filter(([k]) => x.how === 'slide' || k !== 'all'), String(x.steps ?? 1), (v) => upd({ ...x, steps: /^\d+$/.test(v) ? Number(v) : v })) : null,
         x.how === 'slide' && x.steps !== 'all' ? tick(t('chipmaker.move.spill'), x.spill, (v) => upd({ ...x, spill: v || undefined })) : null,
         x.how === 'lift' || x.how === 'slip' ? tick(t('chipmaker.move.whole'), x.whole, (v) => upd({ ...x, whole: v || undefined })) : null)
+      : x.k === 'fx' ? h('span', { class: 'row wrap' }, smallSelect(Object.entries(EFFECTS), x.fx || 'block', (v) => upd({ k: 'fx', fx: v, ...(v === 'arrange' ? { by: 'front' } : {}) })), x.fx === 'arrange' ? smallSelect(Object.entries(ARRANGES), x.by || 'front', (v) => upd({ ...x, by: v })) : null)
       : x.k === 'become' ? smallSelect(kinds(), x.chip || 'std', (v) => upd({ ...x, chip: v }))
       : x.k === 'pull' ? h('span', { class: 'row' }, smallSelect(Object.entries(PULL_FROM), x.from || 'mine', (v) => upd({ ...x, from: v })), amount(x.n ?? 5, (v) => upd({ ...x, n: v }), { min: 1, blank: 1, title: t('chipmaker.pull.amount') }), tick(t('chipmaker.pull.bids'), x.bids, (v) => upd({ ...x, bids: v || undefined })))
         : amount(x.n ?? 1, (v) => upd({ ...x, n: v }), { blank: 0, title: t('chipmaker.amount') }))), ['actions']),

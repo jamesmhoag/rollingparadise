@@ -49,6 +49,9 @@ export const placeIndex = (place, at, n) => (place === 'under' ? 0 : place === '
 
 // The words on the card, worked out from the configuration
 export function describeRoll(def) {
+  const fx = MADE_CHIPS[def.roll.chip]?.actions?.some((A) => A.k === 'fx'); if (fx) return MADE_CHIPS[def.roll.chip].text; // an effect's chip says what it does
+  if (def.roll.n && SHOP_CHIPS[def.roll.chip]) { const R = def.roll, X = SHOP_CHIPS[R.chip]; // a maker: so many, for so long, by the roll
+    return tx('trick.maker', { name: X.name, n: R.n[0], per: R.n[1], v: R.n[1] >= 99 ? '' : tx('trick.maker.more', { per: R.n[1] }), life: R.life[0] >= 99 ? tx('trick.maker.bout') : tx('trick.maker.turns', { life: R.life[0], per: R.life[1] }) }); }
   const R = def.roll, kind = makeKind(R.chip), dep = DEPLOY[R.deploy] || DEPLOY.hit;
   const what = kind === 'pit' ? tx('trick.take-up-to-the', { v: MAKES[R.chip].pit === 'mine' ? 'your' : 'your opponent\'s' })
     : kind === 'fee' ? (R.convert === 'lump' ? tx('trick.charge-a-fee-equal') : R.convert === 'precise' ? tx('trick.charge-a-fee-for') : tx('trick.charge-a-1-fee'))
@@ -62,7 +65,7 @@ export function describeRoll(def) {
   return `${what}${where}${place}${life}${shape ? ` (${shape})` : ''}.${M?.text ? ' ' + M.text : ''}`;
 }
 export function describeBonus(def) {
-  const B = BONUS[def.bonus.k]; if (!B) return def.bonus.text || '';
+  const B = BONUS[def.bonus.k]; if (!B || (B.fx && def.bonus.text)) return def.bonus.text || ''; // an effect's own Bonus keeps the words written for it
   const t = B.text({ ...def.bonus, chip: def.bonus.chip || 'block' }, makeName); return t.charAt(0).toUpperCase() + t.slice(1) + '.';
 }
 // a whole made trick in one line, for lists and the maker's preview

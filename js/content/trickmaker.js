@@ -59,14 +59,20 @@ export const BONUS = {
   extra: { name: 'Extra chip', text: (b, name) => `also makes ${b.n || 1} ${(b.n || 1) === 1 ? name(b.chip).replace(/s$/, '') : name(b.chip)}` },
   double: { name: 'Doubled', text: () => 'the total is doubled' },
   pierce: { name: 'Piercing', text: () => 'its fees ignore Block chips, Resist and Hardened stacks' },
+  // an effect's own Bonuses (a trick whose chip plays a trick effect, or a maker): each is read by the effects that know it
+  spread: { name: 'Spread', fx: true, text: () => 'reaches the neighbouring spaces too' },
+  aura: { name: 'Whole position', fx: true, text: () => 'reaches the whole position' },
+  extend: { name: 'Extended', fx: true, text: () => 'lasts longer' },
+  counter: { name: 'Counter chips', fx: true, text: () => 'the Block chips are Counter chips' },
+  blocks: { name: 'Two Block chips', fx: true, text: () => 'also adds 2 Block chips to your Bet' },
+  both: { name: 'Both Rollers', fx: true, text: () => 'takes from your opponent as well' },
+  unharden: { name: 'Unharden', fx: true, text: () => 'also removes Hardened from every stack' },
+  bendopp: { name: 'Bend theirs', fx: true, text: () => 'bends your opponent\'s dice instead' },
+  none: { name: 'Nothing', fx: true, text: () => 'nothing more' },
 };
 // the roll effects tricks had before the maker, by roll.k, so the maker can name them
-export const CLASSIC = {
-  fee: 'Fee', block: 'Blocks', harden: 'Harden', resist: 'Resist', evade: 'Evade', reflect: 'Reflect', freeze: 'Freeze', feather: 'Feather',
-  regen: 'Regenerate', boost: 'Boost', enfeeble: 'Enfeeble', bend: 'Bend', gild: 'Gild', press: 'Press', parlay: 'Parlay', saturate: 'Saturate',
-  settle: 'Settle', gather: 'Gather', scatter: 'Scatter', sweep: 'Sweep', arrange: 'Arrangement', sticky: 'Sticky', doom: 'Doom', hat: 'Magic Hat',
-  handoff: 'Handoff', fence: 'Fence', make: 'Make effect chips',
-};
+// (an Expense's fee is the one left: every other effect is a chip's now, see EFFECTS in content/chipmaker.js)
+export const CLASSIC = { fee: 'Fee' };
 // a new trick from the maker starts as this
 export const NEW_TRICK = { name: 'New trick', type: 'expense', cls: null, die: 'd6', count: 2, side: 'opp', approach: 'front', dist: 'hit',
   roll: { k: 'chips', chip: 'debt', convert: 'lump', place: 'over', deploy: 'hit', text: '' }, bonus: { cond: 'match', k: 'double', text: '' } };

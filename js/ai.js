@@ -30,8 +30,9 @@ export function evalTarget(b, s, e, tgt) {
       v += def.tax ? w : Math.min(share, w + shields * 0.4) - (B.hardOf(cell) > 0 ? share * 0.6 : 0); }
     return v;
   }
-  if (def.make) { // a maker: as many chips placed as it will make (least waste), on the stacks worth protecting
-    const n = def.make.n[0] + Math.floor(total / def.make.n[1]); let v = 0;
+  const mk = B.makeOf(def);
+  if (mk) { // a maker: as many chips placed as it will make (least waste), on the stacks worth protecting
+    const n = mk.n[0] + Math.floor(total / mk.n[1]); let v = 0;
     for (const { r, c } of cells) { const cell = t.grid[r][c]; v += Math.min(n, B.capacityLeft(t, cell)) * 10 + (def.type === 'investment' ? 0 : Math.max(0, B.cellWorth(cell)) * 0.2); }
     return v - tgt.r * 0.01;
   }
@@ -85,11 +86,11 @@ function planDraw(b, s) {
   const debts = chips.filter(B.isHazard).length, mine = b.stage.paid[s.idx];
   const oppShields = o.grid.slice(0, o.dims.meterRows).flat().flatMap((cell) => cell.chips).filter((ch) => B.isShield(ch) || ch.kind === 'opp').length;
   const score = (t) => {
-    const d = TRICKS[t.id]; let x = { expense: 3, insurance: 1.5, investment: 1.3, correction: 0.6 }[d.type];
-    if (d.roll.k === 'settle' || d.roll.k === 'fence') x += debts * 0.5;
-    if (d.roll.k === 'gather') x += mine > 4 ? 1.6 : -1;
-    if (d.roll.k === 'sweep') x += oppShields * 0.35;
-    if (d.roll.k === 'scatter') x += 1;
+    const d = TRICKS[t.id], fx = B.fxOf(d); let x = { expense: 3, insurance: 1.5, investment: 1.3, correction: 0.6 }[d.type];
+    if (fx === 'settle' || fx === 'fence') x += debts * 0.5;
+    if (fx === 'gather') x += mine > 4 ? 1.6 : -1;
+    if (fx === 'sweep') x += oppShields * 0.35;
+    if (fx === 'scatter') x += 1;
     if (d.type === 'insurance' && b.turn <= 2) x += 0.8;
     if (d.type === 'investment' && !s.run.some((e) => TRICKS[e.trick.id].type === 'expense') && !s.book.some((y) => TRICKS[y.id].type === 'expense')) x -= 1;
     const bh = behaveOf(s), temper = temperOf(s);
