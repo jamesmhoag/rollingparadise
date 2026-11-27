@@ -1289,3 +1289,9 @@ table.b-shop { border-collapse: collapse; width: 100%; font-size: 12px; margin-t
 @keyframes signShard { 0% { opacity: 1; transform: translateY(0) rotate(0); } 100% { opacity: 0; transform: translateY(70px) rotate(var(--r)); } }
 .neonsign.sign-victory { animation: signWin 1s ease-in-out 3; } @keyframes signWin { 50% { filter: brightness(1.55) saturate(1.3); transform: scale(1.04); } }
 @media (prefers-reduced-motion: reduce) { .neonsign.sign-dying, .neonsign.sign-victory, .land { animation: none; } }
+/* dice with pet names */
+.dicebox.named { gap: 6px 8px; align-items: flex-start; } .named-die { display: inline-grid; justify-items: center; gap: 1px; width: 46px; cursor: pointer; } .named-die .die { position: relative; }
+.named-die small { font-size: 8.5px; line-height: 10px; max-width: 46px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--gold); min-height: 10px; }
+.die-name-row { gap: 8px; align-items: center; } .die-name-in { width: 190px; }
+#tooltip b.pet { color: var(--gold); font-family: var(--script, cursive); font-size: 1.25em; font-weight: 400; }
+.b-organise { gap: 6px; align-items: center; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }

@@ -14,6 +14,11 @@ export const canMelt = (die) => MATERIALS[matOf(die)]?.melt !== false;
 export const canModify = (die) => MATERIALS[matOf(die)]?.upgrade !== false;
 // a die's name: 'Glass d6', 'Accelerated Bone d8'
 const mixWord = (die) => (die.cast && CASTS[die.cast]?.mats.length > 1 && CASTS[die.cast].out !== matOf(die) ? CASTS[die.cast].name.split(' ')[0] + ' ' : ''); // dice cast before mixes made their own material
+// A die can be given a pet name (run.js nameDie: when it is cast, or from the Coat Check). It is yours alone: it shows
+// beside the die and at the head of its hover, with what the die is under it. A die with no pet name has none shown:
+// it goes by what it is ('Glass d6').
+export const PET_MAX = 20;
+export const petName = (die) => (typeof die?.name === 'string' && die.name.trim() ? die.name.trim().slice(0, PET_MAX) : '');
 export const dieName = (die) => `${die.bone ? BONE[die.bone].name + ' ' : mixWord(die)}${MATERIALS[matOf(die)].name} ${die.type}`;
 
 const base = (type) => Array.from({ length: DICE[type].faces }, (_, i) => ({ v: i + 1 }));

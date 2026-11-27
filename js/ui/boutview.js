@@ -1222,8 +1222,9 @@ export function boutScene(root, bout, ctx, onDone) {
     const mark = () => ops.forEach((b, i) => b.classList.toggle('on', ui.sandbox.op === ['add', 'change', 'remove'][i]));
     // click and hold on a space to keep applying the tool; sweep to apply it on each space you cross
     let warned = false;
-    paint(root, (ev) => { if (!ui.sandbox.op) return null; const el = ev.target.closest?.('[data-at]'); if (!el) return null; const [si, r, c] = el.dataset.at.split(':').map(Number); return { key: el.dataset.at, si, r, c }; },
-      (at, first) => { if (first) warned = false; if (B.sandboxChip(bout, at.si, at.r, at.c, ui.sandbox.what(), ui.sandbox.op)) sync(); else if (!warned) { warned = true; nope(tt('test.tools.cannot'), els.cells[at.si][at.r][at.c]); } });
+    paint(root, (ev) => { if (!ui.sandbox.op) return null; const el = ev.target.closest?.('[data-at]'); if (!el) return null; const [si, r, c] = el.dataset.at.split(':').map(Number); const pt = ui.point && ui.point.si === si && ui.point.r === r && ui.point.c === c ? ui.point.id : null; // the chip pointed at in that stack
+        return { key: `${el.dataset.at}:${pt ?? ''}`, si, r, c, id: pt }; },
+      (at, first) => { if (first) warned = false; if (B.sandboxChip(bout, at.si, at.r, at.c, ui.sandbox.what(), ui.sandbox.op, at.id)) { ui.point = null; sync(); } else if (!warned) { warned = true; nope(tt('test.tools.cannot'), els.cells[at.si][at.r][at.c]); } });
     ui.sandbox = { op: null, what: () => { const [k, id] = pick.value.split(':'); return k === 'made' ? { made: id } : k === 'shop' ? { shop: id } : { kind: id, value: Number(val.value) || 1 }; } };
     return h('div', { class: 'test-tools' }, h('b', { text: tt(ctx.sandbox ? 'test.tools.sandbox' : 'test.tools.rules') }), pick, val, ...ops,
       btn(tt('test.tools.leave'), () => onDone(), tt('test.tools.leave.tip'), 'small danger'));

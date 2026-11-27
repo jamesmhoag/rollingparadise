@@ -26,5 +26,25 @@ const merged = B.allChanges({ 'A.x': 1, 'A.y': 2 }, { 'A.y': 3, 'A.z': 4 });
 ok(merged['A.x'] === 1 && merged['A.y'] === 3 && merged['A.z'] === 4, 'merge keeps both, the export wins');
 ok(Object.keys(B.parseChanges('{ "TRICKS.charge.count": 2 }')).length === 1, 'a plain JSON draft reads too');
 
+// ---------- organising: delete for good, and move ----------
+{
+  B.discard();
+  B.setValue('CLASSES.tester', { ...JSON.parse(JSON.stringify(D.CLASSES.hustler)), name: 'Tester' });
+  ok(D.CLASSES.tester && B.removeEntry('CLASSES', 'tester').length === 0 && !D.CLASSES.tester && !('CLASSES.tester' in B.draft.changes), 'an entry made in this draft and never exported simply goes');
+  const used = B.removeEntry('CLASSES', 'hustler'); ok(used.length > 0 && D.CLASSES.hustler, 'an entry something still uses is not deleted, and what uses it is named');
+  ok(D.usedBy('JACKETS', 'standard').length > 0 && D.usedBy('WALLETS', 'worn_cloth').length > 0, 'the jacket and wallet every run starts with cannot go');
+  // a stock entry: deleted with a change that stays in the export, and nothing set inside it brings it back
+  const id = Object.keys(D.TRICKS).find((k) => !D.usedBy('TRICKS', k).length); B.setValue(`TRICKS.${id}.count`, 3);
+  ok(B.removeEntry('TRICKS', id).length === 0 && !D.TRICKS[id] && B.draft.changes[`TRICKS.${id}`] === null && !(`TRICKS.${id}.count` in B.draft.changes) && !D.TRICK_IDS.includes(id), 'a deleted entry leaves the game, and the deletion is one of the changes');
+  const file2 = B.overridesFile(), back = B.parseChanges(file2); ok(back[`TRICKS.${id}`] === null && D.isDeletion(`TRICKS.${id}`, null), 'the deletion is exported');
+  ok(!(`TRICKS.${id}.count` in B.migrate({ [`TRICKS.${id}`]: null, [`TRICKS.${id}.count`]: 5 })), 'merged with an older file that still changes it, it stays deleted');
+  D.applyContent({ [`TRICKS.${id}.name`]: 'Back again', [`TRICKS.${id}`]: null }); ok(!D.TRICKS[id], 'applying changes cannot bring a deleted entry back by setting something inside it');
+  B.revert(`TRICKS.${id}`); ok(D.TRICKS[id]?.name, 'until it is exported, undoing the change puts it back');
+  // order
+  const keys = Object.keys(D.CLASSES), last = keys[keys.length - 1];
+  ok(B.moveEntry('CLASSES', last, -1) && Object.keys(D.CLASSES).indexOf(last) === keys.length - 2 && Array.isArray(B.draft.changes['ORDER.CLASSES']), 'moving an entry changes its place in the list, as a change');
+  ok(!B.moveEntry('CLASSES', Object.keys(D.CLASSES)[0], -1), 'the first cannot move up');
+  B.discard();
+}
 if (fails.length) { console.log('FAIL ' + fails.join('\nFAIL ')); process.exit(1); }
 console.log('ok, build: content changes, draft, export, import and merge');

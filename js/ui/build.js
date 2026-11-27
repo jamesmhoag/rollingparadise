@@ -1,6 +1,6 @@
 // Build mode: change the game's content, see it in play, and export the changes to put into the project.
 // This screen edits any table in D.TABLES field by field. The trick, chip, opponent and tuning tools build on it.
-import { h, btn, toast, openPanel, closePanel } from './core.js';
+import { h, btn, toast, openPanel, closePanel, guided } from './core.js';
 import { app } from './app.js';
 import * as D from '../data.js';
 import * as B from '../build/draft.js';
@@ -218,6 +218,22 @@ export function buildScene(root, opts = {}) {
     openPanel(h('div', { class: 'col' }, h('h2', { text: t('build.discard.ask') }), h('p', { class: 'sub', text: t('build.discard.warn', { n: B.count() }) }),
       h('div', { class: 'row' }, btn(t('build.discard.keep'), () => closePanel(), null, 'go'), btn(t('build.discard'), () => { B.discard(); closePanel(); draw(); }, null, 'danger'))));
   }
-  function draw() { drawStatus(); drawTables(); drawEntries(); drawEditor(); }
+  // Organise: the entry open in the editor can be moved up or down its list, or deleted. A deleted entry stays deleted
+  // (the deletion is exported like any other change). Something still using it is named, and it stays.
+  function organise() {
+    const table = { classes: 'CLASSES', rollers: 'ROLLERS', roster: 'ROSTER', tricks: 'TRICKS', chips: 'MADE_CHIPS', cards: 'CARDS', tables: ui.table }[ui.tool], id = ui.key;
+    if (!table || !D.DELETABLE.includes(table) || !id || !D.TABLES[table]?.[id]) return;
+    const keys = Object.keys(D.TABLES[table]), i = keys.indexOf(id), name = D.TABLES[table][id].name || id;
+    const move = (dir) => { if (B.moveEntry(table, id, dir)) draw(); };
+    const ask = () => openPanel(h('div', { class: 'col' }, h('h2', { text: t('build.delete.ask', { name }) }), h('p', { class: 'sub', text: t('build.delete.warn') }),
+      h('div', { class: 'row' }, btn(t('build.discard.keep'), () => closePanel(), null, 'go'), btn(t('build.delete'), () => { const used = B.removeEntry(table, id); closePanel();
+        if (used.length) return toast(t('build.delete.used', { name, list: used.slice(0, 4).join(', '), more: used.length > 4 ? t('build.delete.more', { n: used.length - 4 }) : '' }), 'warn');
+        ui.key = null; toast(t('build.delete.done', { name })); draw(); }, null, 'danger'))));
+    const bar = h('div', { class: 'row b-organise' }, h('span', { class: 'cap', text: t('build.organise') }),
+      guided(btn('▲', () => move(-1), t('build.move.up'), `small ${i <= 0 ? 'off' : ''}`), 'build-option'), guided(btn('▼', () => move(1), t('build.move.down'), `small ${i >= keys.length - 1 ? 'off' : ''}`), 'build-option'),
+      guided(btn(t('build.delete'), ask, t('build.delete.tip'), 'small danger'), 'build-option'));
+    editor.prepend(bar);
+  }
+  function draw() { drawStatus(); drawTables(); drawEntries(); drawEditor(); organise(); }
   draw();
 }

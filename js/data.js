@@ -811,7 +811,10 @@ import { FONTS, IMAGES, TITLE_PARTS, ICONS, TEXTURES, NEON } from './content/ass
 export { FONTS, IMAGES, TITLE_PARTS, ICONS, TEXTURES, NEON };
 import TEXT from './text/en.js';
 import { MATERIALS as _MAT, DICE_SHOP as _DS, BONE as _BONE, MELT as _MELT, CASTS as _CASTS, DYES as _DYES, DIAMOND as _DIA } from './content/dice.js';
-export const TABLES = { CLASSES, ROLLERS, BASE_DIMS, STATS, DICE, MATERIALS: _MAT, DICE_SHOP: _DS, BONE: _BONE, MELT: _MELT, CASTS: _CASTS, DYES: _DYES, DIAMOND: _DIA, DIE_VARS,
+// The order entries are listed in, where Build mode has moved them: { TABLE: [ids, first to last] }. Ids not named keep
+// their own order after the named ones.
+export const ORDER = {};
+export const TABLES = { ORDER, CLASSES, ROLLERS, BASE_DIMS, STATS, DICE, MATERIALS: _MAT, DICE_SHOP: _DS, BONE: _BONE, MELT: _MELT, CASTS: _CASTS, DYES: _DYES, DIAMOND: _DIA, DIE_VARS,
   TYPES, TRICKS, CHIPS, SHOP_CHIPS, CHIP_TIERS, CREATURES, ORBITALS, CALAMITIES, TILTS, TILT_PRESSURE, FELTS, FLOORS, DRINKS, SPORTS, JACKETS, CARDS, WALLETS,
   PASSES, CONDITIONS, PACKS, QDIE, PRIZES, GUIDE, TEXT, MADE_CHIPS, ROSTER, BOSS_TRAITS, FLAVOR, TUNING, SHOPS, SHADY, ODDS, DENOMS, WEAR, IMAGES, ICONS, TEXTURES, NEON };
 const isObj = (x) => x && typeof x === 'object';
@@ -820,7 +823,33 @@ export const splitPath = (path) => path.split(/(?<!\\)\./).map((k) => k.replace(
 export const subPath = (path, key) => `${path}.${String(key).replace(/\./g, '\\.')}`;
 export function getPath(path) { let o = TABLES; for (const k of splitPath(path)) { if (!isObj(o)) return undefined; o = o[k]; } return o; }
 // set one value; the containers on the way are made if missing. Returns the value it replaced.
+// Tables whose entries Build mode can delete. A deleted entry is a change like any other: its path set to null
+// ('CLASSES.angler': null). That stays in the exported file, so the entry does not come back when the file is merged
+// or the game's own tables still list it (deleted is not the same as hidden: a retired trick is only hidden).
+export const DELETABLE = ['CLASSES', 'ROLLERS', 'ROSTER', 'TRICKS', 'MADE_CHIPS', 'CARDS', 'WALLETS', 'JACKETS'];
+export const isDeletion = (path, value) => value === null && splitPath(path).length === 2 && DELETABLE.includes(splitPath(path)[0]);
+// the entries the game cannot run without, and what still uses an entry (so deleting it would leave a hole)
+const KEEP = { JACKETS: ['standard'], WALLETS: ['worn_cloth'] };
+export function usedBy(table, id) {
+  const out = [], rollers = Object.entries(ROLLERS), roster = Object.entries(ROSTER);
+  if ((KEEP[table] || []).includes(id)) out.push('the game (every run starts with it)');
+  if (table === 'CLASSES') { for (const [k, x] of rollers) if (x.cls === id) out.push(`Roller ${x.name || k}`); for (const [k, x] of roster) if (x.cls === id) out.push(`${x.boss ? 'High Roller' : 'opponent'} ${x.name || k}`);
+    for (const [k, x] of Object.entries(TRICKS)) if (x?.cls === id) out.push(`trick ${x.name || k}`); for (const [k, x] of Object.entries(JACKETS)) if (x?.cls === id) out.push(`jacket ${x.name || k}`);
+    if (Object.keys(CLASSES).length <= 1) out.push('the game (it needs one class)'); }
+  if (table === 'TRICKS') { for (const [k, x] of [...rollers, ...roster]) if ((x.tricks || []).includes(id)) out.push(`${x.name || k}'s Book`); }
+  if (table === 'MADE_CHIPS') { for (const [k, x] of Object.entries(TRICKS)) if (x?.roll?.chip === id || x?.bonus?.chip === id) out.push(`trick ${x.name || k}`);
+    for (const [k, x] of Object.entries(MADE_CHIPS)) if (k !== id && (x.actions || []).some((a) => a.chip === id)) out.push(`chip ${x.name || k}`); }
+  if (table === 'ROLLERS' && Object.keys(ROLLERS).length <= 1) out.push('the game (it needs one Roller)');
+  if (table === 'WALLETS' || table === 'JACKETS') { const f = table === 'WALLETS' ? 'wallet' : 'jacket'; for (const [k, x] of [...rollers, ...roster]) if (x[f] === id) out.push(`${x.name || k}`); }
+  return [...new Set(out)];
+}
+// put a table's entries in a given order (ids not named follow, in the order they had)
+export function orderTable(tb, ids = []) {
+  const T = TABLES[tb]; if (!isObj(T) || Array.isArray(T)) return; const keys = Object.keys(T), want = [...ids.filter((k) => k in T), ...keys.filter((k) => !ids.includes(k))];
+  if (want.join() === keys.join()) return; const copy = {}; for (const k of want) copy[k] = T[k]; for (const k of keys) delete T[k]; Object.assign(T, copy);
+}
 export function setPath(path, value) {
+  if (isDeletion(path, value)) { const [tb, id] = splitPath(path), was = TABLES[tb]?.[id]; if (TABLES[tb]) delete TABLES[tb][id]; return was; }
   const ks = splitPath(path), last = ks.pop(); let o = TABLES;
   for (const k of ks) { if (!isObj(o[k])) o[k] = {}; o = o[k]; }
   const was = o[last]; o[last] = value; return was;
@@ -828,6 +857,7 @@ export function setPath(path, value) {
 export function deletePath(path) { const ks = splitPath(path), last = ks.pop(); let o = TABLES; for (const k of ks) { o = o?.[k]; } if (isObj(o)) delete o[last]; }
 // lists worked out from the tables when the game loads, rebuilt after changes
 export function refreshDerived() {
+  for (const [tb, ids] of Object.entries(ORDER)) if (Array.isArray(ids)) orderTable(tb, ids); // Build mode's own order
   TRICK_IDS.splice(0, TRICK_IDS.length, ...Object.keys(TRICKS).filter((id) => !TRICKS[id]?.retired)); // retired tricks are dealt nowhere
   const C0 = Object.entries(CARDS).filter(([, c]) => c && c.kind !== 'key'); // a Suite Key is a pass: never dealt or found as a card
   LANYARD_CARDS.splice(0, LANYARD_CARDS.length); // there is no lanyard: every card takes a wallet slot, every pass a pass slot
@@ -839,7 +869,10 @@ export function refreshDerived() {
   for (let f = 1; f <= 4; f++) BOSSES[f] = R0.filter((x) => x.boss && x.name && (x.floors || [1, 2, 3, 4]).includes(f)).map((x) => x.name);
 }
 export function applyContent(changes = {}) {
-  for (const [path, v] of Object.entries(changes)) if (TABLES[splitPath(path)[0]]) setPath(path, isObj(v) ? JSON.parse(JSON.stringify(v)) : v);
+  // deleted entries stay deleted: nothing set inside one brings it back, and the deletions are applied last
+  const gone = Object.keys(changes).filter((p) => isDeletion(p, changes[p]));
+  for (const [path, v] of Object.entries(changes)) if (TABLES[splitPath(path)[0]] && !gone.includes(path) && !gone.some((g) => path.startsWith(g + '.'))) setPath(path, isObj(v) ? JSON.parse(JSON.stringify(v)) : v);
+  for (const path of gone) setPath(path, null);
   refreshDerived();
 }
 // RP_CONTENT=stock (tests of the rules): the content as written in the tables, without the Build-mode changes

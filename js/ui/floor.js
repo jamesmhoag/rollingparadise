@@ -11,6 +11,7 @@ import { planner } from './prep.js';
 import { rollerCard } from './rollercard.js';
 import { trickItem as trickListItem } from './trickcard.js';
 import { cents } from '../util.js';
+import { petName, PET_MAX } from '../dice.js';
 import { t } from '../text.js';
 import { iconKids } from './icons.js';
 import { t as tx } from '../text.js';
@@ -178,6 +179,7 @@ function smithPanel() {
     if (melt.length === 1) { const d = run.dice.find((x) => x.id === melt[0]); acts.push({ k: 'sell', name: tx('floor.sell-this', { dieName: dieName(d) }), sub: tx('floor.the-diesmith-pays-in'), price: `+${cents(R.dieSellValue(d))}`, label: tx('floor.sell'), go: () => { tryDo(R.sellDie(run, d.id), null, tx('floor.keep-at-least-one')); melt = []; } }); }
     syncList(go, acts, (a) => a.k, (a) => { const el = item(); el.append(btn(a.label, () => { el._go(); done(); }, null, 'small')); return el; }, (el, a) => { setItem(el, a.name, a.sub, a.price); el._go = a.go; el.lastChild.classList.toggle('off', !!a.off); });
     result.replaceChildren(...(last ? [h('span', { class: 'cap', text: tx('floor.fresh-from-the-forge') }), h('div', { class: 'row' }, dieEl(last.die), h('b', { text: `${dieName(last.die)}: ${faceList(last.die).join(' ')}` })),
+      nameField(run, last.die, () => {}),
       ...last.log.map((l) => h('p', { class: l.missed ? 'dim' : '', html: tx('floor.rolled', { name: l.name, join: l.rolls.join(', '), text: l.text, join2: l.after.join(' ') }) }))] : []));
   }
   render();
@@ -294,6 +296,11 @@ function bookPanel() {
       h('span', { class: 'dim', text: tx('floor.minimum-on-this-floor', { min: cents(B.min) }) })), events), { wide: true });
 }
 
+// a pet name for one of your dice: a field that names it as you type (empty: no pet name, it goes by what it is)
+function nameField(run, d, onChange) {
+  const inp = h('input', { type: 'text', class: 'die-name-in', maxlength: PET_MAX, value: petName(d), placeholder: tx('floor.die-name.placeholder', { name: dieName(d) }), oninput: (e) => { R.nameDie(run, d.id, e.target.value); onChange(); }, onkeydown: (e) => e.stopPropagation() });
+  return h('label', { class: 'row die-name-row', guide: 'die', tip: tx('floor.die-name.tip') }, h('span', { class: 'cap', text: tx('floor.die-name') }), inp);
+}
 function kitPanel() {
   const run = app.run, st = R.rollerStats(run);
   // your Roller's card, with the run's own numbers (gear included) and what you hold now
@@ -305,6 +312,11 @@ function kitPanel() {
         h('div', { class: 'inv', style: { alignItems: 'flex-end' } }, R.walletCards(run).map((c) => { const el = cardEl(c, '', { punched: R.punchesOf(run, c) }); el.style.cursor = 'pointer'; el._tip = () => cardTip(c, R.rollerStats(run).v) + tx('floor.takes-a-wallet-slot'); el.classList.add('has-tip');
         el.onclick = () => { if (!el._armed) { el._armed = true; el.classList.add('armed'); return toast(tx('floor.click-again-to-drop', { name: D.CARDS[c].name }), 'warn'); } if (!R.dropCard(run, c)) return toast(tx('floor.you-need-that-one'), 'warn'); closePanel(); rerender(); toast(tx('floor.dropped', { name: D.CARDS[c].name })); }; return el; }))),
       ...bizCards(run, () => { closePanel(); rerender(); }),
+      // your dice by name: click one to give it a pet name, change it or take it away
+      h('span', { class: 'cap', text: tx('floor.die-names') }), (() => { const edit = h('div', {}), list = h('div', { class: 'dicebox named' });
+        const draw = () => list.replaceChildren(...run.dice.map((d) => { const el = dieEl(d); el._tip = () => dieTip(d) + tx('floor.die-name.click'); el.classList.add('has-tip');
+          const w = h('span', { class: `named-die ${petName(d) ? 'has' : ''}`, onclick: () => { edit.replaceChildren(nameField(run, d, draw)); edit.querySelector('input').focus(); } }, el, h('small', { text: petName(d) || '' })); return w; }));
+        draw(); return h('div', { class: 'col', style: { gap: '6px' } }, list, edit); })(),
       h('span', { class: 'cap', text: tx('floor.position') }), h('p', { class: 'sub', text: tx('floor.bet-rows-and-stake', { meterRows: st.dims.meterRows, barRows: st.dims.barRows, stackMax: st.dims.stackMax, barRows2: st.dims.barRows * 5 * st.dims.stackMax }) }),
       // your starting position, changed here as well as before each bout (it is the one every table starts from)
       (() => { const P = planner(() => ({}), null, { maxW: 300 }); P.update(); return h('div', { class: 'box' }, P.el); })()))));

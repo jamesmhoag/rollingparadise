@@ -16,9 +16,10 @@ const clone = (v) => (v && typeof v === 'object' ? JSON.parse(JSON.stringify(v))
 const GONE = [/^CLASSES\.[^.]+\.hero$/, /^CARDS\.[^.]+\.lanyard$/];
 const GONE_IN = { CLASSES: ['hero'], CARDS: ['lanyard'] };
 export function migrate(changes) {
-  const out = {};
+  const out = {}, dead = Object.keys(changes || {}).filter((p) => D.isDeletion(p, changes[p]));
   for (const [p, v] of Object.entries(changes || {})) {
     if (GONE.some((re) => re.test(p))) continue;
+    if (dead.some((d) => p.startsWith(d + '.'))) continue; // a deleted entry keeps nothing inside it
     const ks = p.split('.'), drop = ks.length === 2 && GONE_IN[ks[0]];
     out[p] = drop && v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([k]) => !drop.includes(k))) : v;
   }
@@ -42,6 +43,26 @@ export function setValue(path, value) {
 export function revert(path) {
   if (path in draft.orig) { if (draft.orig[path] === undefined) D.deletePath(path); else D.setPath(path, clone(draft.orig[path])); }
   delete draft.changes[path]; D.refreshDerived(); save();
+}
+// ---------- organising entries: delete, and move up or down ----------
+// Deleting an entry is a change (its path set to null): it is exported with the rest, so the entry stays gone when the
+// file is merged and when the game's own tables still list it. What the entry held is dropped from the draft with it.
+// Returns what still uses it (and does nothing) if anything does.
+export function removeEntry(table, id) {
+  const used = D.usedBy(table, id); if (used.length) return used;
+  const path = D.subPath(table, id);
+  for (const p of Object.keys(draft.changes)) if (p.startsWith(path + '.')) revert(p);
+  const mine = path in draft.changes && !(path in OVERRIDES) && draft.orig[path] === undefined; // made in this draft and never exported: it simply goes
+  if (mine) { revert(path); return []; }
+  if (!(path in draft.orig)) draft.orig[path] = clone(D.getPath(path));
+  draft.changes[path] = null; D.setPath(path, null);
+  const ord = D.ORDER[table]; if (Array.isArray(ord) && ord.includes(id)) setValue(D.subPath('ORDER', table), ord.filter((k) => k !== id));
+  D.refreshDerived(); save(); return [];
+}
+// move an entry one place up (-1) or down (+1) in its table's list
+export function moveEntry(table, id, dir) {
+  const keys = Object.keys(D.TABLES[table] || {}), i = keys.indexOf(id), j = i + dir; if (i < 0 || j < 0 || j >= keys.length) return false;
+  [keys[i], keys[j]] = [keys[j], keys[i]]; setValue(D.subPath('ORDER', table), keys); return true;
 }
 export const changed = (path) => path in draft.changes || Object.keys(draft.changes).some((p) => p.startsWith(path + '.'));
 export const count = () => Object.keys(draft.changes).length;

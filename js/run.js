@@ -369,6 +369,8 @@ export function sellDie(run, id) {
   const i = run.dice.findIndex((d) => d.id === id); if (i < 0 || run.dice.length <= 1) return false;
   const v = dieSellValue(run.dice[i]); ledger(run, tx('run.sold-a', { dieName: dieName(run.dice[i]) }), v); run.dice.splice(i, 1); run.purse += v; return true;
 }
+// give one of your dice a pet name, change it, or (with nothing) take it away
+export function nameDie(run, id, name) { const d = run.dice.find((x) => x.id === id); if (!d) return false; const n = String(name ?? '').replace(/[<>]/g, '').trim().slice(0, 20); if (n) d.name = n; else delete d.name; return true; }
 export const RETIRED = tx('run.the-diesmith-no-longer');
 export const dieUpgradeBlock = () => RETIRED;
 export const upgradeDie = () => false;

@@ -4,7 +4,7 @@ import * as D from '../data.js';
 import * as CM from '../content/chipmaker.js';
 import { cents, cap } from '../util.js';
 import { multOf } from '../bout.js';
-import { facesOf, faceValue, matOf, dieName } from '../dice.js';
+import { facesOf, faceValue, matOf, dieName, petName } from '../dice.js';
 import { traitsOf, traitsHtml } from '../traits.js';
 import { iconStyle, textureOf } from './icons.js';
 import { trickCardHtml, printCls, qMarkHtml } from './trickcard.js';
@@ -116,7 +116,8 @@ export function faceStrip(d) {
 export function dieTip(d, extra = '') {
   const ups = (d.up || []).map((u, k) => `<li><b style="color:${D.DIE_UPGRADES[u].color}">${D.DIE_UPGRADES[u].mark} ${D.DIE_UPGRADES[u].name}</b>${d.tgt?.[k] != null ? tx('parts.face', { tgt: d.tgt[k] + 1 }) : ''}<span class="v"> — ${D.upgradeText(u)}</span></li>`).join('');
   const M = D.MATERIALS[matOf(d)], B = d.bone && D.BONE[d.bone];
-  return `<b>${dieName(d)}</b> <span class="faces">${faceStrip(d)}</span>${B ? tx('parts.carved-with', { name: B.name, name2: D.DIE_UPGRADES[B.up].name, upgradeText: D.upgradeText(B.up) }) : ups ? `<ul>${ups}</ul>` : ''}${d.cast ? tx('parts.cast-by-the-diesmith', { name: D.CASTS[d.cast].name, v: (d.dyes || []).length ? ` with ${d.dyes.map((k) => D.DYES[k].name).join(', ')}` : '' }) : ''}<p class="dim v">${M.text}</p>${extra ? `<p>${extra}</p>` : ''}${flavorP('MATERIALS', matOf(d))}`;
+  const pet = petName(d), head = pet ? `<b class="pet">“${esc(pet)}”</b> <span class="dim">${dieName(d)}</span>` : `<b>${dieName(d)}</b>`; // its pet name, if you gave it one
+  return `${head} <span class="faces">${faceStrip(d)}</span>${B ? tx('parts.carved-with', { name: B.name, name2: D.DIE_UPGRADES[B.up].name, upgradeText: D.upgradeText(B.up) }) : ups ? `<ul>${ups}</ul>` : ''}${d.cast ? tx('parts.cast-by-the-diesmith', { name: D.CASTS[d.cast].name, v: (d.dyes || []).length ? ` with ${d.dyes.map((k) => D.DYES[k].name).join(', ')}` : '' }) : ''}<p class="dim v">${M.text}</p>${extra ? `<p>${extra}</p>` : ''}${flavorP('MATERIALS', matOf(d))}`;
 }
 // one badge per upgrade, so every upgrade a die carries can be read off the die itself
 export const dieMarks = (d) => ((d.up || []).length ? h('span', { class: 'ups' }, d.up.map((u) => h('b', { class: `u-${u}`, style: { '--uc': D.DIE_UPGRADES[u].color }, text: D.DIE_UPGRADES[u].mark }))) : null);

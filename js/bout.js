@@ -2038,10 +2038,14 @@ function* ticks(b) {
 // ---------- the test table (Build mode) ----------
 // What the test table can put on a space: a Royal Paradise chip of a value, a Block or Counter chip, a hazard, an
 // effect chip (lasting the bout) or a made chip. op: 'add' on top, 'change' the top chip into it, 'remove' the top.
-export function sandboxChip(b, side, r, c, what, op = 'add') {
+// `at`: the id of the chip pointed at in that stack. With it, Remove takes that chip out (not the top one), Change turns
+// that chip into the chosen one, and Add inserts the new chip just below it. Without it (an empty space, or no chip
+// pointed at) they work on the top of the stack as before.
+export function sandboxChip(b, side, r, c, what, op = 'add', at = null) {
   const s = b.sides[side], cell = s.grid[r]?.[c]; if (!cell) return false;
-  const topI = (() => { for (let i = cell.chips.length - 1; i >= 0; i--) if (!isHazard(cell.chips[i])) return i; return cell.chips.length - 1; })();
-  if (op === 'remove') { if (topI < 0) return false; const ch = cell.chips.splice(topI, 1)[0]; b.fx[ch.id] = 'void'; return true; }
+  const atI = at == null ? -1 : cell.chips.findIndex((ch) => ch.id === at);
+  const topI = atI >= 0 ? atI : (() => { for (let i = cell.chips.length - 1; i >= 0; i--) if (!isHazard(cell.chips[i])) return i; return cell.chips.length - 1; })();
+  if (op === 'remove') { if (topI < 0) return false; const ch = cell.chips.splice(topI, 1)[0]; b.fx[ch.id] = 'void'; if (ch.kind === 'puddle') delete cell.puddle; return true; }
   const make = () => {
     if (what.made && MADE_CHIPS[what.made]) return mkMade(b, what.made);
     if (what.shop && SHOP_CHIPS[what.shop]) return mkChip(b, 'fx', 0, { shop: what.shop, resist: what.shop, life: 99, maker: null });
@@ -2055,7 +2059,8 @@ export function sandboxChip(b, side, r, c, what, op = 'add') {
   if (op === 'change') { if (topI < 0) return false; const old = cell.chips[topI]; cell.chips.splice(topI, 1, ch); b.fx[old.id] = 'void'; b.fx[ch.id] = 'mutate'; return true; }
   if (ch.kind === 'made' && footOf(ch) > 1) { const at = footBlock(s, r, c, footOf(ch)); if (!at) return false; claimFoot(s, at.r, at.c, footOf(ch)); s.grid[at.r][at.c].chips.push(ch); b.fx[ch.id] = 'spawn'; return true; }
   if (ch.kind === 'made' ? !fits(s, cell, ch) : (cell.hole || cell.link || (!isHazard(ch) && capacityLeft(s, cell) <= 0))) return false;
-  if (ch.kind === 'made') placeMade(cell, ch, 'over') || cell.chips.push(ch); else cell.chips.push(ch);
+  if (atI >= 0) cell.chips.splice(atI, 0, ch); // inserted below the chip pointed at
+  else if (ch.kind === 'made') placeMade(cell, ch, 'over') || cell.chips.push(ch); else cell.chips.push(ch);
   b.fx[ch.id] = 'spawn'; return true;
 }
 
