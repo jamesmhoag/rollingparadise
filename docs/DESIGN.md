@@ -892,8 +892,10 @@ through tricks and chips, as before.
 - The end of a match plays one thing at a time: the call, the loser's sign sparking out, cracking and going dark, the
   winner's lap, then the readout.
 - Dice: pips and numbers are painted white on see-through materials; dice at rest are redrawn in turn so their
-  materials stay live; every die grows a little under the pointer; all of them are built behind an opening curtain
-  (`?curtain=0` skips it). A die can be given a pet name when it is cast or from the Coat Check.
+  materials stay live; every die grows a little under the pointer. Nothing is loaded at the title: the first time you
+  leave it (a run, the Library, Build), its menu gives way to a bar while every die in every material, every
+  material's shaders and every wallet's and jacket's body are made ready (`?curtain=0` skips the wait). A die at rest
+  is drawn straight onto its own canvas, with no picture read back from the renderer. A die can be given a pet name when it is cast or from the Coat Check.
 - Music: what the band is doing is also kept in the browser, so a band switched off stays off on the title screen,
   in Build mode, in a new run and on returning to the tab. Hearting a tune can have a price.
 
@@ -956,13 +958,20 @@ for a close look, to be turned over (`ui/spin.js`, the look a die gets).
   folded wad with everything in plain sight. No slot marks.
 - **One material, everywhere.** A material is defined once (`material()` in `ui/dice3d.js`) and a wallet or a jacket
   is a body made of it, rendered in the same room and light as a die of it (`ui/gear3d.js`): any material a die can be,
-  gear can be, and tuning a material tunes it on everything. A part is only a shape: `soft()` makes an outline into a
-  padded body (a slab with rounded edges that swells toward its middle), and the look says what it is made of. A
-  wallet's leaves, pockets, flap, band, notes, stitches and clasp, and a jacket's back, fronts, sleeves, cuffs, hem,
-  collar, pockets, zip and buttons are each such a part. At rest the piece is a picture of its body, a little turned;
-  it is drawn live while a wallet opens, while a jacket turns toward the pointer, and when either is turned in the
-  hand. What a wallet holds stays the real cards and passes, lying in the pockets of the picture. Jackets show no
-  numbers. Without WebGL the drawn pieces (`ui/gear.js`) stand in; both are cut from the same shapes (`JACKET_CUT`).
+  gear can be, and tuning a material tunes it on everything. A part is only a shape, and two tools give every part
+  its form. `sewn()` makes outlines into one padded surface: each panel swells toward its middle and meets the next
+  in a seam, with rows of stitching beside the seams and round what is sewn on top (one panel alone is a pillow).
+  `folding()` folds a sheet along lines. A wallet is one sheet of what it is made of: a billfold folded in half, a
+  pouch folded up from the bottom with its flap down over the front, a clip a strip bent back on itself round the
+  wad (joined at the bend); opening one unfolds it. A jacket is one garment: fronts, sleeves, cuffs and hem band sewn
+  into one surface, front and back, with collar, pockets and fastenings sewn on. At rest the piece is a picture of
+  its body, a little turned; it is drawn live while a wallet opens, while a jacket turns toward the pointer, and when
+  either is turned in the hand. What a wallet holds stays the real cards and passes, lying in the pockets of the
+  picture. Jackets show no numbers. Without WebGL the drawn pieces (`ui/gear.js`) stand in; both are cut from the
+  same shapes (`JACKET_CUT`).
+- A **swirling** die is cool clear glass with brush strokes of coloured glass through it (flattened bands that
+  wander and twist, deepest along their middle and paling to their edges), under a low index so the stroke is seen
+  where it is from every side.
 - Still a flat picture of the same material, not a body of it: cards and passes, sign letters, symbols and crowns.
 - A jacket has a style (blazer, bomber, long coat, parka) and parts (body, sleeves, trim, collar, closure, pockets,
   emblem), each with its own material and colour.

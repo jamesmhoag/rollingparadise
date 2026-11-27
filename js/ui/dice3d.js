@@ -12,7 +12,7 @@
 //                  metal       polished, mirroring the room
 //                  sparkling   glitter: metal flakes, each its own tiny mirror, under a clear coat
 //                  glimmering  frosted glass with a fine shimmer in it
-//                  swirling    clear resin with a coloured ribbon swirling inside, turning slowly
+//                  swirling    cool clear glass with a brush stroke of coloured glass bleeding through it, turning slowly
 //                  diamond     cut sharp, high index, splitting light into colour (dispersion), glinting
 //                  bone        warm ivory, a little worn
 //
@@ -183,7 +183,8 @@ function material(mat, maps, base) {
     case 'metal': return new T.MeshPhysicalMaterial({ ...common, color: new T.Color(c).lerp(new T.Color(0xffffff), 0.35), metalness: 1, roughness: 0.22, envMapIntensity: 2.1, clearcoat: 0.25 });
     case 'sparkling': return new T.MeshPhysicalMaterial({ ...common, color: c, metalness: 0.9, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 1.6 });
     case 'glimmering': return new T.MeshPhysicalMaterial({ ...common, color: 0xffffff, transmission: 0.9, thickness: 1.3, ior: 1.46, roughness: 0.32, attenuationColor: c, attenuationDistance: 1.1, sheen: 0.6, sheenColor: c, clearcoat: 0.7, clearcoatRoughness: 0.05 });
-    case 'swirling': return new T.MeshPhysicalMaterial({ ...common, color: 0xffffff, transmission: 1, thickness: 1.6, ior: 1.5, roughness: 0.04, attenuationColor: new T.Color(0xf6f0ff), attenuationDistance: 3, clearcoat: 1, clearcoatRoughness: 0.02 });
+    // (a low index and little depth: the stroke inside is seen where it is, from every side, not thrown off to one edge)
+    case 'swirling': return new T.MeshPhysicalMaterial({ ...common, color: 0xffffff, transmission: 1, thickness: 0.35, ior: 1.12, roughness: 0.03, attenuationColor: new T.Color(0xe6f3ff), attenuationDistance: 4, clearcoat: 1, clearcoatRoughness: 0.02 });
     case 'diamond': return new T.MeshPhysicalMaterial({ ...common, color: 0xffffff, transmission: 1, thickness: 0.8, ior: 2.42, dispersion: 1.2, roughness: 0, specularIntensity: 1, envMapIntensity: 3, iridescence: 0.25, iridescenceIOR: 1.6 });
     case 'bone': return new T.MeshPhysicalMaterial({ ...common, color: maps.map ? 0xffffff : c, roughness: 0.55, sheen: 0.5, sheenColor: new T.Color(0xfff2d6), clearcoat: 0.15, clearcoatRoughness: 0.4 });
     // cloth and hide: the weave or grain is the surface's own relief (maps.normalMap from grainMap), the colour its dye
@@ -202,14 +203,25 @@ function material(mat, maps, base) {
     default: return new T.MeshPhysicalMaterial({ ...common, color: maps.map ? 0xffffff : c, roughness: 0.36, clearcoat: 0.6, clearcoatRoughness: 0.12, sheen: 0.15, sheenColor: new T.Color(0xffffff) });
   }
 }
-// the swirl inside a swirling die: coloured ribbons wound round each other
+// The swirl inside a swirling die: coloured glass drawn through clear glass like a brush stroke in three dimensions.
+// Each stroke is a flattened band that wanders through the die, twisting as it goes, wide in its middle and thinning
+// to nothing at both ends, deepest in colour along its middle and paling toward its edges and its ends, where it
+// bleeds into the clear; thinner, paler wisps trail beside it.
+// a colour at full strength (a swirling die's own colour is the pale cast of the whole die: the stroke in it is the dye itself)
+const rich = (c) => { const k = new T.Color(c), hsl = k.getHSL({}); return k.setHSL(hsl.h, Math.max(hsl.s, 0.85), Math.min(hsl.l, 0.5)); };
+function stroke(seed, wide, tint, pale) {
+  const N = 72, M = 14, pos = [], col = [], idx = [], deep = rich(tint), thin = rich(tint).lerp(new T.Color(0xeaf4ff), 0.72), at = (t) => new T.Vector3(0.3 * Math.sin(t * 4.1 + seed * 2.3) + 0.1 * Math.sin(t * 9.7 + seed), (t - 0.5) * 0.98 + 0.06 * Math.sin(t * 7.3 + seed * 1.7), 0.28 * Math.sin(t * 3.3 + seed * 4.1 + 1.2) + 0.08 * Math.cos(t * 11 + seed));
+  for (let i = 0; i <= N; i++) { const t = i / N, p = at(t), tan = at(Math.min(1, t + 0.01)).sub(at(Math.max(0, t - 0.01))).normalize(), ref = Math.abs(tan.y) > 0.9 ? new T.Vector3(1, 0, 0) : new T.Vector3(0, 1, 0);
+    const nrm = new T.Vector3().crossVectors(tan, ref).normalize(), bin = new T.Vector3().crossVectors(tan, nrm), tw = t * 4.4 + seed, w = wide * Math.sin(Math.PI * t) ** 0.7 * (0.62 + 0.38 * Math.sin(t * 13 + seed * 3)), th = w * 0.2;
+    const a = nrm.clone().multiplyScalar(Math.cos(tw)).addScaledVector(bin, Math.sin(tw)), b = nrm.clone().multiplyScalar(-Math.sin(tw)).addScaledVector(bin, Math.cos(tw));
+    for (let j = 0; j < M; j++) { const u = (j / M) * Math.PI * 2, q = p.clone().addScaledVector(a, Math.cos(u) * w).addScaledVector(b, Math.sin(u) * th); pos.push(q.x, q.y, q.z);
+      const k = new T.Color(deep).lerp(thin, Math.min(1, pale + Math.abs(Math.cos(u)) ** 2 * 0.75 + (1 - Math.sin(Math.PI * t)) * 0.6)); col.push(k.r, k.g, k.b); } }
+  for (let i = 0; i < N; i++) for (let j = 0; j < M; j++) { const k = i * M + j, k2 = i * M + ((j + 1) % M); idx.push(k, k2, k + M, k2, k2 + M, k + M); }
+  const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new T.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals(); return g;
+}
 function swirl(scale, tint) {
-  const g = new T.Group(), cols = [tint, '#ffd36e', '#7ae7ff'];
-  for (let k = 0; k < 3; k++) {
-    const pts = Array.from({ length: 28 }, (_, i) => { const t = i / 27, a = t * Math.PI * 4.2 + (k * Math.PI * 2) / 3, r = 0.42 * Math.sin(Math.PI * (0.12 + t * 0.76)); return new T.Vector3(Math.cos(a) * r, (t - 0.5) * 1.05, Math.sin(a) * r); });
-    const tube = new T.TubeGeometry(new T.CatmullRomCurve3(pts), 160, 0.045 - k * 0.008, 10, false);
-    g.add(new T.Mesh(tube, new T.MeshPhysicalMaterial({ color: new T.Color(cols[k]), roughness: 0.25, metalness: k === 1 ? 0.7 : 0.1, emissive: new T.Color(cols[k]).multiplyScalar(0.18), clearcoat: 0.5 })));
-  }
+  const g = new T.Group(), glass = new T.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.04, emissive: rich(tint).multiplyScalar(0.16), side: T.DoubleSide });
+  for (const [seed, wide, pale] of [[0.4, 0.2, 0], [0.75, 0.07, 0.35], [2.9, 0.11, 0.2], [3.3, 0.045, 0.5]]) g.add(new T.Mesh(stroke(seed, wide, tint, pale), glass));
   g.scale.setScalar(scale); return g;
 }
 
@@ -232,7 +244,7 @@ function model(d, labels) {
   const L = lookOf(d), key = `${d.type}|${L.mat}|${labels.join(',')}`; if (MODELS.has(key)) return MODELS.get(key);
   const { g, F, atlas, s } = roundedGeometry(d.type, L.mat), maps = faceMaps(d.type, L.mat, labels, F, atlas, L.base);
   const grp = bodyOf(g, L.mat, L.tint, maps);
-  if (L.mat === 'swirling') { const sw = swirl(s * 0.78, L.tint); grp.add(sw); grp.userData.swirl = sw; }
+  if (L.mat === 'swirling') { const sw = swirl(s * 0.94, L.tint); grp.add(sw); grp.userData.swirl = sw; }
   grp.matrixAutoUpdate = false; MODELS.set(key, grp); return grp;
 }
 
@@ -335,9 +347,11 @@ async function pump() {
     const css = Math.max(el.offsetWidth, el.offsetHeight) || 32, px = Math.min(512, Math.ceil((css * Math.min(2, devicePixelRatio || 1) * 1.25) / 16) * 16);
     const labels = labelsOf(d, value ?? d.type.slice(1)), fi = Math.max(0, labels.findIndex((x) => String(x) === String(value ?? d.type.slice(1)))), L = lookOf(d);
     const key = `${d.type}|${L.mat}|${labels.join(',')}|${fi}|${px}`;
+    // a die that stays lit (ambient) is drawn straight onto its own canvas: no picture is read back from the renderer,
+    // which is what made a page full of dice slow to appear. Only a still die (reduced motion) needs a picture.
+    if (ambientOn()) { el.classList.add('r3d'); ambient(el, d, labels, fi); ambDraw(el, performance.now() / 1000); continue; }
     let url = IMG.get(key); if (!url) { url = render(d, labels, frontOf(d.type, fi), px).toDataURL('image/png'); IMG.set(key, url); }
     el.style.setProperty('--r3d', `url("${url}")`); el.classList.add('r3d');
-    ambient(el, d, labels, fi);
   }
   if (queue.length) requestAnimationFrame(pump); else busy = false;
 }
@@ -386,16 +400,15 @@ function ambTick(now) {
 // ---------- getting ready ----------
 // Building a die the first time takes a moment (its rounded solid, its engraved faces, its material's shaders), which
 // used to land the first time you picked one up. preload builds every size in every material up front, a die at a
-// time between frames, reporting how far along it is (0 to 1); the game's opening curtain waits on it.
-export async function preload(onProgress = () => {}, { types = Object.keys(D.DICE), mats = Object.keys(LOOK), budgetMs = 9000 } = {}) {
+// time between frames, then every other material, reporting how far along it is (0 to 1); leaving the title waits on it.
+export async function preload(onProgress = () => {}, { types = Object.keys(D.DICE), mats = Object.keys(LOOK) } = {}) {
   try { await load(); } catch { onProgress(1); return false; }
   const jobs = []; for (const mat of mats) for (const type of types) jobs.push({ type, mat });
   jobs.sort((a, b) => (a.mat === D.DEFAULT_MAT ? 0 : 1) - (b.mat === D.DEFAULT_MAT ? 0 : 1)); // the dice you start with first
-  const t0 = performance.now(); let done = 0;
-  for (const j of jobs) {
-    if (performance.now() - t0 > budgetMs) break; // a slow machine is not held at the door: the rest build as they are met
-    try { const d = { type: j.type, mat: j.mat, up: [] }, labels = labelsOf(d, j.type.slice(1)); render(d, labels, frontOf(j.type, 0), AMB_PX); } catch { /* a die that will not build falls back to its CSS look */ }
-    onProgress(++done / jobs.length); await new Promise((r) => setTimeout(r, 0));
-  }
-  onProgress(1); return done === jobs.length;
+  const others = MATERIAL_IDS.filter((m) => !mats.includes(m)), total = jobs.length + others.length; let done = 0;
+  const step = async (work) => { try { work(); } catch { /* what will not build falls back to its drawn look */ } onProgress(++done / total); await new Promise((r) => setTimeout(r, 0)); };
+  for (const j of jobs) await step(() => { const d = { type: j.type, mat: j.mat, up: [] }, labels = labelsOf(d, j.type.slice(1)); render(d, labels, frontOf(j.type, 0), AMB_PX); });
+  // every other material (the cloths and hides gear is made of): a small body of each, drawn once, so its shaders are ready
+  for (const mat of others) await step(() => { const g = new T.SphereGeometry(0.6, 16, 12), b = body(g, mat, '#b9b2c8'); renderGroup(b, { w: AMB_PX, h: AMB_PX, view: [-1, -1, 1, 1] }); g.dispose(); });
+  onProgress(1); return true;
 }

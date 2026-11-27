@@ -58,7 +58,7 @@ export function walletEl(id, cls = '', hold = {}) {
   // a click keeps it open, or shuts it again (a click on something it holds is that thing's own)
   if (!clip) el.addEventListener('click', (ev) => { if (ev.target.closest('.thing') === el) face.classList.toggle('pin'); });
   const notes = clip ? notesFor(hold.cash || 1) : notesFor(hold.cash);
-  embody(el, face, { kind: 'wallet', key: `w|${JSON.stringify(L)}|${notes}`, look: L, notes, name: Wl.name || id, sub: WALLET_TYPES[L.type], pinned: () => face.classList.contains('pin') });
+  embody(el, face, { kind: 'wallet', look: L, notes, name: Wl.name || id, sub: WALLET_TYPES[L.type], pinned: () => face.classList.contains('pin') });
   return el;
 }
 
@@ -134,6 +134,6 @@ export function jacketEl(id, cls = '') {
   const face = jacketFace(id, cls), el = thing(face, { mat: L.mat, color: L.color, depth: 4.5, name: J.name || id, sub: `${JACKET_STYLES[L.style]} · ${J.effect || ''}`, cls: `th-jacket ${cls}`,
     edge: () => h('span', { class: 'gj' }, jacketSvg(L, dark)), back: () => { const b = h('span', { class: 'gj gj-backside' }, jacketSvg({ ...L, collar: L.collar === 'hood' ? 'hood' : 'none', closure: 'none', buttons: 0, pockets: 0 })); const em = emblemEl(L, 'jsym big'); if (em) b.append(em); return b; },
     make: () => jacketFace(id, cls) });
-  embody(el, face, { kind: 'jacket', key: `j|${JSON.stringify(L)}`, look: L, name: J.name || id, sub: `${JACKET_STYLES[L.style]} · ${J.effect || ''}` });
+  embody(el, face, { kind: 'jacket', look: L, name: J.name || id, sub: `${JACKET_STYLES[L.style]} · ${J.effect || ''}` });
   return el;
 }

@@ -36,7 +36,7 @@ const server = http.createServer((req, res) => {
   const step = async (where, fn, wait = 900) => { at = where; try { await fn(); await p.waitForTimeout(wait); await take(where); } catch (e) { errors.push(`${where}: ${e.message.split('\n')[0]}`); } };
   const ev = (fn, arg) => p.evaluate(fn, arg);
 
-  await p.goto(`http://localhost:${PORT}/?debug&curtain=0`); // (no opening curtain: it is checked by hand) await p.waitForTimeout(1500); await take('title');
+  await p.goto(`http://localhost:${PORT}/?debug&curtain=0`); /* (no load on leaving the title: it is checked by hand) */ await p.waitForTimeout(1500); await take('title');
   await step('select', () => ev(() => window.RP.nav.select()));
   await step('library', () => ev(() => window.RP.nav.title()).then(() => p.waitForTimeout(500)).then(() => p.getByRole('button', { name: 'Library' }).first().click()));
   for (const tab of await p.locator('.lib-tabs button, .tabs button').all()) await step('library tab', () => tab.click(), 250);

@@ -1,5 +1,6 @@
 // Entry point: boots the stage, owns navigation between screens.
-import { h, fit, initTips, go, btn, toast, closePanel, openPanel, guided, watchText } from './ui/core.js';
+import { h, fit, initTips, go as show, btn, toast, closePanel, openPanel, guided, watchText } from './ui/core.js';
+import { walletLook, jacketLook } from './content/finishes.js';
 import { app } from './ui/app.js';
 import { jacketTip } from './ui/parts.js';
 import { hubScene } from './ui/floor.js';
@@ -77,7 +78,7 @@ function titleScene(root) {
         h('p', { class: 'sub', text: t('title.new.warn') }),
         h('div', { class: 'row' }, btn(t('title.new.keep'), () => closePanel(), null, 'go'), btn(t('title.new.over'), () => { R.clearRun(); closePanel(true); nav.select(); }, null, 'danger')))) : nav.select()), resume ? t('title.new.tip') : null, resume ? 'sign-btn p' : 'sign-btn'),
       btn(t('title.howto'), () => howTo(), null, 'sign-btn p'),
-      btn(t('title.library'), () => openLibrary(null, { title: true }), t('title.library.tip'), 'sign-btn'),
+      btn(t('title.library'), () => ready().then(() => openLibrary(null, { title: true })), t('title.library.tip'), 'sign-btn'),
       btn(t('title.build'), () => nav.build(), t('title.build.tip'), 'sign-btn p'),
       devToggle()),
     h('div', { class: 'stats records' },
@@ -127,23 +128,28 @@ function selectScene(root) {
     h('div', { style: { marginTop: '16px' } }, cards), h('div', { style: { marginTop: '14px' } }, jackets)));
 }
 
-// The opening curtain: a full-screen drape with the hotel's sign while the dice are made ready (every size in every
-// material, built once so the first close look at one does not stall), then it parts on the title. Any key or click
-// parts it early; the rest of the dice are then built as they are met. ?curtain=0 skips it (automated playthroughs).
-function curtain() {
-  if (new URLSearchParams(location.search).get('curtain') === '0' || globalThis.RP_FAST) return;
-  const bar = h('i'), line = h('div', { class: 'cur-line', text: t('boot.dice') });
-  const el = h('div', { class: 'curtain' }, h('div', { class: 'cur-in' }, h('div', { class: 'cur-sub', text: t('title.hotel') }), h('div', { class: 'cur-name', text: t('boot.name') }), h('div', { class: 'cur-bar' }, bar), line));
-  document.body.append(el);
-  let open = false; const part = () => { if (open) return; open = true; el.classList.add('open'); setTimeout(() => el.remove(), 1400); removeEventListener('keydown', part); el.removeEventListener('pointerdown', part); };
-  addEventListener('keydown', part); el.addEventListener('pointerdown', part);
-  const t0 = performance.now();
-  import('./ui/dice3d.js').then((M3) => M3.preload((x) => { bar.style.width = `${Math.round(x * 100)}%`; if (x >= 1) line.textContent = t('boot.ready'); }))
-    .catch(() => {}).finally(() => setTimeout(part, Math.max(250, 900 - (performance.now() - t0)))); // never a flash: the drape hangs at least a moment
+// The heavy things (every die in every material, every material's shaders, every wallet's and jacket's body) are made
+// ready once, when you first leave the title: the title stays as it is, its menu gives way to a bar, and you go on
+// when it is done. ?curtain=0 skips the wait (automated playthroughs): things are then built as they are met.
+let heavy = null;
+function ready() {
+  if (heavy) return heavy;
+  if (new URLSearchParams(location.search).get('curtain') === '0' || globalThis.RP_FAST) return (heavy = Promise.resolve());
+  const bar = h('i'), line = h('div', { class: 'load-line', text: t('boot.dice') }), el = h('div', { class: 'title-load' }, h('div', { class: 'load-bar' }, bar), line);
+  const inner = document.querySelector('.title .inner'); inner?.classList.add('loading'); inner?.append(el);
+  const show = (from, share) => (x) => { bar.style.width = `${Math.round((from + x * share) * 100)}%`; };
+  return (heavy = (async () => {
+    try { const [M3, G3] = await Promise.all([import('./ui/dice3d.js'), import('./ui/gear3d.js')]);
+      await M3.preload(show(0, 0.6)); line.textContent = t('boot.gear');
+      await G3.prepare([...Object.entries(D.WALLETS).map(([id, W]) => ({ kind: 'wallet', look: walletLook(id, W) })), ...Object.entries(D.JACKETS).map(([id, J]) => ({ kind: 'jacket', look: jacketLook(id, J) }))], show(0.6, 0.4));
+    } catch { /* no renderer: the drawn looks stand */ }
+    line.textContent = t('boot.ready'); bar.style.width = '100%'; await new Promise((r) => setTimeout(r, 180));
+  })());
 }
+// every way off the title waits on it
+const go = (scene) => (scene === titleScene ? show(scene) : ready().then(() => show(scene)));
 window.addEventListener('resize', fit);
 loadDraft(); // your build-mode changes, live in this browser
-curtain();
 fit(); initTips(); watchText(); initSpin(); initThings(); initMusic(document.getElementById('stage'), { run: () => app.run, tip: (what, title) => R.tipBand(app.run, what, title) }); initSfx(document.getElementById('stage'));
 app.meta = R.loadMeta();
 nav.title();

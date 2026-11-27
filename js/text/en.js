@@ -2595,4 +2595,5 @@ export default {
   "parts.owes-chip": "{name}: owes {value}¢",
   "parts.owes-rule": "Negative value: it owes {value}¢ and counts against Worth until it is paid. Paid by {reach}: any chip worth no more than what it still owes, whole (a bigger chip is never broken for change). It stands alone: chips that owe do not add up unless they are stuck together. It stays where it is laid. Paid off, it is gone.",
   "feed.reach-pays": "{reached}¢ from the chips it reaches",
+  "boot.gear": "Pressing the jackets…",
 };
