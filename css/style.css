@@ -1229,3 +1229,9 @@ table.b-shop { border-collapse: collapse; width: 100%; font-size: 12px; margin-t
 .curtain.open { opacity: 0; pointer-events: none; } .curtain.open::before { transform: scaleX(0); } .curtain.open::after { transform: scaleX(0); } .curtain.open .cur-in { opacity: 0; transition: opacity .4s; }
 @keyframes curBuzz { 0%, 100% { opacity: 1; } 47% { opacity: 1; } 48% { opacity: .55; } 50% { opacity: 1; } 52% { opacity: .7; } 53% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .curtain, .curtain::before, .curtain::after { transition-duration: .01s; } .curtain .cur-name { animation: none; } }
+/* developer mode */
+.dev-btn { border-color: #7dffb5 !important; color: #7dffb5 !important; letter-spacing: .12em; } .dev-btn.dev-float { position: absolute; right: 18px; top: 14px; z-index: 5; }
+.dev-row { gap: 6px; align-items: center; padding: 3px 8px; white-space: nowrap; flex: none; border: 1px dashed rgba(125, 255, 181, .55); border-radius: 8px; } .dev-row .cap { color: #7dffb5; }
+.dev-num { width: 96px; } .dev-row .dev-num { width: 64px; }
+.dev-panel { min-width: 420px; gap: 12px; }
+.sign-btn.dev-toggle { font-size: 12px; opacity: .6; } .sign-btn.dev-toggle.on { opacity: 1; color: #7dffb5; }

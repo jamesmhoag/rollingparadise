@@ -95,6 +95,7 @@ export function alleyScene(root) {
   const dice = roll.dice.map((d) => tip(dieEl(d, '?', 'big'), () => dieTip(d)));
   const total = h('span', { class: 'total num', text: '—' }), verdict = h('h2', { class: 'fade-t', style: { opacity: 0 } }), kept = h('div', { class: 'inv list' });
   const cont = btn(t('title.continue'), () => { app.kept = roll.kept ? roll.cards : []; app.keptPass = roll.kept ? roll.passes : []; app.nav.summary(); }, null, 'big go off');
+  import('./dev.js').then((M) => { const b = M.devButton(() => app.nav.alley()); if (b) { b.classList.add('dev-float'); root.append(b); } }).catch(() => {}); // developer mode: set your purse and roll the alley again
   root.append(h('div', { class: 'page', style: { top: 0, display: 'grid', placeItems: 'center' } }, h('div', { class: 'col', style: { width: '620px', textAlign: 'center', alignItems: 'center', gap: '14px' } },
     h('h1', { class: 'neon-p', text: t('alley.title') }),
     h('p', { class: 'sub', text: t('alley.sub') }),

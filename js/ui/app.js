@@ -41,6 +41,8 @@ export function hud(place, sub) {
     tween(purse, run.purse, cents);
   }
   update();
+  // developer mode: its button sits by the purse on every screen with this bar (dev.js is loaded only when it is on)
+  import('./dev.js').then((M) => { const b = M.devButton(() => { update(); document.dispatchEvent(new Event('rp:dev')); }); if (b) el.append(b); }).catch(() => {});
   const paid = () => { if (!el.isConnected) return document.removeEventListener('rp:purse', paid); update(); }; // a tip to the band
   document.addEventListener('rp:purse', paid);
   return { el, update };

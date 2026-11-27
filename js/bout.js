@@ -344,7 +344,8 @@ export function deploy(b, s, plan) {
   if (meter.length) addToMeter(b, s, meter);
   // Resist chips from Resist Cards: at the base of a front Stake stack with room
   for (const r of plan.resistChips || []) {
-    const spot = cells.slice().sort((x, y) => x.r - y.r).find((x) => solidCount(s.grid[x.r][x.c]) && open(x) && !s.grid[x.r][x.c].chips.some((ch) => ch.kind === 'resist'));
+    const front = cells.slice().sort((x, y) => x.r - y.r), free = (x) => open(x) && !s.grid[x.r][x.c].chips.some((ch) => ch.kind === 'resist');
+    const spot = front.find((x) => solidCount(s.grid[x.r][x.c]) && free(x)) || front.find(free); // every stack full: it starts a stack of its own
     if (spot) s.grid[spot.r][spot.c].chips.unshift(mkChip(b, 'resist', 0, { r: Math.min(r, s.dims.stackMax) }));
   }
   return placed;

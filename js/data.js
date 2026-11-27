@@ -656,12 +656,14 @@ export const TILT_PRESSURE = { lost: 1, overkill: 0.5, fill: 0.2, value: 0.3 };
 export const tiltChance = (key, pressure) => Math.min(0.95, TILTS[key].base + TILTS[key].per * pressure);
 
 // ---------- Floors and opponents ----------
+// `worth`: each table's opponent's worth; `wager`: what each table costs to sit at (the wager the multiplier pays on);
+// `boss`: the High Roller's worth; `cut`: what the House advises you keep to carry on.
 export const FLOORS = [
   null,
-  { name: 'Boogey Basement', line: 'These clowns and losers are just the stepping stones to greater Worth.', worth: [36, 44, 52], boss: 64, cut: 10 },
-  { name: 'Hustlers Haven', line: 'Beware, these rollers are no slouches. Cinch your purse strings on your way in.', worth: [80, 95, 110], boss: 160, cut: 100 },
-  { name: 'Rollers Suite', line: "You're doing it! Time to play with the high rollers. Do you have what it takes?", worth: [250, 300, 350], boss: 500, cut: 1000 },
-  { name: 'Royal Paradise', line: 'This room is for royal rollers only. It sure would be a shame to dethrone them.', worth: [450, 550, 650], boss: 740, cut: 100000 },
+  { name: 'Boogey Basement', line: 'These clowns and losers are just the stepping stones to greater Worth.', worth: [36, 44, 52], wager: [5, 10, 15], boss: 64, cut: 10 },
+  { name: 'Hustlers Haven', line: 'Beware, these rollers are no slouches. Cinch your purse strings on your way in.', worth: [80, 95, 110], wager: [30, 45, 60], boss: 160, cut: 100 },
+  { name: 'Rollers Suite', line: "You're doing it! Time to play with the high rollers. Do you have what it takes?", worth: [250, 300, 350], wager: [150, 225, 300], boss: 500, cut: 1000 },
+  { name: 'Royal Paradise', line: 'This room is for royal rollers only. It sure would be a shame to dethrone them.', worth: [450, 550, 650], wager: [600, 900, 1200], boss: 740, cut: 100000 },
 ];
 // The names dealt at the tables and the High Rollers on each floor come from the roster (content/roster.js), so a
 // renamed or new opponent is dealt under its own name. Both lists are rebuilt from it (refreshDerived).

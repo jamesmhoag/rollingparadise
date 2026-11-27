@@ -6,6 +6,7 @@ import { chipEl, chipSig, chipGlyph, chipTip, dieEl, dieTip, statTip, trickTip, 
 import { signOf, dressSign } from './sign.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
+import { devPrepRow } from './dev.js';
 import { barCapacity } from '../bout.js';
 import * as B from '../bout.js';
 import { cents, sum } from '../util.js';
@@ -128,7 +129,7 @@ export function planner(getExtra, onChange, { maxW = 400 } = {}) {
     pick: { get: () => brushPick, set: (v) => { brushPick = v; } },
     items: () => [...D.DENOMS.filter((x) => x.floor <= R.chipFloor(run)).map((x) => x.value), ...Object.keys(D.SHOP_CHIPS).filter((k) => R.owned(run, k) > 0)],
     left: (it) => (typeof it === 'number' ? null : R.owned(run, it) - usedOf(run.plan.layout, it)),
-    canAdd: (L, sp, it) => { const d = dims(); if (typeof it === 'number' && R.planWorth(R.layoutCounts(L)) + it > run.purse) return t('prep.purseShort');
+    canAdd: (L, sp, it) => { const d = dims(); if (typeof it === 'number' && R.planWorth(R.layoutCounts(L)) + it > R.stakeBudget(run)) return t(run.hold ? 'prep.purseShort.wager' : 'prep.purseShort');
       if (typeof it !== 'number' && usedOf(L, it) >= R.owned(run, it)) return t('prep.noMore'); if (sum(L, (x) => x.chips.length) >= barCapacity(d)) return t('prep.stakeFull'); return null; },
     set: (L) => { run.plan.layout = L; },
     // what is drawn is the position as it will sit down: fitted to your purse and position, effect chips included
@@ -170,7 +171,7 @@ export function prepScene(root, kind, idx) {
   const run = app.run, fs = run.fs, entry = kind === 'boss' ? fs.boss : fs.tables[idx], opp = entry.opp, prep = R.newPrep(run, kind, idx);
   entry.seen = true;
   const H = hud(D.FLOORS[run.floor].name, kind === 'boss' ? t('prep.sub.boss') : t('prep.sub.table', { n: idx + 1, felt: D.feltOf(entry.felt).name }));
-  const multEl = h('div', { class: 'mult num' }), wagerEl = h('b', { class: 'num gold-t' }), winEl = h('b', { class: 'num good' }), posEl = h('b', { class: 'num' });
+  const multEl = h('div', { class: 'mult num' }), wagerEl = h('b', { class: 'num gold-t' }), winEl = h('b', { class: 'num good' }), posEl = h('b', { class: 'num' }), keptEl = h('b', { class: 'num' });
   const tiltBox = h('div', { class: 'tilts' });
   const P = planner(() => ({ position: prep.tilts.position }), sync, { maxW: 360 });
   const ddBtn = btn(t('prep.dd'), () => { prep.dd = !prep.dd; if (prep.dd) for (const [k, T] of Object.entries(D.TILTS)) prep.tilts[k] = T.kind === 'challenge' && fs.lastWin.tilts[k] && R.tiltOpen(run, k) ? 1 : 0; P.update(); },
@@ -184,11 +185,12 @@ export function prepScene(root, kind, idx) {
   tiltBox.append(...rows.map((r) => r.el));
   // sitting down starts the bout; getting up goes back to the floor (both always in view, at the foot of the page)
   const go = btn(t('prep.sit'), () => { if (P.worth() < 1) return toast(t('prep.needChip'), 'warn'); R.rememberSeat(run); app.nav.bout(R.startTable(run, prep)); }, t('prep.sit.tip'), 'big go');
-  const up = btn(t('prep.getup'), () => app.nav.hub(), t('prep.back.tip'), 'big');
+  const up = btn(t('prep.getup'), () => { delete run.hold; app.nav.hub(); }, t('prep.back.tip'), 'big');
   function sync() {
     H.update();
-    const m = R.multiplier(run, prep), worth = P.worth(), wager = Math.max(0, run.purse - worth);
-    tween(multEl, m, (n) => `×${n.toFixed(2)}`, 400); tween(posEl, worth, cents, 300); tween(wagerEl, wager, cents, 300); const extra = R.tiltPay({ tiltNet: R.tiltNet(prep), opp }) + Math.round(R.chipStake(run.plan.resist) * (m - 1));
+    // a table's wager is its own; at the High Roller (all in) it is everything you leave off the table
+    const m = R.multiplier(run, prep), worth = P.worth(), allIn = R.allIn(kind), wager = allIn ? Math.max(0, run.purse - worth) : Math.min(R.wagerOf(run, kind, idx), Math.max(0, run.purse - worth)), kept = Math.max(0, run.purse - worth - wager);
+    tween(multEl, m, (n) => `×${n.toFixed(2)}`, 400); tween(posEl, worth, cents, 300); tween(wagerEl, wager, cents, 300); tween(keptEl, kept, cents, 300); const extra = R.tiltPay({ tiltNet: R.tiltNet(prep), opp }) + Math.round(R.chipStake(run.plan.resist) * (m - 1));
     tween(winEl, Math.max(0, Math.round(wager * m) + extra), cents, 400);
     for (const r of rows) { const on = !!prep.tilts[r.k]; swapText(r.tg, t(on ? 'prep.on' : 'prep.off')); r.tg.classList.toggle('on', on); r.tg.classList.toggle('off', prep.dd || !R.tiltOpen(run, r.k)); r.el.classList.toggle('lit', on); }
     ddBtn.classList.toggle('on', prep.dd); ddBtn.classList.toggle('gone', !(kind === 'table' && fs.lastWin));
@@ -198,10 +200,12 @@ export function prepScene(root, kind, idx) {
       h('div', { class: 'col' }, h('div', { class: 'box' }, P.el),
         h('div', { class: 'box col' }, h('div', { class: 'row between' }, h('span', { class: 'cap', guide: 'prep:tilts', tip: t('prep.tilts.tip'), text: t('prep.tilts') }), ddBtn), tiltBox)),
       h('div', { class: 'col' }, oppPanel(opp))),
-    h('div', { class: 'box prep-bar', guide: 'wager', tip: t('prep.wager.tip', { base: D.TUNING.wager.base, boss: D.TUNING.wager.boss }) },
+    h('div', { class: 'box prep-bar', guide: 'wager', tip: t(R.allIn(kind) ? 'prep.wager.tip.allIn' : 'prep.wager.tip', { base: D.TUNING.wager.base, wager: cents(R.wagerOf(run, kind, idx)), match: D.TUNING.wager.bossMatch ?? 1 }) },
       h('div', { class: 'row', style: { gap: '22px', alignItems: 'baseline' } }, h('span', { class: 'cap', text: t('prep.wager.mult') }), multEl,
-        h('span', { class: 'line' }, h('span', { text: t('prep.wager.pos') }), posEl), h('span', { class: 'line' }, h('span', { text: t('prep.wager.amt') }), wagerEl), h('span', { class: 'line' }, h('span', { text: t('prep.wager.pays') }), winEl)),
-      h('div', { class: 'row' }, h('span', { class: 'sub', text: t('prep.lose') }), up, go))));
+        h('span', { class: 'line' }, h('span', { text: t('prep.wager.pos') }), posEl), h('span', { class: 'line' }, h('span', { text: t(R.allIn(kind) ? 'prep.wager.amt.allIn' : 'prep.wager.amt') }), wagerEl), R.allIn(kind) ? null : h('span', { class: 'line' }, h('span', { text: t('prep.wager.kept') }), keptEl), h('span', { class: 'line' }, h('span', { text: t('prep.wager.pays') }), winEl)),
+      h('div', { class: 'row' }, h('span', { class: 'sub', text: t(R.allIn(kind) ? 'prep.lose.allIn' : 'prep.lose') }), up, go))));
+  const dv = devPrepRow(prep); if (dv) H.el.append(dv); // developer mode: settle this table now, from the top bar
+  const onDev = () => { if (!root.isConnected) return document.removeEventListener('rp:dev', onDev); P.update(); }; document.addEventListener('rp:dev', onDev); // the purse was set: refit the position
   P.update();
 }
 
@@ -232,7 +236,7 @@ export function resultScene(root, ctx, res) {
     (el, o) => { el.classList.toggle('sel', choice === o.k); for (const e of el._opts.children) { const on = choice === o.k && picks.includes(e._i); e.style.transform = on ? 'translateY(-5px) scale(1.12)' : ''; e.style.boxShadow = on ? '0 0 0 3px var(--gold)' : ''; e.style.opacity = choice && choice !== o.k ? 0.45 : 1; } });
     if (!claimed) { tween(totalEl, res.base + res.winnings + (choice === 'die' ? R.prizeBonus(ctx) : 0) + betPay, cents, 500); claimBtn.el?.classList.toggle('off', !choice || picks.length !== need()); }
   }
-  const betPay = res.prizes ? run.purse - ctx.committed - ctx.wager : 0;
+  const betPay = res.prizes ? run.purse - ctx.committed - ctx.wager - (ctx.kept || 0) : 0;
   async function reveal() {
     const shown = [];
     for (const [label, amt] of res.lines) { shown.push({ label, amt, k: shown.length });
@@ -258,7 +262,7 @@ export function resultScene(root, ctx, res) {
     if (!win && R.brokeHint(run)) toast(R.brokeHint(run), 'warn');
     app.nav.hub();
   }
-  totalEl._v = ctx.kind === 'intro' ? 0 : ctx.kind === 'bouncer' ? run.purse : res.prizes ? ctx.committed + ctx.wager + betPay : undefined; totalEl.textContent = cents(totalEl._v ?? run.purse);
+  totalEl._v = ctx.kind === 'intro' ? 0 : ctx.kind === 'bouncer' ? run.purse : res.prizes ? ctx.committed + ctx.wager + (ctx.kept || 0) + betPay : undefined; totalEl.textContent = cents(totalEl._v ?? run.purse);
   setTimeout(reveal, 550);
   void trickTip;
 }

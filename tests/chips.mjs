@@ -333,8 +333,9 @@ const solidsIn = (s) => s.grid.flat().reduce((n, cell) => n + cell.chips.filter(
 {
   // (Resist Cards were retired; a card with `resist` still lays one, as a High Roller's business card may)
   D.CARDS.test_resist = { kind: 'other', name: 'Test Resist', resist: 3 };
+  const w4 = D.FLOORS[4].wager; D.FLOORS[4].wager = [0, 0, 0]; // the whole purse on the table, as this position was written for
   const run = R.newRun('technician', 'standard', 9); R.enterFloor(run, 4); run.purse = 5000; run.cards.push('test_resist');
-  const { bout } = R.startTable(run, R.newPrep(run, 'table', 0)); const me = bout.sides[0], opp = bout.sides[1];
+  const { bout } = R.startTable(run, R.newPrep(run, 'table', 0)); const me = bout.sides[0], opp = bout.sides[1]; D.FLOORS[4].wager = w4;
   const x = me.grid.flatMap((row, r) => row.map((cell, c) => ({ r, c, cell }))).find((y) => y.cell.chips.some((ch) => ch.kind === 'resist'));
   assert(x && x.cell.chips[0].kind === 'resist' && x.cell.chips[0].r === 3, 'a Resist Card puts a Resist chip at the base of a stack');
   assert(engage(bout, opp, me, x.r, x.c, 2, {}).placed === 0 && engage(bout, opp, me, x.r, x.c, 3, {}).placed > 0, 'Resist deters fees under r and lets bigger ones through');

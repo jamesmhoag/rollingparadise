@@ -198,19 +198,58 @@ export function enterFloor(run, floor) {
   addPass(run, floor); // each floor's pass goes in the wallet (taking the lowest one's slot when the wallet is full)
   return run.fs;
 }
-// The floor is a short path: table 1 first, then a choice between tables 2 and 3 (beating one closes the
-// other), then the High Roller.
-export const choiceMade = (run) => run.fs.tables.slice(1).some((t) => t.beaten);
+// The floor is a short path: table 1 first, then a choice between tables 2 and 3 (playing one closes the other), then
+// the High Roller. A table is played once: win or lose, it is closed (TUNING.wager.rematch lets a lost one be played
+// again). The High Roller sits down once both of your tables are played, whoever won them (bossNeedsWins: only if you
+// won them), and the stairs open once the High Roller has been played (bossToClimb: only once beaten).
+const W = () => D.TUNING.wager;
+export const tableDone = (t) => !!t.beaten || (!!t.lost && !W().rematch); // closed: nothing more to play there
+export const choiceMade = (run) => run.fs.tables.slice(1).some(tableDone);
 export function tableState(run, i) {
   const t = run.fs.tables[i];
   if (t.beaten) return 'beaten';
+  if (tableDone(t)) return 'lost';
   if (i === 0) return 'open';
-  if (!run.fs.tables[0].beaten) return 'later';
+  if (!tableDone(run.fs.tables[0])) return 'later';
   return choiceMade(run) ? 'passed' : 'open';
 }
 export const tableOpen = (run, i) => tableState(run, i) === 'open';
 // how many more tables stand between you and the High Roller
-export const tablesLeft = (run) => (run.fs.tables[0].beaten ? 0 : 1) + (choiceMade(run) ? 0 : 1);
+export const tablesLeft = (run) => (tableDone(run.fs.tables[0]) ? 0 : 1) + (choiceMade(run) ? 0 : 1);
+const tablesWon = (run) => run.fs.tables[0].beaten && run.fs.tables.slice(1).some((t) => t.beaten);
+// the High Roller will sit down: both tables played (won, if the House asks for wins), or a Double Down won
+export const bossReady = (run) => !!run.fs.bossOpen || (!tablesLeft(run) && (!W().bossNeedsWins || tablesWon(run)));
+export const bossDone = (run) => !!run.fs.boss.beaten || (!!run.fs.boss.lost && !W().rematch);
+// the stairs are open: the High Roller played (beaten, if the House asks for that)
+export const stairsOpen = (run) => !!run.fs.boss.beaten || (!!run.fs.boss.lost && !W().bossToClimb);
+// ---------- what a seat costs ----------
+// A table's wager is its own (FLOORS[floor].wager, by table; unset: a quarter of its Roller's worth): you put it up to
+// sit down, the multiplier pays on it, and it is lost with your position when you lose. The rest of your purse goes
+// into your Stake as far as you choose, and what you leave in the purse is yours whatever happens.
+// At the High Roller (bossAllIn) there is no set wager: everything you leave off the table is wagered, and matched.
+export const allIn = (kind) => kind === 'boss' && !!W().bossAllIn;
+export function wagerOf(run, kind, idx = 0) {
+  if (kind !== 'table' && kind !== 'boss') return 0;
+  if (allIn(kind)) return 0; // set by what is left off the table (startTable)
+  const F = D.FLOORS[run.floor] || {}, entry = kind === 'boss' ? run.fs.boss : run.fs.tables[idx];
+  const own = kind === 'boss' ? F.bossWager : Array.isArray(F.wager) ? F.wager[idx] : F.wager;
+  return Math.max(0, Math.round(own ?? (entry?.opp?.worth || 0) / 4));
+}
+// the least purse that gets you a seat: the wager, and something to put on the table
+export const buyIn = (run, kind, idx = 0) => wagerOf(run, kind, idx) + Math.max(1, W().minStake ?? 1);
+export const canAfford = (run, kind, idx = 0) => run.purse >= buyIn(run, kind, idx);
+// what the purse can put into the Stake for the bout being set up (run.hold: the wager set aside for it)
+export const stakeBudget = (run) => Math.max(0, run.purse - (run.hold || 0));
+// every game still open on this floor, and whether you can afford any of them
+export function gamesOpen(run) {
+  const out = []; if (!run.fs) return out;
+  run.fs.tables.forEach((t, i) => { if (tableOpen(run, i)) out.push({ kind: 'table', idx: i, cost: buyIn(run, 'table', i) }); });
+  if (bossReady(run) && !bossDone(run)) out.push({ kind: 'boss', idx: 0, cost: buyIn(run, 'boss', 0) });
+  return out;
+}
+// Shown the door: there is still a game to play here, you cannot afford any of them, and the stairs are not open.
+// (Selling a die or a trick, or a bet coming in, can still get you back to a table: the floor says so first.)
+export const stranded = (run) => { if (!W().forcedExit || run.phase !== 'floor' || !run.fs || stairsOpen(run)) return false; const g = gamesOpen(run); return g.length > 0 && !g.some((x) => run.purse >= x.cost); };
 
 function genShelf(run) {
   const rng = run.rng, f = run.floor, out = [];
@@ -430,7 +469,9 @@ export function testTable(o) {
   if (!o.rules) { bout.rules.sandbox = true; bout.rules.maxTurns = 999; }
   return { bout, ctx: { ...ctx, kind: 'test', test: true, sandbox: !o.rules }, run };
 }
-export const newPrep = (run, kind, idx) => ({ kind, idx, tilts: Object.fromEntries(Object.keys(D.TILTS).map((k) => [k, 0])), dd: false });
+// setting up a bout: the table's wager is set aside (run.hold), so the planner fills your Stake from the rest
+export const newPrep = (run, kind, idx) => { if (run.fs && (kind === 'table' || kind === 'boss')) run.hold = wagerOf(run, kind, idx); else delete run.hold;
+  return { kind, idx, tilts: Object.fromEntries(Object.keys(D.TILTS).map((k) => [k, 0])), dd: false }; };
 export const tiltOpen = (run, key) => (run.floor || 1) >= D.TILTS[key].floor;
 export function setTilt(run, prep, key, on) { if (on && !tiltOpen(run, key)) return false; prep.tilts[key] = on ? 1 : 0; return true; }
 // the tilts' net share: + for Challenges, − for Cheats
@@ -440,7 +481,8 @@ export const tiltPay = (ctx) => Math.round(D.TUNING.wager.tiltWorthShare * (ctx.
 export const chipStake = (resist) => sum(Object.entries(resist || {}), ([id, n]) => (D.SHOP_CHIPS[id] && D.soldInShop(id) ? n * D.shopPrice(id) : 0));
 export const chipStakePay = (ctx) => (D.SHOP_CHIP_STAKE ? Math.round(chipStake(ctx.resist) * (ctx.mult - 1)) : 0);
 export function multiplier(run, prep) {
-  const W = D.TUNING.wager, base = prep.kind === 'boss' ? W.boss : W.base; let m = base;
+  // all-in at the High Roller: they match what you put up (1 + bossMatch), before the tilts
+  const W = D.TUNING.wager, base = allIn(prep.kind) ? 1 + (W.bossMatch ?? 1) : prep.kind === 'boss' ? W.boss : W.base; let m = base;
   for (const [k, n] of Object.entries(prep.tilts)) if (n) m += (D.TILTS[k].kind === 'challenge' ? 1 : -1) * D.TILTS[k].mult;
   m = clamp(m, 1, Math.max(3, base));
   if (prep.dd) m = Math.min(W.doubleDownMax, m * 2);
@@ -464,8 +506,8 @@ export function validCounts(run, dims) {
   if (validLayout(run, dims)) return layoutCounts(run.plan.layout);
   const c = run.plan.counts, shop = sum(Object.entries(run.plan.resist || {}), ([k, n]) => Math.min(n, owned(run, k)) * (D.SHOP_CHIPS[k]?.place === 'space' ? dims.stackMax : D.SHOP_CHIPS[k]?.place === 'big' ? 3 * dims.stackMax + 1 : D.SHOP_CHIPS[k]?.place === 'sky' ? 0 : 1)) // a Tree needs a whole space, a Big chip four
     + run.cards.filter((id) => D.CARDS[id]?.resist).length; // and room for Resist chips (a card that lays one)
-  if (c && planWorth(c) <= run.purse && sum(Object.values(c)) + shop <= barCapacity(dims) && planWorth(c) > 0) return c;
-  return autoCounts(run, dims, run.purse, shop);
+  if (c && planWorth(c) <= stakeBudget(run) && sum(Object.values(c)) + shop <= barCapacity(dims) && planWorth(c) > 0) return c;
+  return autoCounts(run, dims, stakeBudget(run), shop);
 }
 // The shape of a Roller's or an opponent's position before the table changes it: its class, its jacket, and (for a
 // High Roller) the extra chip a stack takes. The Build-mode Stake editors draw from this, so they always show the
@@ -498,7 +540,7 @@ export const layoutCounts = (layout) => { const c = noCounts(); for (const sp of
 export function validLayout(run, dims) {
   const L = run.plan.layout; if (!L?.length) return null;
   const left = {}; // effect chips: as many as you own
-  const F = fitLayout(L.map((sp) => ({ ...sp, chips: sp.chips.filter((v) => typeof v === 'number' || (D.SHOP_CHIPS[v] && (left[v] = (left[v] ?? owned(run, v)) - 1) >= 0)) })), dims, run.purse);
+  const F = fitLayout(L.map((sp) => ({ ...sp, chips: sp.chips.filter((v) => typeof v === 'number' || (D.SHOP_CHIPS[v] && (left[v] = (left[v] ?? owned(run, v)) - 1) >= 0)) })), dims, stakeBudget(run));
   return F.some((sp) => sp.chips.length) ? F : null;
 }
 export const planWorth = (counts) => sum(Object.entries(counts), ([v, n]) => v * n);
@@ -545,18 +587,33 @@ export function startIntro(run) {
   const bout = createBout({ seed: run.rng.int(2 ** 31), a: playerSpec(run, { ...noCounts(), 1: n }), b: opp, rules: { maxDenom: 1 } });
   return { bout, ctx: { kind: 'intro', opp, felt: 'house', wager: 0, mult: 1, committed: n } };
 }
+// Developer mode: this table settled without playing it. The bout is set up exactly as Sit down would (your position,
+// the wager, the tilts, a Double Down), then ended: a win sends every chip across the table to the House as fees (they
+// are paid to you) and takes `lost` ¢ of your own chips as bids spent on the way; a loss takes your whole position.
+// What comes back goes through settle() like any other bout, so the settlement and the prizes are the real ones.
+export function autoClear(run, prep, { win = true, lost = 0 } = {}) {
+  const start = startTable(run, prep), { bout } = start, [me, opp] = bout.sides;
+  const take = (s, max = Infinity) => { let got = 0; for (const cell of s.grid.flat()) for (const ch of cell.chips.slice().reverse()) { if (ch.kind !== 'std' || ch.resist || got + ch.value > max) continue; cell.chips.splice(cell.chips.indexOf(ch), 1); got += ch.value; } return got; };
+  if (win) { bout.stage.paid[1] += take(opp); me.bidsPaid += take(me, Math.min(Math.max(0, lost), Math.max(0, start.ctx.committed - 1))); } // you keep a chip: you won
+  else bout.stage.paid[0] += take(me);
+  bout.over = true; bout.winner = win ? 0 : 1; bout.turn = Math.max(1, bout.turn); bout.auto = true;
+  return start;
+}
 // what you sat down with: Restore in the planner puts it back before the next bout
 export function rememberSeat(run) { const L = validLayout(run, rollerStats(run).dims); if (L) run.plan.sat = JSON.parse(JSON.stringify(L)); }
 export function startTable(run, prep) {
   const entry = prep.kind === 'boss' ? run.fs.boss : run.fs.tables[prep.idx], t = prep.tilts;
+  const set = wagerOf(run, prep.kind, prep.idx); run.hold = set; // the table's wager is set aside before the Stake is filled
   const on = (k) => (t[k] ? 1 : 0); // a tilt that is on opens the bout once, then the House may play it again as the bout goes
   const extra = { position: on('position'), resist: { ...run.plan.resist }, side: { tilts: Object.fromEntries(Object.keys(D.TILTS).filter((k) => t[k]).map((k) => [k, true])), positionTilt: on('position'), holes: on('hazard'), creatures: on('creature'), spawners: on('spawner'),
     shields: on('shield'), familiars: on('familiar'), interventions: on('intervention'), calamities: on('calamity') ? [run.rng.pick(Object.keys(D.CALAMITIES))] : [] } };
   const st = rollerStats(run, extra); const counts = validCounts(run, st.dims);
   for (const el of Object.keys(extra.resist)) extra.resist[el] = Math.min(extra.resist[el], owned(run, el));
   const bout = createBout({ seed: run.rng.int(2 ** 31), a: playerSpec(run, counts, extra), b: entry.opp, rules: { maxDenom: maxDenom(run.floor), felt: prep.kind === 'boss' ? 'royal' : D.feltId(entry.felt) } });
-  const com = committed(bout);
-  return { bout, ctx: { kind: prep.kind, idx: prep.idx, opp: entry.opp, felt: prep.kind === 'boss' ? 'royal' : D.feltId(entry.felt), prep, wager: Math.max(0, run.purse - com), mult: multiplier(run, prep), tiltNet: tiltNet(prep), committed: com, resist: extra.resist } };
+  const com = committed(bout); delete run.hold;
+  // a table: its own wager (as much of it as the purse still covers); the High Roller, all-in: everything left off the table
+  const wager = allIn(prep.kind) ? Math.max(0, run.purse - com) : Math.max(0, Math.min(set, run.purse - com));
+  return { bout, ctx: { kind: prep.kind, idx: prep.idx, opp: entry.opp, felt: prep.kind === 'boss' ? 'royal' : D.feltId(entry.felt), prep, wager, kept: Math.max(0, run.purse - com - wager), allIn: allIn(prep.kind), mult: multiplier(run, prep), tiltNet: tiltNet(prep), committed: com, resist: extra.resist } };
 }
 export function startLounge(run, drinkId) {
   const L = run.fs.lounge, st = rollerStats(run), d = L.drinks.find((x) => x.id === drinkId);
@@ -584,7 +641,7 @@ function keepDiceState(run, bout) {
   for (const t of run.tricks) { const x = tricks.find((y) => y.uid === t.uid); if (x && x.wear != null) t.wear = x.wear; }
 }
 export function settle(run, ctx, bout) {
-  keepDiceState(run, bout);
+  keepDiceState(run, bout); delete run.hold;
   const sm = summary(bout, 0), rng = run.rng, lines = [], res = { win: sm.win, lines, prizes: null, news: [], sm };
   run.stats.bouts++; run.stats.turns += sm.turns; if (sm.win) run.stats.wins++; else run.stats.losses++;
   if (run.drink) { run.drink.sips = bout.sides[0].drink ? bout.sides[0].drink.sips : run.drink.sips; if (run.drink.sips <= 0) run.drink = null; }
@@ -622,7 +679,9 @@ export function settle(run, ctx, bout) {
   const entry = ctx.kind === 'boss' ? run.fs.boss : run.fs.tables[ctx.idx];
   const wager = sm.intervened ? Math.floor(ctx.wager * (1 - D.TUNING.penalty.interventionShare)) : ctx.wager;
   if (sm.win) {
-    const base = sm.survivors + sm.gold + sm.ownFees + sm.pendingBids + sm.opportunity + sm.nest + sm.seq + (sm.made || 0) + bounty + wager;
+    const kept = ctx.kept || 0; // what you left in your purse: never at the table
+    const base = kept + sm.survivors + sm.gold + sm.ownFees + sm.pendingBids + sm.opportunity + sm.nest + sm.seq + (sm.made || 0) + bounty + wager;
+    if (kept) lines.push([tx('run.kept-in-purse'), kept]);
     const tilt = tiltPay(ctx), chipsWon = chipStakePay(ctx);
     const winnings = Math.max(0, sm.oppFees + Math.round(wager * (ctx.mult - 1)) + tilt + chipsWon);
     lines.push([tx('run.chips-left-in-your'), sm.survivors], [tx('run.your-fees-restored-from'), sm.ownFees + sm.pendingBids]);
@@ -639,7 +698,7 @@ export function settle(run, ctx, bout) {
     if (tilt) lines.push([tilt > 0 ? tx('run.house-bounty-for-your') : tx('run.house-cut-for-your'), tilt]);
     lines.push([tx('run.bids-lost-to-the'), -(sm.bids - sm.pendingBids)]);
     if (sm.destroyed) lines.push([tx('run.chips-destroyed-by-hazards'), -sm.destroyed]);
-    entry.beaten = true;
+    entry.beaten = true; entry.lost = false;
     if (ctx.kind === 'table' && ctx.idx === 0) { run.fs.tables[1].seen = run.fs.tables[2].seen = true; res.news.push(tx('run.table-1-is-closed')); }
     else if (ctx.kind === 'table') { const other = run.fs.tables[3 - ctx.idx]; other.passed = true; res.news.push(tx('run.you-chose-table-at', { idx: ctx.idx + 1, name: other.opp.name, v: 4 - ctx.idx })); }
     res.base = base; res.winnings = winnings;
@@ -647,7 +706,7 @@ export function settle(run, ctx, bout) {
     if (ctx.kind === 'table') {
       if (ctx.prep.dd) { run.fs.ddStreak++; run.stats.dd++; run.fs.bossOpen = true; run.suiteKey = true; if (D.CARDS[`suite_${run.floor}`] && !hasCard(run, `suite_${run.floor}`)) run.cards.push(`suite_${run.floor}`); res.news.push(tx('run.double-down-won-a')); }
       run.fs.lastWin = { tilts: { ...ctx.prep.tilts }, mult: ctx.mult };
-      if (!tablesLeft(run) && !run.fs.bossOpen) { run.fs.bossOpen = true; res.news.push(tx('run.the-high-roller-is')); }
+      if (bossReady(run) && !run.fs.bossOpen) { run.fs.bossOpen = true; res.news.push(tx('run.the-high-roller-is')); }
     } else { res.news.push(tx('run.is-dethroned-the-stairs', { name: ctx.opp.name }));
       // a High Roller's business card: yours to keep, and to play by (one at a time, picked on the floor)
       // and their crown: yours to keep, and to wear from your suite (style only)
@@ -656,9 +715,19 @@ export function settle(run, ctx, bout) {
       const card = ctx.opp.trait; if (card && D.BOSS_TRAITS[card]) { run.bizCards = run.bizCards || []; if (!run.bizCards.includes(card)) run.bizCards.push(card); if (!run.trait) run.trait = card;
         res.news.push(tx('run.biz-card-kept', { name: ctx.opp.name, trait: D.BOSS_TRAITS[card].name })); } }
   } else {
-    run.purse = bounty;
-    lines.push([tx('run.chips-in-your-position'), -ctx.committed], ['Wager', -ctx.wager]);
+    // a loss takes your position and your wager; what you left in your purse is still yours
+    const kept = ctx.kept || 0; run.purse = kept + bounty;
+    lines.push([tx('run.chips-in-your-position'), -ctx.committed], [tx('run.wager-lost'), -ctx.wager]);
+    if (kept) lines.push([tx('run.kept-in-purse'), kept]);
     if (bounty) lines.push([tx('run.bounty-chips-cashed-in'), bounty]);
+    // no rematches: the table is closed all the same, and the floor moves on
+    entry.lost = true;
+    if (!D.TUNING.wager.rematch) {
+      if (ctx.kind === 'table' && ctx.idx === 0) { run.fs.tables[1].seen = run.fs.tables[2].seen = true; res.news.push(tx('run.table-lost-closed', { name: ctx.opp.name })); }
+      else if (ctx.kind === 'table') { const other = run.fs.tables[3 - ctx.idx]; other.passed = true; res.news.push(tx('run.table-lost-closed', { name: ctx.opp.name })); }
+      else res.news.push(tx(stairsOpen(run) ? 'run.boss-lost-stairs' : 'run.boss-lost', { name: ctx.opp.name }));
+      if (ctx.kind === 'table' && bossReady(run) && !run.fs.bossOpen) { run.fs.bossOpen = true; res.news.push(tx('run.the-high-roller-is')); }
+    }
     const lost = rng.shuffle(run.dice).slice(0, Math.min(D.TUNING.penalty.diceTaken, Math.max(0, run.dice.length - 1)));
     run.dice = run.dice.filter((d) => !lost.includes(d)); if (lost.length) lines.push([tx('run.dice-taken', { join: lost.map((d) => d.type).join(', ') }), 0]);
     if (run.fs) run.fs.lastWin = null;
@@ -690,6 +759,9 @@ export function suiteOffer(run) {
 export function goToBed(run, penthouse) { run.rest = penthouse ? { bouts: 2, amt: 2 } : { bouts: 1, amt: 1 }; }
 // after a High Roller: the Penthouse at the top; a Suite when you hold this floor's Suite Key (won with a Double Down)
 export function nextAfterBoss(run) { return run.floor >= 4 ? 'penthouse' : run.suiteKey || hasCard(run, `suite_${run.floor}`) ? 'suite' : 'floor'; }
+// the stairs after a High Roller you did not beat: straight up to the next floor (no suite, and no Penthouse or Ascent
+// from the top floor: those are for the Roller who dethroned its High Roller)
+export const climbAfterLoss = (run) => (stairsOpen(run) && !run.fs.boss.beaten && run.floor < 4 ? 'floor' : null);
 
 export function netWorth(run) { return run.purse + sum(run.dice, (d) => D.DICE[d.type].sell) + sum(run.tricks, (t) => trickValue(run, t)); }
 export function buildAscent(run, meta) {

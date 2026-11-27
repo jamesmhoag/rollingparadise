@@ -14,6 +14,7 @@ import { buildScene } from './ui/build.js';
 import { loadDraft } from './build/draft.js';
 import * as D from './data.js';
 import { startCard } from './ui/rollercard.js';
+import { devOn, setDev } from './ui/dev.js';
 import * as R from './run.js';
 import { cents } from './util.js';
 import { t } from './text.js';
@@ -35,6 +36,8 @@ function musicAt(ctx) {
   return { floor, boss, where: boss ? t('music.highRoller', { place }) : place };
 }
 nav.bout = ({ bout, ctx }) => go((root) => { if (window.RP) window.RP.bout = bout; if (ctx.kind !== 'lounge') boutMusic(bout, musicAt(ctx)); boutScene(root, bout, ctx, () => { endBoutMusic(); const res = R.settle(app.run, ctx, bout); go((r) => resultScene(r, ctx, res)); }); });
+// a bout already decided (developer mode's Clear and Lose): straight to its settlement
+nav.result = ({ bout, ctx }) => { const res = R.settle(app.run, ctx, bout); go((r) => resultScene(r, ctx, res)); };
 nav.intro = () => nav.bout(R.startIntro(app.run));
 nav.bouncer = () => nav.bout(R.startBouncer(app.run));
 nav.lounge = (drinkId) => nav.bout(R.startLounge(app.run, drinkId));
@@ -52,6 +55,8 @@ function bouncerPanel(run) {
 }
 // who, where and how much, for the saved run
 const runWhere = (run) => ({ who: D.heroName(run.cls, run.roller), where: run.phase === 'ascent' ? t('title.where.ascent') : t('title.where.floor', { floor: run.floor }), purse: cents(run.purse) });
+// developer mode's switch, at the foot of the title menu
+function devToggle() { const b = btn(t(devOn() ? 'title.dev.on' : 'title.dev.off'), () => { setDev(!devOn()); nav.title(); }, t('title.dev.tip'), `sign-btn dev-toggle ${devOn() ? 'on' : ''}`); return guided(b, 'dev'); }
 function titleScene(root) {
   const meta = app.meta = R.loadMeta(), saved = R.loadRun();
   const resume = saved && ['floor', 'ascent'].includes(saved.phase);
@@ -74,7 +79,8 @@ function titleScene(root) {
         h('div', { class: 'row' }, btn(t('title.new.keep'), () => closePanel(), null, 'go'), btn(t('title.new.over'), () => { R.clearRun(); closePanel(true); nav.select(); }, null, 'danger')))) : nav.select()), resume ? t('title.new.tip') : null, resume ? 'sign-btn p' : 'sign-btn'),
       btn(t('title.howto'), () => howTo(), null, 'sign-btn p'),
       btn(t('title.library'), () => openLibrary(null, { title: true }), t('title.library.tip'), 'sign-btn'),
-      btn(t('title.build'), () => nav.build(), t('title.build.tip'), 'sign-btn p')),
+      btn(t('title.build'), () => nav.build(), t('title.build.tip'), 'sign-btn p'),
+      devToggle()),
     h('div', { class: 'stats records' },
       [[t('title.rec.runs'), meta.runs, t('title.rec.runs.tip')], [t('title.rec.best'), meta.best > 4 ? t('title.rec.ascent') : meta.best || '—', t('title.rec.best.tip')], [t('title.rec.crowns'), meta.crowns, t('title.rec.crowns.tip')], [t('title.rec.jackets'), meta.jackets.length, t('title.rec.jackets.tip')], [t('title.rec.wallets'), (meta.wallets || []).length, t('title.rec.wallets.tip')], [t('title.rec.atm'), cents(meta.atm), t('title.rec.atm.tip')]]
         .map(([a, b, t]) => h('span', { class: 'stat', tip: `<b>${a}</b><p>${t}</p>` }, h('em', { text: a }), h('b', { text: b }))))));

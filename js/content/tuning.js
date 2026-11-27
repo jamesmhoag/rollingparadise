@@ -8,6 +8,15 @@ export const TUNING = {
     boss: 3, // a High Roller's
     doubleDownMax: 6, // the most a Double Down can reach
     tiltWorthShare: 1, // Challenges pay (Cheats cost) this × their net multiplier × the opponent's worth, on a win
+    // A table has a wager of its own (FLOORS[floor].wager, one per table): it is what you put up to sit down, and what the
+    // multiplier pays on. What is left of your purse can go into your Stake, or stay in your purse (yours if you lose).
+    minStake: 1, // the least you must still have for your Stake, on top of the wager, to sit down
+    rematch: false, // a table can be played again after a loss
+    bossNeedsWins: false, // the High Roller sits down only with Rollers who won their tables (off: played is enough)
+    bossToClimb: false, // the stairs open only once the High Roller is beaten (off: once you have played them)
+    bossAllIn: true, // at the High Roller everything you hold off the table is wagered
+    bossMatch: 1, // ...and the High Roller matches it: a win pays the wager back plus this many times it (all-in only)
+    forcedExit: true, // with no game left on the floor that you can afford, the House shows you the door
   },
   // losing
   penalty: {

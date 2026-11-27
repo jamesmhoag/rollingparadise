@@ -15,7 +15,6 @@ import { t } from '../text.js';
 import { iconKids } from './icons.js';
 import { t as tx } from '../text.js';
 
-const MIN_BUYIN = 5;
 let rerender = () => {};
 
 // Floor plans, in a 900 x 620 space. Each floor lays the same features out differently, after the
@@ -53,6 +52,7 @@ function furniture(kind) {
 
 export function hubScene(root) {
   const run = app.run, fs = run.fs, F = D.FLOORS[run.floor], P = PLANS[run.floor] || BASEMENT;
+  delete run.hold; // no bout is being set up here: the whole purse is yours to spend
   const H = hud(F.name, tx('floor.floor-of-4', { floor: run.floor }));
   if (at.floor !== run.floor) { at.floor = run.floor; at.k = 'entry'; }
   const news = h('ul', { class: 'news list' }), book = h('div', { class: 'inv list' }), hint = h('p', { class: 'sub fade-t' });
@@ -74,17 +74,18 @@ export function hubScene(root) {
       h('div', { class: 'box' }, h('span', { class: 'cap', text: t('floor.yourBook') }), book, hint)))));
 
   function tiles() {
-    const out = [], buyin = () => toast(t('floor.buyin', { min: cents(MIN_BUYIN) }), 'warn');
+    const out = [], buyin = (min) => toast(t('floor.buyin', { min: cents(min) }), 'warn');
     fs.tables.forEach((tb, i) => { const st = R.tableState(run, i);
-      const lock = { later: t('floor.table.later'), passed: t('floor.table.passed') }[st];
-      out.push({ k: 't' + i, unseen: !tb.seen, cls: `table ${st === 'beaten' ? 'done' : ''} ${lock ? 'locked' : ''}`, ico: '🎴', name: tb.seen ? tb.opp.name : t('floor.table.name', { n: i + 1 }), tag: t('floor.table.tag', { choice: i ? t('floor.table.choice') : '', felt: D.feltOf(tb.felt).name }), felt: tb.felt,
-        sub: st === 'beaten' ? t('floor.table.beaten') : st === 'passed' ? t('floor.table.packed') : st === 'later' ? t('floor.table.opensAfter') : tb.seen ? t('floor.table.seen', { cls: D.CLASSES[tb.opp.cls].name, worth: cents(tb.opp.worth), closes: i ? t('floor.table.closesOther') : '' }) : t('floor.table.stranger'),
-        tip: () => `${tb.seen ? oppTip(tb.opp) : t('floor.table.unknown')}${lock ? `<p class="bad keep">${lock}</p>` : `<p class="keep">${t(i ? 'floor.table.choiceTip' : 'floor.table.firstTip')}</p>`}`,
-        on: () => { if (st === 'beaten') return toast(t('floor.table.closed')); if (lock) return toast(lock, 'warn'); if (run.purse < MIN_BUYIN) return buyin(); app.nav.prep('table', i); } }); });
-    const b = fs.boss;
-    out.push({ k: 'boss', felt: b.felt || 'royal', cls: `boss ${fs.bossOpen ? '' : 'locked'} ${b.beaten ? 'done' : ''}`, ico: '👑', name: b.opp.name, tag: t('floor.boss.tag'), sub: fs.bossOpen ? t('floor.boss.open', { worth: cents(b.opp.worth), mult: D.TUNING.wager.boss }) : t(R.tablesLeft(run) === 2 ? 'floor.boss.need2' : 'floor.boss.need1'),
-      tip: () => (fs.bossOpen ? oppTip(b.opp) : t('floor.boss.hidden', { name: b.opp.name })),
-      on: () => { if (!fs.bossOpen) return toast(t('floor.boss.notYet'), 'warn'); if (run.purse < MIN_BUYIN) return buyin(); app.nav.prep('boss', 0); } });
+      const lock = { later: t('floor.table.later'), passed: t('floor.table.passed') }[st], wager = R.wagerOf(run, 'table', i), over = st === 'beaten' || st === 'lost';
+      out.push({ k: 't' + i, unseen: !tb.seen, cls: `table ${over ? 'done' : ''} ${lock ? 'locked' : ''}`, ico: '🎴', name: tb.seen ? tb.opp.name : t('floor.table.name', { n: i + 1 }), tag: t('floor.table.tag', { choice: i ? t('floor.table.choice') : '', felt: D.feltOf(tb.felt).name }), felt: tb.felt,
+        sub: st === 'beaten' ? t('floor.table.beaten') : st === 'lost' ? t('floor.table.lost') : st === 'passed' ? t('floor.table.packed') : st === 'later' ? t('floor.table.opensAfter') : (tb.seen ? t('floor.table.seen', { cls: D.CLASSES[tb.opp.cls].name, worth: cents(tb.opp.worth), closes: i ? t('floor.table.closesOther') : '' }) : t('floor.table.stranger')) + t('floor.table.wager', { wager: cents(wager) }),
+        tip: () => `${tb.seen ? oppTip(tb.opp) : t('floor.table.unknown')}${over ? '' : t('floor.table.wagerTip', { wager: cents(wager), need: cents(R.buyIn(run, 'table', i)), mult: D.TUNING.wager.base })}${lock ? `<p class="bad keep">${lock}</p>` : `<p class="keep">${t(i ? 'floor.table.choiceTip' : 'floor.table.firstTip')}</p>`}`,
+        on: () => { if (over) return toast(t('floor.table.closed')); if (lock) return toast(lock, 'warn'); if (!R.canAfford(run, 'table', i)) return buyin(R.buyIn(run, 'table', i)); app.nav.prep('table', i); } }); });
+    const b = fs.boss, bossOn = R.bossReady(run), bossOver = R.bossDone(run), allIn = R.allIn('boss');
+    out.push({ k: 'boss', felt: b.felt || 'royal', cls: `boss ${bossOn ? '' : 'locked'} ${bossOver ? 'done' : ''}`, ico: '👑', name: b.opp.name, tag: t('floor.boss.tag'),
+      sub: bossOver ? t(b.beaten ? 'floor.boss.beaten' : 'floor.boss.lost') : bossOn ? t(allIn ? 'floor.boss.allIn' : 'floor.boss.open', { worth: cents(b.opp.worth), mult: allIn ? 1 + (D.TUNING.wager.bossMatch ?? 1) : D.TUNING.wager.boss }) : t(R.tablesLeft(run) === 2 ? 'floor.boss.need2' : 'floor.boss.need1'),
+      tip: () => (bossOn ? oppTip(b.opp) + (bossOver ? '' : t(allIn ? 'floor.boss.allInTip' : 'floor.boss.wagerTip', { wager: cents(R.wagerOf(run, 'boss')), match: D.TUNING.wager.bossMatch ?? 1 })) : t('floor.boss.hidden', { name: b.opp.name })),
+      on: () => { if (bossOver) return toast(t('floor.table.closed')); if (!bossOn) return toast(t('floor.boss.notYet'), 'warn'); if (!R.canAfford(run, 'boss')) return buyin(R.buyIn(run, 'boss')); app.nav.prep('boss', 0); } });
     out.push({ k: 'smith', ico: '⚒️', name: t('floor.smith.name'), sub: t('floor.smith.sub'), tip: t('floor.smith.tip'), on: () => smithPanel() });
     out.push({ k: 'dice', ico: '🎲', name: t('floor.dice.name'), sub: t('floor.dice.sub', { n: R.diceShop(run).length }), tip: t('floor.dice.tip'), on: () => diceShopPanel() });
     out.push({ k: 'trader', ico: '🃏', name: t('floor.trader.name'), sub: t('floor.trader.sub', { n: fs.shop.length }), tag: R.memberOf(run, 'trader') ? t('floor.trader.member') : null, tip: t('floor.trader.tip'), on: () => traderPanel() });
@@ -97,8 +98,11 @@ export function hubScene(root) {
     out.push({ k: 'kit', ico: '🎒', name: t('floor.kit.name'), sub: t('floor.kit.sub', { dice: run.dice.length, tricks: run.tricks.length, cards: run.cards.length }), tip: t('floor.kit.tip'), on: () => kitPanel() });
     out.push({ k: 'exit', cls: 'exit', ico: '🚪', name: t('floor.exit.name'), sub: t('floor.exit.sub'), tip: t('floor.exit.tip'), on: () => exitPanel() });
     const up = t(run.floor < 4 ? 'floor.stairs.up' : 'floor.stairs.lift');
-    out.push({ k: 'stairs', cls: fs.boss.beaten ? '' : 'locked', name: up, sub: run.floor < 4 ? t('floor.stairs.to', { floor: D.FLOORS[run.floor + 1].name }) : t('floor.stairs.toPenthouse'),
-      tip: t('floor.stairs.tip', { name: up }), on: () => toast(t('floor.stairs.blocked', { boss: fs.boss.opp.name }), 'warn') });
+    // the stairs: beaten, the High Roller sends you up from the settlement; played and lost, you walk up from here
+    const climb = R.climbAfterLoss(run);
+    out.push({ k: 'stairs', cls: climb ? '' : 'locked', name: up, sub: run.floor < 4 ? t('floor.stairs.to', { floor: D.FLOORS[run.floor + 1].name }) : t('floor.stairs.toPenthouse'),
+      tip: t('floor.stairs.tip', { name: up }) + (climb ? t('floor.stairs.openTip') : ''),
+      on: () => { if (!climb) return toast(t(fs.boss.lost ? 'floor.stairs.crownOnly' : 'floor.stairs.blocked', { boss: fs.boss.opp.name }), 'warn'); R.enterFloor(run, run.floor + 1); app.nav.hub(); } });
     out.push({ k: 'entry', name: t(run.floor > 1 ? 'floor.entry.down' : 'floor.entry.door'), sub: t('floor.entry.sub'), tip: t('floor.entry.tip'),
       on: () => { R.saveRun(run); toast(t('floor.entry.saved')); app.nav.title(); } });
     return out.filter((x) => !D.TUNING.rooms[x.k] || D.TUNING.rooms[x.k].includes(run.floor)); // rooms the tuner keeps off this floor
@@ -117,6 +121,9 @@ export function hubScene(root) {
     R.saveRun(run);
   }
   rerender = render; render();
+  const onDev = () => { if (!root.isConnected) return document.removeEventListener('rp:dev', onDev); render(); }; document.addEventListener('rp:dev', onDev); // developer mode changed the run
+  // no game left here that the purse covers: the House shows you the door (sell something first if you can)
+  if (R.stranded(run)) setTimeout(() => { if (app.run === run && R.stranded(run)) doorPanel(); }, 900);
   if (run.pendingCard) setTimeout(() => { if (app.run === run && run.pendingCard) walletFullPanel(); }, 700);
 }
 
@@ -327,6 +334,14 @@ function walletFullPanel() {
     h('div', { class: 'row' }, btn(tx('floor.leave-the-new-card'), () => done(null), null, ''))));
 }
 
+// shown the door: every game still open on the floor costs more than you hold
+function doorPanel() {
+  const run = app.run, cheapest = Math.min(...R.gamesOpen(run).map((g) => g.cost));
+  openPanel(h('div', { class: 'col' }, h('h2', { text: tx('floor.door.title') }),
+    h('p', { class: 'sub', text: tx('floor.door.text', { purse: cents(run.purse), need: cents(cheapest) }) }),
+    h('p', { text: tx('floor.door.sell') }),
+    h('div', { class: 'row' }, btn(tx('floor.door.stay'), () => closePanel(), null, 'go'), btn(tx('test.tools.leave'), () => { closePanel(true); app.nav.gift(); }, null, 'danger'))));
+}
 function exitPanel() {
   const run = app.run;
   openPanel(h('div', { class: 'col' }, h('h2', { text: tx('floor.exit-through-the-gift') }),

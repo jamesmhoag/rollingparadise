@@ -53,18 +53,24 @@ for (let seed = 1; seed <= 60; seed++) {
       const i = path[k], prep = R.newPrep(run, 'table', i); if (run.purse > 400) { R.setTilt(run, prep, 'hazard', true); R.setTilt(run, prep, 'creature', true); }
       if (k === 1 && run.fs.lastWin) prep.dd = true;
       run.plan.counts = null;
-      const res = fight(R.startTable(run, prep));
-      if (!res.win && run.purse <= 0) alive = false;
-      if (!res.win && alive) k--; // try the table again
-      else if (res.win) assert(k > 0 || (R.tableOpen(run, 1) && R.tableOpen(run, 2)), 'beating table 1 opens tables 2 and 3');
+      if (!R.canAfford(run, 'table', i)) { assert(R.stranded(run), 'a table you cannot afford, with nothing else to play: shown the door'); alive = false; break; }
+      const before = run.purse, w = R.wagerOf(run, 'table', i);
+      const start = R.startTable(run, prep); assert(start.ctx.wager === w && start.ctx.kept === before - w - start.ctx.committed && start.ctx.kept >= 0, 'a table takes its own wager; the rest is your Stake or stays in your purse');
+      const res = fight(start);
+      if (!res.win) assert(run.purse >= start.ctx.kept, 'a loss leaves what you kept in your purse');
+      assert(!R.tableOpen(run, i), 'a table is played once, win or lose');
+      assert(k > 0 || (R.tableOpen(run, 1) && R.tableOpen(run, 2)), 'playing table 1 opens tables 2 and 3');
       if (guard++ > 400) throw new Error('stuck');
     }
-    if (alive) assert(run.fs.bossOpen && !R.tableOpen(run, 3 - path[1]), 'beating one of tables 2 and 3 closes the other and opens the High Roller');
-    if (alive) { const res = fight(R.startTable(run, R.newPrep(run, 'boss'))); if (!res.win) alive = false; }
-    if (alive && R.nextAfterBoss(run) === 'suite') { R.suiteOffer(run); R.goToBed(run, false); }
+    if (alive) assert(R.bossReady(run) && !R.tableOpen(run, 3 - path[1]), 'playing one of tables 2 and 3 closes the other and brings out the High Roller');
+    if (alive && !R.canAfford(run, 'boss')) alive = false;
+    if (alive) { const start = R.startTable(run, R.newPrep(run, 'boss')); assert(start.ctx.allIn && start.ctx.kept === 0 && start.ctx.wager === run.purse - start.ctx.committed, 'the High Roller is played all in');
+      const res = fight(start); assert(R.stairsOpen(run), 'the stairs open once the High Roller is played');
+      if (!res.win) { assert(R.climbAfterLoss(run) === (f < 4 ? 'floor' : null), 'a lost High Roller still lets you climb, but not into the Penthouse'); if (f >= 4 || run.purse <= 0) alive = false; } }
+    if (alive && run.fs.boss.beaten && R.nextAfterBoss(run) === 'suite') { R.suiteOffer(run); R.goToBed(run, false); }
     if (alive) floors[f]++;
   }
-  if (alive) {
+  if (alive && run.fs.boss.beaten) {
     R.buildAscent(run, meta);
     while (run.phase === 'ascent') fight(R.startAscent(run));
     if (run.phase === 'paradise') crowns++;
