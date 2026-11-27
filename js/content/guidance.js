@@ -249,6 +249,8 @@ export const GUIDE = {
     how: ['Pick a chip from the rack and a tool, then click a space: Add puts the chip on top, Insert slips it in below the chip you point at, Change turns that chip into it, Remove takes that chip out.', 'Hold to keep going, sweep to cover more spaces; the right button always removes.'] },
   'btn:bet': { name: 'Runner', def: 'A runner you can bet on at the Sports Book.',
     how: ['Pick a runner; longer odds pay more but win less often.'] },
+  'btn:aimfx': { name: 'Aim display', def: 'Shows what every aimed trick will do, drawn over the position: the space it is aimed at, the spaces it covers, each chip it lays and what that chip reaches.',
+    how: ['Point at a trick or at a space to see that trick in full.', 'Turn it off for a plain table. Spaces you can choose are still lit.'] },
   'btn:speed': { name: 'Speed', def: 'How fast the bout plays out.',
     how: ['Speed it up once you know what each phase does.'] },
   restore: { name: 'Restore', def: 'Tricks and dice tap after they play. This shows what the end of the turn brings back, as the board stands now.',
@@ -275,7 +277,7 @@ export const GUIDE_BY_CLASS = [
   ['thing.th-pass', 'pass'], ['thing.th-wallet', 'wallet'], ['thing.th-jacket', 'jacket'], ['thing', 'card'], ['gcard.gpass', 'pass'], ['gcard', 'card'],
   ['box.row', 'denom'], ['dye', 'dye'],
   ['tilt.challenge', 'tilt:challenge'], ['tilt.cheat', 'tilt:cheat'], ['ocell', 'opp-stack'],
-  ['band-btn', 'music'], ['pmeter', 'prep:meters'], ['bookcard', 'trick'], ['mcell', 'cell'], ['bonus-req', 'trick-dice'], ['nsign', 'sign'], ['house-sign', 'house'], ['fld', 'pit'], ['field', 'ledger'], ['pit-void', 'pit'], ['phases', 'phase-track'], ['orbital', 'weather'], ['sfx-btn', 'sfx'], ['qd', 'quality'], ['tgt', 'aim'], ['bonus', 'trick-dice'], ['c-stack', 'trick-stack'], ['zone-title', 'zone'], ['zone-label', 'position-label'], ['b-lab', 'build-option'], ['glyph', 'sign-glyph'], ['stakeboard', 'layout-space'], ['bidslot', 'bid-space'],
+  ['band-btn', 'music'], ['pmeter', 'prep:meters'], ['bookcard', 'trick'], ['mcell', 'cell'], ['bonus-req', 'trick-dice'], ['nsign', 'sign'], ['signbox', 'sign'], ['house-sign', 'house'], ['fld', 'pit'], ['field', 'ledger'], ['pit-void', 'pit'], ['phases', 'phase-track'], ['orbital', 'weather'], ['sfx-btn', 'sfx'], ['qd', 'quality'], ['tgt', 'aim'], ['bonus', 'trick-dice'], ['c-stack', 'trick-stack'], ['zone-title', 'zone'], ['zone-label', 'position-label'], ['b-lab', 'build-option'], ['glyph', 'sign-glyph'], ['stakeboard', 'layout-space'], ['bidslot', 'bid-space'],
   ['worth', 'worth'], ['weather', 'weather'], ['table-felt', 'felt'], ['turn', 'turn'], ['house', 'house'], ['pit', 'pit'],
   ['stage-strip', 'stage'], ['run-empty', 'run'], ['okit', 'opp-kit'], ['spine.book', 'spine:book'], ['spine.dice', 'spine:dice'],
 ];

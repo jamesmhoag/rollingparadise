@@ -1078,6 +1078,36 @@ for a close look, to be turned over (`ui/spin.js`, the look a die gets).
   the sips left. A click on yours in the Drink phase takes a sip; there is no Sip button.
 - **The Library shows a trick as the trick**: the whole card, as a hover shows it, with under it only what the card
   does not say.
+- **The felt is the Roller's.** Each position's Stake takes the hue of the first colour of its Roller's sign name,
+  its Bet the hue of the second (`feltOf`, ui/sign.js), at the table and on the position boards before a bout. Only
+  the hue is taken: the felt's depth is set so every hue is equally dark under the chips (a yellow comes out
+  mustard, a blue is lifted off black), a light colour gives a paler felt and a dark one a deeper felt, a colour
+  with no hue (black, white, a grey) gives slate or ivory, and two hues within 30 degrees of each other are told
+  apart by depth (the Bet paler and thinner).
+- **The rolling light** (ui/cue.js). Whatever can be chosen right now carries `cue`, and nothing else does: spaces
+  you can bid from or flip, the valid targets of the trick being placed, tricks that can be drawn (and the Run they
+  go to), tricks that can take what is in hand, dice that can be picked (and the Roll they go to), and the rolled
+  dice once every bid is placed and a click on one opens the Bluff. Each keeps a faint lit edge the whole time, and
+  one brighter light runs through them in order, left to right, a lap about every two seconds. Nothing pulses.
+  Targets are lit in the colour of the trick's type.
+- **What an aimed trick will do is drawn over the position** (`showAims`, ui/boutview.js), in its type's colour, for
+  every aimed trick: your bids and what either side has in play. The space it is aimed at has a lit edge with a
+  light running round it and a dotted inner line (dashed for the opponent's); the spaces its effect covers are
+  tinted; each chip it lays is drawn as that chip at the level of the stack it goes in at, at its own size, with how
+  many; the spaces that chip's own reach covers are hatched; its name stands over the space in lit letters with what
+  it lays. The trick being placed, the one under the pointer and any whose spaces the pointer is over show in full;
+  the rest are faint (a ring where each chip goes, the name dimmer). The ◎ button by the turn's buttons turns the
+  whole display off and on, and is remembered. The engine answers all of it from `landing` (bout.js): each space
+  with `ch`, `lvl`, `foot` and `reach`.
+- **The turn's buttons stand under the Roll**, beside the tricks being bid on, when the dice are open (between the
+  seats when they are folded away). Three tricks stand in a row of the Run.
+- **One place, one text.** A text that arrives where another stands replaces it until it is over (`overText`,
+  ui/core.js: the Roll's box while dice are held over it), and the general rule in core.js (MOMENT / STANDING)
+  covers names over spaces too.
+- **Your name tag** is your sign at half size, top left of every screen away from the table (the bar on the floor,
+  in rooms, before a bout and in the Suite; alone in the corner on the street and at a result).
+- A trick's card says where it lands ("Lands on the front on their side"), never "aim"; on a trick's strip the dice
+  come before the quality mark.
 - Still a flat picture of the same material, not a body of it: cards and passes, sign letters, symbols and crowns.
 - A jacket has a style (blazer, bomber, long coat, parka) and parts (body, sleeves, trim, collar, closure, pockets,
   emblem), each with its own material and colour.

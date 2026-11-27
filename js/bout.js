@@ -1102,14 +1102,16 @@ export function setTarget(b, s, e, tgt) {
 // add chips name the spaces they cover.
 export function landing(b, s, e, at) {
   const def = TRICKS[e.trick.id], R = def.roll, t = at ? b.sides[at.side] : null; if (!t) return [];
-  if (R.k !== 'chips' || fxOf(def) || makeOf(def)) return addsChips(def) ? affected(b, t, def, at, e.dice.length).map((x) => ({ side: t.idx, r: x.r, c: x.c, n: 0, chip: makeOf(def)?.chip || fxOf(def) })) : []; // an effect or a maker covers its spread
+  const look = (x) => ({ ...x, ...landLook(b, t, R, x.chip, x, x.amt) });
+  if (R.k !== 'chips' || fxOf(def) || makeOf(def)) { if (!addsChips(def)) return []; // an effect or a maker covers its spread: an effect's own chip lies where it is aimed
+    return affected(b, t, def, at, e.dice.length).map((x) => (makeOf(def) ? look({ side: t.idx, r: x.r, c: x.c, n: 0, chip: makeOf(def).chip }) : { side: t.idx, r: x.r, c: x.c, n: 0, chip: fxOf(def), ...(x.r === at.r && x.c === at.c ? landLook(b, t, R, R.chip, x) : {}) })); }
   const total = previewTotal(s, e), vals = e.dice.map((d) => d.value);
   let inst = total > 0 ? instances(R.convert, vals.length ? vals : [total], total) : []; if (bonusMet(s, e) && def.bonus.k === 'multiply') inst = Array.from({ length: def.bonus.x || 2 }, () => inst).flat();
   const spaces = deployOrder(t.rows, t.dims.cols, at, R.deploy).filter(({ r, c }) => !t.grid[r][c].hole && !t.grid[r][c].link); if (!spaces.length) return [];
-  const out = new Map(); const add = (sp, n) => { const k = sp.r + ':' + sp.c; if (!out.has(k)) out.set(k, { side: t.idx, r: sp.r, c: sp.c, n: 0, chip: R.chip }); out.get(k).n += n; };
+  const out = new Map(); const add = (sp, n, amt) => { const k = sp.r + ':' + sp.c; if (!out.has(k)) out.set(k, { side: t.idx, r: sp.r, c: sp.c, n: 0, chip: R.chip, amt }); out.get(k).n += n; };
   if (!inst.length) for (const sp of R.convert === 'lump' ? spaces.slice(0, 1) : spaces) add(sp, 0);
-  inst.forEach((_, i) => add(spaces[i % spaces.length], 1));
-  return [...out.values()];
+  inst.forEach((amt, i) => add(spaces[i % spaces.length], 1, amt));
+  return [...out.values()].map(look); // each with the chip as it will lie: { ch, lvl, foot, reach }
 }
 // spaces an effect covers from an origin on side t
 export function affected(b, t, def, origin, nDice, o = {}) {
@@ -2131,35 +2133,42 @@ const findMade = (s, id) => { for (const x of allCells(s)) { const i = x.cell.ch
 const topNon = (cell) => { for (let i = cell.chips.length - 1; i >= 0; i--) if (!isHazard(cell.chips[i])) return cell.chips[i]; return null; };
 const nameOfChip = (ch) => madeOf(ch)?.name || CHIP_KIND_NAMES[ch.kind] || ch.kind;
 const CHIP_KIND_NAMES = { std: tx('feed.royal-paradise-chip'), block: tx('feed.block-chip'), counter: tx('feed.counter-chip'), debt: tx('feed.debt-chip'), opp: tx('feed.opportunity-chip') };
+// the spaces a made chip's reach covers from where it lies (`at`: { r, c, cell, ch }), whatever is on them
+function reachSpan(b, s, at, M) {
+  const R = M.reach || { to: 'touching', range: 1 }, range = Math.max(1, Math.min(5, R.range || 1)), here = (x) => x.r === at.r && x.c === at.c;
+  const near = (x) => Math.max(Math.abs(x.r - at.r), Math.abs(x.c - at.c)) < range;
+  if (R.to === 'inside') return allCells(s).filter((x) => (at.ch.mat ? inMat(at.ch, x.r, x.c) : here(x))); // its own footprint
+  if (R.to === 'lane' || R.to === 'column') return allCells(s).filter((x) => (R.to === 'lane' ? x.c === at.c : x.r === at.r)); // its row across the position (its lane), or its depth line (its column)
+  if (TOUCHES.includes(R.to)) return allCells(s).filter(range > 1 ? near : here); // its own stack, and the stacks within range
+  const local = ['sameType', 'named', 'typed'].includes(R.to) && range < 5;
+  return (R.to === 'all' ? b.sides : R.to === 'theirs' ? [b.sides[1 - s.idx]] : [s]).flatMap((t) => allCells(t).filter((x) => !local || (t === s && near(x))).map((x) => ({ ...x, side: t })));
+}
+const TOUCHES = ['touching', 'touchingValue', 'touchingHits'];
 // the chips a made chip's reach covers: [{ x (where), ch }], never the chip itself
 function reachOf(b, s, at, M) {
-  const R = M.reach || { to: 'touching', range: 1 }, range = Math.max(1, Math.min(5, R.range || 1)), out = [];
-  const near = (x) => Math.max(Math.abs(x.r - at.r), Math.abs(x.c - at.c)) < range;
-  const sides = R.to === 'all' ? b.sides : R.to === 'theirs' ? [b.sides[1 - s.idx]] : [s];
-  if (R.to === 'inside') { // the chips lying on it, across its footprint
-    for (const x of allCells(s)) if (at.ch.mat ? inMat(at.ch, x.r, x.c) : x.cell === at.cell) for (const ch of x.cell.chips) if (ch !== at.ch && !isHazard(ch)) out.push({ x, ch });
-    return out;
-  }
-  if (R.to === 'lane' || R.to === 'column') { // every chip in its row across the position (its lane), or in its depth line (its column)
-    for (const x of allCells(s)) if (R.to === 'lane' ? x.c === at.c : x.r === at.r) for (const ch of x.cell.chips) if (ch !== at.ch && !isHazard(ch)) out.push({ x, ch });
-    return out;
-  }
-  if (R.to === 'touching' || R.to === 'touchingValue' || R.to === 'touchingHits') { // above and below in its stack, and the stacks within range
-    const cells = range > 1 ? allCells(s).filter(near) : [at];
-    for (const x of cells) x.cell.chips.forEach((ch, i) => { if (ch === at.ch || isHazard(ch)) return; if (x.cell === at.cell && range === 1 && Math.abs(i - at.i) !== 1) return;
-      if (R.to === 'touchingValue' && !(ch.value > 0)) return; if (R.to === 'touchingHits' && !(ch.hits > 0)) return; out.push({ x, ch }); });
-    return out;
-  }
-  for (const t of sides) for (const x of allCells(t)) {
-    if (['sameType', 'named', 'typed'].includes(R.to) && (t !== s || !near(x)) && range < 5) continue;
-    for (const ch of x.cell.chips) { if (ch === at.ch || isHazard(ch)) continue;
-      if (R.to === 'sameType' && !(ch.kind === at.ch.kind && ch.model === at.ch.model)) continue;
-      if (R.to === 'named' && nameOfChip(ch).toLowerCase() !== String(R.name || '').toLowerCase()) continue;
-      if (R.to === 'typed' && ch.kind !== R.kind && ch.model !== R.kind) continue;
-      out.push({ x: { ...x, side: t }, ch }); }
-  }
+  const R = M.reach || { to: 'touching', range: 1 }, out = [];
+  for (const x of reachSpan(b, s, at, M)) x.cell.chips.forEach((ch, i) => { if (ch === at.ch || isHazard(ch)) return;
+    if (TOUCHES.includes(R.to) && x.cell === at.cell && !((R.range || 1) > 1) && Math.abs(i - at.i) !== 1) return; // in its own stack: the chips above and below it
+    if (R.to === 'touchingValue' && !(ch.value > 0)) return; if (R.to === 'touchingHits' && !(ch.hits > 0)) return;
+    if (R.to === 'sameType' && !(ch.kind === at.ch.kind && ch.model === at.ch.model)) return;
+    if (R.to === 'named' && nameOfChip(ch).toLowerCase() !== String(R.name || '').toLowerCase()) return;
+    if (R.to === 'typed' && ch.kind !== R.kind && ch.model !== R.kind) return;
+    out.push({ x, ch }); });
   return out;
 }
+// How a chip a trick lays will lie on a space of side t: the chip itself (to draw: what it is, what it is worth, how
+// big), the level of the stack it goes in at, and the spaces its own reach covers. Nothing on the table changes.
+function landLook(b, t, R, chip, sp, amt) {
+  const G = { nextId: -1 }, cell = t.grid[sp.r][sp.c], solid = cell.chips.filter((y) => !isHazard(y)).length, kind = makeKind(chip), M = MADE_CHIPS[chip], top = cell.chips.length, spot = [{ side: t.idx, r: sp.r, c: sp.c }];
+  if (kind === 'fee') return { ch: mkChip(G, 'debt', M ? owesOf(chip) : amt || 1, M ? { model: chip } : {}), lvl: top, reach: M ? spanOf(b, t, sp, cell, { kind: 'debt', model: chip }, M) : spot };
+  if (kind === 'water' || kind === 'pit') return { ch: null, lvl: kind === 'water' ? 0 : placeIndex(R.place, R.at, solid), reach: [] };
+  if (isFxChip(chip)) return { ch: mkChip(G, 'fx', 0, { shop: chip, resist: chip }), lvl: SHOP_CHIPS[chip]?.place === 'top' ? top : cell.chips[0]?.kind === 'hat' ? 1 : 0, reach: [] };
+  if (M) { const ch = mkMade(G, chip); if (R.foot && R.foot !== 'model') ch.foot = R.foot;
+    return { ch, lvl: M.must === 'top' ? top : M.must === 'bottom' ? 0 : M.must === 'sandwiched' ? 1 : placeIndex(R.place, R.at, solid), foot: footOf(ch), reach: spanOf(b, t, sp, cell, ch, M) }; }
+  if (HAZARD_LIFE[chip]) return { ch: mkHazard(G, chip), lvl: top, reach: spot };
+  return { ch: mkChip(G, chip, kind === 'value' ? amt || 1 : chip === 'block' || chip === 'counter' ? 1 : 0), lvl: placeIndex(R.place, R.at, solid), reach: [] };
+}
+const spanOf = (b, t, sp, cell, ch, M) => reachSpan(b, t, { r: sp.r, c: sp.c, cell, ch }, M).map((x) => ({ side: (x.side || t).idx, r: x.r, c: x.c }));
 // ---------- pushing and shoving, tugging and pulling ----------
 // Three ways a stack moves. A SLIDE moves it along the felt one space: a stack in its way is pushed on ahead of it, and
 // the one ahead of that, as far as the line of stacks goes. Nothing can be pushed off the back of a position or off

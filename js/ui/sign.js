@@ -52,6 +52,29 @@ export const FINISH_PARTS = ['name', 'cls', 'mount', 'symbol', 'crown'];
 export const BASE_SIGN = { frame: 'plain', motion: 'chase', radius: 12, more: [], edge: 'star5', edgeAt: 'none', symbol: { on: false, id: 'star5', motion: 'breathe' }, mount: { color: '', image: '' }, blinks: {} };
 const OLD_FRAMES = { tube: ['plain', 0], double: ['plain', 1], triple: ['plain', 2], rope: ['twist', 1] };
 
+// The felt a Roller plays on comes off the sign: the Stake takes the hue of the name's first colour, the Bet the hue of
+// its second. The hue is what is taken; how deep and how strong the felt is stays the table's own, set so every hue
+// comes out equally dark under the chips (a yellow is held down to a mustard, a blue is lifted off black). A light
+// colour gives a paler felt of its hue, a dark one a deeper felt. A colour with no hue (black, white, any grey) gives a
+// slate or an ivory felt. Two colours too near each other in hue are told apart by depth: the Bet is paler and thinner.
+const hslOf = (hex) => { const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return [0, 0, 0.5]; const [r, g, b] = [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16) / 255), hi = Math.max(r, g, b), lo = Math.min(r, g, b), d = hi - lo, l = (hi + lo) / 2;
+  const hue = !d ? 0 : hi === r ? ((g - b) / d + 6) % 6 : hi === g ? (b - r) / d + 2 : (r - g) / d + 4; return [hue * 60, d ? d / (1 - Math.abs(2 * l - 1)) : 0, l]; };
+const lumOf = (hue, s, l) => { const a = s * Math.min(l, 1 - l), f = (n) => { const k = (n + hue / 30) % 12, v = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(0) + 0.7152 * f(8) + 0.0722 * f(4); };
+const hueless = ([, s, l]) => s < 0.14 || l < 0.06 || l > 0.97;
+function feltTone(c, thin) {
+  const [hue, s0, l0] = c, grey = hueless(c), s = grey ? 0.07 : Math.max(0.38, Math.min(0.8, s0)) * (thin ? 0.6 : 1), want = (0.04 + 0.05 * l0) * (thin ? 2 : 1) * (grey && l0 < 0.4 ? 0.6 : 1), h = grey ? 225 : hue;
+  let lo = 0.08, hi = 0.6; for (let i = 0; i < 14; i++) { const mid = (lo + hi) / 2; if (lumOf(h, s, mid) < want) lo = mid; else hi = mid; }
+  const css = (ss, ll) => `hsl(${h.toFixed(0)} ${(ss * 100).toFixed(0)}% ${(ll * 100).toFixed(0)}%)`;
+  return { felt: css(s, lo), rim: css(grey ? 0.1 : Math.max(0.75, s0), thin ? 0.84 : 0.74) };
+}
+export function feltOf(spec) {
+  const a = hslOf(spec?.name?.[0]), b = hslOf(spec?.name?.[1] ?? spec?.name?.[0]), gap = Math.abs(((a[0] - b[0] + 540) % 360) - 180);
+  const near = hueless(a) === hueless(b) && (hueless(a) ? Math.abs(a[2] - b[2]) < 0.35 : gap < 30), S = feltTone(a, false), T = feltTone(b, near);
+  return { '--stake-c': S.felt, '--stake-r': S.rim, '--bet-c': T.felt, '--bet-r': T.rim };
+}
+// puts a Roller's felt on anything that shows a position (the table's zones and spaces, a position board)
+export function dressFelt(el, spec) { if (el) for (const [k, v] of Object.entries(feltOf(spec))) el.style.setProperty(k, v); }
+
 // the sign a Roller (or the House) shows: the base, then the shared look for its side, then its own
 export function signOf(who, own) {
   const side = D.NEON[who] || D.NEON.them, out = { ...BASE_SIGN, ...side, ...(own || {}) };

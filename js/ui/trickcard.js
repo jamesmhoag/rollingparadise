@@ -39,7 +39,7 @@ export function diceHtml(t, def = D.defOf(t), cls = '') {
 export function trickItem(t, tipFn) {
   const def = D.defOf(t), T = D.TYPES[def.type], ch = trickChip(def);
   const el = h('span', { class: `tag-t trick tk-item ${printCls(t)}`, style: { '--tc': T.color }, ...(tipFn ? { tip: tipFn } : {}) },
-    ch ? chipEl(ch, 'mini') : null, h('b', { class: 'tk-name', text: def.name }), h('span', { html: qMarkHtml(t) }), h('span', { class: 'tk-req', html: diceHtml(t, def, 'mini') }));
+    ch ? chipEl(ch, 'mini') : null, h('b', { class: 'tk-name', text: def.name }), h('span', { class: 'tk-req', html: diceHtml(t, def, 'mini') }), h('span', { html: qMarkHtml(t) })); // (in a row: the dice its Bonus asks for, then its quality at the end)
   return el;
 }
 

@@ -3,10 +3,10 @@ import { h, syncList, toast, btn, tween, wait, pulse, swapText, openPanel, close
 import { chipPainter } from './chippaint.js';
 import { stackEdit, ADDS } from '../stackedit.js';
 import { sfx } from './sfx.js';
-import { app, hud, oppTip, trickTag, diceSummary } from './app.js';
+import { nameTag, app, hud, oppTip, trickTag, diceSummary } from './app.js';
 import { chipEl, chipSig, chipGlyph, chipTip, dieEl, dieTip, statTip, trickTip, trickChip, trickLook, trickWord, drinkEl, cardEl } from './parts.js';
 import { jacketEl } from './gear.js';
-import { signOf, dressSign, nameSign } from './sign.js';
+import { signOf, dressSign, dressFelt, nameSign } from './sign.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
 import { devPrepRow } from './dev.js';
@@ -35,7 +35,7 @@ export function positionView({ CH = 46, maxW = 400, mirror = false } = {}) {
     return `${t(k === 'bet' ? 'prep.meter.bet.tip' : 'prep.meter.stake.tip', { stat: D.STATS[pc]?.name || '' })}<p class="v">${t('prep.meter.rows', { n: held, of: side.dims.cols })}</p>`; };
   const colsTip = (k) => { if (!side) return ''; const o = B.occupancy(side); return t(k === 'bet' ? 'prep.meter.cols.bet' : 'prep.meter.cols.stake', { n: k === 'bet' ? o.betColsOcc : o.stakeColsOcc, of: (k === 'bet' ? o.betCols : o.stakeCols).length }); };
   function draw(sd) {
-    side = sd; rows = sd.rows; const m = sd.dims.meterRows, C = sd.dims.cols, want = new Set(); CW = Math.max(30, Math.min(56, Math.floor(maxW / rows)));
+    side = sd; rows = sd.rows; dressFelt(board, signOf(mirror ? 'them' : 'you', sd.sign)); const m = sd.dims.meterRows, C = sd.dims.cols, want = new Set(); CW = Math.max(30, Math.min(56, Math.floor(maxW / rows)));
     SZ = Math.round(Math.min((CW - 3) * 0.82, (CH - 3) * 0.74)); lift = Math.max(2, SZ / 8);
     board.style.width = `${rows * CW}px`; board.style.height = `${C * CH + 18}px`;
     for (let r = 0; r < rows; r++) for (let col = 0; col < C; col++) { const k = `${r}-${col}`; want.add(k); let ce = cells.get(k); const x = xOf(r), y = col * CH;
@@ -221,7 +221,7 @@ export function resultScene(root, ctx, res) {
   const left = h('div', { class: 'col', style: { width: res.prizes ? '430px' : '560px' } },
     h('h1', { text: special ? t(`result.head.${ctx.kind}.${win ? 'win' : 'lose'}`) : win ? t('result.head.win', { name: opp.name }) : t('result.head.lose') }), h('p', { class: 'sub', text: win ? t(res.sm.timeout ? 'result.settled.last' : 'result.settled', { n: res.sm.turns }) : D.FLOORS[run.floor]?.line && !['intro', 'bouncer'].includes(ctx.kind) ? t('result.deserve') : t('result.again') }),
     h('div', { class: 'box' }, lines, h('div', { class: 'row between', style: { marginTop: '10px' } }, h('span', { class: 'cap', text: t('result.purse') }), totalEl)), newsEl, h('div', { class: 'row' }, cont));
-  root.append(h('div', { class: 'page', style: { top: 0, display: 'flex', gap: '24px', justifyContent: 'center', alignItems: 'center' } }, left, res.prizes ? h('div', { class: 'col', style: { width: '700px' } }, h('h2', { text: t('result.prize') }), h('p', { class: 'sub', text: t('result.prize.sub', { amt: cents(res.winnings) }) }), prizeBox, h('div', { class: 'row' }, h('span', { class: 'grow' }), claimBtn())) : null));
+  root.append(nameTag('floating'),h('div', { class: 'page', style: { top: 0, display: 'flex', gap: '24px', justifyContent: 'center', alignItems: 'center' } }, left, res.prizes ? h('div', { class: 'col', style: { width: '700px' } }, h('h2', { text: t('result.prize') }), h('p', { class: 'sub', text: t('result.prize.sub', { amt: cents(res.winnings) }) }), prizeBox, h('div', { class: 'row' }, h('span', { class: 'grow' }), claimBtn())) : null));
 
   function claimBtn() { const b = btn(t('result.claim'), () => { if (claimed) return; claimed = true; R.claimPrize(run, ctx, res, choice, picks); sfx('earn', 0, { n: 10 }); tween(totalEl, run.purse, cents, 900); prizeBox.classList.add('off'); b.classList.add('off'); cont.classList.remove('off'); toast(t('result.claimed')); }, null, 'go off'); claimBtn.el = b; return b; }
   const need = () => (choice === 'dice' ? 2 : 1);

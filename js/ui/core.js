@@ -77,7 +77,7 @@ export function fitText(el, min = 6) {
 // (a zone's title, a label, a caption, a sign's small line) fades out until it has gone, then comes back. This is one
 // rule for every screen: MOMENT names what arrives, STANDING what gives way; an element can also say so itself with
 // data-moment or data-standing. Checked a few times a second while anything is showing.
-const MOMENT = '.toast.in, .phase-call.in, .feed-line.prompt, .pend, .debt-tag, .land, .fc, .banner.in, .sign-call, [data-moment]';
+const MOMENT = '.toast.in, .phase-call.in, .feed-line.prompt, .aim.tag, .debt-tag, .fc, .banner.in, .sign-call, [data-moment]';
 const STANDING = '.zone-title, .zone-label, .cap, .tray-cap, .house-sign .turn, .hs-name, .fld, .run-empty, .sub, .stat em, [data-standing]';
 const seen = (el) => { if (!el.isConnected) return null; const r = el.getBoundingClientRect(); if (r.width < 2 || r.height < 2 || !(el.textContent || '').trim()) return null;
   const cs = getComputedStyle(el); return cs.visibility === 'hidden' || cs.display === 'none' || Number(cs.opacity) < 0.05 ? null : r; };
@@ -266,6 +266,13 @@ export function swapText(el, text) {
   el._swap = setTimeout(() => { el.textContent = el._text; el.classList.remove('swap'); }, 150);
 }
 export function setOn(el, on) { el.classList.toggle('off', !on); }
+// One place, one text. A place that has something to say for the moment (what a click there will do, what is being
+// held over it) says only that: what it says at rest is hidden until the moment has passed. overText(el, text) shows
+// `text` in place of what the element holds; overText(el, null) gives its own back. (css: [data-over])
+// a switch the player sets and the game remembers (kept in the browser): on unless it was turned off
+export function kept(key, first = true) { const read = () => { try { const v = globalThis.localStorage?.getItem(key); return v == null ? first : v === 'on'; } catch { return first; } };
+  return { get on() { return read(); }, set(v) { try { globalThis.localStorage?.setItem(key, v ? 'on' : 'off'); } catch { /* storage unavailable */ } } }; }
+export function overText(el, text) { if (!el) return; if (text) el.dataset.over = text; else delete el.dataset.over; }
 export function pulse(el, cls = 'pulse') { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
 
 // Run a DOM change and slide the surviving children from their old places to the new ones.
