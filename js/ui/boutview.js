@@ -13,7 +13,7 @@ import { sum } from '../util.js';
 import { t as tt } from '../text.js';
 import { facesOf, faceValue, dieName } from '../dice.js';
 import { solidEl } from './solid.js';
-import { signOf, dressSign, crownLookOf, killSign, celebrateSign } from './sign.js';
+import { signOf, dressSign, signFace, crownLookOf, killSign, celebrateSign } from './sign.js';
 import { diceHtml, trickItem } from './trickcard.js';
 import { sfx } from './sfx.js';
 import { t as tx } from '../text.js';
@@ -136,29 +136,17 @@ export function boutScene(root, bout, ctx, onDone) {
   function lightsAt(base) { lightsBase = base; if (!flashing) marquee.className = `marquee ${base}`; }
   // each Roller's name as a neon sign: the name in script, their class (or title) in capitals under it. The colours
   // are D.NEON's, set in Build mode: a tube colour and a glow colour for the frame, the name and the class.
-  const nameSign = (name, cls, tipFn) => h('div', { class: 'name nsign', tip: tipFn }, h('b', { class: 'neon-name', text: name }), h('span', { class: 'neon-class', text: cls }));
+  const nameSign = (name, cls, tipFn) => { const f = signFace(name, cls); f._tip = tipFn; f.classList.add('has-tip'); return f; };
   // the signs: yours, theirs (their own if their roster entry has one) and the House's, all built the same way (sign.js)
   // a High Roller wears its floor's crown; you wear one you have claimed, in the colours of the sign it came off
   const crownOf = (c) => (c ? { level: c.floor, look: crownLookOf(signOf('them', D.ROSTER[c.roster]?.sign)), fit: c.fit } : null);
   const signs = { you: () => ({ ...signOf('you', me.sign), crown: crownOf(me.crown) }), them: () => ({ ...signOf('them', opp.sign), crown: opp.boss ? { level: Math.max(1, Math.min(4, opp.floor || 1)) } : null }), house: () => signOf('house') };
-  // a seat's sign has a fixed slot: if its name (with its crown, symbol and frame) doesn't fit, the name is set smaller
-  function fitSeat(el) {
-    const fit = () => { el.style.removeProperty('--name-fs'); const n = el.querySelector('.neon-name'); if (!n) return;
-      const cs = getComputedStyle(n), nk = parseFloat(cs.getPropertyValue('--nk')) || 1; let fs = (parseFloat(cs.fontSize) || 27) / nk; // in the slot's own size, before the face's scale
-      // spilling over the slot either way (content is centred in it, so it can spill upward as well as down)
-      const spills = () => { const R0 = el.getBoundingClientRect(); return [...el.children].filter((c) => !c.matches('svg, .badges')).some((c) => { const q = c.getBoundingClientRect(); return q.height && (q.top < R0.top - 1 || q.bottom > R0.bottom + 1); }); };
-      while (fs > 16 && spills()) { fs -= 1; el.style.setProperty('--name-fs', `${fs}px`); }
-      el._signRedraw?.(); };
-    // after the seat is on the page and the script face has loaded (until then nothing can be measured)
-    requestAnimationFrame(() => requestAnimationFrame(fit)); document.fonts?.ready?.then(() => requestAnimationFrame(fit));
-  }
   function paintNeon() {
     const S = { you: signs.you(), them: signs.them(), house: signs.house() };
     for (const [who, N] of Object.entries(S)) for (const part of ['border', 'name', 'cls']) N[part].forEach((c, i) => root.style.setProperty(`--${who}-${part}${i + 1}`, c));
     root.style.setProperty('--you', S.you.name[0]); root.style.setProperty('--them', S.them.name[0]);
     const [mine, theirs] = [root.querySelector('.who.me .plate'), root.querySelector('.who.them .plate')]; // the name plate is the sign: one fixed size, the name and class only
     if (mine) dressSign(mine, S.you, 'you'); if (theirs) dressSign(theirs, S.them, 'them'); if (houseSign) dressSign(houseSign, S.house, 'house');
-    for (const el of [mine, theirs]) if (el) fitSeat(el);
     marquee.style.display = S.house.frame === 'bulbs' ? '' : 'none'; }
   const header = h('div', { class: 'bout-head' },
     h('div', { class: 'who me' }, h('div', { class: 'plate' }, nameSign(D.ROLLERS[me.roller || D.rollerOf(me.cls)]?.name || D.CLASSES[me.cls].name, D.CLASSES[me.cls].name, () => tx('table.sign-tip', { name: D.heroName(me.cls, me.roller), cls: D.CLASSES[me.cls].name }))),

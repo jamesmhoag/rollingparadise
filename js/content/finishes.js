@@ -3,26 +3,35 @@
 // finishes, drawn in CSS to stand beside the rendered dice, and with them the cloths and hides gear is cut from.
 // A finish is { m, color, glint, sparkle }: the material, its base colour, a highlight that sweeps across it now and
 // then, and points of light that twinkle on it. Any finish can go on any part. Drawn in css/style.css (.fin-*).
+// breaks: how a thing made of it fails when its sign goes dark (ui/sign.js): 'shatter' (pieces fall, what is left is
+// broken through), 'crack' (it stays, split), 'dent' (it dulls and buckles), 'dull' (it only goes dark and limp).
+// thick: how thick a card, a pass, a wallet or a jacket of it is, against card stock at 1 (ui/thing.js).
 export const FINISHES = {
   // the dice materials
-  plastic: { name: 'Plastic', kind: 'dice', text: 'Glossy and even, a soft highlight.' },
-  glass: { name: 'Glass', kind: 'dice', text: 'Clear, tinted through its depth; what is behind it shows.' },
-  metal: { name: 'Metal', kind: 'dice', text: 'Polished, banded with what it reflects.' },
-  sparkling: { name: 'Sparkling', kind: 'dice', text: 'Glitter under a clear coat.' },
-  glimmering: { name: 'Glimmering', kind: 'dice', text: 'Frosted, with a fine shimmer in it.' },
-  swirling: { name: 'Swirling', kind: 'dice', text: 'Clear resin with ribbons of colour turning inside.' },
-  diamond: { name: 'Diamond', kind: 'dice', text: 'Cut in facets that split the light.' },
-  bone: { name: 'Bone', kind: 'dice', text: 'Warm ivory, a little worn, with a grain.' },
-  // cloth and hide
-  leather: { name: 'Leather', kind: 'cloth', text: 'Pebbled hide with a low sheen.' },
-  suede: { name: 'Suede', kind: 'cloth', text: 'Brushed and matte: it drinks the light.' },
-  velvet: { name: 'Velvet', kind: 'cloth', text: 'Deep pile, bright where it turns to the light.' },
-  silk: { name: 'Silk', kind: 'cloth', text: 'Smooth, with long soft bands of light.' },
-  denim: { name: 'Denim', kind: 'cloth', text: 'A diagonal twill.' },
-  canvas: { name: 'Canvas', kind: 'cloth', text: 'A plain open weave.' },
-  wool: { name: 'Wool', kind: 'cloth', text: 'Soft and flecked.' },
-  vinyl: { name: 'Vinyl', kind: 'cloth', text: 'Slick and shiny, a hard highlight.' },
+  plastic: { name: 'Plastic', kind: 'dice', breaks: 'crack', thick: 1.6, text: 'Glossy and even, a soft highlight.' },
+  glass: { name: 'Glass', kind: 'dice', breaks: 'shatter', thick: 2.6, text: 'Clear, tinted through its depth; what is behind it shows.' },
+  metal: { name: 'Metal', kind: 'dice', breaks: 'dent', thick: 1.4, text: 'Polished, banded with what it reflects.' },
+  sparkling: { name: 'Sparkling', kind: 'dice', breaks: 'crack', thick: 1.8, text: 'Glitter under a clear coat.' },
+  glimmering: { name: 'Glimmering', kind: 'dice', breaks: 'shatter', thick: 2.4, text: 'Frosted, with a fine shimmer in it.' },
+  swirling: { name: 'Swirling', kind: 'dice', breaks: 'shatter', thick: 2.6, text: 'Clear resin with ribbons of colour turning inside.' },
+  diamond: { name: 'Diamond', kind: 'dice', breaks: 'shatter', thick: 3, text: 'Cut in facets that split the light.' },
+  bone: { name: 'Bone', kind: 'dice', breaks: 'crack', thick: 2, text: 'Warm ivory, a little worn, with a grain.' },
+  // paper
+  paper: { name: 'Card stock', kind: 'paper', breaks: 'dull', thick: 1, text: 'Pressed paper with a fine tooth: what a printed card is.' },
+  // cloth, hide, skin and fur
+  leather: { name: 'Leather', kind: 'cloth', breaks: 'dull', thick: 2.2, text: 'Pebbled hide with a low sheen.' },
+  croc: { name: 'Crocodile', kind: 'cloth', breaks: 'dull', thick: 2.6, text: 'Big square scales with deep seams between.' },
+  snake: { name: 'Snakeskin', kind: 'cloth', breaks: 'dull', thick: 1.8, text: 'Small overlapping scales in rows.' },
+  suede: { name: 'Suede', kind: 'cloth', breaks: 'dull', thick: 2, text: 'Brushed and matte: it drinks the light.' },
+  velvet: { name: 'Velvet', kind: 'cloth', breaks: 'dull', thick: 2, text: 'Deep pile, bright where it turns to the light.' },
+  fur: { name: 'Fur', kind: 'cloth', breaks: 'dull', thick: 3.4, text: 'Long soft hair, lying one way.' },
+  silk: { name: 'Silk', kind: 'cloth', breaks: 'dull', thick: 1, text: 'Smooth, with long soft bands of light.' },
+  denim: { name: 'Denim', kind: 'cloth', breaks: 'dull', thick: 1.6, text: 'A diagonal twill.' },
+  canvas: { name: 'Canvas', kind: 'cloth', breaks: 'dull', thick: 1.6, text: 'A plain open weave.' },
+  wool: { name: 'Wool', kind: 'cloth', breaks: 'dull', thick: 2.4, text: 'Soft and flecked.' },
+  vinyl: { name: 'Vinyl', kind: 'cloth', breaks: 'crack', thick: 1.4, text: 'Slick and shiny, a hard highlight.' },
 };
+
 export const FINISH_IDS = Object.keys(FINISHES);
 export const finishOf = (f) => (f && FINISHES[f.m] ? { m: f.m, color: /^#[0-9a-f]{6}$/i.test(f.color || '') ? f.color : '', glint: !!f.glint, sparkle: !!f.sparkle } : null);
 

@@ -194,6 +194,10 @@ function material(mat, maps, base) {
     case 'denim': return new T.MeshPhysicalMaterial({ ...common, color: c, roughness: 0.9, sheen: 0.4, sheenColor: hi(c, 0.6), normalScale: new T.Vector2(1.2, 1.2) });
     case 'canvas': return new T.MeshPhysicalMaterial({ ...common, color: c, roughness: 0.95, sheen: 0.2, sheenColor: hi(c, 0.5), normalScale: new T.Vector2(1.3, 1.3) });
     case 'wool': return new T.MeshPhysicalMaterial({ ...common, color: c, roughness: 1, sheen: 0.9, sheenRoughness: 0.8, sheenColor: hi(c, 0.45), normalScale: new T.Vector2(0.9, 0.9) });
+    case 'paper': return new T.MeshPhysicalMaterial({ ...common, color: c, roughness: 0.82, sheen: 0.15, sheenColor: hi(c, 0.6), normalScale: new T.Vector2(0.35, 0.35) });
+    case 'croc': return new T.MeshPhysicalMaterial({ ...common, color: c, roughness: 0.34, clearcoat: 0.6, clearcoatRoughness: 0.2, normalScale: new T.Vector2(1.6, 1.6) });
+    case 'snake': return new T.MeshPhysicalMaterial({ ...common, color: c, roughness: 0.4, clearcoat: 0.45, clearcoatRoughness: 0.25, iridescence: 0.25, normalScale: new T.Vector2(1.2, 1.2) });
+    case 'fur': return new T.MeshPhysicalMaterial({ ...common, color: new T.Color(c).multiplyScalar(0.7), roughness: 1, sheen: 1, sheenRoughness: 0.5, sheenColor: hi(c, 0.5), normalScale: new T.Vector2(1.8, 1.8) });
     case 'vinyl': return new T.MeshPhysicalMaterial({ ...common, color: c, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.04, envMapIntensity: 1.7, normalScale: new T.Vector2(0.15, 0.15) });
     default: return new T.MeshPhysicalMaterial({ ...common, color: maps.map ? 0xffffff : c, roughness: 0.36, clearcoat: 0.6, clearcoatRoughness: 0.12, sheen: 0.15, sheenColor: new T.Color(0xffffff) });
   }
@@ -241,6 +245,10 @@ const GRAIN = {
   canvas: (u, v) => Math.max(Math.abs(Math.sin(u * Math.PI * 34)), Math.abs(Math.sin(v * Math.PI * 34))), // a plain weave
   wool: (u, v) => cell(Math.floor(u * 70 + Math.sin(v * 40) * 2), Math.floor(v * 70), 7) * 0.6 + cell(Math.floor(u * 200), Math.floor(v * 200), 9) * 0.4,
   vinyl: (u, v) => 0.5 + 0.03 * Math.sin(u * 60) * Math.sin(v * 60),
+  paper: (u, v) => cell(Math.floor(u * 240), Math.floor(v * 240), 15) * 0.4 + cell(Math.floor(u * 60), Math.floor(v * 60), 17) * 0.3, // a fine tooth
+  croc: (u, v) => { const f = 7, gx = u * f + Math.sin(v * 9) * 0.12, gy = v * f, ex = Math.abs(gx - Math.round(gx)), ey = Math.abs(gy - Math.round(gy)); return Math.min(1, Math.min(ex, ey) * 5); }, // square scales, deep seams
+  snake: (u, v) => { const f = 16, row = Math.floor(v * f), gx = u * f + (row % 2) * 0.5, x = gx - Math.floor(gx) - 0.5, y = v * f - row - 0.5; return Math.max(0, 1 - (Math.abs(x) * 1.4 + Math.abs(y) * 1.1)) + y * 0.4; }, // rows of lapped scales
+  fur: (u, v) => cell(Math.floor(u * 150 + v * 22), Math.floor(v * 14), 19) * 0.8 + 0.2 * Math.sin(u * 300), // long hair lying one way
   sparkling: (u, v) => cell(Math.floor(u * 256), Math.floor(v * 256), 11) * 0.9, // flakes: every point tips its own way
   glimmering: (u, v) => cell(Math.floor(u * 256), Math.floor(v * 256), 13) * 0.3,
 };

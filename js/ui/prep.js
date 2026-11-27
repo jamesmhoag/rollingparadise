@@ -5,7 +5,7 @@ import { stackEdit, ADDS } from '../stackedit.js';
 import { sfx } from './sfx.js';
 import { app, hud, oppTip, trickTag, diceSummary } from './app.js';
 import { chipEl, chipSig, chipGlyph, chipTip, dieEl, dieTip, statTip, trickTip, trickChip, trickLook, trickWord, jacketEl, drinkEl } from './parts.js';
-import { signOf, dressSign } from './sign.js';
+import { signOf, dressSign, nameSign } from './sign.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
 import { devPrepRow } from './dev.js';
@@ -150,8 +150,7 @@ export function planner(getExtra, onChange, { maxW = 400 } = {}) {
 // ---------- the opponent, as they will sit down ----------
 const bookCard = (tr, cls) => trickTag(tr, cls);
 function oppPanel(opp) {
-  const sign = h('div', { class: 'who them neon-sample prep-sign' }, h('div', { class: 'name nsign' }, h('b', { class: 'neon-name', text: opp.name }), h('span', { class: 'neon-class', text: D.CLASSES[opp.cls].name })));
-  requestAnimationFrame(() => dressSign(sign, { ...signOf('them', opp.sign), crown: opp.boss ? { level: Math.max(1, Math.min(4, opp.floor || 1)) } : null }, 'them'));
+  const sign = nameSign('them', opp.name, D.CLASSES[opp.cls].name, { ...signOf('them', opp.sign), crown: opp.boss ? { level: Math.max(1, Math.min(4, opp.floor || 1)) } : null }, 'prep-sign');
   const T = opp.trait ? D.BOSS_TRAITS[opp.trait] : null;
   const gear = h('div', { class: 'row wrap gear' },
     opp.jacket && D.JACKETS[opp.jacket] ? jacketEl(opp.jacket) : h('span', { class: 'gear-none', text: t('prep.opp.nojacket') }),

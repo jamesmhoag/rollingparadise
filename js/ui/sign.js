@@ -29,6 +29,7 @@
 // does where it passes behind another, and picks up again on the far side. Every motion is slow and soft (well under
 // three changes a second, never fully dark) and all of them stop for players who ask their system for reduced motion.
 import { finishOn, finishSvg, paintSvg } from './finish.js';
+import { FINISHES } from '../content/finishes.js';
 import * as D from '../data.js';
 import { SYMBOLS, symbolOf, CROWNS } from './symbols.js';
 
@@ -368,11 +369,32 @@ function cutUnder(el, svg, runs, sw, bulbs, br) {
 }
 function clearCut(el) { for (const n of el.querySelectorAll('.crown-cut')) { for (const p of ['maskImage', 'webkitMaskImage', 'maskRepeat', 'webkitMaskRepeat', 'maskSize', 'webkitMaskSize', 'maskPosition', 'webkitMaskPosition']) n.style[p] = ''; n.classList.remove('crown-cut'); } }
 // how much room the frame takes inside the sign's edge: its tubes (nested inward) and any symbols along it
-export function frameRoom(spec) {
-  if (spec.frame === 'none') return 4;
+export function frameRoom(spec) { const R = frameRooms(spec); return Math.max(R.top, R.bottom); }
+// The room the frame takes on each side of the sign: its tubes or strip all round, and its edging (symbols along the
+// top, the bottom, or both) only on the sides it is on. The lettering is set in what is left, so edging along the top
+// moves the name down and edging on both sides leaves it less height.
+export function frameRooms(spec) {
+  if (spec.frame === 'none' && spec.edgeAt === 'none') return { top: 4, bottom: 4, side: 4 };
   const tubes = ['plain', 'wave', 'zigzag'].includes(spec.frame) ? pairsOf(spec).length - 1 : 0, strip = STRIPS.includes(spec.frame) ? 2 : 0;
-  const sym = spec.frame === 'symbols' || ['edge', 'top', 'bottom'].includes(spec.edgeAt) ? 6 : 0;
-  return Math.round(6 + tubes * 3.8 + strip + sym);
+  const base = spec.frame === 'none' ? 4 : 6 + tubes * 3.8 + strip, all = spec.frame === 'symbols' ? 6 : 0, at = (side) => (['edge', side].includes(spec.edgeAt) ? 7 : spec.edgeAt === 'corners' ? 2 : 0);
+  return { top: Math.round(base + all + at('top')), bottom: Math.round(base + all + at('bottom')), side: Math.round(base + all + (spec.edgeAt === 'corners' ? 5 : 0)) };
+}
+// A sign's lettering is fitted to the room its frame and edging leave: if the name (with its symbol, its crown and
+// the class line) spills over that room either way, or runs wider than it, the name is set smaller until it fits.
+export function fitSign(el) {
+  el.style.removeProperty('--name-fs'); const n = el.querySelector('.neon-name'); if (!n || !el.isConnected) return;
+  const cs = getComputedStyle(n), nk = parseFloat(cs.getPropertyValue('--nk')) || 1; let fs = (parseFloat(cs.fontSize) || 27) / nk; // in the sign's own size, before the face's scale
+  const ecs = getComputedStyle(el), pad = (k) => parseFloat(ecs[k]) || 0;
+  const spills = () => { const R0 = el.getBoundingClientRect(), k = R0.width / (el.offsetWidth || R0.width || 1) || 1, top = R0.top + pad('paddingTop') * k, bot = R0.bottom - pad('paddingBottom') * k, wide = R0.width - (pad('paddingLeft') + pad('paddingRight')) * k;
+    return [...el.children].filter((c) => !c.matches('svg, .badges, i')).some((c) => { const q = c.getBoundingClientRect(); return q.height && (q.top < top - 1.5 || q.bottom > bot + 1.5); }) || n.getBoundingClientRect().width > wide + 1.5; };
+  while (fs > 13 && spills()) { fs -= 1; el.style.setProperty('--name-fs', `${fs}px`); }
+}
+// The one way a name sign is built: a Roller's name and the line under it, dressed as `spec` says. who: 'you',
+// 'them' or 'house' (whose colours it reads). → the element (dressed and fitted once it is on the page).
+export function signFace(name, cls = '') { const f = document.createElement('div'), b = document.createElement('b'), c = document.createElement('span'); f.className = 'name nsign'; b.className = 'neon-name'; b.textContent = name; c.className = 'neon-class'; c.textContent = cls; f.append(b, c); return f; }
+export function nameSign(who, name, cls, spec, extra = '') {
+  const el = document.createElement('div'); el.className = `who ${who === 'you' ? 'me' : 'them'} neon-sample ${extra}`; el.append(signFace(name, cls));
+  requestAnimationFrame(() => dressSign(el, spec, who)); return el;
 }
 
 // Dress an element as a sign: its colours (as the --who-part1/2 variables the table's styles read), its frame, mount,
@@ -387,7 +409,7 @@ export function dressSign(el, spec, who) {
   for (const part of ['name', 'cls']) { const b = spec.blinks?.[part]; if (b?.on) el.classList.add(`blink-${part}`, `bk-${part}-${BLINKS.includes(b.pattern) ? b.pattern : 'breathe'}`); }
   for (const old of el.querySelectorAll(':scope > .sign-frame, :scope > .sign-crown, .sign-deco')) old.remove();
   clearCut(el);
-  el.style.setProperty('--sign-room', `${frameRoom(spec)}px`);
+  const RM = frameRooms(spec); el.style.setProperty('--sign-room', `${RM.side}px`); el.style.setProperty('--sign-room-t', `${RM.top}px`); el.style.setProperty('--sign-room-b', `${RM.bottom}px`);
   el._signObs?.disconnect();
   const nsign = el.querySelector('.nsign'); if (nsign) { nsign.classList.toggle('has-symbol', !!spec.symbol?.on); nsign.classList.toggle('has-crown', !!spec.crown?.level); nsign.classList.remove(...CLS_ALIGN.map((a) => `cls-${a}`)); nsign.classList.add(`cls-${CLS_ALIGN.includes(spec.clsAlign) ? spec.clsAlign : 'right'}`);
     nsign.classList.remove(...SIGN_FONTS.flatMap((f) => [`nf-${f}`, `cf-${f}`])); nsign.classList.add(`nf-${SIGN_FONTS.includes(spec.nameFont) ? spec.nameFont : 'script'}`, `cf-${SIGN_FONTS.includes(spec.clsFont) ? spec.clsFont : 'display'}`); }
@@ -405,32 +427,46 @@ export function dressSign(el, spec, who) {
   const redraw = () => { const w = el.offsetWidth, h = el.offsetHeight, key = `${w}x${h}`; if (key === last) return; last = key; if (svg) drawFrame(svg, spec, w, h, who); if (deco) { drawDeco(deco, el, spec); paintSvg(deco); } if (crown) { drawCrown(crown, el, spec); paintSvg(crown); } };
   el._signRedraw = () => { last = ''; redraw(); }; // after something inside the sign changes size (its name is fitted)
   if (typeof ResizeObserver !== 'undefined') { el._signObs = new ResizeObserver(redraw); el._signObs.observe(el); }
-  requestAnimationFrame?.(redraw);
-  document.fonts?.ready?.then(() => { last = ''; redraw(); }); // the script face changes the letters' shapes once it loads
+  const fitted = () => { fitSign(el); last = ''; redraw(); }; // the lettering first (it can change the sign's size), then what is drawn round it
+  requestAnimationFrame?.(() => requestAnimationFrame(fitted));
+  document.fonts?.ready?.then(() => requestAnimationFrame(fitted)); // the script face changes the letters' shapes once it loads
   return el;
 }
 
-// A sign going dark: its Roller is out of the match. Every lit part sparks and fails (the name, the class line, the
-// frame's tubes and bulbs, the symbols, the crown), then stays off: grey glass on a dull mount, a crack run through
-// the plate, a few pieces of it on the floor. `celebrate` is the other sign's lap of honour while it happens.
+// A sign going dark: its Roller is out of the match. It fails a part at a time: the crown, the symbols, each tube and
+// bulb of the frame, the name, the class line, and last the backing. Each part sparks and goes out, and what happens
+// to it then is what it is made of (content/finishes.js `breaks`): neon is glass, so a tube shatters and is left
+// broken through; glass, diamond and resin shatter; plastic, bone and vinyl crack; metal dulls and buckles; cloth and
+// paper only go dark. `celebrate` is the other sign's lap of honour while it happens.
+const breaksOf = (node) => { const m = [...(node?.classList || [])].map((c) => /^fin-(?:m-)?(\w+)$/.exec(c)?.[1]).find((x) => FINISHES[x]); return m ? FINISHES[m].breaks : 'shatter'; };
+function sparksAt(el, x, y, n = 4) {
+  for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, d = 10 + Math.random() * 26, sp = document.createElement('i'); sp.className = 'sign-spark';
+    sp.style.cssText = `left:${x.toFixed(1)}px;top:${y.toFixed(1)}px;--dx:${(Math.cos(a) * d).toFixed(1)}px;--dy:${(Math.sin(a) * d + 14).toFixed(1)}px;animation-delay:${(Math.random() * 0.12).toFixed(2)}s`; el.append(sp); setTimeout(() => sp.remove(), 1100); }
+}
+function shardsAt(el, x, y, n = 2) {
+  for (let i = 0; i < n; i++) { const sh = document.createElement('i'); sh.className = 'sign-shard'; sh.style.cssText = `left:${(x + Math.random() * 14 - 7).toFixed(1)}px;top:${(y + Math.random() * 6 - 3).toFixed(1)}px;--r:${(Math.random() * 160 - 80).toFixed(0)}deg;animation-delay:${(i * 0.06).toFixed(2)}s`; el.append(sh); setTimeout(() => sh.remove(), 1500); }
+}
 export function killSign(el) {
-  if (!el || el.classList.contains('sign-dead')) return;
+  if (!el || el.classList.contains('sign-dead') || el.classList.contains('sign-dying')) return;
   el.classList.add('sign-dying');
-  const W = el.offsetWidth || 196, H = el.offsetHeight || 88;
-  for (let i = 0; i < 18; i++) { // sparks from the frame, where the tubes are
-    const edge = i % 4, x = edge < 2 ? Math.random() * W : edge === 2 ? 0 : W, y = edge === 0 ? 0 : edge === 1 ? H : Math.random() * H, a = Math.random() * Math.PI * 2, d = 14 + Math.random() * 30;
-    const sp = document.createElement('i'); sp.className = 'sign-spark'; sp.style.cssText = `left:${x.toFixed(1)}px;top:${y.toFixed(1)}px;--dx:${(Math.cos(a) * d).toFixed(1)}px;--dy:${(Math.sin(a) * d + 16).toFixed(1)}px;animation-delay:${(Math.random() * 0.9).toFixed(2)}s`;
-    el.append(sp); setTimeout(() => sp.remove(), 2200);
-  }
-  setTimeout(() => {
-    el.classList.remove('sign-dying'); el.classList.add('sign-dead');
-    // the crack: one jagged line across the plate with two branches, and three shards that drop away
-    const pts = [[0.08, 0.3], [0.24, 0.42], [0.37, 0.33], [0.5, 0.56], [0.66, 0.47], [0.8, 0.66], [0.94, 0.58]].map(([x, y]) => `${(x * W).toFixed(1)},${(y * H).toFixed(1)}`).join(' ');
-    const svg = mk('svg', { class: 'sign-crack', viewBox: `0 0 ${W} ${H}`, 'aria-hidden': 'true' });
-    svg.append(mk('polyline', { points: pts }), mk('polyline', { points: `${(0.37 * W).toFixed(1)},${(0.33 * H).toFixed(1)} ${(0.43 * W).toFixed(1)},${(0.1 * H).toFixed(1)}` }), mk('polyline', { points: `${(0.66 * W).toFixed(1)},${(0.47 * H).toFixed(1)} ${(0.72 * W).toFixed(1)},${(0.9 * H).toFixed(1)}` }));
-    el.append(svg);
-    for (let i = 0; i < 3; i++) { const sh = document.createElement('i'); sh.className = 'sign-shard'; sh.style.cssText = `left:${(20 + i * 30 + Math.random() * 10).toFixed(0)}%;top:${(40 + Math.random() * 30).toFixed(0)}%;--r:${(Math.random() * 120 - 60).toFixed(0)}deg;animation-delay:${(i * 0.12).toFixed(2)}s`; el.append(sh); setTimeout(() => sh.remove(), 1800); }
-  }, 1250);
+  const o = el.getBoundingClientRect(), k = o.width / (el.offsetWidth || o.width || 1) || 1, W = el.offsetWidth || 196, H = el.offsetHeight || 88;
+  const mid = (n) => { const r = n.getBoundingClientRect(); return { x: (r.left + r.width / 2 - o.left) / k, y: (r.top + r.height / 2 - o.top) / k, w: r.width / k }; };
+  // the parts, in the order they fail: [node, how it breaks]
+  const lit = (sel) => [...el.querySelectorAll(sel)];
+  const parts = [...lit('.sign-crown .lt').map((n) => [n, breaksOf(n.closest('svg'))]), ...lit('.sign-deco .lt').map((n) => [n, breaksOf(n.closest('svg'))]), ...lit(':scope > .sign-frame .lt').map((n) => [n, 'shatter']),
+    ...lit('.neon-name, .neon-class').filter((n) => n.textContent).map((n) => [n, breaksOf(n)])];
+  const step = Math.min(120, 1500 / Math.max(1, parts.length)), mount = el.querySelector(':scope > .sign-mount-fin');
+  parts.forEach(([n, how], i) => setTimeout(() => { if (!el.isConnected) return; const at = mid(n);
+    sparksAt(el, at.x, at.y, n.matches('.neon-name') ? 9 : 3); if (how === 'shatter') shardsAt(el, at.x, at.y, n.matches('.neon-name') ? 5 : 1);
+    n.classList.add('pt-fail', `pt-${how}`); setTimeout(() => { n.classList.remove('pt-fail'); n.classList.add('pt-dead'); }, 300); }, 120 + i * step));
+  setTimeout(() => { if (!el.isConnected) return; // the backing goes last, and the sign is dead
+    el.classList.remove('sign-dying'); el.classList.add('sign-dead'); const how = mount ? breaksOf(mount) : 'crack'; el.classList.add(`mount-${how}`);
+    if (how === 'shatter' || how === 'crack') { // a crack: one jagged line across the plate with two branches (and, shattered, pieces of it on the floor)
+      const P = (pts) => pts.map(([x, y]) => `${(x * W).toFixed(1)},${(y * H).toFixed(1)}`).join(' '), svg = mk('svg', { class: 'sign-crack', viewBox: `0 0 ${W} ${H}`, 'aria-hidden': 'true' });
+      svg.append(mk('polyline', { points: P([[0.08, 0.3], [0.24, 0.42], [0.37, 0.33], [0.5, 0.56], [0.66, 0.47], [0.8, 0.66], [0.94, 0.58]]) }), mk('polyline', { points: P([[0.37, 0.33], [0.43, 0.1]]) }), mk('polyline', { points: P([[0.66, 0.47], [0.72, 0.9]]) }));
+      el.append(svg); if (how === 'shatter') for (let i = 0; i < 4; i++) shardsAt(el, W * (0.2 + i * 0.2), H * 0.55, 1);
+    } else if (how === 'dent') { const d = document.createElement('i'); d.className = 'sign-dents'; el.append(d); }
+  }, 120 + parts.length * step + 420);
 }
 export function celebrateSign(el, ms = 2800) { if (!el) return; el.classList.add('sign-victory'); setTimeout(() => el.classList.remove('sign-victory'), ms); }
 

@@ -8,7 +8,7 @@ import { h, lab, btn } from './core.js';
 import * as D from '../data.js';
 import * as B from '../build/draft.js';
 import { t } from '../text.js';
-import { signOf, dressSign, TUBES, STRIPS, LAMPS, MOTIONS, EDGE_AT, CLS_ALIGN, SIGN_FONTS, BLINK_PARTS, BLINKS, MAX_PAIRS, pairsOf, CROWN_PARTS, crownLookOf, FINISH_PARTS } from './sign.js';
+import { signOf, dressSign, TUBES, STRIPS, LAMPS, MOTIONS, EDGE_AT, CLS_ALIGN, SIGN_FONTS, BLINK_PARTS, BLINKS, MAX_PAIRS, pairsOf, CROWN_PARTS, crownLookOf, FINISH_PARTS, signFace } from './sign.js';
 import { draftForm, pick, tick, colourIn } from './form.js';
 import { finishPicker } from './finish.js';
 import { SYMBOLS, SYMBOL_GROUPS } from './symbols.js';
@@ -41,7 +41,7 @@ export function signEditor(base, who, own, redraw, sample, crown) {
   const pairWord = () => (spec.frame === 'gradient' ? 'colour' : STRIPS.includes(spec.frame) ? (spec.frame === 'twist' ? 'strand' : 'stripe') : LAMPS.includes(spec.frame) ? 'lamp' : 'tube');
   const pairs = pairsOf(spec), setPairs = (list) => { B.setValue(P('border'), list[0]); B.setValue(P('more'), list.slice(1)); redraw(); };
   const [name, cls] = sample || SAMPLE[who]();
-  const prev = h('div', { class: `who ${who === 'you' ? 'me' : 'them'} neon-sample` }, h('div', { class: 'name nsign' }, h('b', { class: 'neon-name', text: name }), h('span', { class: 'neon-class', text: cls })));
+  const prev = h('div', { class: `who ${who === 'you' ? 'me' : 'them'} neon-sample` }, signFace(name, cls));
   dressSign(prev, crown ? { ...spec, crown: { level: crown } } : spec, who === 'house' ? 'house' : who);
   if (who === 'house') prev.classList.add('house-preview');
   const readImage = (e) => { const f = e.target.files?.[0]; if (!f) return; if (f.size > MAX_IMAGE) { e.target.value = ''; return globalThis.alert?.(t('neon.image.big')); }

@@ -1052,8 +1052,8 @@ p.flavor { font-style: italic; color: var(--dim); }
 .nsign.cls-right .neon-class { justify-self: end; } .nsign.cls-left .neon-class { justify-self: start; } .nsign.cls-center .neon-class { justify-self: center; }
 .nsign.has-crown { padding-top: .18em; }
 /* a seat's sign never grows past its slot: the frame's room is padding, and the name is fitted to what is left */
-.who.seat.neonsign { height: 88px; box-sizing: border-box; padding: var(--sign-room, 6px) calc(var(--sign-room, 6px) + 6px); align-content: center; }
-.who.them.boss.seat.neonsign { padding: var(--sign-room, 6px) calc(var(--sign-room, 6px) + 8px); }
+.who.seat.neonsign { height: 88px; box-sizing: border-box; padding: var(--sign-room-t, 6px) calc(var(--sign-room, 6px) + 6px) var(--sign-room-b, 6px); align-content: center; }
+.who.them.boss.seat.neonsign { padding: var(--sign-room-t, 6px) calc(var(--sign-room, 6px) + 8px) var(--sign-room-b, 6px); }
 .who.seat .pills:not(.steps) { flex-wrap: nowrap; gap: 3px; } .who.seat .pills:not(.steps) .pill { white-space: nowrap; font-size: 9.5px; padding: 1px 4px; } .who.seat .pills:not(.steps) { justify-content: center; }
 /* ---------- the pre-bout page: your position and theirs side by side, the wager and Sit down / Get up always in view ---------- */
 .prep-page { display: flex; flex-direction: column; gap: 12px; }
@@ -1236,7 +1236,7 @@ table.b-shop { border-collapse: collapse; width: 100%; font-size: 12px; margin-t
    pills are the Roller's field beside it */
 .who.seat { display: grid; grid-template-columns: 196px minmax(0, 1fr); grid-auto-rows: min-content; column-gap: 12px; row-gap: 3px; align-content: center; align-items: center; height: 88px; }
 .who.seat.them { grid-template-columns: minmax(0, 1fr) 196px; }
-.who.seat .plate { grid-column: 1; grid-row: 1 / span 4; width: 196px; height: 88px; box-sizing: border-box; position: relative; display: grid; place-items: center; overflow: visible; padding: var(--sign-room, 6px) calc(var(--sign-room, 6px) + 6px); }
+.who.seat .plate { grid-column: 1; grid-row: 1 / span 4; width: 196px; height: 88px; box-sizing: border-box; position: relative; display: grid; place-items: center; overflow: visible; padding: var(--sign-room-t, 6px) calc(var(--sign-room, 6px) + 6px) var(--sign-room-b, 6px); }
 .who.seat.them .plate { grid-column: 2; }
 .who.seat > .worth, .who.seat > .field, .who.seat > .pills, .who.seat > .badges { grid-column: 2; min-width: 0; } .who.seat.them > .worth, .who.seat.them > .field, .who.seat.them > .pills, .who.seat.them > .badges { grid-column: 1; }
 .who.seat .plate .name.nsign { justify-items: center; text-align: center; max-width: 100%; }
@@ -1273,8 +1273,20 @@ table.b-shop { border-collapse: collapse; width: 100%; font-size: 12px; margin-t
 .land.soft { outline-color: rgba(125, 255, 181, .45); background: rgba(125, 255, 181, .05); animation: none; } .land.soft i { opacity: .55; }
 @keyframes landPulse { 50% { background: rgba(125, 255, 181, .2); } }
 /* a sign going dark, and the winner's lap */
-.neonsign.sign-dying { animation: signDie 1.25s steps(1, end) both; }
-@keyframes signDie { 0% { filter: brightness(1.5); } 8% { filter: brightness(.25); } 14% { filter: brightness(1.7); } 22% { filter: brightness(.15); } 30% { filter: brightness(1.3); } 41% { filter: brightness(.1); } 48% { filter: brightness(1.1) saturate(.6); } 60% { filter: brightness(.12); } 68% { filter: brightness(.8) saturate(.4); } 80% { filter: brightness(.08); } 88% { filter: brightness(.45) saturate(.2); } 100% { filter: brightness(.3) grayscale(1); } }
+/* its parts fail one at a time (ui/sign.js killSign): a part flickers out (.pt-fail), then is dead in the way of what it
+   is made of: .pt-shatter broken through, .pt-crack split, .pt-dent dulled and buckled, .pt-dull only dark */
+.neonsign .pt-fail { animation: partFail .3s steps(1, end) both; }
+@keyframes partFail { 0% { opacity: 1; filter: brightness(1.8); } 25% { opacity: .15; } 45% { opacity: 1; filter: brightness(1.4); } 70% { opacity: .1; } 100% { opacity: .5; filter: none; } }
+.neonsign .lt.pt-dead .halo, .neonsign .lt.pt-dead .hot { opacity: 0 !important; } .neonsign .lt.pt-dead { animation: none !important; filter: grayscale(1) brightness(.42); }
+.neonsign .lt.pt-dead.pt-shatter .tube[stroke] { stroke-dasharray: 7 3 2 5 11 4 !important; stroke-linecap: butt; } .neonsign .lt.pt-dead.pt-shatter .tube:not([stroke]) { opacity: .3; }
+.neonsign .lt.pt-dead.pt-crack .tube[stroke] { stroke-dasharray: 16 1.5 !important; stroke-linecap: butt; }
+.neonsign .lt.pt-dead.pt-dent { filter: grayscale(.85) brightness(.5); transform: translateY(.6px) skewX(-3deg); transform-box: fill-box; }
+.neonsign .neon-name.pt-dead, .neonsign .neon-class.pt-dead { text-shadow: none !important; animation: none !important; filter: grayscale(1) brightness(.5); }
+.neonsign .neon-name.pt-dead:not(.fin), .neonsign .neon-class.pt-dead:not(.fin) { color: #8d8a99 !important; }
+.neonsign .pt-dead.pt-shatter:is(.neon-name, .neon-class) { -webkit-mask-image: repeating-linear-gradient(112deg, #000 0 8px, transparent 8px 9.6px, #000 9.6px 19px, transparent 19px 20px); mask-image: repeating-linear-gradient(112deg, #000 0 8px, transparent 8px 9.6px, #000 9.6px 19px, transparent 19px 20px); }
+.neonsign .pt-dead.pt-crack:is(.neon-name, .neon-class) { -webkit-mask-image: linear-gradient(104deg, #000 0 46%, transparent 46% 47.5%, #000 47.5%); mask-image: linear-gradient(104deg, #000 0 46%, transparent 46% 47.5%, #000 47.5%); }
+.neonsign .pt-dead.pt-dent:is(.neon-name, .neon-class) { transform: skewX(-4deg) translateY(1px); }
+.sign-dents { position: absolute; inset: 0; z-index: 7; pointer-events: none; border-radius: inherit; background: radial-gradient(22px 12px at 28% 36%, rgba(0, 0, 0, .5), transparent 70%), radial-gradient(30px 14px at 66% 62%, rgba(0, 0, 0, .45), transparent 70%), radial-gradient(14px 9px at 84% 28%, rgba(255, 255, 255, .12), transparent 70%); }
 .neonsign.sign-dead { filter: grayscale(1) brightness(.34) contrast(.9); transition: filter .5s; }
 .neonsign.sign-dead .neon-name, .neonsign.sign-dead .neon-class { text-shadow: none !important; color: #8d8a99 !important; animation: none !important; }
 .neonsign.sign-dead *, .neonsign.sign-dead { animation-play-state: paused !important; }
@@ -1284,7 +1296,7 @@ table.b-shop { border-collapse: collapse; width: 100%; font-size: 12px; margin-t
 .sign-shard { position: absolute; z-index: 9; width: 9px; height: 7px; background: linear-gradient(135deg, rgba(255, 255, 255, .8), rgba(160, 170, 200, .35)); clip-path: polygon(0 20%, 60% 0, 100% 70%, 30% 100%); pointer-events: none; animation: signShard 1.2s cubic-bezier(.4, 0, .9, .6) both; }
 @keyframes signShard { 0% { opacity: 1; transform: translateY(0) rotate(0); } 100% { opacity: 0; transform: translateY(70px) rotate(var(--r)); } }
 .neonsign.sign-victory { animation: signWin 1s ease-in-out 3; } @keyframes signWin { 50% { filter: brightness(1.55) saturate(1.3); transform: scale(1.04); } }
-@media (prefers-reduced-motion: reduce) { .neonsign.sign-dying, .neonsign.sign-victory, .land { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .neonsign .pt-fail, .neonsign.sign-victory, .land { animation: none; } }
 /* dice with pet names */
 .dicebox.named { gap: 6px 8px; align-items: flex-start; } .named-die { display: inline-grid; justify-items: center; gap: 1px; width: 46px; cursor: pointer; } .named-die .die { position: relative; }
 .named-die small { font-size: 8.5px; line-height: 10px; max-width: 46px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--gold); min-height: 10px; }
@@ -1380,3 +1392,5 @@ body.carrying-now #tooltip { display: none !important; } /* nothing explains its
 .fin-svg.fin-tex .tube[stroke], .fin-svg.fin-tex [stroke="currentColor"], .card-syms.fin-tex [stroke]:not([stroke="none"]) { stroke: var(--fin-paint) !important; }
 .fin-svg.fin-tex .tube[fill]:not([fill="none"]), .fin-svg.fin-tex [fill="currentColor"], .card-syms.fin-tex [fill]:not([fill="none"]) { fill: var(--fin-paint) !important; }
 .fin-svg.fin-tex .halo { opacity: .14 !important; } .fin-svg.fin-tex .hot { opacity: .28 !important; }
+/* a sign standing on its own takes the room its frame and edging need on each side; the lettering sits in what is left */
+.neon-sample.neonsign { padding: calc(var(--sign-room-t, 6px) + 3px) calc(var(--sign-room, 6px) + 8px) calc(var(--sign-room-b, 6px) + 3px); }
