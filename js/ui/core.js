@@ -62,6 +62,23 @@ export function paint(el, targetAt, apply, ms = 170, onEnd, { right = false } = 
   return stop;
 }
 
+// ---------- text that gives way ----------
+// Text that arrives for a moment has the floor: a prompt, a call, a toast, a tag over a stack. Standing text it lands on
+// (a zone's title, a label, a caption, a sign's small line) fades out until it has gone, then comes back. This is one
+// rule for every screen: MOMENT names what arrives, STANDING what gives way; an element can also say so itself with
+// data-moment or data-standing. Checked a few times a second while anything is showing.
+const MOMENT = '.toast.in, .phase-call.in, .feed-line.prompt, .pend, .debt-tag, .land, .fc, .banner.in, .sign-call, [data-moment]';
+const STANDING = '.zone-title, .zone-label, .cap, .tray-cap, .house-sign .turn, .hs-name, .fld, .run-empty, .sub, .stat em, [data-standing]';
+const seen = (el) => { if (!el.isConnected) return null; const r = el.getBoundingClientRect(); if (r.width < 2 || r.height < 2 || !(el.textContent || '').trim()) return null;
+  const cs = getComputedStyle(el); return cs.visibility === 'hidden' || cs.display === 'none' || Number(cs.opacity) < 0.05 ? null : r; };
+function giveWay() {
+  const moments = [...document.querySelectorAll(MOMENT)].map((el) => ({ el, r: seen(el) })).filter((x) => x.r);
+  const hit = (el) => { if (!moments.length) return false; const r = el.getBoundingClientRect(); if (r.width < 1) return false;
+    return moments.some((m) => m.el !== el && !m.el.contains(el) && !el.contains(m.el) && r.left < m.r.right - 1 && r.right > m.r.left + 1 && r.top < m.r.bottom - 1 && r.bottom > m.r.top + 1); };
+  for (const el of document.querySelectorAll(moments.length ? STANDING : '.gives-way')) el.classList.toggle('gives-way', hit(el));
+}
+export function watchText() { setInterval(() => { if (!document.hidden) giveWay(); }, 180); }
+
 // ---------- press and carry ----------
 // Anything that can be clicked into place can be carried there. Press on a source and move: a ghost of it follows the
 // pointer and the place under it lights when it will take it; let go and drop(source, target) runs. A press that does

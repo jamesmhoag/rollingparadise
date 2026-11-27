@@ -1370,3 +1370,5 @@ table.b-shop { border-collapse: collapse; width: 100%; font-size: 12px; margin-t
 .run-empty.drop-ok { opacity: 1 !important; }
 [data-card]:not(.theirs), [data-die] { cursor: grab; touch-action: none; }
 body.carrying-now #tooltip { display: none !important; } /* nothing explains itself while something is in your hand */
+/* standing text under text that has just arrived steps aside until it has gone (core.js giveWay) */
+.gives-way { opacity: 0 !important; transition: opacity .18s !important; }
