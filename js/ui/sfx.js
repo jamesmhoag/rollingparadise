@@ -27,6 +27,11 @@ export const SAMPLES = ['piano', 'rhodes', 'nylon', 'guitar', 'bass', 'muted', '
   'block_hi', 'block_lo', 'shaker', 'triangle', 'claves', 'kick', 'tamb', 'crash', 'cabasa', 'conga', 'bongo', 'chimes'];
 const buf = new Map();
 
+// a sample's bytes, fetched once: on the first touch, or ahead of it from the title's idle time (prefetchSfx)
+const raw = new Map();
+const sample = (n, low) => { if (!raw.has(n)) raw.set(n, fetch(`assets/sfx/${n}.mp3`, low ? { priority: 'low' } : undefined).then((r) => r.arrayBuffer())); return raw.get(n); };
+export async function prefetchSfx() { if (typeof fetch === 'undefined') return; for (const n of SAMPLES) await sample(n, true).catch(() => raw.delete(n)); }
+
 function audio() {
   if (ctx || typeof window === 'undefined') return ctx;
   const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
@@ -36,7 +41,7 @@ function audio() {
   if (lim) { lim.threshold.value = -9; lim.knee.value = 6; lim.ratio.value = 10; lim.attack.value = 0.003; lim.release.value = 0.15; out.connect(lim); lim.connect(ctx.destination); }
   else out.connect(ctx.destination);
   noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-  for (const n of SAMPLES) fetch(`assets/sfx/${n}.mp3`).then((r) => r.arrayBuffer()).then((a) => ctx.decodeAudioData(a)).then((b) => buf.set(n, b)).catch(() => {});
+  for (const n of SAMPLES) sample(n).then((a) => ctx.decodeAudioData(a)).then((b) => buf.set(n, b)).catch(() => {});
   return ctx;
 }
 // where a sound goes: straight out, or panned (o.pan: -1 left, your side, to 1 right, theirs)

@@ -11,7 +11,7 @@
 //   embody()  puts a model on its element: a picture at rest, drawn live while it opens or turns under the pointer or
 //             in the hand. What a wallet holds stays the real cards and passes, lying in the pockets of the picture.
 // Without WebGL the drawn pieces (ui/gear.js) stand as they are.
-import { load, three, body, renderGroup } from './dice3d.js';
+import { load, three, body, renderGroup, inTwo } from './dice3d.js';
 import { shade } from '../util.js';
 
 let T = null;
@@ -317,9 +317,12 @@ function drinkModel(L, fill) {
 const MODELS = new Map(), queue = []; let busy = false;
 const modelOf = (spec) => { const key = `${spec.kind}|${JSON.stringify(spec.look)}|${spec.notes || 0}`; if (!MODELS.has(key)) MODELS.set(key, spec.kind === 'wallet' ? walletModel(spec.look, spec.notes || 0) : spec.kind === 'drink' ? drinkModel(spec.look, (spec.notes || 0) / 100) : jacketModel(spec.look)); return MODELS.get(key); };
 // make these ready ahead of being shown (specs as embody takes): each is built, and drawn once so its shaders are compiled
-export async function prepare(specs, onProgress = () => {}) { await load(); T = three(); let done = 0;
-  for (const spec of specs) { try { const M = modelOf({ ...spec, notes: spec.notes ?? (spec.kind === 'drink' ? 100 : spec.look.type === 'clip' ? 1 : 0) }); M.pose(0); renderGroup(M.root, { w: 96, h: 96, view: [-3, -3, 3, 3] }); } catch (e) { console.error('gear3d', e); }
-    onProgress(++done / specs.length); await new Promise((r) => setTimeout(r, 0)); } }
+// pace(ms, kind): what to wait on between pieces; each thing is made in two, built and then drawn (see dice3d.preload)
+export async function prepare(specs, onProgress = () => {}, pace = () => new Promise((r) => setTimeout(r, 0))) { await load(); T = three(); let done = 0, took;
+  await pace(undefined, 'gear');
+  for (const spec of specs) {
+    took = await inTwo(pace, 'gear', () => { const M = modelOf({ ...spec, notes: spec.notes ?? (spec.kind === 'drink' ? 100 : spec.look.type === 'clip' ? 1 : 0) }); M.pose(0); return { grp: M.root, flat: true }; }, (m) => renderGroup(m.grp, { w: 96, h: 96, view: [-3, -3, 3, 3] }));
+    onProgress(++done / specs.length); await pace(took, 'gear'); } }
 const still = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 // spec: { kind: 'wallet' | 'jacket' | 'drink', look, notes (a wallet's cash notes; how full a drink is, of 100), name, sub,
 // pinned(): is it kept open }. face: the drawn piece

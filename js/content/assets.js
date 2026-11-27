@@ -32,6 +32,7 @@ export const NEON = {
 // the lounge band's set, played in turn on a loop: original tunes written for Rolling Paradise, one per corner of
 // Vegas jazz from the 1940s to the 1980s, composed and rendered by tools/jazz (GeneralUser GS soundfont)
 export { MUSIC } from './music.js'; // the lounge band's set list (written by tools/jazz/render.py)
+export { THEME } from './theme.js'; // the game's theme, one tune in each of the band's eight styles: the title screen's music (written by tools/jazz/theme.py)
 export { LOOPS } from './loops.js'; // the bout music: each floor's table and High Roller loops, in layers (written by tools/jazz/loops.py)
 
 // The title sign's pieces, as drawn (one SVG each, with a `-glow` twin that gives its blur). tools/title-sign.py cuts

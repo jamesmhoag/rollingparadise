@@ -19,6 +19,7 @@
 // Static dice (dieEl) are rendered once per look and size and cached as images; a die in motion (solidEl) is
 // rendered live each frame from the rotation the animation gives it. If WebGL isn't available the CSS dice stay.
 import { geometry, d4Rest, d4Corners, tTurn, tApply } from './solid.js';
+import { shade } from './dicemaps.js';
 import { facesOf, faceValue, matOf } from '../dice.js';
 import * as D from '../data.js';
 import { vsub as sub, vdot as dot, vcross as cross, vnorm as nrm } from '../util.js';
@@ -122,8 +123,11 @@ const LOOK = {
 };
 export const CLEAR = Object.keys(LOOK).filter((k) => LOOK[k].paint); // the see-through materials
 const MAPS = new Map();
-function faceMaps(type, mat, labels, F, atlas, base) {
-  const key = `${type}|${mat}|${labels.join(',')}|${base}`; if (MAPS.has(key)) return MAPS.get(key);
+// A die's face maps are made in three steps, so that the long one (shade: a pass over every pixel of five 1024px
+// maps, in dicemaps.js) can be done on another thread when a die is made ready ahead of need (faceMapsAhead, from
+// preload) and the page stays free; made on demand (faceMaps) the three run one after another here.
+// 1. engrave: the labels drawn on the atlas, and softened: the recess as a height map
+function engrave(type, mat, labels, F, atlas) {
   const S = 1024, tile = S / atlas.G, look = LOOK[mat] || LOOK.plastic;
   const hc = document.createElement('canvas'); hc.width = hc.height = S; const hx = hc.getContext('2d'); hx.fillStyle = '#fff'; hx.fillRect(0, 0, S, S); hx.fillStyle = '#000';
   F.forEach((f, i) => {
@@ -142,36 +146,42 @@ function faceMaps(type, mat, labels, F, atlas, base) {
   // soften the recess walls a little (a rounded engraving, not a cut-out)
   const soft = document.createElement('canvas'); soft.width = soft.height = S; const sx = soft.getContext('2d'); sx.filter = `blur(${Math.max(1, tile / (type === 'd4' ? 240 : 110))}px)`; // (a d4's cut is kept narrow: its numbers are thin) sx.drawImage(hc, 0, 0);
   const H = sx.getImageData(0, 0, S, S).data, sharp = hx.getImageData(0, 0, S, S).data;
-  // glitter: a field of tiny flakes, each tilted its own way
-  const flake = new Float32Array(S * S * 2);
-  if (look.flakes) { let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-    for (let n = 0; n < S * S * 0.06 * look.flakes; n++) { const x = (rnd() * S) | 0, y = (rnd() * S) | 0, ax = (rnd() - 0.5) * 1.6, ay = (rnd() - 0.5) * 1.6, sz = 1 + ((rnd() * 2) | 0);
-      for (let j = 0; j < sz; j++) for (let i2 = 0; i2 < sz; i2++) { const p = ((y + j) % S) * S + ((x + i2) % S); flake[p * 2] = ax; flake[p * 2 + 1] = ay; } } }
-  const nc = document.createElement('canvas'); nc.width = nc.height = S; const nx = nc.getContext('2d'), N = nx.createImageData(S, S);
-  const cc = document.createElement('canvas'); cc.width = cc.height = S; const cx2 = cc.getContext('2d'), C = cx2.createImageData(S, S);
-  const rc = document.createElement('canvas'); rc.width = rc.height = S; const rx = rc.getContext('2d'), Rg = rx.createImageData(S, S);
-  const pc = look.paint ? document.createElement('canvas') : null, px2 = pc ? (pc.width = pc.height = S, pc.getContext('2d')) : null, Pt = pc ? px2.createImageData(S, S) : null; // paint: white where the recess is
-  const tc = look.paint ? document.createElement('canvas') : null, tx2 = tc ? (tc.width = tc.height = S, tc.getContext('2d')) : null, Tr = tc ? tx2.createImageData(S, S) : null; // light through: none where it is painted
-  const b = hexRGB(base), ink = look.ink ? hexRGB(look.ink) : null, strength = 3.2;
-  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
-    const i = y * S + x, h = (xx, yy) => H[(Math.min(S - 1, Math.max(0, yy)) * S + Math.min(S - 1, Math.max(0, xx))) * 4] / 255;
-    let dx = (h(x + 1, y) - h(x - 1, y)) * strength, dy = (h(x, y + 1) - h(x, y - 1)) * strength;
-    dx += flake[i * 2]; dy += flake[i * 2 + 1];
-    const l = Math.hypot(dx, dy, 1); N.data[i * 4] = ((-dx / l) * 0.5 + 0.5) * 255; N.data[i * 4 + 1] = ((dy / l) * 0.5 + 0.5) * 255; N.data[i * 4 + 2] = ((1 / l) * 0.5 + 0.5) * 255; N.data[i * 4 + 3] = 255;
-    const depth = 1 - H[i * 4] / 255, inside = 1 - sharp[i * 4] / 255; // 0 on the face, 1 at the bottom of the recess
-    let col = b; if (ink && inside > 0.02) col = mix3(b, ink, Math.min(1, inside * 1.2)); col = mix3(col, [0, 0, 0], depth * 0.18 * (1 - inside)); // the rim of the recess darkens a touch
-    if (look.grain) { const gr = (Math.sin(x * 0.07 + Math.sin(y * 0.011) * 9) * 0.5 + 0.5) * 0.06; col = mix3(col, [120, 90, 50], gr); }
-    C.data[i * 4] = col[0]; C.data[i * 4 + 1] = col[1]; C.data[i * 4 + 2] = col[2]; C.data[i * 4 + 3] = 255;
-    const rough = look.frost ? 0.08 + inside * 0.7 : 0.3 + inside * 0.3; Rg.data[i * 4 + 1] = rough * 255; Rg.data[i * 4] = Rg.data[i * 4 + 2] = 0; Rg.data[i * 4 + 3] = 255;
-    if (Pt) { const on = Math.min(1, inside * 1.6) * 255; Pt.data[i * 4] = Pt.data[i * 4 + 1] = Pt.data[i * 4 + 2] = on; Pt.data[i * 4 + 3] = 255;
-      Tr.data[i * 4] = Tr.data[i * 4 + 1] = Tr.data[i * 4 + 2] = 255 - on; Tr.data[i * 4 + 3] = 255; }
-  }
-  nx.putImageData(N, 0, 0); cx2.putImageData(C, 0, 0); rx.putImageData(Rg, 0, 0); if (Pt) { px2.putImageData(Pt, 0, 0); tx2.putImageData(Tr, 0, 0); }
+  return { S, look, H, sharp };
+}
+// 3. the shaded pixels as textures
+function texturesOf(S, px) {
+  const cv = (data) => { const c = document.createElement('canvas'); c.width = c.height = S; c.getContext('2d').putImageData(new ImageData(data, S, S), 0, 0); return c; };
   const tex = (cv, srgb) => { const t = new T.CanvasTexture(cv); t.colorSpace = srgb ? T.SRGBColorSpace : T.NoColorSpace; t.anisotropy = 4; t.generateMipmaps = true; t.minFilter = T.LinearMipmapLinearFilter; return t; };
-  const out = { map: tex(cc, true), normalMap: tex(nc, false), roughnessMap: tex(rc, false), ...(pc ? { paintMap: tex(pc, true), transmissionMap: tex(tc, false) } : {}) }; MAPS.set(key, out); return out;
+  return { map: tex(cv(px.C), true), normalMap: tex(cv(px.N), false), roughnessMap: tex(cv(px.Rg), false), ...(px.Pt ? { paintMap: tex(cv(px.Pt), true), transmissionMap: tex(cv(px.Tr), false) } : {}) };
+}
+const mapsKey = (type, mat, labels, base) => `${type}|${mat}|${labels.join(',')}|${base}`;
+const shadeArgs = (e, base) => [e.H, e.sharp, e.S, { flakes: e.look.flakes || 0, frost: !!e.look.frost, grain: !!e.look.grain, paint: !!e.look.paint }, hexRGB(base), e.look.ink ? hexRGB(e.look.ink) : null];
+function faceMaps(type, mat, labels, F, atlas, base) {
+  const key = mapsKey(type, mat, labels, base); if (MAPS.has(key)) return MAPS.get(key);
+  const e = engrave(type, mat, labels, F, atlas), out = texturesOf(e.S, shade(...shadeArgs(e, base))); MAPS.set(key, out); return out;
+}
+// the same, ahead of need and off this thread: step 1 and step 3 are each a paced piece here (pace: see preload), step 2
+// is a worker's. Where there is no worker it is done here, as faceMaps does it.
+let shader = null, asked = 0; const waiting = new Map();
+function shadeElsewhere(args) {
+  try {
+    if (shader === null) { shader = new Worker(new URL('./dicemaps.worker.js', import.meta.url), { type: 'module' });
+      shader.onmessage = ({ data }) => { waiting.get(data.id)?.(data.px); waiting.delete(data.id); };
+      shader.onerror = () => { shader = false; for (const [, done] of waiting) done(null); waiting.clear(); }; }
+    if (!shader) return Promise.resolve(null);
+    return new Promise((done) => { const id = ++asked; waiting.set(id, done); shader.postMessage({ id, args }, [args[0].buffer, args[1].buffer]); });
+  } catch { shader = false; return Promise.resolve(null); }
+}
+async function faceMapsAhead(d, labels, pace) {
+  const L = lookOf(d), key = mapsKey(d.type, L.mat, labels, L.base); if (MAPS.has(key)) return 0;
+  let t0 = performance.now(); const { F, atlas } = roundedGeometry(d.type, L.mat), e = engrave(d.type, L.mat, labels, F, atlas);
+  const sent = shadeElsewhere(shadeArgs(e, L.base)), took = performance.now() - t0; let px = await sent;
+  await pace(took, 'die-maps'); t0 = performance.now();
+  if (!px) px = shade(...shadeArgs(engrave(d.type, L.mat, labels, F, atlas), L.base)); // (no worker: here after all, from a fresh engraving, the first having been handed over)
+  if (!MAPS.has(key)) MAPS.set(key, texturesOf(e.S, px));
+  return performance.now() - t0;
 }
 const hexRGB = (c) => { const m = /^#?([0-9a-f]{6})$/i.exec(c || '') || [0, 'e8e2d4']; return [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16)); };
-const mix3 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
 // ---------- materials ----------
 const hi = (c, t) => new T.Color(c).lerp(new T.Color(0xffffff), t);
@@ -425,14 +435,39 @@ function ambTick(now) {
 // Building a die the first time takes a moment (its rounded solid, its engraved faces, its material's shaders), which
 // used to land the first time you picked one up. preload builds every size in every material up front, a die at a
 // time between frames, then every other material, reporting how far along it is (0 to 1); leaving the title waits on it.
-export async function preload(onProgress = () => {}, { types = Object.keys(D.DICE), mats = Object.keys(LOOK) } = {}) {
+// pace(ms, kind): what to wait on between one piece and the next, told how long the last took and what the next is
+// (the title's idle loading passes its own, ui/idle.js; the default is simply the next turn of the event loop).
+// So that no piece is long, a die is made in two: its body is built and its shaders are sent to compile ('build'),
+// and once they are ready (compiled off this thread where the driver can, see compile) it is drawn ('draw').
+const soon = () => new Promise((r) => setTimeout(r, 0));
+// compile a body's shaders without waiting on them: resolves when they are ready to draw with
+export function compile(grp, flat = false) {
+  try { const { renderer, scene, camera } = R3; if (flat) flatCam ||= new T.OrthographicCamera(-1, 1, 1, -1, 0.1, 80); return renderer.compileAsync(grp, flat ? flatCam : camera, scene).catch(() => {}); } catch { return Promise.resolve(); }
+}
+// one thing made ready in two paced pieces: build() returns the body (its shaders start compiling), draw(body) draws it
+export async function inTwo(pace, kind, build, draw) {
+  let t0 = performance.now(), made = null, shaders = null;
+  try { made = build(); shaders = made?.grp ? compile(made.grp, made.flat) : null; } catch { made = null; /* what will not build falls back to its drawn look */ }
+  const built = performance.now() - t0; await shaders; await pace(built, `${kind}-draw`);
+  t0 = performance.now(); try { if (made) draw(made); } catch { /* as above */ }
+  return performance.now() - t0;
+}
+export async function preload(onProgress = () => {}, { types = Object.keys(D.DICE), mats = Object.keys(LOOK), pace = soon } = {}) {
   try { await load(); } catch { onProgress(1); return false; }
   const jobs = []; for (const mat of mats) for (const type of types) jobs.push({ type, mat });
   jobs.sort((a, b) => (a.mat === D.DEFAULT_MAT ? 0 : 1) - (b.mat === D.DEFAULT_MAT ? 0 : 1)); // the dice you start with first
   const others = MATERIAL_IDS.filter((m) => !mats.includes(m)), total = jobs.length + others.length; let done = 0;
-  const step = async (work) => { try { work(); } catch { /* what will not build falls back to its drawn look */ } onProgress(++done / total); await new Promise((r) => setTimeout(r, 0)); };
-  for (const j of jobs) await step(() => { const d = { type: j.type, mat: j.mat, up: [] }, labels = labelsOf(d, j.type.slice(1)); render(d, labels, frontOf(j.type, 0), AMB_PX); });
+  let took; await pace(undefined, 'die-engrave');
+  for (const j of jobs) {
+    const d = { type: j.type, mat: j.mat, up: [] }, labels = labelsOf(d, j.type.slice(1));
+    took = await faceMapsAhead(d, labels, pace); await pace(took, 'die-body'); // its face maps first (shaded on another thread), then its body
+    took = await inTwo(pace, 'die', () => ({ grp: model(d, labels) }), () => render(d, labels, frontOf(j.type, 0), AMB_PX));
+    onProgress(++done / total); await pace(took, 'die-engrave');
+  }
   // every other material (the cloths and hides gear is made of): a small body of each, drawn once, so its shaders are ready
-  for (const mat of others) await step(() => { const g = new T.SphereGeometry(0.6, 16, 12), b = body(g, mat, '#b9b2c8'); renderGroup(b, { w: AMB_PX, h: AMB_PX, view: [-1, -1, 1, 1] }); g.dispose(); });
+  for (const mat of others) {
+    took = await inTwo(pace, 'cloth', () => { const g = new T.SphereGeometry(0.6, 16, 12); return { grp: body(g, mat, '#b9b2c8'), flat: true, g }; }, (m) => { renderGroup(m.grp, { w: AMB_PX, h: AMB_PX, view: [-1, -1, 1, 1] }); m.g.dispose(); });
+    onProgress(++done / total); await pace(took, 'cloth');
+  }
   onProgress(1); return true;
 }

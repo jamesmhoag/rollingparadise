@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import * as D from '../js/data.js';
-import { FONTS, MUSIC, LOOPS } from '../js/content/assets.js';
+import { FONTS, MUSIC, LOOPS, THEME } from '../js/content/assets.js';
 
 let fail = 0;
 const ok = (c, m) => { if (!c) { fail++; console.error('✗', m); } };
@@ -19,6 +19,8 @@ for (const [k, p] of Object.entries(D.IMAGES)) want(p, `image ${k}`);
 for (const [k, I] of Object.entries(D.ICONS)) { want(I.src, `icon ${k}`); ok(I.src || I.glyph || ['creature', 'orbital', 'chip'].includes(k.split(':')[0]), `icon ${k}: no file and no glyph`); }
 for (const [k, p] of Object.entries(D.TEXTURES)) want(p, `texture ${k}`);
 for (const M of MUSIC) { want(M.src, `music ${M.title}`); want(M.chip, `chiptune ${M.title}`); ok(Number.isInteger(M.key) && M.key >= 0 && M.key < 12 && M.genre, `music ${M.title}: a key and a genre`); }
+for (const M of THEME) { want(M.src, `theme ${M.genre}`); want(M.chip, `chiptune theme ${M.genre}`); ok(Number.isInteger(M.key) && M.genre && M.mode, `theme ${M.genre}: a key, a style and a mode`); }
+ok(new Set(THEME.map((M) => M.genre)).size === new Set(MUSIC.map((M) => M.genre)).size, 'the theme is played in every style the band has');
 for (const L of LOOPS) { for (const k of ['base', 'theme', 'alt', 'drive', 'peril', 'surge']) { want(L.layers[k], `loop ${L.title} ${k}`); want(L.chip?.[k], `chiptune loop ${L.title} ${k}`); } ok(L.length > 0 && L.start >= 0 && Number.isInteger(L.key), `loop ${L.title}: a span and a key`); }
 for (let f = 1; f <= D.ASCENT_FLOOR; f++) for (const kind of ['bout', 'boss']) ok(LOOPS.some((L) => L.floor === f && L.kind === kind), `no ${kind} loop for floor ${f}`);
 const { SAMPLES } = await import('../js/ui/sfx.js').catch(() => ({ SAMPLES: null }));

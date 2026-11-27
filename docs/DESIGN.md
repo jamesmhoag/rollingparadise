@@ -438,6 +438,18 @@ The layers are levelled against the groove so each is heard arriving. The lounge
 and eases back in after it has died away. The floors' tempos: tables 138, 172, 116, 100, 120; High Rollers 112, 176,
 152, 108, 130.
 
+**The theme.** The title screen (and the choice of Roller after it) plays the game's own tune, "Rolling Paradise"
+(`tools/jazz/theme.py`, `js/content/theme.js`): a 32-bar AABA written by hand, arranged in each of the band's eight
+styles, each also on chips. Its hook is the first bar (a three-note pickup up to the 3rd, a stop, three notes back
+down), answered by a blue note sliding into the next chord; the bridge runs the cycle of fifths, traded bar for bar
+between the two voices. It is arranged to land: the answering voice calls the hook in the intro, the band stops on
+beat one of the last bar of each eight and the drums fill, the last eight is in harmony (a piano lead in octaves),
+the big band's shout chorus is the tune itself in four-part brass, and it ends in stop time on a hit and a stinger
+(a ritard in the ballad, the bossa and the smooth version). A different style opens the game each visit (the last
+one is remembered in the browser), and when a version ends the next style takes the tune up. Out front there is no
+purse, so the band's buttons are free: ▶ / ✕, ⇄ (chips, at the same place in the tune) and ⏭ (the next style).
+Until the page has been touched nothing can sound, so the switch shows ▶ and one press starts the band.
+
 ### Sound
 Every step of play is heard (`js/ui/sfx.js`). The sounds are real instruments: short samples rendered from the
 FluidR3 soundfont by `tools/sfx/render.py` (`assets/sfx`: piano, Rhodes, nylon and jazz guitar, upright bass,
@@ -472,6 +484,19 @@ dice knock (wood blocks), cards slide. Everything passes a limiter, so a busy mo
   a run out.
 `tests/sfx.mjs` checks that every sound the game asks for exists, that every sound and sample is used, and that
 every element and type of trick has its own. The 🔊 button beside the music's ♪ turns them off.
+### Getting ready behind the title
+The heavy things (every die in every material, every wallet, jacket and drink as a body, their shaders) are made
+while the title is up (`js/main.js`, `js/ui/idle.js`), so a player who lingers never sees a loading bar. A piece of
+that work (a die's body is one) takes tens of milliseconds and cannot be cut finer, so the rule is about when it
+runs: only when the sign is lit and steady (not lighting, not mid-pulse: `titleSign().steady()`), nothing is open
+over it, and the player has not touched anything for a moment. What moves on the title then (the motes, the grid
+floor, which is why the grid is a transform animation) is drawn by the browser's compositor, off the main thread, so
+it keeps its frame rate; the renderer itself, the one big piece, starts as the title first appears, before the sign
+has lit. Each thing is made in two pieces, its body and then its first drawing, with its shaders compiled between
+them without blocking where the driver allows. The sound effects' samples and the first table's loop are fetched in
+the same time (bytes only, at low priority), and the fonts a sign may ask for. A player who leaves the title before
+it is all done sees the bar for what is left, made at full speed. `?curtain=0` skips all of it.
+
 ### The Library
 Opens from the title screen, the HUD on the floor and the commitment screen, and the bout table. Tabs for chips,
 tricks, dice, cards, drinks, wallets, jackets and felts show each piece as it is drawn in the game, with its

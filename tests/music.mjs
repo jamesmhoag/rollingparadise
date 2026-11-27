@@ -1,5 +1,6 @@
 // The bout music: how tense a bout reads from the Rollers' Worth, how that sets the layers, which tune each time round, and which loop plays.
-import { tensionOf, stakesOf, layerMix, loopFor, srcOf, bandOf, setlist, TURNS, turnOf } from '../js/ui/music.js';
+import { tensionOf, stakesOf, layerMix, loopFor, srcOf, bandOf, setlist, TURNS, turnOf, themeOrder } from '../js/ui/music.js';
+import { THEME } from '../js/content/assets.js';
 import { tipBand } from '../js/run.js';
 import { TUNING } from '../js/content/tuning.js';
 import { LOOPS, MUSIC } from '../js/content/assets.js';
@@ -33,6 +34,12 @@ ok(['theme', 'alt', 'rest'].every((k) => TURNS.includes(k)), 'the theme, the sec
 for (let i = 0; i < TURNS.length * 2; i++) ok(!(turnOf(i) === turnOf(i + 1) && turnOf(i) === turnOf(i + 2)), `no tune three times running (round ${i})`);
 ok(turnOf(TURNS.length) === TURNS[0] && turnOf(-1) === TURNS[TURNS.length - 1], 'the turns come round again');
 for (const L of LOOPS) ok(L.layers.alt && L.layers.surge && L.layers.alt !== L.layers.theme, `${L.title}: a second tune and a surge`);
+// the theme: one tune in every style the band has, each once round, never opening on the style it opened with last time
+ok(THEME.length === new Set(MUSIC.map((m) => m.genre)).size && new Set(THEME.map((x) => x.genre)).size === THEME.length, 'the theme: once in each of the band\'s styles');
+ok(THEME.every((x) => x.title === THEME[0].title && x.src !== x.chip && x.src.includes(`theme-${x.genre}`) && x.chip.includes(`chip/theme-${x.genre}`)), 'every version is the same tune, on the band and on chips');
+for (let i = 0; i < 60; i++) { const not = THEME[i % THEME.length].genre, o = themeOrder(THEME, not); ok(o.length === THEME.length && new Set(o).size === THEME.length && o[0].genre !== not, `a visit plays every style once and opens on a different one from last time (${not})`); }
+{ const opens = new Set(); for (let i = 0; i < 200; i++) opens.add(themeOrder(THEME)[0].genre); ok(opens.size === THEME.length, 'any style may open the game'); }
+ok(srcOf(THEME[0], 'chip') === THEME[0].chip && srcOf(THEME[0], 'band') === THEME[0].src, 'the theme swaps to chips like any tune');
 for (let f = 1; f <= 5; f++) { ok(loopFor(f, false)?.kind === 'bout' && loopFor(f, false).floor === f, `floor ${f}: a table loop`); ok(loopFor(f, true)?.kind === 'boss' && loopFor(f, true).floor === f, `floor ${f}: a High Roller loop`); }
 ok(new Set(LOOPS.map((L) => L.title)).size === LOOPS.length, 'every loop has its own title');
 // tipping the band: priced from the purse, refused when it is short, in the ledger; the band's state is the run's

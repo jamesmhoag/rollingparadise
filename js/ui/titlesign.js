@@ -29,7 +29,7 @@ function tube(p, kind) {
   g.append(...shapes('t')); return g;
 }
 
-// → { el, light(), off(then), seconds }: el is the sign; light() runs the sequence from dark
+// → { el, light(), off(then), seconds, steady() }: el is the sign; light() runs the sequence from dark
 export function titleSign({ label = '' } = {}) {
   const { view, parts, back } = TITLE_SIGN, blurs = [...new Set(parts.map((p) => p.blur))];
   let t = FIRST; const when = parts.map((p, i) => { if (i) t += GAP[p.id] ?? LEAF; return t; }), seconds = t + 0.9;
@@ -41,12 +41,15 @@ export function titleSign({ label = '' } = {}) {
     g.style.setProperty('--i', i); g.style.setProperty('--hum', `${(4.6 + ((i * 37) % 23) / 10).toFixed(1)}s`); g.style.setProperty('--buzz', `${9 + ((i * 53) % 17)}s`); g.style.setProperty('--lag', `${(-((i * 29) % 31) / 2).toFixed(1)}s`); return g; });
   svg.append(...layer(1), ...back.map((x) => s('path', { d: x.d, transform: at(x), class: 'board' })), ...layer(3), ...layer(4), ...layer(5));
   const el = document.createElement('div'); el.className = 'sign'; const glow = document.createElement('div'); glow.className = 'glow'; el.append(glow, svg);
-  let timer = 0, round = 0;
+  let timer = 0, round = 0, moving = Infinity; // moving: until when (performance.now) the sign is lighting, pulsing or going dark
   // lit, a pulse runs the sign now and then: each letter and piece swells brighter in turn, in the order they came on
-  const chase = () => { if (!el.isConnected || !el.classList.contains('lit')) return; el.classList.remove('chase'); void el.offsetWidth; el.classList.add('chase'); };
-  const light = () => { clearTimeout(timer); clearInterval(round); el.classList.remove('lit', 'off', 'go', 'chase'); void el.offsetWidth; el.classList.add('go');
-    timer = setTimeout(() => { if (!el.isConnected) return; el.classList.add('lit'); round = setInterval(chase, CHASE_EVERY * 1000); setTimeout(chase, 2600); }, seconds * 1000); };
+  const chase = () => { if (!el.isConnected || !el.classList.contains('lit')) return; el.classList.remove('chase'); void el.offsetWidth; el.classList.add('chase'); moving = performance.now() + parts.length * 75 + 800; };
+  const light = () => { clearTimeout(timer); clearInterval(round); el.classList.remove('lit', 'off', 'go', 'chase'); void el.offsetWidth; el.classList.add('go'); moving = Infinity;
+    timer = setTimeout(() => { if (!el.isConnected) return; el.classList.add('lit'); moving = performance.now() + 400; round = setInterval(chase, CHASE_EVERY * 1000); setTimeout(chase, 2600); }, seconds * 1000); };
   // every tube fades down, last lit first; then `then` (usually light again)
-  const off = (then) => { clearTimeout(timer); clearInterval(round); el.classList.remove('chase'); el.classList.add('off'); timer = setTimeout(() => { if (!el.isConnected) return; then?.(); }, (parts.length * 0.035 + 0.6) * 1000); };
-  return { el, light, off, seconds };
+  const off = (then) => { clearTimeout(timer); clearInterval(round); el.classList.remove('chase'); el.classList.add('off'); moving = Infinity; timer = setTimeout(() => { if (!el.isConnected) return; then?.(); }, (parts.length * 0.035 + 0.6) * 1000); };
+  // steady: the sign is lit and only humming (not lighting up, not mid-pulse, not going dark). Work done behind the
+  // title is done then (main.js): nothing on it is moving that a busy moment could be seen in.
+  const steady = () => el.isConnected && el.classList.contains('lit') && performance.now() > moving;
+  return { el, light, off, seconds, steady };
 }

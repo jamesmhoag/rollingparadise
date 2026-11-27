@@ -9,8 +9,10 @@ import { suiteScene, giftScene, ascentScene, summaryScene, alleyScene, walletTip
 import { boutScene } from './ui/boutview.js';
 import { openLibrary } from './ui/library.js';
 import { initSpin } from './ui/spin.js';
-import { initMusic, boutMusic, endBoutMusic } from './ui/music.js';
-import { initSfx } from './ui/sfx.js';
+import { initMusic, boutMusic, endBoutMusic, titleMusic, prefetchLoops } from './ui/music.js';
+import { initSfx, prefetchSfx } from './ui/sfx.js';
+import { pacer } from './ui/idle.js';
+import { FONTS } from './content/assets.js';
 import { buildScene } from './ui/build.js';
 import { loadDraft } from './build/draft.js';
 import * as D from './data.js';
@@ -62,12 +64,14 @@ const runWhere = (run) => ({ who: D.heroName(run.cls, run.roller), where: run.ph
 // developer mode's switch, at the foot of the title menu
 function devToggle() { const b = btn(t(devOn() ? 'title.dev.on' : 'title.dev.off'), () => { setDev(!devOn()); nav.title(); }, t('title.dev.tip'), `sign-btn dev-toggle ${devOn() ? 'on' : ''}`); return guided(b, 'dev'); }
 function titleScene(root) {
+  titleMusic(true); // the band plays the theme out front
   const meta = app.meta = R.loadMeta(), saved = R.loadRun();
   const resume = saved && ['floor', 'ascent'].includes(saved.phase);
   // drifting neon motes; positions are fixed per load so the scene is calm, not noisy
   const motes = Array.from({ length: 26 }, (_, i) => h('span', { class: 'mote', style: { left: `${(i * 37 + 11) % 100}%`, '--mc': i % 3 ? 'var(--gold)' : 'var(--pink)', '--d': `${7 + (i * 13) % 9}s`, '--w': `${-((i * 7) % 12)}s`, '--dx': `${((i * 29) % 120) - 60}px` } }));
   // the sign lights tube by tube; left alone a while (no pointer or key for TITLE_IDLE) it goes dark and lights again
   const S = titleSign({ label: t('boot.name') }), sign = S.el; sign.tip = t('title.sign.tip'); S.light();
+  warmth.steady = () => S.steady() && !document.querySelector('.panel, .modal'); // (and nothing open over it)
   const scene = h('div', { class: 'title' }, h('div', { class: 'sky' }), h('div', { class: 'gridfloor' }), ...motes, h('div', { class: 'inner' },
     h('div', { class: 'hotel neon-c', text: t('title.hotel') }), sign,
     h('p', { class: 'tagline neon-p', text: t('title.tagline') }),
@@ -88,6 +92,8 @@ function titleScene(root) {
   let idle = 0; const wake = () => { clearTimeout(idle); idle = setTimeout(() => { if (!sign.isConnected) return; S.off(() => { S.light(); wake(); }); }, TITLE_IDLE); };
   for (const ev of ['pointermove', 'pointerdown', 'keydown', 'wheel']) scene.addEventListener(ev, wake, { passive: true });
   wake();
+  // make the game ready behind the title: the heavy things from the first frame on, the sounds once the sign has begun to light
+  if (!noCurtain()) requestAnimationFrame(() => setTimeout(warm, 0)); setTimeout(idleLoad, 900);
 }
 const TITLE_IDLE = 40000;
 
@@ -129,29 +135,53 @@ function selectScene(root) {
 }
 
 // The heavy things (every die in every material, every material's shaders, every wallet's and jacket's body) are made
-// ready once, when you first leave the title: the title stays as it is, its menu gives way to a bar, and you go on
-// when it is done. ?curtain=0 skips the wait (automated playthroughs): things are then built as they are met.
-let heavy = null;
-function ready() {
-  if (heavy) return heavy;
-  if (new URLSearchParams(location.search).get('curtain') === '0' || globalThis.RP_FAST) return (heavy = Promise.resolve());
-  const bar = h('i'), line = h('div', { class: 'load-line', text: t('boot.dice') }), el = h('div', { class: 'title-load' }, h('div', { class: 'load-bar' }, bar), line);
-  const inner = document.querySelector('.title .inner'); inner?.classList.add('loading'); inner?.append(el);
-  const show = (from, share) => (x) => { bar.style.width = `${Math.round((from + x * share) * 100)}%`; };
-  return (heavy = (async () => {
+// ready once. While the title is up they are made behind it, a piece at a time, each only when the sign is lit and
+// steady and the player is not touching anything (ui/idle.js): what moves on the title then is drawn off the main
+// thread, so nothing is seen of it, and a player who lingers never sees a loading bar. One who leaves the title
+// before it is done sees the bar for what is left: the title stays as it is, its menu gives way to the bar, the rest
+// is made at full speed, and they go on when it is done. ?curtain=0 skips all of it (automated playthroughs): things
+// are then built as they are met.
+const warmth = { p: null, pacer: null, x: 0, line: 'boot.dice', done: false, show: null, wait: null, steady: null }; // steady(): may work go on behind the screen now (the title's sign says)
+const noCurtain = () => new URLSearchParams(location.search).get('curtain') === '0' || globalThis.RP_FAST;
+function warm() {
+  if (warmth.p) return warmth.p;
+  const P = warmth.pacer = pacer({ steady: () => !!warmth.steady?.() }), at = (from, share) => (x) => { warmth.x = from + x * share; warmth.show?.(); };
+  return (warmth.p = (async () => {
+    // (the renderer itself, the one piece too big for an idle moment, starts here: as the title first appears, before its sign has lit)
     try { const [M3, G3] = await Promise.all([import('./ui/dice3d.js'), import('./ui/gear3d.js')]);
-      await M3.preload(show(0, 0.6)); line.textContent = t('boot.gear');
-      await G3.prepare([...Object.entries(D.WALLETS).map(([id, W]) => ({ kind: 'wallet', look: walletLook(id, W) })), ...Object.entries(D.JACKETS).map(([id, J]) => ({ kind: 'jacket', look: jacketLook(id, J) })), ...D.DRINKS.map((d) => ({ kind: 'drink', look: drinkLook(d) }))], show(0.6, 0.4));
+      await M3.preload(at(0, 0.6), { pace: P.pace }); warmth.line = 'boot.gear'; warmth.show?.();
+      await G3.prepare([...Object.entries(D.WALLETS).map(([id, W]) => ({ kind: 'wallet', look: walletLook(id, W) })), ...Object.entries(D.JACKETS).map(([id, J]) => ({ kind: 'jacket', look: jacketLook(id, J) })), ...D.DRINKS.map((d) => ({ kind: 'drink', look: drinkLook(d) }))], at(0.6, 0.4), P.pace);
     } catch { /* no renderer: the drawn looks stand */ }
-    line.textContent = t('boot.ready'); bar.style.width = '100%'; await new Promise((r) => setTimeout(r, 180));
-    el.remove(); inner?.classList.remove('loading'); // (the title may still be the scene: the Library opens over it, and its menu must be there on the way back)
+    warmth.done = true; warmth.x = 1; warmth.line = 'boot.ready'; warmth.show?.();
   })());
 }
-// every way off the title waits on it
-const go = (scene) => (scene === titleScene ? show(scene) : ready().then(() => show(scene)));
+// the title's idle time: the heavy things, and (fetched only, at low priority, one at a time) the sounds the first
+// table will want: the sound effects' samples and the first loop's layers. Fonts every sign may ask for come too.
+let idled = false;
+function idleLoad() {
+  if (idled || noCurtain()) return; idled = true;
+  const saved = R.loadRun(), floor = saved?.phase === 'ascent' ? D.ASCENT_FLOOR : Math.min(4, Math.max(1, saved?.floor || 1));
+  prefetchSfx().then(() => prefetchLoops(floor)).catch(() => {});
+  for (const F of Object.values(FONTS)) document.fonts?.load?.(`16px "${F.family}"`).catch(() => {});
+}
+function ready() {
+  if (noCurtain()) return (warmth.p ||= Promise.resolve());
+  const p = warm(); if (warmth.done) return p;
+  if (warmth.wait) return warmth.wait; // (already waiting on it: one bar)
+  const bar = h('i'), line = h('div', { class: 'load-line' }), el = h('div', { class: 'title-load' }, h('div', { class: 'load-bar' }, bar), line);
+  const inner = document.querySelector('.title .inner'); inner?.classList.add('loading'); inner?.append(el);
+  warmth.show = () => { bar.style.width = `${Math.round(warmth.x * 100)}%`; line.textContent = t(warmth.line); }; warmth.show();
+  warmth.pacer.hurry(); // the player is waiting now: the rest at full speed
+  return (warmth.wait = p.then(async () => {
+    await new Promise((r) => setTimeout(r, 180));
+    el.remove(); inner?.classList.remove('loading'); warmth.show = null; // (the title may still be the scene: the Library opens over it, and its menu must be there on the way back)
+  }));
+}
+// every way off the title waits on it (the theme plays on while you choose who walks in, then gives way to the lounge's set)
+const go = (scene) => (scene === titleScene ? show(scene) : ready().then(() => { if (scene !== selectScene) titleMusic(false); return show(scene); }));
 window.addEventListener('resize', fit);
 loadDraft(); // your build-mode changes, live in this browser
 fit(); initTips(); watchText(); initSpin(); initThings(); initMusic(document.getElementById('stage'), { run: () => app.run, tip: (what, title) => R.tipBand(app.run, what, title) }); initSfx(document.getElementById('stage'));
 app.meta = R.loadMeta();
 nav.title();
-if (new URLSearchParams(location.search).has('debug')) window.RP = { app, R, D, nav, B };
+if (new URLSearchParams(location.search).has('debug')) window.RP = { app, R, D, nav, B, warmth };

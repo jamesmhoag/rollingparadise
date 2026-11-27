@@ -19,7 +19,14 @@
 //   do not sound alike.
 // The lounge band fades out as a bout's loop comes in, and when the bout is over the loop fades and the band eases
 // back in behind it, so two tunes are never loud at once.
-import { MUSIC, LOOPS } from '../content/assets.js';
+//
+// Out front (the title and the Roller you walk in as; titleMusic) the band plays the game's theme, "Rolling
+// Paradise" (content/theme.js): one tune in each of its eight styles. A different style opens the game each time,
+// and when a version ends the next style takes the same tune up. There is no run and no purse there, so the band's
+// buttons are free: ▶ / ✕ starts and stops it, ⇄ swaps it to chips and back at the same place in the tune, ⏭ moves
+// on to the next style. Until the page has been touched nothing can sound (browsers do not allow it), so the
+// switch shows ▶ and a press on it starts the band, whatever it was last doing.
+import { MUSIC, LOOPS, THEME } from '../content/assets.js';
 import { btn, h, toast, openPanel, closePanel, setOn } from './core.js';
 import { t } from '../text.js';
 import { worth } from '../bout.js';
@@ -28,7 +35,9 @@ import { cents } from '../util.js';
 
 const FAVS = 'rollingparadise.favorites', VOL = 0.3, LOOP_VOL = 0.36, LAYERS = ['base', 'theme', 'alt', 'drive', 'peril', 'surge'];
 let current = null, playing = false, loop = null;
-const lounge = { play: () => {}, pause: () => {}, on: () => false, touched: false };
+let front = false; // out front (the title): the band plays the theme, and there is no run to pay it
+const THEME_AT = 'rollingparadise.theme'; // the style the theme last opened in, so the next visit opens in another
+const lounge = { play: () => {}, pause: () => {}, on: () => false, touched: false, front: () => {} };
 // the game's side: the run (whose purse pays and whose band this is) and how to take a tip from it
 const game = { run: () => null, tip: () => false };
 // what the band is doing: playing on its instruments ('band') or chips ('chip'), or silent
@@ -39,7 +48,8 @@ const lastBand = () => { try { const b = JSON.parse(localStorage.getItem(BAND) |
 const keepBand = (b) => { try { localStorage.setItem(BAND, JSON.stringify({ mode: b.mode, silent: !!b.silent })); } catch { /* storage unavailable */ } };
 const free = { band: null }; // the band with no run: yours to switch for nothing
 export const bandOf = (run) => (run ? (run.band ||= lastBand()) : (free.band ||= lastBand()));
-const mode = () => { const b = bandOf(game.run()); return b.silent ? 'off' : b.mode; };
+const theRun = () => (front ? null : game.run()); // whose band it is: out front, nobody's
+const mode = () => { const b = bandOf(theRun()); return b.silent ? 'off' : b.mode; };
 // a tune's or a loop layer's file in a sound
 export const srcOf = (tune, m = mode()) => (m === 'chip' && tune.chip ? tune.chip : tune.src);
 const layerSrc = (L, k, m = mode()) => (m === 'chip' && L.chip ? L.chip[k] : L.layers[k]);
@@ -52,6 +62,15 @@ export const setlist = (list, favs = favorites()) => [...list.filter((x) => favs
 export const musicKey = () => (loop?.live ? loop.L.key : playing && current ? current.key || 0 : 0);
 // and its mode ('major', 'minor', or 'blues': a major 3rd with a flat 7th), so the sounds take the 3rd and 7th that fit
 export const musicMode = () => (loop?.live ? loop.L.mode : playing && current ? current.mode : null) || 'major';
+
+// the title is showing (or the game has moved on from it): the theme, or the lounge's set
+export function titleMusic(on) { lounge.front(!!on); }
+// the theme's running order: every style once, shuffled, never opening on the style it opened with last time (not)
+export function themeOrder(list = THEME, not = null, rnd = Math.random) {
+  const out = list.slice().sort(() => rnd() - 0.5);
+  if (out.length > 1 && out[0].genre === not) out.push(out.shift());
+  return out;
+}
 
 // a running order: shuffled, then nudged so a kind of jazz never follows itself
 export function setOrder(list = MUSIC, rnd = Math.random) {
@@ -88,7 +107,18 @@ export const loopFor = (floor, boss, list = LOOPS) => list.find((L) => L.floor =
 let ac = null; const buffers = new Map();
 const AC = () => globalThis.AudioContext || globalThis.webkitAudioContext;
 const audioCtx = () => ac || (ac = new (AC())());
-const decode = (src) => { if (!buffers.has(src)) buffers.set(src, fetch(src).then((r) => r.arrayBuffer()).then((b) => audioCtx().decodeAudioData(b))); return buffers.get(src); };
+// a file's bytes, fetched once (prefetch, from the title's idle time, fetches ahead of need; decoding waits for the bout)
+const bytes = new Map();
+const fetched = (src, low) => { if (!bytes.has(src)) bytes.set(src, fetch(src, low ? { priority: 'low' } : undefined).then((r) => r.arrayBuffer())); return bytes.get(src); };
+const decode = (src) => { if (!buffers.has(src)) buffers.set(src, fetched(src).then((b) => { bytes.delete(src); return audioCtx().decodeAudioData(b); })); return buffers.get(src); };
+// Fetch, one at a time and at low priority, the loop the player is most likely to hear first (their saved run's floor,
+// or the first), in the sound the band was last playing in, so the first bout's music starts with the bout.
+export async function prefetchLoops(floor = 1) {
+  if (typeof fetch === 'undefined') return 0;
+  const m = lastBand().mode, L = loopFor(floor, false); let n = 0;
+  for (const k of L ? LAYERS : []) { const src = layerSrc(L, k, m); if (src) { await fetched(src, true).catch(() => bytes.delete(src)); n++; } }
+  return n;
+}
 
 // a bout is starting: play its floor's loop (where: how the hover names the place)
 export function boutMusic(bout, { floor, boss, where } = {}) {
@@ -155,8 +185,18 @@ export function initMusic(stage, { run = () => null, tip = () => false } = {}) {
   Object.assign(game, { run, tip });
   let order = setOrder(), at = 0, audio = null, sounding = null;
   let away = false; // the tab is hidden
-  const on = () => mode() !== 'off', now = () => order[at];
-  const next = () => { at++; if (at >= order.length) { order = setOrder(); at = 0; } current = now(); audio.src = srcOf(current); if (on() && !away) audio.play().catch(() => {}); };
+  // the theme's styles, in this visit's order; which one opened it is remembered for next time
+  const lastOpen = () => { try { return localStorage.getItem(THEME_AT); } catch { return null; } };
+  let tOrder = themeOrder(THEME, lastOpen()), tAt = 0;
+  try { if (tOrder.length) localStorage.setItem(THEME_AT, tOrder[0].genre); } catch { /* storage unavailable */ }
+  const themed = () => front && tOrder.length > 0;
+  const on = () => mode() !== 'off', now = () => (themed() ? tOrder[tAt] : order[at]);
+  // on to the next: out front, the same tune in the next style; in the lounge, the next tune of the set
+  const step = () => {
+    if (themed()) { tAt++; if (tAt >= tOrder.length) { tOrder = themeOrder(THEME, tOrder[tOrder.length - 1].genre); tAt = 0; } }
+    else { at++; if (at >= order.length) { order = setOrder(); at = 0; } }
+  };
+  const next = () => { step(); current = now(); audio.src = srcOf(current); if (on() && !away) audio.play().catch(() => {}); };
   // the band's volume, eased over `secs` (then: what to do once it gets there); any fade under way is dropped
   let fading = null;
   const settle = () => { clearInterval(fading); fading = null; };
@@ -183,7 +223,18 @@ export function initMusic(stage, { run = () => null, tip = () => false } = {}) {
     audio.play().catch(() => {});
     if (fadeIn) fadeTo(VOL, fadeIn);
   }
-  Object.assign(lounge, { play, pause, on });
+  // the title comes up or is left: the band changes over between the theme and its set, one fading out and the other in
+  function setFront(v) {
+    if (v === front) return;
+    front = v; if (v) { free.band = lastBand(); if (current && THEME.includes(current)) step(); } // (back at the title: the tune, in its next style)
+    sounding = lounge.touched ? mode() : sounding;
+    if (!lounge.touched || loop) return mark();
+    if (!on()) { pause(); return mark(); }
+    // (walking in to a table from the title: its loop is already on the way, and the band stays out)
+    if (audio && !audio.paused) fadeTo(0, 0.45, () => { if (loop) { audio.pause(); audio.volume = VOL; } else play(0.5); }); else play(0.5);
+    mark();
+  }
+  Object.assign(lounge, { play, pause, on, front: setFront });
   const start = () => { if (!on() || away) return; return loop ? startLoop(loop) : play(); }; // whatever should be playing: the bout's loop, or the band
   // make what is sounding match what the band is doing (after a tip, or when a new run brings a fresh band)
   function sync() {
@@ -207,17 +258,19 @@ export function initMusic(stage, { run = () => null, tip = () => false } = {}) {
   });
 
   // the buttons: what each costs, greyed when the purse cannot cover it (or there is no run to pay from)
-  const P = TUNING.band, purse = () => game.run()?.purse ?? -1;
+  const P = TUNING.band, purse = () => theRun()?.purse ?? -1;
   const nowTitle = () => (loop ? loop.L.title : now().title);
   const playingLine = () => (!on() ? t('music.silent') : (loop ? t('music.bout', { title: loop.L.title, where: loop.where || '' }) : t('music.playing', { title: now().title, style: now().by })) + (mode() === 'chip' ? t('music.chipNote') : ''));
-  const why = (price) => (!game.run() ? t('music.noRun') : purse() < price ? t('music.broke') : '');
+  const why = (price) => (!theRun() ? t('music.noRun') : purse() < price ? t('music.broke') : '');
   function pay(what, title) {
-    if (!game.run() || purse() < P[what] || !game.tip(what, title)) { toast(t('music.cantTip'), 'warn'); return false; }
+    if (!theRun() || purse() < P[what] || !game.tip(what, title)) { toast(t('music.cantTip'), 'warn'); return false; }
     document.dispatchEvent(new Event('rp:purse')); return true;
   }
   // each button's price is in its hover; requests, skips and swaps need the band playing (starting them is its own tip)
   const cost = (what, ok = true) => t('music.price', { price: cents(P[what]) }) + (ok ? why(P[what]) : t('music.onBreak'));
-  const can = (what, playingToo = true) => !!game.run() && purse() >= P[what] && (!playingToo || on());
+  const can = (what, playingToo = true) => !!theRun() && purse() >= P[what] && (!playingToo || on());
+  // with no run (the title, Build mode) there is no purse to tip from: stopping, starting, swapping and moving on are free there
+  const charge = (what, title = '') => !theRun() || pay(what, title);
   // hearting a tune is free unless the band charges for it (TUNING.band.favorite); taking a heart off is always free
   const favCost = () => P.favorite || 0;
   const heart = (ti) => { const on = !favorites().has(ti); if (on && favCost() > 0 && !pay('favorite', ti)) return false; setFavorite(ti, on); return true; };
@@ -225,28 +278,34 @@ export function initMusic(stage, { run = () => null, tip = () => false } = {}) {
     () => t(favorites().has(nowTitle()) ? 'music.unfav' : 'music.fav', { title: nowTitle(), playing: playingLine() }) + (!favorites().has(nowTitle()) && favCost() > 0 ? cost('favorite') : ''), 'small band-btn fav-btn');
   // skip: in the lounge, on to the next tune; at a table, on to the next loop of its kind (tables' or High Rollers')
   const nextLoop = () => { const same = LOOPS.filter((L) => L.kind === loop.L.kind); return same[(same.indexOf(loop.L) + 1) % same.length]; };
-  const upNext = () => (loop ? nextLoop() : order[(at + 1) % order.length]);
+  const upNext = () => (loop ? nextLoop() : themed() ? tOrder[(tAt + 1) % tOrder.length] : order[(at + 1) % order.length]);
+  const nameOf = (x) => (themed() && !loop ? `${x.title}, ${x.by}` : x.title);
   const skip = btn('⏭', () => {
-    if (!on()) return; const x = upNext(); if (!pay('skip', x.title)) return;
-    if (loop) { const lp = { ...loop, L: x, live: false }; silence(loop, 0.3); loop = lp; startLoop(lp); } else if (audio) next(); else { at = (at + 1) % order.length; play(); }
+    if (!on()) return; const x = upNext(); if (!charge('skip', x.title)) return;
+    if (loop) { const lp = { ...loop, L: x, live: false }; silence(loop, 0.3); loop = lp; startLoop(lp); } else if (audio) next(); else { step(); play(); }
     mark();
-  }, () => t('music.skip', { title: upNext().title }) + cost('skip', on()), 'small band-btn');
+  }, () => t('music.skip', { title: nameOf(upNext()) }) + (theRun() ? cost('skip', on()) : t('music.freeHere')), 'small band-btn');
   const req = btn('♫', () => openSetlist(), () => t('music.request', { playing: playingLine() }) + cost('request', on()), 'small band-btn');
   const swap = btn('⇄', () => {
-    if (!on() || !pay('swap', '')) return; const b = bandOf(game.run()); b.mode = b.mode === 'chip' ? 'band' : 'chip'; keepBand(b);
+    if (!on() || !charge('swap')) return; const b = bandOf(theRun()); b.mode = b.mode === 'chip' ? 'band' : 'chip'; keepBand(b);
     toast(t(b.mode === 'chip' ? 'music.toChips' : 'music.toBand')); sync();
-  }, () => t(bandOf(game.run()).mode === 'chip' ? 'music.swapToBand' : 'music.swapToChip') + cost('swap', on()), 'small band-btn');
+  }, () => t(bandOf(theRun()).mode === 'chip' ? 'music.swapToBand' : 'music.swapToChip') + (theRun() ? cost('swap', on()) : t('music.freeHere')), 'small band-btn');
   // the band on and off: each way is a tip
-  // with no run (the title, Build mode) there is no purse to tip from, so the switch is free there
-  const power = btn('✕', () => {
-    const what = on() ? 'stop' : 'start'; if (game.run() && !pay(what, '')) return;
-    const b = bandOf(game.run()); b.silent = what === 'stop'; keepBand(b); toast(t(what === 'stop' ? 'music.hushed' : 'music.back')); sync();
-  }, () => t(on() ? 'music.stop' : 'music.start', { playing: playingLine() }) + (game.run() ? cost(on() ? 'stop' : 'start') : t('music.freeHere')), 'small band-btn');
+  // Before the page has been touched nothing is sounding, whatever the band was last doing, so the switch shows ▶ and
+  // the press that wakes the page starts the band (`waking`: that press is not a tip to stop it).
+  let waking = false;
+  const sounds = () => on() && lounge.touched;
+  const power = btn('▶', () => {
+    if (waking) { waking = false; const b = bandOf(theRun()); b.silent = false; keepBand(b); sync(); return; }
+    const what = on() ? 'stop' : 'start'; if (!charge(what)) return;
+    const b = bandOf(theRun()); b.silent = what === 'stop'; keepBand(b); toast(t(what === 'stop' ? 'music.hushed' : 'music.back')); sync();
+  }, () => t(sounds() ? 'music.stop' : 'music.start', { playing: playingLine() }) + (theRun() ? cost(on() ? 'stop' : 'start') : t('music.freeHere')), 'small band-btn');
   function mark() {
-    setOn(skip, can('skip')); setOn(req, can('request')); setOn(swap, can('swap')); setOn(power, !game.run() || can(on() ? 'stop' : 'start', false));
-    power.textContent = on() ? '✕' : '▶';
+    const gratis = !theRun();
+    setOn(skip, gratis ? on() : can('skip')); setOn(req, can('request')); setOn(swap, gratis ? on() : can('swap')); setOn(power, gratis || can(on() ? 'stop' : 'start', false));
+    power.textContent = sounds() ? '✕' : '▶';
     const f = favorites().has(nowTitle()); fav.textContent = f ? '♥' : '♡'; fav.classList.toggle('on', f);
-    swap.classList.toggle('chiptune', bandOf(game.run()).mode === 'chip');
+    swap.classList.toggle('chiptune', bandOf(theRun()).mode === 'chip');
   }
   // a request: the setlist (the lounge band's tunes, or at a table the bout loops), favorites first
   function openSetlist() {
@@ -267,6 +326,12 @@ export function initMusic(stage, { run = () => null, tip = () => false } = {}) {
   const group = h('div', { class: 'band-btns' }, fav, skip, req, swap, power);
   mark(); stage.append(group);
   document.addEventListener('rp:purse', mark);
-  const first = () => { document.removeEventListener('pointerdown', first, true); lounge.touched = true; sounding = mode(); if (on()) start(); mark(); };
+  // the first touch wakes the page's sound. Anywhere but the switch, the band starts if it is not switched off; on
+  // the switch itself, the click that follows starts it (see `waking`).
+  const first = (e) => {
+    document.removeEventListener('pointerdown', first, true); lounge.touched = true;
+    if (power.contains(e.target)) { waking = true; sounding = 'off'; return; }
+    sounding = mode(); if (on()) start(); mark();
+  };
   document.addEventListener('pointerdown', first, true);
 }
