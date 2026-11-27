@@ -174,7 +174,7 @@ function drawFrame(svg, spec, w, h, who) {
   const runs = frame === 'symbols' ? [] : runsOf(o.L, marks.map((s) => [s - G, s + G]));
   const body = mk('g', { class: 'frame-body' }); lights.append(body);
   const spots = []; // paths a chase runs along: [d, core, glow, total length of its loop, where this stretch starts in it]
-  const runLen = (r) => r[1] - r[0];
+  const runLen = (r) => r[1] - r[0], straight = (r) => trace(o, r[0], r[1], () => 0, 1.5, r[2]); // a run of the frame, down its middle
   // tubes: one per colour pair, nested a little inside each other
   if (frame === 'plain' || frame === 'wave' || frame === 'zigzag') pairs.forEach(([core, glow], i) => {
     const k = -i * 3.8, f = frame === 'wave' ? (s) => k + 2.2 * Math.sin((2 * Math.PI * s) / 15) : frame === 'zigzag' ? (s) => k + 2.4 * tri(s, 10) : () => k;
@@ -186,11 +186,11 @@ function drawFrame(svg, spec, w, h, who) {
       ...(still() ? [] : [mk('animateTransform', { attributeName: 'gradientTransform', type: 'rotate', from: `0 ${W / 2} ${H / 2}`, to: `360 ${W / 2} ${H / 2}`, dur: '12s', repeatCount: 'indefinite' })])]);
     const two = cores.length > 1 ? cores : [cores[0], glows[0]], twoG = glows.length > 1 ? glows : [glows[0], cores[0]];
     ctx.defs.append(grad(gid, two), grad(hid, twoG));
-    for (const r of runs) { const d = trace(o, r[0], r[1], () => 0, 1.5, r[2]); light(body, ctx, d, `url(#${gid})`, `url(#${hid})`, { w: 2.8 }); spots.push([d, '#ffffff', twoG[0], 0]); }
+    for (const r of runs) { const d = straight(r); light(body, ctx, d, `url(#${gid})`, `url(#${hid})`, { w: 2.8 }); spots.push([d, '#ffffff', twoG[0], 0]); }
   }
   if (frame === 'striped' || frame === 'checkered') { // a strip: bands (or checks) of the colours, flowing along it when it chases
     const cols = N > 1 ? pairs.map((p) => p[0]) : [pairs[0][0], pairs[0][1]], wS = 5, P = wS * cols.length;
-    for (const r of runs) { const d = trace(o, r[0], r[1], () => 0, 1.5, r[2]);
+    for (const r of runs) { const d = straight(r);
       light(body, ctx, d, cols[cols.length - 1], pairs[0][1], { w: 4.6 });
       if (frame === 'striped') cols.slice(0, -1).forEach((c, j) => light(body, ctx, d, c, pairs[0][1], { w: 4.6, cap: 'butt', dash: `${wS} ${P - wS}`, cls: 'flow', style: { '--o': `${-j * wS}px`, '--P': `${P}px` }, offset: -j * wS }));
       else [-1.2, 1.2].forEach((k, lane) => { const dl = trace(o, r[0], r[1], () => k, 1.5, r[2]); light(body, ctx, dl, cols[0], pairs[0][1], { w: 2.3, cap: 'butt', dash: '4 4', cls: 'flow', style: { '--o': `${lane * 4}px`, '--P': '8px' }, offset: lane * 4 }); });

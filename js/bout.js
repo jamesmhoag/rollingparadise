@@ -6,7 +6,8 @@
 // of action for the turn. advance() closes a phase for both; after Bid, resolve() plays each
 // effect type for both Rollers at once and yields a step after each visible change.
 // Fees go out as Debt first; the House then settles every stack that took Debt.
-import { RNG, sum, clone, clamp, order1D } from './util.js';
+import { RNG, sum, clone, clamp, order1D, steps, nearestTo } from './util.js';
+import { stackEdit } from './stackedit.js';
 import { instances, deployOrder, placeIndex, makeKind, isFxChip } from './trickmaker.js';
 import { MAKES as MAKES_TABLE } from './content/trickmaker.js';
 const MAKES_OF = (chip) => MAKES_TABLE[chip] || {};
@@ -145,23 +146,22 @@ export const FOOT_N = { basic: 1, big: 2, large: 3, huge: 5 };
 export const footOf = (ch) => FOOT_N[ch?.foot || madeOf(ch)?.foot] || 1;
 // A flat chip that slips under: it lies beneath the stacks across its footprint (they keep their spaces and heights)
 // instead of claiming empty spaces. It is kept at the bottom of its first space with mat = { r, c, n }.
-function matBlock(s, r, c, n) {
+// the n×n block aimed at (r, c), moved back inside the position if it hangs off an edge; null when it does not fit
+// the position or any space in it is taken (a Hole, part of a big chip, a roost, a Black Hole, or `also(space)`)
+function blockAt(s, r, c, n, also = () => false) {
   if (n > s.rows || n > s.dims.cols) return null;
   const r0 = Math.max(0, Math.min(r, s.rows - n)), c0 = Math.max(0, Math.min(c, s.dims.cols - n));
-  for (let dr = 0; dr < n; dr++) for (let dc = 0; dc < n; dc++) { const x = s.grid[r0 + dr][c0 + dc]; if (x.hole || x.link || x.anchor || x.roost || x.black) return null; }
+  for (let dr = 0; dr < n; dr++) for (let dc = 0; dc < n; dc++) { const x = s.grid[r0 + dr][c0 + dc]; if (x.hole || x.link || x.anchor || x.roost || x.black || also(x)) return null; }
+  return { r: r0, c: c0 };
+}
+function matBlock(s, r, c, n) {
+  const at = blockAt(s, r, c, n); if (!at) return null; const { r: r0, c: c0 } = at;
   for (const { cell } of allCells(s)) if (cell.chips.some((ch) => ch.mat && Math.abs(ch.mat.r - r0) < n && Math.abs(ch.mat.c - c0) < n)) return null; // one mat under a space
   return { r: r0, c: c0 };
 }
 export const inMat = (ch, r, c) => !!ch.mat && r >= ch.mat.r && r < ch.mat.r + ch.mat.n && c >= ch.mat.c && c < ch.mat.c + ch.mat.n;
-// the n×n block a big made chip would take, aimed at (r, c): moved back inside the position if it hangs off an edge;
-// null if any space in it is a Hole, part of another big chip, or holds chips (other than the aimed space's stack
-// when n is 1)
-function footBlock(s, r, c, n) {
-  if (n > s.rows || n > s.dims.cols) return null;
-  const r0 = Math.max(0, Math.min(r, s.rows - n)), c0 = Math.max(0, Math.min(c, s.dims.cols - n));
-  for (let dr = 0; dr < n; dr++) for (let dc = 0; dc < n; dc++) { const x = s.grid[r0 + dr][c0 + dc]; if (x.hole || x.link || x.anchor || x.roost || x.black || x.chips.length) return null; }
-  return { r: r0, c: c0 };
-}
+// the n×n block a big made chip would take: as blockAt, and every space in it empty
+const footBlock = (s, r, c, n) => blockAt(s, r, c, n, (x) => x.chips.length > 0);
 function claimFoot(s, r, c, n) { s.grid[r][c].anchor = { n }; for (let dr = 0; dr < n; dr++) for (let dc = 0; dc < n; dc++) if (dr || dc) s.grid[r + dr][c + dc].link = { r, c }; }
 // big made chips that have gone free their spaces
 function tidyFeet(s) { for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const cell = s.grid[r][c]; if (cell.anchor?.n && !cell.chips.some((ch) => footOf(ch) > 1)) freeLinks(s, r, c); } }
@@ -225,7 +225,7 @@ function meterOrder(s) {
 // place chips on the Bet, nearest to origin first (else front to back). Returns chips that did not fit.
 function addToMeter(b, s, chips, origin, from) {
   let cells = meterOrder(s);
-  if (origin) cells = cells.slice().sort((x, y) => Math.abs(x.r - origin.r) + Math.abs(x.c - origin.c) - (Math.abs(y.r - origin.r) + Math.abs(y.c - origin.c)));
+  if (origin) cells = cells.slice().sort(nearestTo(origin));
   const left = [];
   for (const ch of chips) {
     const spot = cells.find(({ r, c }) => capacityLeft(s, s.grid[r][c]) > 0);
@@ -708,10 +708,11 @@ export function canRevive(b, s, uid, r, c) {
   if (ch && !spare(s, ch)) return tx('feed.that-would-bid-your');
   return null;
 }
+// the chip a space bids leaves its stack, remembering where it came from (a bid taken back goes home)
+function takeBid(s, r, c) { const ch = bidChip(s, r, c), cell = s.grid[r][c]; cell.chips.splice(cell.chips.indexOf(ch), 1); ch.from = { r, c, base: lifted(cell) }; return ch; }
 export function revive(b, s, uid, r, c) {
   if (r == null || canRevive(b, s, uid, r, c)) return null;
-  const ch = bidChip(s, r, c), t = s.tapped.tricks.find((x) => x.trick.uid === uid).trick; s.grid[r][c].chips.splice(s.grid[r][c].chips.indexOf(ch), 1);
-  ch.from = { r, c, base: lifted(s.grid[r][c]) };
+  const ch = takeBid(s, r, c), t = s.tapped.tricks.find((x) => x.trick.uid === uid).trick;
   (s.revive ||= []).push({ uid, ch, base: bidVal(ch) - reviveCost(t) }); s.used.bid++;
   return ch;
 }
@@ -968,8 +969,7 @@ export function canBid(b, s, e, r, c) {
 }
 export function bid(b, s, e, r, c) {
   if (canBid(b, s, e, r, c)) return null;
-  const ch = bidChip(s, r, c); s.grid[r][c].chips.splice(s.grid[r][c].chips.indexOf(ch), 1);
-  ch.from = { r, c, base: lifted(s.grid[r][c]) };
+  const ch = takeBid(s, r, c);
   e.bid.push(ch); e.bidValue += bidVal(ch); e.state = 'bid'; s.used.bid++; if (ch.shop === 'upgrade') e.upBoost = (e.upBoost || 0) + 1;
   if (!e.target) e.target = validTargets(b, s, e)[0] || null;
   return ch;
@@ -1241,19 +1241,19 @@ function engage(b, att, def, r, c, amount, o = {}) {
     if (!o.pierce && top && top.kind === 'tree') return { placed: 0, notes: [fell(b, def, r, c)] };
     if (!o.pierce && top && isInstance(top)) { top.hits = (top.hits || 1) - 1; if (top.hits <= 0) { cell.chips.splice(ti, 1); b.fx[top.id] = 'void'; } return { placed: 0, notes: [`blocked whole by a ${top.kind[0].toUpperCase() + top.kind.slice(1)} chip`] }; }
   }
+  // part of a fee sent back at the attacker: down the same lane when it holds chips, else their first lane that does
+  const sendBack = (back) => { const cols = [...Array(att.dims.cols).keys()].filter((x) => frontRow(att, x) >= 0); if (!cols.length) return false;
+    const cc = cols.includes(c) ? c : cols[0]; engage(b, def, att, frontRow(att, cc), cc, back, { reflected: true }); return true; };
   if (open && att && st.reflect > 0) {
     const back = Math.min(st.reflect, amount); amount -= back; if (!st.reflectAll) st.reflect = 0;
-    const cols = [...Array(att.dims.cols).keys()].filter((x) => frontRow(att, x) >= 0);
-    if (cols.length) { const cc = cols.includes(c) ? c : cols[0]; engage(b, def, att, frontRow(att, cc), cc, back, { reflected: true }); }
-    notes.push(tx('feed.reflected', { back }));
+    sendBack(back); notes.push(tx('feed.reflected', { back }));
   }
   if (open && st.resist > 0) { const cut = Math.min(amount, st.resist); amount -= cut; notes.push(tx('feed.resisted', { cut })); }
   const bumpers = open ? shopCount(cell, 'reducer') : 0;
   if (bumpers && amount > 0) { const cut = Math.min(amount, bumpers * shopVars('reducer').absorb); amount -= cut; notes.push(tx('feed.reduced', { cut })); }
   const mirrors = !o.reflected && att ? shopCount(cell, 'rebound') : 0;
   if (mirrors && amount > 0) { // the fee is still charged; the mirror sends some back down the same lane
-    const back = mirrors * shopVars('rebound').reflect, cols = [...Array(att.dims.cols).keys()].filter((x) => frontRow(att, x) >= 0);
-    if (cols.length) { const cc = cols.includes(c) ? c : cols[0]; engage(b, def, att, frontRow(att, cc), cc, back, { reflected: true }); notes.push(tx('feed.mirrored', { back })); }
+    const back = mirrors * shopVars('rebound').reflect; if (sendBack(back)) notes.push(tx('feed.mirrored', { back }));
   }
   if (amount <= 0) return { placed: 0, notes };
   { const ti = topSolid(cell); if (ti >= 0 && cell.chips[ti].kind === 'bounty') { b.fx[cell.chips[ti].id] = 'void'; cell.chips.splice(ti, 1); notes.push('a Bounty chip breaks'); } }
@@ -1637,7 +1637,7 @@ function* play(b, s, e, opt = {}) {
       if (!hit.length) { yield step(b, tx('feed.comes-to-nothing', { tag }), [], 'miss'); return; }
       hit.forEach(({ r, c, amt }, i) => send(r, c, amt, i === 0 ? element : null));
       if (def.plant === 'dynamite') { // light a stack of sticks on the empty space nearest the target
-        const free = allCells(o).filter((x) => !x.cell.hole && !x.cell.chips.length).sort((x, y) => Math.abs(x.r - origin.r) + Math.abs(x.c - origin.c) - (Math.abs(y.r - origin.r) + Math.abs(y.c - origin.c)));
+        const free = allCells(o).filter((x) => !x.cell.hole && !x.cell.chips.length).sort(nearestTo(origin));
         if (free.length) { const n = clamp(Math.floor(total / 4), 2, o.dims.stackMax); for (let k = 0; k < n; k++) free[0].cell.chips.push(mkChip(b, 'dynamite')); notes.add(`${n} sticks of Dynamite lit`); }
       }
       yield step(b, placed ? tx('feed.of-debt-on-2', { tag, placed, hitN: hit.length, tail: tail() }) : tx('feed.the-fee-is', { tag, v: [...notes].join(', ') || 'lost' }), hit.map((x) => ref(t || o, x.r, x.c)), placed || notes.size ? 'play' : 'miss'); return;
@@ -1836,10 +1836,11 @@ function* growth(b, s) {
 }
 // Orbital chips: weather and vehicles in the sky over a Roller's table, above the flying layer.
 function* sky(b, s) {
-  const near = (o) => allCells(s).filter((x) => Math.abs(x.r - o.r) + Math.abs(x.c - o.c) <= 1);
+  // a thing in the sky drifts to a space next to it (or stays): → the space it is over now
+  const drift = (o) => { const to = b.rng.pick(allCells(s).filter((x) => steps(x, o) <= 1)); o.r = to.r; o.c = to.c; return { r: o.r, c: o.c, cell: s.grid[o.r][o.c] }; };
   for (const o of s.sky.slice()) {
     if (o.kind === 'cloud') { // drift, then rain: puddles, wet stacks, fire and frost washed off; lightning one turn in four
-      const to = b.rng.pick(near(o)); o.r = to.r; o.c = to.c; const x = { r: o.r, c: o.c, cell: s.grid[o.r][o.c] };
+      const x = drift(o);
       for (const ch of x.cell.chips.filter((y) => ['burn', 'lava', 'frost', 'corrupt', 'hard', 'sticky'].includes(y.kind))) { x.cell.chips.splice(x.cell.chips.indexOf(ch), 1); b.fx[ch.id] = 'void'; }
       if (x.cell.puddle?.ice) x.cell.puddle.ice = false; water(b, s, x);
       let bolt = ''; if (b.rng.chance(0.25)) { const live = allCells(s).filter((y) => solidCount(y.cell)); if (live.length) { const y = b.rng.pick(live); bolt = tx('feed.and-lightning-strikes', { strike: strike(b, s, y) }); } }
@@ -1858,7 +1859,7 @@ function* sky(b, s) {
       const cell = s.grid[o.r][o.c]; let hit = false; if (solidCount(cell) && !cell.chips.some((ch) => ch.kind === 'boom')) { const bm = mkHazard(b, 'boom'); bm.power = 52; cell.chips.push(bm); b.fx[bm.id] = 'spawn'; hit = true; }
       yield step(b, tx('feed.a-b-52-flies', { name: s.name, v: hit ? tx('feed.and-drops-a-52') : '' }), [ref(s, o.r, o.c)], 'hazard');
     } else if (o.kind === 'tornado') { // moves next door, and throws a stack shorter than its strength about
-      const to = b.rng.pick(near(o)); o.r = to.r; o.c = to.c; const x = { r: o.r, c: o.c, cell: s.grid[o.r][o.c] }; let moved = 0, lost = 0;
+      const x = drift(o); let moved = 0, lost = 0;
       if (solidCount(x.cell) && solidCount(x.cell) < o.str && !anchored(x.cell) && !fixedCell(x.cell) && !lifted(x.cell)) {
         for (const ch of x.cell.chips.splice(0)) { const free = allCells(s).filter((y) => y.cell !== x.cell && capacityLeft(s, y.cell) > 0);
           if (isHazard(ch) || !free.length || b.rng.chance(0.3)) { b.fx[ch.id] = 'void'; if (isPayable(ch)) { s.destroyed += ch.value; lost += ch.value; } } else { pushChip(b.rng.pick(free).cell, ch); moved++; } } }
@@ -2043,15 +2044,14 @@ function* ticks(b) {
 
 // ---------- the test table (Build mode) ----------
 // What the test table can put on a space: a Royal Paradise chip of a value, a Block or Counter chip, a hazard, an
-// effect chip (lasting the bout) or a made chip. op: 'add' on top, 'change' the top chip into it, 'remove' the top.
-// `at`: the id of the chip pointed at in that stack. With it, Remove takes that chip out (not the top one), Change turns
-// that chip into the chosen one, and Add inserts the new chip just below it. Without it (an empty space, or no chip
-// pointed at) they work on the top of the stack as before.
+// effect chip (lasting the bout) or a made chip. op is one of the chip painter's four (stackedit.js): 'add' on top,
+// 'insert' below the chip pointed at, 'change' that chip into it, 'remove' it. `at`: the id of the chip pointed at in
+// that stack; without it Change and Remove work on the top chip (hazards aside) and Insert goes under the stack.
 export function sandboxChip(b, side, r, c, what, op = 'add', at = null) {
   const s = b.sides[side], cell = s.grid[r]?.[c]; if (!cell) return false;
   const atI = at == null ? -1 : cell.chips.findIndex((ch) => ch.id === at);
-  const topI = atI >= 0 ? atI : (() => { for (let i = cell.chips.length - 1; i >= 0; i--) if (!isHazard(cell.chips[i])) return i; return cell.chips.length - 1; })();
-  if (op === 'remove') { if (topI < 0) return false; const ch = cell.chips.splice(topI, 1)[0]; b.fx[ch.id] = 'void'; if (ch.kind === 'puddle') delete cell.puddle; return true; }
+  const topI = (() => { for (let i = cell.chips.length - 1; i >= 0; i--) if (!isHazard(cell.chips[i])) return i; return cell.chips.length - 1; })();
+  if (op === 'remove') { const e = stackEdit(cell.chips, 'remove', null, atI, topI); if (!e) return false; b.fx[e.old.id] = 'void'; if (e.old.kind === 'puddle') delete cell.puddle; return true; }
   const make = () => {
     if (what.made && MADE_CHIPS[what.made]) return mkMade(b, what.made);
     if (what.shop && SHOP_CHIPS[what.shop]) return mkChip(b, 'fx', 0, { shop: what.shop, resist: what.shop, life: 99, maker: null });
@@ -2060,13 +2060,13 @@ export function sandboxChip(b, side, r, c, what, op = 'add', at = null) {
     return mkChip(b, what.kind || 'std', what.kind === 'block' || what.kind === 'counter' ? 0 : Math.max(1, what.value | 0 || 1));
   };
   if (what.kind === 'debt') { if (!occupied(cell)) return false; setDebt(b, cell, debtOf(cell) + Math.max(1, what.value | 0 || 1)); return true; }
-  if (what.kind === 'puddle') { if (cell.link) return false; if (op === 'remove' || (op === 'change' && cell.puddle)) { delete cell.puddle; return true; } water(b, s, { cell, r, c }); return true; } // the Puddle chip goes under the stack
+  if (what.kind === 'puddle') { if (cell.link) return false; if (op === 'change' && cell.puddle) { delete cell.puddle; return true; } water(b, s, { cell, r, c }); return true; } // the Puddle chip goes under the stack
   const ch = make(); if (!ch) return false;
-  if (op === 'change') { if (topI < 0) return false; const old = cell.chips[topI]; cell.chips.splice(topI, 1, ch); b.fx[old.id] = 'void'; b.fx[ch.id] = 'mutate'; return true; }
+  if (op === 'change') { const e = stackEdit(cell.chips, 'change', ch, atI, topI); if (!e) return false; b.fx[e.old.id] = 'void'; b.fx[ch.id] = 'mutate'; return true; }
   if (ch.kind === 'made' && footOf(ch) > 1) { const at = footBlock(s, r, c, footOf(ch)); if (!at) return false; claimFoot(s, at.r, at.c, footOf(ch)); s.grid[at.r][at.c].chips.push(ch); b.fx[ch.id] = 'spawn'; return true; }
   if (ch.kind === 'made' ? !fits(s, cell, ch) : (cell.hole || cell.link || (!isHazard(ch) && capacityLeft(s, cell) <= 0))) return false;
-  if (atI >= 0) cell.chips.splice(atI, 0, ch); // inserted below the chip pointed at
-  else if (ch.kind === 'made') placeMade(cell, ch, 'over') || cell.chips.push(ch); else cell.chips.push(ch);
+  if (op === 'add' && ch.kind === 'made') placeMade(cell, ch, 'over') || cell.chips.push(ch); // a made chip takes the place its own rules give it
+  else stackEdit(cell.chips, op, ch, atI);
   b.fx[ch.id] = 'spawn'; return true;
 }
 

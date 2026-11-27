@@ -119,7 +119,7 @@ const clear = (me) => { for (const row of me.grid) for (const cell of row) cell.
 // ---------- the test table's chip tools work on the chip pointed at ----------
 {
   const { bout, me } = table(); clear(me); const cell = me.grid[0][0]; cell.chips = [std(bout, 1), std(bout, 2), std(bout, 3)]; const mid = cell.chips[1].id;
-  ok(B.sandboxChip(bout, 0, 0, 0, { kind: 'std', value: 9 }, 'add', mid) && cell.chips.map((c) => c.value).join() === '1,9,2,3', 'Add inserts below the chip pointed at');
+  ok(B.sandboxChip(bout, 0, 0, 0, { kind: 'std', value: 9 }, 'insert', mid) && cell.chips.map((c) => c.value).join() === '1,9,2,3', 'Insert goes below the chip pointed at');
   ok(B.sandboxChip(bout, 0, 0, 0, null, 'remove', mid) && cell.chips.map((c) => c.value).join() === '1,9,3', 'Remove takes the chip pointed at');
   ok(B.sandboxChip(bout, 0, 0, 0, { kind: 'std', value: 4 }, 'add') && cell.chips[cell.chips.length - 1].value === 4 && B.sandboxChip(bout, 0, 0, 0, null, 'remove') && cell.chips.map((c) => c.value).join() === '1,9,3', 'with no chip pointed at they work on the top of the stack');
 }

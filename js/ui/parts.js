@@ -272,17 +272,19 @@ export function walletEl(id, cls = '') {
   const el = h('span', { class: `gwallet ${Wl.crown ? 'crown' : ''} ${cls}`, style: { '--wc': L.color, '--w-flap': L.flap + 'px', '--w-round': L.round + 'px', ...(L.trim ? { '--w-trim': L.trim } : {}) } }, h('i', { class: 'flap' }),
     L.stitch ? h('i', { class: 'stitch' }) : null, L.clasp !== 'none' ? h('i', { class: `clasp ${L.clasp}` }) : null,
     h('span', { class: 'slots' }, Array.from({ length: Wl.slots || 0 }, () => h('i'))), h('b', { text: Wl.keep ?? '' }));
-  finishOn(el, { m: L.mat, color: L.color, glint: L.glint, sparkle: L.sparkle });
-  if (L.symbol) el.append(finishSvg(symEl(L.symbol.id, L.symbol.color, 'wsym'), L.symbol.mat ? { m: L.symbol.mat, color: L.symbol.color, glint: L.glint, sparkle: L.sparkle } : null));
+  finishOn(el, lookFinish(L)); gearSymbol(el, L, 'wsym');
   return el;
 }
+// a wallet's or a jacket's look as a finish, and its emblem (in the emblem's own material, lit as the piece is)
+const lookFinish = (L, over = {}) => ({ m: L.mat, color: L.color, glint: L.glint, sparkle: L.sparkle, ...over });
+function gearSymbol(el, L, cls) { if (L.symbol) el.append(finishSvg(symEl(L.symbol.id, L.symbol.color, cls), L.symbol.mat ? lookFinish(L, { m: L.symbol.mat, color: L.symbol.color }) : null)); }
 export function jacketEl(id, cls = '') {
   const J = D.JACKETS[id] || {}, L = jacketLook(id, J);
-  const body = finishOn(h('i', { class: 'body' }), { m: L.mat, color: L.color, glint: L.glint, sparkle: L.sparkle });
+  const body = finishOn(h('i', { class: 'body' }), lookFinish(L));
   const el = h('span', { class: `gjacket ${cls}`, style: { '--jc': L.color, '--j-len': L.length + 'px', ...(L.lining ? { '--j-lining': L.lining } : {}) } }, body, h('i', { class: `lapel c-${L.collar}` }),
     L.buttons ? h('span', { class: 'btns' }, Array.from({ length: L.buttons }, () => h('i'))) : null,
     h('span', { class: 'mods' }, Object.entries(J.mods || {}).map(([k2, n]) => h('b', { class: n > 0 ? 'p' : 'n', text: `${n > 0 ? '+' : ''}${n}` }))));
-  if (L.symbol) el.append(finishSvg(symEl(L.symbol.id, L.symbol.color, 'jsym'), L.symbol.mat ? { m: L.symbol.mat, color: L.symbol.color, glint: L.glint, sparkle: L.sparkle } : null));
+  gearSymbol(el, L, 'jsym');
   return el;
 }
 // sips left are shown as how full the glass is

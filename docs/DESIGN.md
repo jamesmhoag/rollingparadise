@@ -316,12 +316,14 @@ to the tapped piles: yours to under the Book and after the Pouch, your opponent'
 played copy slides off the same way as the next copy lights on top. Nothing moves for reduced motion.
 
 ### The title sign
-It lights one of two ways, by the flip of a chip: all at once, a tube at a time (the pink, the cyan, the dice), or a
-piece at a time: ROLLING letter by letter, one die then the other, Paradise's letters but the s, then the s with the
-swash and the palm's trunk as one stroke, then the fronds one by one. The pieces are cut from the sign's own three
-images by `tools/logo-parts.py` (every pixel, glow included, goes to exactly one piece, so the lit sign is the same
-picture either way). Whichever did not open the title plays once when the title has sat idle for 40 seconds (the sign
-buzzes out first). `?title=parts` or `?title=whole` in the address picks the opening one.
+The sign is drawn from the design's own pieces (`assets/title/*.svg`: ROLLING, Paradise, the s, the palm, the two dice,
+each with a `-glow` twin that gives its blur). `tools/title-sign.py` cuts them into tubes and writes
+`js/content/titlesign.js`; `js/ui/titlesign.js` draws every tube as its dark glass with the lit tube over it.
+It lights one way, a tube after another: ROLLING a letter at a time, one die then the other, Paradise a run of joined
+script at a time (P, ar, a, di: outlines that touch are one tube and come on together), the s with the swash and the
+palm's trunk as the one tube they are, the e, then the fronds in a sweep. A tube comes up once with a short warm-up;
+nothing flickers on the way on, and the lit sign only breathes. Left idle for 40 seconds it fades down, last lit first,
+and lights again.
 
 ### Reading a trick
 A trick in the Book shows the chip it makes (or what stands for its effect: Debt for a fee, the hazard an element fee

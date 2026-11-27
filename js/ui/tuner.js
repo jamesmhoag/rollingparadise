@@ -4,6 +4,7 @@
 import { h, btn, lab } from './core.js';
 import * as D from '../data.js';
 import * as B from '../build/draft.js';
+import { draftForm, numIn } from './form.js';
 import { t } from '../text.js';
 import { LASTS } from '../content/chipmaker.js';
 
@@ -19,16 +20,13 @@ const RELATED = {
 export const TUNER_SECTIONS = [...Object.keys(D.TUNING), 'gear'];
 
 export function tuner(section, redraw, openTable) {
-  const T = D.TUNING[section] || {}, base = D.subPath('TUNING', section), P = (k) => D.subPath(base, k);
-  const set = (k, v) => { B.setValue(P(k), v); redraw(); };
-  const row = (k, el) => h('div', { class: `b-field ${B.changed(P(k)) ? 'ch' : ''}` }, lab(`tuner.${section}.${k}`), el,
-    P(k) in B.draft.changes ? btn('↺', () => { B.revert(P(k)); redraw(); }, t('build.revert.tip', { was: JSON.stringify(B.draft.orig[P(k)]) }), 'small b-revert') : h('span'));
+  const T = D.TUNING[section] || {}, F = draftForm(D.subPath('TUNING', section), redraw);
+  const row = (k, el) => F.field(lab(`tuner.${section}.${k}`), el, [k]);
   const input = (k, v) => {
-    if (typeof v === 'boolean') return h('input', { type: 'checkbox', ...(v ? { checked: 'checked' } : {}), onchange: (e) => set(k, e.target.checked) });
-    if (Array.isArray(v)) return h('div', { class: 'b-checks' }, [1, 2, 3, 4].map((n) => h('label', { class: 'b-check' },
-      h('input', { type: 'checkbox', ...(v.includes(n) ? { checked: 'checked' } : {}), onchange: (e) => set(k, e.target.checked ? [...v, n].sort() : v.filter((x) => x !== n)) }), D.FLOORS[n].name)));
-    if (typeof v === 'string') return h('select', { onchange: (e) => set(k, e.target.value) }, (CHOICES[section] || [v]).map((o) => h('option', { value: o, text: choiceName(section, o), ...(o === v ? { selected: 'selected' } : {}) })));
-    return h('input', { type: 'number', step: 'any', value: v, onchange: (e) => { const n = Number(e.target.value); if (Number.isFinite(n)) set(k, n); } });
+    if (typeof v === 'boolean') return F.check([k], v);
+    if (Array.isArray(v)) return F.checks([k], [1, 2, 3, 4].map((n) => [n, D.FLOORS[n].name]), v, { sort: true });
+    if (typeof v === 'string') return F.select([k], (CHOICES[section] || [v]).map((o) => [o, choiceName(section, o)]), v, { parse: (x) => x });
+    return numIn(v, (n) => n != null && F.set([k], n), { step: 'any' });
   };
   const fields = section === 'gear' ? [h('p', { class: 'sub', text: t('tuner.gear.note') })] : Object.entries(T).map(([k, v]) => row(k, input(k, v)));
   return h('div', { class: 'b-maker' },

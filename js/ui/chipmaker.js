@@ -1,6 +1,7 @@
 // Build mode: the chip maker. Made chips are edited term by term; every chip from before the maker is shown in the
 // same terms (mapped from the workbook) and can be copied into a made chip. Edits go into the build draft.
 import { h, lab, btn, toast } from './core.js';
+import { draftForm, pick, numIn, textIn, tick, pairsOf, askId, makerPage, previewCol } from './form.js';
 import * as D from '../data.js';
 import * as B from '../build/draft.js';
 import { chipEl, madeRules } from './parts.js';
@@ -9,28 +10,25 @@ import { SOURCES, LASTS, HEIGHT, FOOTPRINT, MUST, ON_TOP, STICKY, IMMUNE, MOVES,
 import { asMade } from '../chipmodel.js';
 
 const path = (id, ...ks) => ks.reduce((p, k) => D.subPath(p, k), D.subPath('MADE_CHIPS', id));
-const ask = (def) => { const id = (globalThis.prompt?.(t('chipmaker.newId'), def) || '').trim();
-  if (!id) return null; if (!/^\w+$/.test(id)) { toast(t('build.duplicate.badId'), 'warn'); return null; }
-  if (D.MADE_CHIPS[id]) { toast(t('build.duplicate.taken', { id }), 'warn'); return null; } return id; };
+const ask = (def) => askId(t('chipmaker.newId'), def, D.MADE_CHIPS);
 export function newChip(from) {
   const id = ask(from ? from.id.replace(/^chip_/, '') : 'my_chip'); if (!id) return null;
   B.setValue(D.subPath('MADE_CHIPS', id), from ? asMade(from) : JSON.parse(JSON.stringify(NEW_CHIP))); return id;
 }
-const opts = (o) => Object.entries(o).map(([k, v]) => [k, typeof v === 'string' ? v : `${v.name} — ${v.text}`]);
+const opts = (o) => pairsOf(o, (v) => `${v.name} — ${v.text}`);
 
 export function chipMaker(id, classic, redraw, onCopy) {
   if (classic) return classicView(classic, onCopy);
   const M = D.MADE_CHIPS[id]; if (!M) return h('p', { class: 'sub', text: t('maker.none') });
   const m = { ...NEW_CHIP, ...M };
-  const set = (ks, v) => { B.setValue(path(id, ...ks), v); redraw(); };
-  const field = (label, el, ks, extra) => h('div', { class: `b-field ${ks && B.changed(path(id, ...ks)) ? 'ch' : ''}` }, h('label', {}, label, extra || null), el,
-    ks && path(id, ...ks) in B.draft.changes ? btn('↺', () => { B.revert(path(id, ...ks)); redraw(); }, null, 'small b-revert') : h('span'));
-  const select = (ks, list, value) => h('select', { onchange: (e) => set(ks, e.target.value) }, list.map(([v, l]) => h('option', { value: v, ...(String(v) === String(value) ? { selected: 'selected' } : {}), text: l })));
-  const number = (ks, value, min) => h('input', { type: 'number', step: 1, ...(min != null ? { min } : {}), value: value ?? 0, onchange: (e) => set(ks, Math.round(Number(e.target.value) || 0)) });
-  const text = (ks, value, area) => h(area ? 'textarea' : 'input', { ...(area ? { rows: 2, text: value } : { type: 'text', value }), onchange: (e) => set(ks, e.target.value) });
-  const checks = (ks, o, list) => h('div', { class: 'b-checks' }, Object.entries(o).map(([k, l]) => h('label', { class: 'b-check' },
-    h('input', { type: 'checkbox', ...(list.includes(k) ? { checked: 'checked' } : {}), onchange: (e) => set(ks, e.target.checked ? [...list, k] : list.filter((x) => x !== k)) }), l)));
-  const smallSelect = (list, value, on) => h('select', { onchange: (e) => on(e.target.value) }, list.map(([v, l]) => h('option', { value: v, ...(String(v) === String(value) ? { selected: 'selected' } : {}), text: l })));
+  const F = draftForm(path(id), redraw), { set, field } = F;
+  const select = (ks, list, value) => F.select(ks, list, value, { parse: (x) => x });
+  const number = (ks, value, min) => F.number(ks, value ?? 0, { min, whole: true, blank: 0 });
+  const text = (ks, value, long) => F.text(ks, value, { long, rows: 2 });
+  const checks = (ks, o, list) => F.checks(ks, Object.entries(o), list);
+  const smallSelect = (list, value, on) => pick(list, value, on, { parse: (x) => x });
+  const named = (value, on, ph) => { const el = textIn(value, on); el.placeholder = ph; return el; };
+  const amount = (value, on, o) => numIn(value, on, { w: '70px', whole: true, ...o });
   const kinds = () => [['std', 'Royal Paradise chip'], ['block', 'Block chip'], ['counter', 'Counter chip'], ...['burn', 'shock', 'corrupt', 'acid', 'poison', 'frost'].map((k) => [k, D.CHIPS[k].name]), ...Object.entries(D.MADE_CHIPS).map(([k, v]) => [k, v.name])];
   // a list of { key: kind, ...params }: one row per entry, a kind picker, its parameters, and remove; plus an add row
   const listEditor = (list, key, vocab, kindKey, params) => h('div', { class: 'b-list' },
@@ -42,7 +40,7 @@ export function chipMaker(id, classic, redraw, onCopy) {
     h('span', { class: 'cap', text: t('chipmaker.part.chip') }),
     field(lab('maker.name'), text(['name'], m.name), ['name']),
     field(lab('chipmaker.text'), text(['text'], m.text, true), ['text']),
-    field(lab('chipmaker.color'), h('input', { type: 'color', value: m.color, onchange: (e) => set(['color'], e.target.value) }), ['color']),
+    field(lab('chipmaker.color'), F.colour(['color'], m.color), ['color']),
     field(lab('chipmaker.value'), number(['value'], m.value), ['value']),
     field(lab('chipmaker.hits'), number(['hits'], m.hits, 0), ['hits']),
     field(lab('chipmaker.source'), select(['source'], opts(SOURCES), m.source), ['source']),
@@ -54,30 +52,30 @@ export function chipMaker(id, classic, redraw, onCopy) {
     field(lab('chipmaker.foot'), select(['foot'], opts(FOOTPRINT), m.foot), ['foot']),
     field(lab('chipmaker.must'), select(['must'], opts(MUST), m.must), ['must']),
     field(lab('chipmaker.onTop'), select(['onTop'], opts(ON_TOP), m.onTop), ['onTop']),
-    field(lab('chipmaker.sticky'), h('select', { onchange: (e) => set(['sticky'], e.target.value === 'yes' || undefined) }, Object.entries(STICKY).map(([k, v]) => h('option', { value: k, text: v, ...((m.sticky ? 'yes' : 'no') === k ? { selected: 'selected' } : {}) }))), ['sticky']),
+    field(lab('chipmaker.sticky'), smallSelect(Object.entries(STICKY), m.sticky ? 'yes' : 'no', (v) => set(['sticky'], v === 'yes' || undefined)), ['sticky']),
     h('span', { class: 'cap', text: t('chipmaker.part.immune') }),
     field(lab('chipmaker.immune'), checks(['immune'], IMMUNE, m.immune || []), ['immune']),
     h('span', { class: 'cap', text: t('chipmaker.part.behaviour') }),
     field(lab('chipmaker.move'), select(['move'], opts(MOVES), m.move), ['move']),
     h('span', { class: 'cap', text: t('chipmaker.part.effect') }),
     field(lab('chipmaker.reach'), h('div', { class: 'row' }, select(['reach', 'to'], opts(REACH), m.reach?.to || 'touching'),
-      m.reach?.to === 'named' ? h('input', { type: 'text', placeholder: t('chipmaker.reach.name'), value: m.reach?.name || '', onchange: (e) => set(['reach', 'name'], e.target.value) }) : null,
+      m.reach?.to === 'named' ? named(m.reach?.name, (v) => set(['reach', 'name'], v), t('chipmaker.reach.name')) : null,
       m.reach?.to === 'typed' ? select(['reach', 'kind'], kinds(), m.reach?.kind || 'std') : null,
-      h('input', { type: 'number', min: 1, max: 5, value: m.reach?.range ?? 1, style: { width: '64px' }, title: t('chipmaker.range'), onchange: (e) => set(['reach', 'range'], Math.max(1, Math.min(5, Math.round(Number(e.target.value) || 1)))) })), ['reach']),
+      amount(m.reach?.range ?? 1, (v) => set(['reach', 'range'], v), { min: 1, max: 5, w: '64px', blank: 1, title: t('chipmaker.range') })), ['reach']),
     field(lab('chipmaker.triggers'), listEditor(m.triggers || [], 'triggers', TRIGGERS, 'on', (x, upd) => (x.on === 'phase' || x.on === 'effect' ? smallSelect([['', t('chipmaker.anyPhase')], ...Object.entries(D.TYPES).map(([k, v]) => [k, v.name])], x.type || '', (v) => upd({ ...x, type: v || undefined }))
-      : x.on === 'exposed' ? h('input', { type: 'text', placeholder: t('chipmaker.exposed.what'), value: x.what || '', onchange: (e) => upd({ ...x, what: e.target.value || undefined }) }) : null)), ['triggers']),
+      : x.on === 'exposed' ? named(x.what, (v) => upd({ ...x, what: v || undefined }), t('chipmaker.exposed.what')) : null)), ['triggers']),
     field(lab('chipmaker.actions'), listEditor(m.actions || [], 'actions', ACTIONS, 'k', (x, upd) => (x.k === 'move' ? h('span', { class: 'row wrap' }, smallSelect(Object.entries(MOVE_HOW), x.how || 'hop', (v) => upd({ ...x, how: v === 'hop' ? undefined : v, steps: v === 'hop' ? undefined : x.steps ?? 1 })),
         smallSelect(['left', 'right', 'up', 'down'].map((d) => [d, t(`chipmaker.dir.${d}`)]), x.dir || 'right', (v) => upd({ ...x, dir: v })),
         x.how && x.how !== 'hop' ? smallSelect(Object.entries(MOVE_STEPS).filter(([k]) => x.how === 'slide' || k !== 'all'), String(x.steps ?? 1), (v) => upd({ ...x, steps: /^\d+$/.test(v) ? Number(v) : v })) : null,
-        x.how === 'slide' && x.steps !== 'all' ? h('label', { class: 'b-check' }, h('input', { type: 'checkbox', ...(x.spill ? { checked: 'checked' } : {}), onchange: (e) => upd({ ...x, spill: e.target.checked || undefined }) }), t('chipmaker.move.spill')) : null,
-        x.how === 'lift' || x.how === 'slip' ? h('label', { class: 'b-check' }, h('input', { type: 'checkbox', ...(x.whole ? { checked: 'checked' } : {}), onchange: (e) => upd({ ...x, whole: e.target.checked || undefined }) }), t('chipmaker.move.whole')) : null)
+        x.how === 'slide' && x.steps !== 'all' ? tick(t('chipmaker.move.spill'), x.spill, (v) => upd({ ...x, spill: v || undefined })) : null,
+        x.how === 'lift' || x.how === 'slip' ? tick(t('chipmaker.move.whole'), x.whole, (v) => upd({ ...x, whole: v || undefined })) : null)
       : x.k === 'become' ? smallSelect(kinds(), x.chip || 'std', (v) => upd({ ...x, chip: v }))
-      : x.k === 'pull' ? h('span', { class: 'row' }, smallSelect(Object.entries(PULL_FROM), x.from || 'mine', (v) => upd({ ...x, from: v })), h('input', { type: 'number', min: 1, step: 1, value: x.n ?? 5, style: { width: '70px' }, title: t('chipmaker.pull.amount'), onchange: (e) => upd({ ...x, n: Math.max(1, Math.round(Number(e.target.value) || 1)) }) }), h('label', { class: 'b-check' }, h('input', { type: 'checkbox', ...(x.bids ? { checked: 'checked' } : {}), onchange: (e) => upd({ ...x, bids: e.target.checked || undefined }) }), t('chipmaker.pull.bids')))
-        : h('input', { type: 'number', step: 1, value: x.n ?? 1, style: { width: '70px' }, title: t('chipmaker.amount'), onchange: (e) => upd({ ...x, n: Math.round(Number(e.target.value) || 0) }) }))), ['actions']),
+      : x.k === 'pull' ? h('span', { class: 'row' }, smallSelect(Object.entries(PULL_FROM), x.from || 'mine', (v) => upd({ ...x, from: v })), amount(x.n ?? 5, (v) => upd({ ...x, n: v }), { min: 1, blank: 1, title: t('chipmaker.pull.amount') }), tick(t('chipmaker.pull.bids'), x.bids, (v) => upd({ ...x, bids: v || undefined })))
+        : amount(x.n ?? 1, (v) => upd({ ...x, n: v }), { blank: 0, title: t('chipmaker.amount') }))), ['actions']),
   ];
   const sample = { kind: 'made', model: id, value: m.value, hits: m.hits, life: m.lasts === 'turns' ? m.turns : undefined };
-  return h('div', { class: 'b-maker' }, h('div', { class: 'b-fields' }, parts),
-    h('div', {}, h('span', { class: 'cap', text: t('maker.preview') }), h('div', { class: 'b-card' }, h('div', { class: 'row' }, chipEl(sample), h('b', { text: m.name })),
+  return makerPage(parts,
+    previewCol(h('div', { class: 'b-card' }, h('div', { class: 'row' }, chipEl(sample), h('b', { text: m.name })),
       h('p', { text: m.text || t('chipmaker.noText') }), h('p', { class: 'dim', text: madeRules(m, sample) })),
     h('p', { class: 'sub', text: t('chipmaker.useInTricks') })));
 }

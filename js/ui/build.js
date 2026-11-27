@@ -1,6 +1,7 @@
 // Build mode: change the game's content, see it in play, and export the changes to put into the project.
 // This screen edits any table in D.TABLES field by field. The trick, chip, opponent and tuning tools build on it.
 import { h, btn, toast, openPanel, closePanel, guided } from './core.js';
+import { pick, numIn, checkIn, colourIn, revertBtn as revert, askId, makerPage, previewCol } from './form.js';
 import { app } from './app.js';
 import * as D from '../data.js';
 import * as B from '../build/draft.js';
@@ -133,10 +134,10 @@ export function buildScene(root, opts = {}) {
     if (ui.tool === 'test') { editor.replaceChildren(h('h2', { text: t('test.title') }), testTable(draw, (o) => app.nav.test(o))); return; }
     if (ui.tool === 'cards') { const nm = ui.key === CORNER ? t('cards.corner') : ui.key.startsWith('biz:') ? D.BOSS_TRAITS[ui.key.slice(4)].name : D.CARDS[ui.key]?.name || '';
       editor.replaceChildren(h('h2', { text: nm }), h('p', { class: 'sub mono', text: ui.key === CORNER ? 'SHADY · CARDS.*.corner' : ui.key.startsWith('biz:') ? D.subPath('BOSS_TRAITS', ui.key.slice(4)) : D.subPath('CARDS', ui.key) }),
-        cardMaker(ui.key, draw, (tb) => { ui.tool = 'tables'; ui.table = tb; ui.key = null; draw(); })); return; }
+        cardMaker(ui.key, draw, openTable)); return; }
     if (ui.tool === 'gear') { const tb = ui.key[0] === 'w' ? 'WALLETS' : 'JACKETS', gid = ui.key.slice(2); editor.replaceChildren(h('h2', { text: D[tb][gid]?.name || '' }), h('p', { class: 'sub mono', text: D.subPath(tb, gid) }), gearMaker(ui.key, draw)); return; }
-    if (ui.tool === 'shops') { editor.replaceChildren(h('h2', { text: t(`shops.${ui.key}`) }), h('p', { class: 'sub mono', text: D.subPath('SHOPS', ui.key) }), shopMaker(ui.key, draw, (tb) => { ui.tool = 'tables'; ui.table = tb; ui.key = null; draw(); })); return; }
-    if (ui.tool === 'tuner') { editor.replaceChildren(h('h2', { text: t(`tuner.${ui.key}`) }), h('p', { class: 'sub mono', text: ui.key === 'gear' ? '' : D.subPath('TUNING', ui.key) }), tuner(ui.key, draw, (tb) => { ui.tool = 'tables'; ui.table = tb; ui.key = null; draw(); })); return; }
+    if (ui.tool === 'shops') { editor.replaceChildren(h('h2', { text: t(`shops.${ui.key}`) }), h('p', { class: 'sub mono', text: D.subPath('SHOPS', ui.key) }), shopMaker(ui.key, draw, openTable)); return; }
+    if (ui.tool === 'tuner') { editor.replaceChildren(h('h2', { text: t(`tuner.${ui.key}`) }), h('p', { class: 'sub mono', text: ui.key === 'gear' ? '' : D.subPath('TUNING', ui.key) }), tuner(ui.key, draw, openTable)); return; }
     if ((ui.tool === 'rollers' || ui.tool === 'roster') && SHARED_SIGNS[ui.key]) { editor.replaceChildren(h('h2', { text: t(`neon.list.${SHARED_SIGNS[ui.key]}`) }), h('p', { class: 'sub mono', text: `NEON.${SHARED_SIGNS[ui.key]}` }), sharedSign(ui.key, draw)); return; }
     if (ui.tool === 'classes') { editor.replaceChildren(h('h2', { text: D.CLASSES[ui.key].name }), h('p', { class: 'sub mono', text: D.subPath('CLASSES', ui.key) }), classMaker(ui.key, draw)); return; }
     if (ui.tool === 'rollers') { editor.replaceChildren(h('h2', { text: D.heroName(D.ROLLERS[ui.key].cls, ui.key) }), h('p', { class: 'sub mono', text: D.subPath('ROLLERS', ui.key) }), rollerMaker(ui.key, draw)); return; }
@@ -167,12 +168,13 @@ export function buildScene(root, opts = {}) {
   }
   function input(path, v) {
     const set = (x) => { B.setValue(path, x); drawStatus(); drawTables(); drawEntries(); drawEditor(); };
-    if (typeof v === 'boolean') return h('input', { type: 'checkbox', ...(v ? { checked: 'checked' } : {}), onchange: (e) => set(e.target.checked) });
-    if (typeof v === 'number') return h('input', { type: 'number', step: 'any', value: v, onchange: (e) => { const n = Number(e.target.value); if (Number.isFinite(n)) set(n); else toast(t('build.notNumber'), 'warn'); } });
+    if (typeof v === 'boolean') return checkIn(v, set);
+    const number = (x, on, w) => numIn(x, (n) => (n == null ? toast(t('build.notNumber'), 'warn') : on(n)), { step: 'any', w });
+    if (typeof v === 'number') return number(v, set);
     if (Array.isArray(v)) return listInput(path, v, set);
     if (v == null) return h('input', { type: 'text', value: '', placeholder: t('build.none'), onchange: (e) => set(e.target.value.trim() === '' ? null : e.target.value.trim()) });
     if (isObj(v)) return h('textarea', { class: 'mono', rows: 3, text: JSON.stringify(v), onchange: (e) => { try { set(JSON.parse(e.target.value)); } catch { toast(t('build.notJson'), 'warn'); } } });
-    if (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v)) return h('div', { class: 'row' }, h('input', { type: 'color', value: v, onchange: (e) => set(e.target.value) }), h('input', { type: 'text', value: v, style: { width: '96px' }, onchange: (e) => (/^#[0-9a-f]{6}$/i.test(e.target.value.trim()) ? set(e.target.value.trim()) : toast(t('build.notColour'), 'warn')) }));
+    if (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v)) return h('div', { class: 'row' }, colourIn(v, set), h('input', { type: 'text', value: v, style: { width: '96px' }, onchange: (e) => (/^#[0-9a-f]{6}$/i.test(e.target.value.trim()) ? set(e.target.value.trim()) : toast(t('build.notColour'), 'warn')) }));
     const long = String(v).length > 48;
     return h(long ? 'textarea' : 'input', { ...(long ? { rows: Math.min(6, Math.ceil(String(v).length / 60)), text: v } : { type: 'text', value: v }), onchange: (e) => set(e.target.value) });
   }
@@ -182,28 +184,23 @@ export function buildScene(root, opts = {}) {
     const ref = listRef(path, v), nums = v.length ? v.every((x) => typeof x === 'number') : ref ? ref.every(([k]) => typeof k === 'number') : false;
     const colours = v.length && v.every((x) => typeof x === 'string' && /^#[0-9a-f]{6}$/i.test(x));
     const put = (i, x) => set(v.map((y, j) => (j === i ? x : y))), drop = (i) => set(v.filter((_, j) => j !== i)), add = (x) => set([...v, x]);
-    const nameOf = (x) => ref?.find(([k]) => String(k) === String(x))?.[1];
+    const nameOf = (x) => ref?.find(([k]) => String(k) === String(x))?.[1], asItem = (y) => (nums ? Number(y) : y);
     const items = v.map((x, i) => h('span', { class: `row b-li ${ref && nameOf(x) == null ? 'bad' : ''}` },
-      ref ? h('select', { onchange: (e) => put(i, nums ? Number(e.target.value) : e.target.value) }, ...(nameOf(x) == null ? [h('option', { value: x, text: t('build.list.unknown', { id: x }), selected: 'selected' })] : []),
-        ...ref.map(([k, l]) => h('option', { value: k, text: l, ...(String(k) === String(x) ? { selected: 'selected' } : {}) })))
-        : colours ? h('input', { type: 'color', value: x, onchange: (e) => put(i, e.target.value) })
-        : nums ? h('input', { type: 'number', step: 'any', value: x, style: { width: '84px' }, onchange: (e) => { const n = Number(e.target.value); if (Number.isFinite(n)) put(i, n); else toast(t('build.notNumber'), 'warn'); } })
+      ref ? pick([...(nameOf(x) == null ? [[x, t('build.list.unknown', { id: x })]] : []), ...ref], x, (y) => put(i, y), { parse: asItem })
+        : colours ? colourIn(x, (y) => put(i, y))
+        : nums ? numIn(x, (n) => (n == null ? toast(t('build.notNumber'), 'warn') : put(i, n)), { step: 'any', w: '84px' })
         : h('input', { type: 'text', value: x, list: `dl-${path}`, onchange: (e) => (e.target.value.trim() ? put(i, e.target.value.trim()) : drop(i)) }),
       colours ? null : btn('✕', () => drop(i), t('build.list.drop'), 'small')));
     const seen = ref || colours || nums ? null : [...new Set(Object.values(D.TABLES[D.splitPath(path)[0]] || {}).flatMap((e) => (isObj(e) ? Object.values(e) : [])).filter(Array.isArray).flat().filter((x) => typeof x === 'string'))];
-    const adder = colours ? null : ref ? h('select', { onchange: (e) => e.target.value !== '' && add(nums ? Number(e.target.value) : e.target.value) }, h('option', { value: '', text: t('build.list.add') }), ...ref.filter(([k]) => !v.some((x) => String(x) === String(k))).map(([k, l]) => h('option', { value: k, text: l })))
+    const adder = colours ? null : ref ? pick(ref.filter(([k]) => !v.some((x) => String(x) === String(k))), '', (y) => y !== '' && add(asItem(y)), { parse: (y) => y, head: t('build.list.add') })
       : nums ? btn('+', () => add(v.length ? v[v.length - 1] : 0), t('build.list.add'), 'small')
       : h('input', { type: 'text', placeholder: t('build.list.add'), list: `dl-${path}`, onchange: (e) => e.target.value.trim() && add(e.target.value.trim()) });
     return h('div', { class: 'row wrap b-list-edit' }, ...items, adder, seen ? h('datalist', { id: `dl-${path}` }, ...seen.map((x) => h('option', { value: x }))) : null);
   }
-  function revertBtn(path) {
-    if (!(path in B.draft.changes)) return null;
-    return btn('↺', () => { B.revert(path); draw(); }, t('build.revert.tip', { was: JSON.stringify(B.draft.orig[path]) ?? '—' }), 'small b-revert');
-  }
+  function openTable(tb) { ui.tool = 'tables'; ui.table = tb; ui.key = null; draw(); } // a maker's way to the table behind it
+  const revertBtn = (path) => revert(path, draw);
   function duplicate() {
-    const id = (globalThis.prompt?.(t('build.duplicate.ask'), `${ui.key}_copy`) || '').trim();
-    if (!id) return; if (!/^\w+$/.test(id)) return toast(t('build.duplicate.badId'), 'warn');
-    if (D.TABLES[ui.table][id] !== undefined) return toast(t('build.duplicate.taken', { id }), 'warn');
+    const id = askId(t('build.duplicate.ask'), `${ui.key}_copy`, D.TABLES[ui.table]); if (!id) return;
     const copy = JSON.parse(JSON.stringify(D.TABLES[ui.table][ui.key])); if (typeof copy.name === 'string') copy.name += ' (copy)';
     B.setValue(D.subPath(ui.table, id), copy); ui.key = id; draw(); toast(t('build.duplicate.done', { id }));
   }

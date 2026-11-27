@@ -18,9 +18,10 @@
 //
 // Static dice (dieEl) are rendered once per look and size and cached as images; a die in motion (solidEl) is
 // rendered live each frame from the rotation the animation gives it. If WebGL isn't available the CSS dice stay.
-import { geometry, d4Rest, d4Corners } from './solid.js';
+import { geometry, d4Rest, d4Corners, tTurn, tApply } from './solid.js';
 import { facesOf, faceValue, matOf } from '../dice.js';
 import * as D from '../data.js';
+import { vsub as sub, vdot as dot, vcross as cross, vnorm as nrm } from '../util.js';
 
 let T = null, Convex = null, ready = null, R3 = null;
 export const available = () => !!R3;
@@ -67,8 +68,6 @@ const ROUND = { d4: 0.075, d6: 0.11, d8: 0.08, d10: 0.075, d12: 0.07, d20: 0.06 
 const ROUND_MAT = { diamond: 0.3, metal: 0.75, glass: 0.85, bone: 1.35, plastic: 1 };
 const fib = (n) => Array.from({ length: n }, (_, i) => { const y = 1 - (2 * (i + 0.5)) / n, r = Math.sqrt(1 - y * y), a = i * Math.PI * (3 - Math.sqrt(5)); return [Math.cos(a) * r, y, Math.sin(a) * r]; });
 const DIRS = fib(110);
-const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-const nrm = (a) => { const l = Math.hypot(...a) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
 // each face's own axes (as solid.js: u along it, v down it), its centre, and how far its corners reach
 function faceFrames(type) {
   return geometry(type).map((f) => { const n = f.n, top = Math.abs(n[1]) > 0.9 ? [0, 0, -1] : [0, -1, 0], u = nrm(cross(n, top)), v = cross(n, u);
@@ -231,10 +230,7 @@ function render(d, labels, m, px, time = 0) {
 function frontOf(type, i, tilt = true) {
   if (type === 'd4') return d4Rest(i, tilt); // a d4 shows its roll at its top point
   const F = faceFrames(type), f = F[i % F.length];
-  const turn = (a, b, fb = [0, 1, 0]) => { let axis = cross(a, b); const sn = Math.hypot(...axis), cs = dot(a, b);
-    if (sn < 1e-6) return cs > 0 ? new DOMMatrix() : new DOMMatrix().rotateAxisAngleSelf(fb[0], fb[1], fb[2], 180);
-    axis = nrm(axis); return new DOMMatrix().rotateAxisAngleSelf(axis[0], axis[1], axis[2], (Math.atan2(sn, cs) * 180) / Math.PI); };
-  const ap = (M, a) => { const p = M.transformPoint(new DOMPoint(a[0], a[1], a[2], 0)); return [p.x, p.y, p.z]; };
+  const turn = tTurn, ap = tApply;
   const M = turn(f.n, [0, 0, 1]), v = nrm(ap(M, f.v)), front = turn(v, [0, 1, 0], [0, 0, 1]).multiply(M);
   return tilt ? new DOMMatrix().rotateSelf(-16, 20, 0).multiply(front) : front;
 }

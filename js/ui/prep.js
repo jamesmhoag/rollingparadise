@@ -1,5 +1,7 @@
 // Commitment before a bout (wager, tilts, position) and the settlement after it.
-import { h, syncList, toast, btn, tween, wait, pulse, swapText, openPanel, closePanel, paint, guided } from './core.js';
+import { h, syncList, toast, btn, tween, wait, pulse, swapText, openPanel, closePanel, guided } from './core.js';
+import { chipPainter } from './chippaint.js';
+import { stackEdit, ADDS } from '../stackedit.js';
 import { sfx } from './sfx.js';
 import { app, hud, oppTip, trickTag, diceSummary } from './app.js';
 import { chipEl, chipSig, chipGlyph, chipTip, dieEl, dieTip, statTip, trickTip, trickChip, trickLook, trickWord, jacketEl, drinkEl } from './parts.js';
@@ -47,7 +49,7 @@ export function positionView({ CH = 46, maxW = 400, mirror = false } = {}) {
     for (let r = 0; r < rows; r++) for (let col = 0; col < C; col++) sd.grid[r][col].chips.forEach((ch, lvl) => { const k = `${r}-${col}-${lvl}`, sig = chipSig(ch); seen.add(k); let e = chips.get(k);
       // as at the table: the first chip centred in its space, each one above it lifted a little
       const x = xOf(r) + (CW - 3 - SZ) / 2, y = col * CH + (CH - 3 - SZ) / 2 - Math.min(lvl, 12) * lift;
-      if (!e) { e = h('div', { class: `chip ${SZ <= 20 ? 'xs' : 'sm'} ${sig}` }, h('i', { text: chipGlyph(ch) })); e.style.opacity = 0; e.style.transform = `translate(${x}px, ${y - 14}px) scale(.3)`; board.append(e); chips.set(k, e); void e.offsetWidth; }
+      if (!e) { e = h('div', { class: `chip ${SZ <= 20 ? 'xs' : 'sm'} ${sig}` }, h('i', { text: chipGlyph(ch) })); e.dataset.r = r; e.dataset.c = col; e.dataset.lvl = lvl; e.style.opacity = 0; e.style.transform = `translate(${x}px, ${y - 14}px) scale(.3)`; board.append(e); chips.set(k, e); void e.offsetWidth; }
       if (e._sig !== sig || e._sz !== SZ) { e._sig = sig; e._sz = SZ; e.className = `chip ${SZ <= 20 ? 'xs' : 'sm'} ${sig}`; e.firstChild.textContent = chipGlyph(ch); e.style.width = e.style.height = `${SZ}px`; }
       e.style.zIndex = 10 + col * 20 + lvl; e.style.opacity = 1; e.style.transform = `translate(${x}px, ${y}px)`; });
     for (const [k, e] of chips) if (!seen.has(k)) { const tf = e.style.transform.replace(/ scale\([^)]*\)/, ''); e.style.opacity = 0; e.style.transform = `${tf} scale(.2)`; chips.delete(k); setTimeout(() => e.remove(), 450); }
@@ -58,9 +60,11 @@ export function positionView({ CH = 46, maxW = 400, mirror = false } = {}) {
       swapText(M.bonus, part ? `+${part.n + (focus ? focus.n : 0)}` : ''); // the amount only: the dots' hover names the stat (a name here ran into the next label)
       M.cols.replaceChildren(...(mirror ? cs : cs.slice().reverse()).map((x) => h('i', { class: `${x.n > 0 ? 'on' : ''}${x.r === al ? ' al' : ''}` }))); }
   }
-  // the space under a pointer: { r, c } in the side's rows, or null
-  const at = (ev) => { if (!side) return null; const rect = board.getBoundingClientRect(), k = rect.width / board.offsetWidth, x = (ev.clientX - rect.left) / k, y = (ev.clientY - rect.top) / k;
-    const i = Math.floor(x / CW), r = mirror ? i : rows - 1 - i, c = Math.floor(y / CH); return r < 0 || r >= rows || c < 0 || c >= side.dims.cols ? null : { key: `${r}-${c}`, r, c }; };
+  // the space under a pointer: { r, c } in the side's rows, or null; on a chip, that chip's space and its place in the
+  // stack (lvl, bottom chip 0), since a tall stack's chips reach over the space above
+  const at = (ev) => { if (!side) return null; const ce = ev.target?.closest?.('.chip[data-lvl]'); if (ce && board.contains(ce) && chips.get(`${ce.dataset.r}-${ce.dataset.c}-${ce.dataset.lvl}`) === ce) { const r = +ce.dataset.r, c = +ce.dataset.c; return { key: `${r}-${c}`, r, c, lvl: +ce.dataset.lvl }; }
+    const rect = board.getBoundingClientRect(), k = rect.width / board.offsetWidth, x = (ev.clientX - rect.left) / k, y = (ev.clientY - rect.top) / k;
+    const i = Math.floor(x / CW), r = mirror ? i : rows - 1 - i, c = Math.floor(y / CH); return r < 0 || r >= rows || c < 0 || c >= side.dims.cols ? null : { key: `${r}-${c}`, r, c, lvl: -1 }; };
   return { board, draw, at };
 }
 // A side to draw from a painted Stake layout ([{ r, c, chips }], r from the front of the Stake): the Bet's rows empty
@@ -72,41 +76,37 @@ export function layoutSide(layout, dims, cls) {
 }
 
 // ---------- painting a Stake ----------
-// One painter for every Stake in the game and in Build mode: a rack of chips beside the position (click one to paint
-// with it), click a space to set it down (hold to stack, sweep to cover more), and the right button paints in
-// reverse: click, hold or sweep to take top chips off. Restore and Clear sit above it.
+// Every Stake in the game and in Build mode is painted with the chip painter (chippaint.js): its rack beside the
+// position, its tools above it. This is the surface it paints on: a Stake layout ([{ r, c, chips }], bottom chip
+// first), drawn as it will sit down. Restore and Clear sit above it.
 // opts: items() the rack's chips (values, or effect chip ids) with left(it) how many are left (effect chips);
 // canAdd(L, sp, it) → null or a warning; set(L) store; head: extra header elements
+const layoutChip = (it) => (typeof it === 'number' ? { kind: 'std', value: it } : { kind: 'std', value: 1, resist: it });
 export function stakePainter({ dims, cls, layout, items, left = () => null, canAdd = () => null, set, done, onDraw, maxW = 400, CH = 46, title, head = [], pick }) {
-  const V = positionView({ maxW, CH }), rack = h('div', { class: 'col rack' });
-  let L = JSON.parse(JSON.stringify(layout || [])), warned = false;
-  const brush = { it: pick?.get?.() ?? null };
-  function drawRack() {
-    const list = items(); if (!list.includes(brush.it)) brush.it = list[0]; pick?.set?.(brush.it);
-    rack.replaceChildren(...list.map((it) => { const ch = typeof it === 'number' ? { kind: 'std', value: it } : { kind: 'std', value: 1, resist: it }, n = left(it);
-      const b = guided(btn('', () => { brush.it = it; drawRack(); }, () => (typeof it === 'number' ? t('prep.brush.tip', { amt: cents(it) }) : `${chipTip(ch)}${n != null ? t('prep.brush.effect', { n }) : ''}`), `rack-chip ${brush.it === it ? 'on' : ''}`), 'brush');
-      b.append(chipEl(ch)); if (n != null) b.append(h('small', { class: 'num', text: n })); return b; }));
-  }
+  const V = positionView({ maxW, CH });
+  let L = JSON.parse(JSON.stringify(layout || []));
   const D0 = () => (typeof dims === 'function' ? dims() : dims);
-  function redraw() { const d = D0(); L = L.filter((sp) => sp.chips.length); V.draw(onDraw?.(L) || layoutSide(L, d, cls)); drawRack(); // a rack of up to three columns beside the board; a longer one runs in rows above it
+  const P = chipPainter({ surface: V.board, targetAt: V.at, items, left, pick, look: layoutChip, onEnd: () => done?.(),
+    tip: (it, n) => (typeof it === 'number' ? t('prep.brush.tip', { amt: cents(it) }) : `${chipTip(layoutChip(it))}${n != null ? t('prep.brush.effect', { n }) : ''}`),
+    apply(at, op, it) {
+      const d = D0(), m = d.meterRows; if (at.r < m) return t('prep.paint.bet');
+      const br = at.r - m; let sp = L.find((x) => x.r === br && x.c === at.c);
+      if (!sp) { if (!ADDS(op)) return ''; sp = { r: br, c: at.c, chips: [] }; L.push(sp); }
+      const lvl = at.lvl ?? -1, was = sp.chips.slice();
+      if (ADDS(op) && sp.chips.length >= d.stackMax) return t('prep.stackFull');
+      if (op === 'change') { if (!stackEdit(sp.chips, 'remove', null, lvl)) return ''; } // the old chip leaves before the new one is checked
+      if (op !== 'remove') { const why = canAdd(L, sp, it); if (why) { sp.chips = was; L = L.filter((x) => x.chips.length); return why; } }
+      sp.chips = was; if (!stackEdit(sp.chips, op, it, lvl)) return '';
+      sfx(op === 'remove' ? 'undo' : 'chip'); L = L.filter((x) => x.chips.length); set(L); redraw(); return null;
+    } });
+  const rack = P.rack;
+  function redraw() { const d = D0(); L = L.filter((sp) => sp.chips.length); V.draw(onDraw?.(L) || layoutSide(L, d, cls)); P.draw(); // a rack of up to three columns beside the board; a longer one runs in rows above it
     const per = Math.max(1, Math.floor(parseFloat(V.board.style.height) / 46)), wide = rack.children.length > per * 3; rack.classList.toggle('wide', wide);
     rack.style.maxHeight = wide ? '' : V.board.style.height; if (api.el && wide !== (rack.parentNode === api.el)) { if (wide) api.el.insertBefore(rack, main); else main.prepend(rack); } }
-  function apply(at, first, erase) {
-    if (first) warned = false; const d = D0(), m = d.meterRows, warn = (msg) => { if (msg && !warned) toast(msg, 'warn'); warned = true; };
-    if (at.r < m) return warn(t('prep.paint.bet'));
-    const br = at.r - m; let sp = L.find((x) => x.r === br && x.c === at.c);
-    if (erase) { if (!sp?.chips.length) return; sp.chips.pop(); sfx('undo'); }
-    else { if (!sp) { sp = { r: br, c: at.c, chips: [] }; L.push(sp); }
-      if (sp.chips.length >= d.stackMax) return warn(t('prep.stackFull'));
-      const why = canAdd(L, sp, brush.it); if (why) return warn(why);
-      sp.chips.push(brush.it); sfx('chip'); }
-    L = L.filter((x) => x.chips.length); set(L); redraw();
-  }
-  paint(V.board, V.at, apply, 170, () => done?.(), { right: true });
   let main = null; const api = { get: () => L, put: (x) => { L = JSON.parse(JSON.stringify(x || [])); set(L); redraw(); done?.(); }, redraw };
   const clearBtn = btn(t('prep.clear'), () => api.put([]), t('prep.clear.tip'), 'small');
   main = h('div', { class: 'row', style: { alignItems: 'flex-start', gap: '12px' } }, rack, V.board);
-  api.el = h('div', { class: 'col planner' }, h('div', { class: 'row between' }, h('div', { class: 'row' }, title ? h('h3', { text: title }) : null, ...head, clearBtn)), main, h('span', { class: 'sub', text: t('prep.paint.how') }));
+  api.el = h('div', { class: 'col planner' }, h('div', { class: 'row between' }, h('div', { class: 'row' }, title ? h('h3', { text: title }) : null, ...head, clearBtn)), P.tools, main, h('span', { class: 'sub', text: t('paint.how') }));
   redraw(); return api;
 }
 

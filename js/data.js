@@ -816,8 +816,8 @@ import { TUNING } from './content/tuning.js';
 import { SHOPS, perFloor } from './content/shops.js';
 export { TUNING, SHOPS, perFloor };
 import { GUIDE } from './content/guidance.js';
-import { FONTS, IMAGES, TITLE_PARTS, ICONS, TEXTURES, NEON } from './content/assets.js';
-export { FONTS, IMAGES, TITLE_PARTS, ICONS, TEXTURES, NEON };
+import { FONTS, IMAGES, ICONS, TEXTURES, NEON } from './content/assets.js';
+export { FONTS, IMAGES, ICONS, TEXTURES, NEON };
 import TEXT from './text/en.js';
 import { MATERIALS as _MAT, DICE_SHOP as _DS, BONE as _BONE, MELT as _MELT, CASTS as _CASTS, DYES as _DYES, DIAMOND as _DIA } from './content/dice.js';
 // The order entries are listed in, where Build mode has moved them: { TABLE: [ids, first to last] }. Ids not named keep

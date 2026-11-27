@@ -81,11 +81,13 @@ function chipsTab(own) {
   out.push(sec(tx('library.effect-chips-made-by'), tx('library.investments-insurances-and-corrections')));
   for (const [id, X] of Object.entries(D.SHOP_CHIPS)) { const mk = D.makerOf(id); if (!mk) continue; const T = D.TRICKS[mk], ch = { kind: 'fx', value: 0, resist: id, shop: id, life: T.make.life[0], maker: mk };
     out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), X.name, [D.shopText(id), tx('library.made-by-on-its', { name: T.name, name2: D.TYPES[T.type].name, v: T.cls ? ', ' + D.CLASSES[T.cls].name : '', v2: T.make.n[1] < 99 ? tx('library.1-per-rolled', { n: T.make.n[0], n2: T.make.n[1] }) : 'one', v3: T.make.life[0] >= 99 ? 'the bout' : tx('library.1-per-rolled-2', { life: T.make.life[0], life2: T.make.life[1] }) })])); }
+  // a chip of the table's own kinds: its name and rule from CHIPS, and a note on where it comes from
+  const chipEntry = (ch, note) => entry(tipped(chipEl(ch), () => chipTip(ch)), D.CHIPS[ch.kind].name, [D.CHIPS[ch.kind].text, dim(note)]);
   out.push(sec(tx('library.chips-made-at-the'), tx('library.they-appear-during-a')));
   for (const id of ['honey', 'steal']) { const X = D.SHOP_CHIPS[id], ch = id === 'honey' ? { kind: 'food', value: 0, shop: id, resist: id } : { kind: 'fx', value: 0, shop: id, resist: id, life: 99, amt: 2 };
     out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), X.name, [D.shopText(id), dim(tx('library.made-by', { madeBy: D.madeBy(id), v: id === 'honey' ? tx('library.from-a-hive') : '' }))])); }
   for (const k of ['opp', 'block', 'counter', 'debt', 'flower', 'petal', 'clay', 'brick', 'tree', 'wood', 'dynamite', 'hard', 'sticky', 'hive', 'little', 'egg', 'hat', 'doom', 'volcano']) { const ch = { kind: k, value: k === 'opp' ? 1 : k === 'debt' ? 3 : k === 'sticky' ? 3 : 0, ...(k === 'hard' ? { life: 3 } : {}), ...(D.INSTANCE_SHIELDS.includes(k) ? { hits: k === 'egg' ? 5 : 1 } : {}) };
-    out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), D.CHIPS[k].name, [D.CHIPS[k].text, dim(tx('library.made-by-2', { BOUTCHIPS: BOUT_CHIPS[k] }))])); }
+    out.push(chipEntry(ch, tx('library.made-by-2', { BOUTCHIPS: BOUT_CHIPS[k] }))); }
   for (const ch of [{ kind: 'std', value: 72, gold: true, treasure: true }, { kind: 'std', value: 1, gold: true, cursed: true }]) out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), ch.cursed ? tx('library.cursed-chip') : tx('library.treasure-chip'), [ch.cursed ? D.CHIPS.cursed.text : D.CHIPS.treasure.text, dim(tx('library.made-by-a-sunk'))]));
   out.push(sec('Creatures', tx('library.chips-over-the-table', { BOUNTYPERHIT: D.BOUNTY_PER_HIT })));
   for (const [k, C] of Object.entries(D.CREATURES)) out.push(entry(h('span', { class: 'list-icon', text: C.glyph }), C.name, [C.text, traitsHtml(flyerTraits(k))]));
@@ -93,7 +95,7 @@ function chipsTab(own) {
   for (const [k, O] of Object.entries(D.ORBITALS)) out.push(entry(h('span', { class: 'list-icon', text: O.glyph }), O.name, [O.text, dim(tx('library.comes-with', { v: Object.values(D.FELTS).filter((F) => F.weather?.includes(k)).map((F) => F.name + ' tables').join(', ') || (k === 'sun' ? 'the Sun chip' : 'a Calamity') })), traitsHtml(flyerTraits(k, true))]));
   out.push(sec(tx('library.hazard-chips'), tx('library.left-by-expenses-with')));
   for (const k of ['burn', 'acid', 'shock', 'corrupt', 'poison', 'boom', 'frost', 'lava']) { const ch = { kind: k, value: 0 }, by = leftBy(k), cure = Object.keys(D.SHOP_CHIPS).find((x) => D.resistsOf(x).includes(k));
-    out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), D.CHIPS[k].name, [D.CHIPS[k].text, dim(tx('library.left-by', { v: by.join(', ') || 'creatures and calamities', v2: k === 'burn' ? tx('library.the-dragon-inferno-and') : '', v3: cure ? tx('library.stopped-by-the', { name: D.SHOP_CHIPS[cure].name }) : '' }))])); }
+    out.push(chipEntry(ch, tx('library.left-by', { v: by.join(', ') || 'creatures and calamities', v2: k === 'burn' ? tx('library.the-dragon-inferno-and') : '', v3: cure ? tx('library.stopped-by-the', { name: D.SHOP_CHIPS[cure].name }) : '' }))); }
   return out;
 }
 

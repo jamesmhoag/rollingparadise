@@ -2,9 +2,10 @@
 // or a sandbox, and sit down. At the table, the chip tools add, change or remove chips on any space. Nothing is
 // saved to your run.
 import { h, lab, btn, toast } from './core.js';
+import { fieldRow, pick, numIn, checkIn, typed } from './form.js';
 import * as D from '../data.js';
 import { t } from '../text.js';
-import { dieEl } from './parts.js';
+import { diceCounts } from './rostermaker.js';
 import { isMade } from '../trickmaker.js';
 
 const KEY = 'rollingparadise.build.test.v1';
@@ -17,13 +18,12 @@ const saveSetup = (o) => { try { store()?.setItem(KEY, JSON.stringify(o)); } cat
 
 export function testTable(redraw, sitDown) {
   const o = loadSetup(), set = (k, v) => { o[k] = v; saveSetup(o); redraw(); };
-  const field = (label, el) => h('div', { class: 'b-field' }, h('label', {}, label), el, h('span'));
-  const select = (k, list, value) => h('select', { onchange: (e) => set(k, e.target.value === '' ? null : /^\d+$/.test(e.target.value) ? Number(e.target.value) : e.target.value) },
-    list.map(([v, l]) => h('option', { value: v ?? '', ...(String(v ?? '') === String(value ?? '') ? { selected: 'selected' } : {}), text: l })));
+  const field = (label, el) => fieldRow(label, el);
+  const select = (k, list, value) => pick(list, value, (v) => set(k, v), { parse: typed });
   let find = '';
   const trickList = h('div', { class: 'b-checks b-tricks' });
   const drawTricks = () => trickList.replaceChildren(...Object.entries(D.TRICKS).filter(([id, T]) => !find || `${id} ${T.name}`.toLowerCase().includes(find)).map(([id, T]) => h('label', { class: 'b-check' },
-    h('input', { type: 'checkbox', ...(o.tricks.includes(id) ? { checked: 'checked' } : {}), onchange: (e) => { o.tricks = e.target.checked ? [...o.tricks, id] : o.tricks.filter((x) => x !== id); saveSetup(o); count.textContent = t('test.tricks.n', { n: o.tricks.length }); } }),
+    checkIn(o.tricks.includes(id), (yes) => { o.tricks = yes ? [...o.tricks, id] : o.tricks.filter((x) => x !== id); saveSetup(o); count.textContent = t('test.tricks.n', { n: o.tricks.length }); }),
     `${T.name}${isMade(T) ? ' ✦' : ''}`)));
   drawTricks();
   const count = h('span', { class: 'sub', text: t('test.tricks.n', { n: o.tricks.length }) });
@@ -33,10 +33,8 @@ export function testTable(redraw, sitDown) {
     h('span', { class: 'cap', text: t('test.part.hero') }),
     field(lab('test.roller'), select('cls', Object.entries(D.ROLLERS).map(([k, X]) => [k, D.heroName(X.cls, k)]), D.rollerOf(o.cls))),
     field(lab('test.floor'), select('floor', [1, 2, 3, 4].map((n) => [n, D.FLOORS[n].name]), o.floor)),
-    field(lab('test.purse'), h('input', { type: 'number', min: 10, value: o.purse, onchange: (e) => set('purse', Math.max(10, Number(e.target.value) || 10)) })),
-    field(lab('test.dice'), h('div', { class: 'row wrap b-dice' }, ...Object.keys(D.DICE).map((k) => h('label', { class: 'b-die' }, dieEl({ type: k, up: [] }, '', 'mini'),
-      h('input', { type: 'number', min: 0, value: o.dice?.[k] || 0, style: { width: '52px' }, onchange: (e) => { const out = { ...(o.dice || {}) }, n = Math.max(0, Math.floor(Number(e.target.value) || 0)); if (n) out[k] = n; else delete out[k];
-        if (!Object.keys(out).length) { toast(t('test.dice.bad'), 'warn'); return redraw(); } set('dice', out); } }))))),
+    field(lab('test.purse'), numIn(o.purse, (v) => set('purse', v), { min: 10, blank: 10 })),
+    field(lab('test.dice'), diceCounts(o.dice, (out) => { if (!out) { toast(t('test.dice.bad'), 'warn'); return redraw(); } set('dice', out); })),
     field(lab('test.quality'), select('q', [[0, t('test.quality.own')], ...[1, 2, 3, 4].map((n) => [n, D.QNAME[n]])], o.q || 0)),
     field(lab('test.tricks'), h('div', {}, h('input', { class: 'b-filter', placeholder: t('build.filter'), oninput: (e) => { find = e.target.value.toLowerCase(); drawTricks(); } }), trickList, count)),
     h('span', { class: 'cap', text: t('test.part.opp') }),

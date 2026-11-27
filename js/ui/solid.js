@@ -5,13 +5,9 @@
 import { h } from './core.js';
 import { facesOf, faceValue, matOf } from '../dice.js';
 import { dieStyle } from './parts.js';
+import { vsub as sub, vdot as dot, vcross as cross, vlen as len, vnorm as norm } from '../util.js';
 
 const PHI = (1 + Math.sqrt(5)) / 2;
-const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-const len = (a) => Math.hypot(a[0], a[1], a[2]);
-const norm = (a) => { const l = len(a) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
 const signs = (xs) => xs.reduce((out, x) => out.flatMap((v) => (x === 0 ? [[...v, 0]] : [[...v, x], [...v, -x]])), [[]]);
 const perms = (v) => [[v[0], v[1], v[2]], [v[1], v[2], v[0]], [v[2], v[0], v[1]]];
 const cyc = (a, b, c) => perms([a, b, c]).flatMap((p) => signs(p));
@@ -59,10 +55,11 @@ export function geometry(type) {
 // (the same on all three faces that meet there) is the roll. Vertex i stands opposite face i, so resting on face i
 // stands vertex i up, and face i's label is that vertex's number. The turn that rests it so, seen a little from above
 // and turned so two faces show.
-const tTurn = (a, b, fb = [0, 1, 0]) => { let axis = cross(a, b); const s = len(axis), cos = dot(a, b);
+// the shortest rotation taking unit vector a onto unit vector b (fb: the axis to turn about when they are opposite)
+export const tTurn = (a, b, fb = [0, 1, 0]) => { let axis = cross(a, b); const s = len(axis), cos = dot(a, b);
   if (s < 1e-6) return cos > 0 ? new DOMMatrix() : new DOMMatrix().rotateAxisAngleSelf(fb[0], fb[1], fb[2], 180);
   axis = norm(axis); return new DOMMatrix().rotateAxisAngleSelf(axis[0], axis[1], axis[2], Math.atan2(s, cos) * 180 / Math.PI); };
-const tApply = (M, a) => { const p = M.transformPoint(new DOMPoint(a[0], a[1], a[2], 0)); return [p.x, p.y, p.z]; };
+export const tApply = (M, a) => { const p = M.transformPoint(new DOMPoint(a[0], a[1], a[2], 0)); return [p.x, p.y, p.z]; };
 export function d4Rest(i, view = true) {
   const geo = geometry('d4'), M1 = tTurn(geo[i % 4].n, [0, 1, 0], [1, 0, 0]); // the face it rests on, facing down (y is down)
   const n = tApply(M1, geo[(i + 1) % 4].n), M2 = new DOMMatrix().rotateAxisAngleSelf(0, 1, 0, -Math.atan2(n[0], n[2]) * 180 / Math.PI).multiply(M1); // a face toward you
@@ -101,11 +98,7 @@ export function solidEl(d, size = 120, values) {
     for (const fe of faceEls) { const n = fe._n, p = m.transformPoint(new DOMPoint(n[0], n[1], n[2], 0)); fe.style.filter = `brightness(${(0.62 + 0.5 * Math.max(0, dot([p.x, p.y, p.z], light))).toFixed(3)})`; }
   }
   // the rotation that turns face i toward the viewer, upright
-  const turn = (a, b, fb = [0, 1, 0]) => { // the shortest rotation taking unit vector a onto unit vector b
-    let axis = cross(a, b); const s = len(axis), cos = dot(a, b);
-    if (s < 1e-6) return cos > 0 ? new DOMMatrix() : new DOMMatrix().rotateAxisAngleSelf(fb[0], fb[1], fb[2], 180);
-    axis = norm(axis); return new DOMMatrix().rotateAxisAngleSelf(axis[0], axis[1], axis[2], Math.atan2(s, cos) * 180 / Math.PI); };
-  const apply = (M, a) => { const p = M.transformPoint(new DOMPoint(a[0], a[1], a[2], 0)); return [p.x, p.y, p.z]; };
+  const turn = tTurn, apply = tApply;
   function faceFront(i) {
     if (d.type === 'd4') return d4Rest(i, false);
     const fe = faceEls[i % faceEls.length], M = turn(fe._n, [0, 0, 1]), v = norm(apply(M, fe._v));

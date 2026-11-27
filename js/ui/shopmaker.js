@@ -6,6 +6,7 @@ import { h, btn, lab, guided } from './core.js';
 import { chipEl, dieEl } from './parts.js';
 import * as D from '../data.js';
 import * as B from '../build/draft.js';
+import { draftForm, numIn } from './form.js';
 import { t } from '../text.js';
 
 export const SHOP_PAGES = ['exchange', 'dice', 'trader', 'lounge', 'smith', 'door'];
@@ -15,16 +16,12 @@ const FLOORS = [1, 2, 3, 4];
 export function shopMaker(page, redraw, openTable) {
   const base = D.subPath('SHOPS', page), S = D.SHOPS[page] || {};
   const relBtn = (tb) => btn(t(`build.table.${tb}`), () => openTable(tb), t('shops.related.tip'), 'small');
-  const P = (...ks) => ks.reduce((p, k) => D.subPath(p, k), base);
-  const revert = (path) => (path in B.draft.changes ? btn('↺', () => { B.revert(path); redraw(); }, t('build.revert.tip', { was: JSON.stringify(B.draft.orig[path]) ?? '—' }), 'small b-revert') : h('span'));
-  const num = (v, on, ph = '', w = '64px') => h('input', { type: 'number', step: 'any', value: v ?? '', placeholder: ph, style: { width: w }, onchange: (e) => { const x = e.target.value.trim(); on(x === '' ? null : Number(x)); } });
+  const F = draftForm(base, redraw), { P } = F;
+  const num = (v, on, ph = '', w = '64px') => numIn(v, on, { step: 'any', ph, w });
   // a value for each floor: [f1, f2, f3, f4]
   const floors = (k) => { const v = S[k], arr = Array.isArray(v) ? v : FLOORS.map(() => v);
-    return h('div', { class: `b-field ${B.changed(P(k)) ? 'ch' : ''}` }, lab(`shops.${page}.${k}`),
-      h('div', { class: 'row b-floors' }, ...FLOORS.map((f, i) => h('label', { class: 'b-floor' }, h('small', { text: D.FLOORS[f]?.name || f }), num(arr[i], (x) => { const out = arr.slice(); out[i] = x ?? 0; B.setValue(P(k), out); redraw(); })))), revert(P(k))); };
-  const one = (k) => { const v = S[k];
-    return h('div', { class: `b-field ${B.changed(P(k)) ? 'ch' : ''}` }, lab(`shops.${page}.${k}`),
-      typeof v === 'boolean' ? h('input', { type: 'checkbox', ...(v ? { checked: 'checked' } : {}), onchange: (e) => { B.setValue(P(k), e.target.checked); redraw(); } }) : num(v, (x) => { B.setValue(P(k), x ?? 0); redraw(); }, '', '90px'), revert(P(k))); };
+    return F.field(lab(`shops.${page}.${k}`), h('div', { class: 'row b-floors' }, ...FLOORS.map((f, i) => h('label', { class: 'b-floor' }, h('small', { text: D.FLOORS[f]?.name || f }), num(arr[i], (x) => { const out = arr.slice(); out[i] = x ?? 0; F.set([k], out); })))), [k]); };
+  const one = (k) => { const v = S[k]; return F.field(lab(`shops.${page}.${k}`), typeof v === 'boolean' ? F.check([k], v) : num(v, (x) => F.set([k], x ?? 0), '', '90px'), [k]); };
   const head = h('div', { class: 'b-fields' }, h('p', { class: 'sub', text: t(`shops.${page}.about`) }), ...Object.entries(S).filter(([k]) => k !== 'chips').map(([k, v]) => (Array.isArray(v) ? floors(k) : one(k))));
   // what the player sees, floor by floor
   const cols = h('tr', {}, h('th', { text: t('shops.item') }), ...FLOORS.map((f) => h('th', { text: D.FLOORS[f]?.name || `${f}` })));

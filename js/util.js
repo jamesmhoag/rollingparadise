@@ -42,3 +42,13 @@ export function order1D(n, anchor) {
   for (let d = 1; out.length < n; d++) { if (mid - d >= 0) out.push(mid - d); if (mid + d < n) out.push(mid + d); }
   return out;
 }
+
+// 3-vectors as [x, y, z] (the dice are drawn from these)
+export const vsub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+export const vdot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+export const vcross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+export const vlen = (a) => Math.hypot(a[0], a[1], a[2]);
+export const vnorm = (a) => { const l = vlen(a) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+// how far apart two spaces are, in steps along rows and columns; and a sort that puts the nearest to `o` first
+export const steps = (a, b) => Math.abs(a.r - b.r) + Math.abs(a.c - b.c);
+export const nearestTo = (o) => (x, y) => steps(x, o) - steps(y, o);

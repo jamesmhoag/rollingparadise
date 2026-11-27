@@ -4,7 +4,7 @@ Every file the game loads lives here, and `js/content/assets.js` lists them by i
 
 | Folder | What | Listed in |
 | --- | --- | --- |
-| `assets/` | the title-screen logos (`logo-*.png`) | `IMAGES` |
+| `assets/title/` | the title sign's drawn pieces, one SVG each (`tools/title-sign.py` cuts them into the tubes that light in turn) | `IMAGES` |
 | `assets/fonts/` | the two typefaces, as `.woff2`, with their licences | `FONTS`, and `css/fonts.css` |
 | `assets/icons/` | pictures that replace a glyph: rooms, creatures, sky things, effect chips | `ICONS` |
 | `assets/music/` | the lounge's music, played in turn on a loop (`.mp3`) | `MUSIC` |

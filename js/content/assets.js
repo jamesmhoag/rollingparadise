@@ -25,22 +25,10 @@ export const NEON = {
 export { MUSIC } from './music.js'; // the lounge band's set list (written by tools/jazz/render.py)
 export { LOOPS } from './loops.js'; // the bout music: each floor's table and High Roller loops, in layers (written by tools/jazz/loops.py)
 
-// The title sign's other way of lighting: one tube at a time. tools/logo-parts.py cuts the three layers above into
-// these parts (each part a full-size PNG holding only its own pixels, glow included), in the order they light:
-// ROLLING letter by letter, one die then the other, Paradise's letters but the s, the s with the swash and the palm's
-// trunk as one stroke, then the fronds one at a time. `shade` is the cyan layer's dark backing behind the palm
-// and the script, put up with the last frond (before then it would show as a ghost of the palm).
-export const TITLE_PARTS = [
-  ...["R", "O", "L1", "L2", "I", "N", "G"].map((p) => ({ layer: "cyan", part: p })), 
-  ...["die1", "die2"].map((p) => ({ layer: "dice", part: p })),
-  ...["P", "a1", "r", "a2", "d", "i", "e", "trunk", "leaf1", "leaf2", "leaf3", "leaf4", "leaf5", "leaf6", "leaf7"].map((p) => ({ layer: "pink", part: p })),
-  { layer: "cyan", part: "shade", with: "leaf7" },
-].map((x) => ({ ...x, src: `assets/logo-parts/${x.layer}-${x.part}.png` }));
-
-export const IMAGES = {
-  logoPink: "assets/logo-pink.png", logoCyan: "assets/logo-cyan.png", logoDice: "assets/logo-dice.png",
-  ...Object.fromEntries(TITLE_PARTS.map((x) => [`title:${x.layer}-${x.part}`, x.src])),
-};
+// The title sign's pieces, as drawn (one SVG each, with a `-glow` twin that gives its blur). tools/title-sign.py cuts
+// them into the tubes that light one after another (content/titlesign.js); replace a piece and run the tool.
+export const IMAGES = Object.fromEntries(["rolling", "rolling-glow", "paradise", "paradise-glow", "s", "s-glow", "joint", "palm", "palm-glow", "palm-back", "die1", "die1-glow", "die2", "die2-glow"]
+  .map((k) => [`title:${k}`, `assets/title/${k}.svg`]));
 
 // icons: { src: a file in assets/icons (png, svg or webp), or null } and, for things with no table of their own, the
 // glyph drawn when there is no file. Creatures, orbitals and chips take their glyph from their own table (CREATURES,

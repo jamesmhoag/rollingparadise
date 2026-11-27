@@ -1,6 +1,7 @@
 // The table. Every chip, die, trick card and creature is one persistent element that is
 // moved, faded or flipped to follow the bout state, so nothing ever pops between states.
-import { h, tip, wait, tween, swapText, setOn, pulse, syncList, toast, btn, refreshTip, redrawTip, box, vc, detail, paint, guided, stagePoint, rightClick } from './core.js';
+import { h, tip, wait, tween, swapText, setOn, pulse, syncList, toast, btn, refreshTip, redrawTip, box, vc, detail, guided, stagePoint, rightClick } from './core.js';
+import { chipPainter } from './chippaint.js';
 import { chipSig, chipGlyph, chipName, chipText, chipTip, dieTip, trickTip, trickWord, trickWords, statTip, drinkTip, dieMarks, dieDyes, dieStyle, dieClass, trickLook, feltStyle, seenAs, traitsOf, traitsHtml, dieEl, dress3d, chipEl, trickChip, flavorP } from './parts.js';
 import { iconKids, iconFill } from './icons.js';
 import { flyerTraits } from '../traits.js';
@@ -28,6 +29,7 @@ const PIT = { left: PX, right: OX, top: TOP, bottom: TOP + 5 * CH };
 const STAGE = [{ x: PX + 18, y: TOP + 2 * CH }, { x: OX - 50, y: TOP + 2 * CH }], HOUSE = { x: 624, y: 30 };
 const fmtX = (m) => '×' + (m % 1 ? m.toFixed(2).replace(/0$/, '') : m);
 
+let testBrush = null; // the test table's chip, kept between visits
 export function boutScene(root, bout, ctx, onDone) {
   const [me, opp] = bout.sides;
   const cw = bout.sides.map((s) => Math.min(SPACE, Math.floor((PX - 30) / s.rows))), ck = cw.map((w) => w / SPACE_REF); // column width, chip scale
@@ -814,14 +816,12 @@ export function boutScene(root, bout, ctx, onDone) {
   function marks() {
     const cls = ['ok', 'aff', 'tgt', 'origin', 'sel', 'soft', 'pend-me', 'pend-opp', 'full-tgt']; for (const side of els.cells) for (const rowEls of side) for (const el of rowEls) el.classList.remove(...cls);
     const mark = (si, r, c, k) => els.cells[si][r]?.[c]?.classList.add(k);
-    for (const e of me.run) if (e.state === 'bid' && B.needsTarget(e) && e.target) {
-      const def = D.TRICKS[e.trick.id], t = bout.sides[e.target.side];
-      for (const x of B.affected(bout, t, def, e.target, e.dice.length)) mark(t.idx, x.r, x.c, 'tgt'); mark(t.idx, e.target.r, e.target.c, 'origin');
-    }
+    // every space an aimed trick will touch, marked `k`: → the trick and the side it is aimed at
+    const markAim = (e, k) => { const def = D.TRICKS[e.trick.id], t = bout.sides[e.target.side]; for (const x of B.affected(bout, t, def, e.target, e.dice.length)) mark(t.idx, x.r, x.c, k); return { def, t }; };
+    for (const e of me.run) if (e.state === 'bid' && B.needsTarget(e) && e.target) { const { t } = markAim(e, 'tgt'); mark(t.idx, e.target.r, e.target.c, 'origin'); }
     for (const el of fcLayer.querySelectorAll('.pend')) el.remove();
     bout.sides.forEach((s, si) => { for (const e of s.run) if (e.state === 'play' && e.target && B.needsTarget(e)) { // known to both sides once played
-      const def = D.TRICKS[e.trick.id], t = bout.sides[e.target.side];
-      for (const x of B.affected(bout, t, def, e.target, e.dice.length)) mark(t.idx, x.r, x.c, si ? 'pend-opp' : 'pend-me');
+      const { def, t } = markAim(e, si ? 'pend-opp' : 'pend-me');
       const p = cellPos(t.idx, e.target.r, e.target.c); fcLayer.append(h('div', { class: `pend ${si ? 'opp' : 'me'}`, style: { left: p.x + 'px', top: p.y + 2 + 'px', width: p.w + 'px' }, text: `${def.name} ${e.stack.length + 1}↻` })); } });
     const e = me.run.find((x) => x.uid === ui.entry);
     if (!ui.locked && bout.phase === 'roll' && !me.thrown) { for (const f of B.flippable(me)) mark(0, f.r, f.c, 'soft'); for (const f of ui.flips) mark(0, f.r, f.c, 'sel'); }
@@ -1027,18 +1027,18 @@ export function boutScene(root, bout, ctx, onDone) {
   function clickTapped(uid, el) {
     if (!ui.hand.length) { if ((me.revive || []).some((x) => x.uid === uid)) { sfx('undo'); return act(() => B.unrevive(bout, me, uid)); }
       const why = B.canRevive(bout, me, uid); return nope(why || tx('table.revive-pick-chip'), el); }
+    bidFromHand(el, (r, c) => B.canRevive(bout, me, uid, r, c), (r, c) => B.revive(bout, me, uid, r, c));
+  }
+  // The hand is a stack of chips: a bid takes one, the top of the stack (the last picked up; a stack gives its top
+  // chip first). can(r, c) → why not, or null; place(r, c) makes the bid.
+  function bidFromHand(el, can, place) {
     const top = ui.hand[ui.hand.length - 1], k = ui.hand.findIndex((x) => x.r === top.r && x.c === top.c);
-    const why = B.canRevive(bout, me, uid, top.r, top.c); if (why) return nope(why, el);
+    const why = can(top.r, top.c); if (why) return nope(why, el);
     const ch = B.bidChip(me, top.r, top.c); fromHand([els.chips.get(ch?.id)]); sfx('bid');
-    act(() => { B.revive(bout, me, uid, top.r, top.c); ui.hand.splice(k, 1); });
+    act(() => { place(top.r, top.c); ui.hand.splice(k, 1); });
   }
-  // The hand is a stack of chips: each click on a trick bids one, the top of the stack (the last picked up).
-  function bidOne(e, el) {
-    const top = ui.hand[ui.hand.length - 1], k = ui.hand.findIndex((x) => x.r === top.r && x.c === top.c); // a stack gives its top chip first
-    const why = B.canBid(bout, me, e, top.r, top.c); if (why) return nope(why, el);
-    const ch = B.bidChip(me, top.r, top.c); fromHand([els.chips.get(ch?.id)]); sfx('bid');
-    act(() => { B.bid(bout, me, e, top.r, top.c); ui.hand.splice(k, 1); });
-  }
+  // each click on a trick bids one chip from the hand
+  const bidOne = (e, el) => bidFromHand(el, (r, c) => B.canBid(bout, me, e, r, c), (r, c) => B.bid(bout, me, e, r, c));
   // click undo: a chip bid this turn goes back to its stack (not while you hold chips: then the click bids one more)
   function clickBidChip(uid, chipId) {
     if (ui.locked) return; const e = me.run.find((x) => x.uid === uid);
@@ -1215,25 +1215,28 @@ export function boutScene(root, bout, ctx, onDone) {
     feedPush(tx('table.your-spy', { name: opp.name, v: bout.phase === 'aim' ? 'aims' : bout.phase + 's', v2: seen.length ? names(seen) : 'nothing' }), 1);
   }
   // ---------- the test table's tools (Build mode) ----------
+  // The chip painter (chippaint.js), on the table itself: its tools start switched off (the table is being played),
+  // its rack opens from the chip shown in the bar. A space is any space of either position; the chip pointed at in
+  // its stack is the one Insert, Change and Remove work on.
   function testTools() {
-    const pick = h('select', {}, ...chipChoices().map(([label, list]) => h('optgroup', { label }, ...list.map(([v, l]) => h('option', { value: v, text: l })))));
-    const val = h('input', { type: 'number', min: 1, value: 1, title: tt('test.tools.value') });
-    const ops = ['add', 'change', 'remove'].map((op) => btn(tt(`test.tools.${op}`), () => { ui.sandbox.op = ui.sandbox.op === op ? null : op; mark(); }, tt(`test.tools.${op}.tip`), 'small'));
-    const mark = () => ops.forEach((b, i) => b.classList.toggle('on', ui.sandbox.op === ['add', 'change', 'remove'][i]));
-    // click and hold on a space to keep applying the tool; sweep to apply it on each space you cross
-    let warned = false;
-    paint(root, (ev) => { if (!ui.sandbox.op) return null; const el = ev.target.closest?.('[data-at]'); if (!el) return null; const [si, r, c] = el.dataset.at.split(':').map(Number); const pt = ui.point && ui.point.si === si && ui.point.r === r && ui.point.c === c ? ui.point.id : null; // the chip pointed at in that stack
+    const P = chipPainter({ surface: root, idle: true, items: chipChoices, look: (it) => it.look, tip: (it) => chipTip(it.look), pick: { get: () => testBrush, set: (v) => { testBrush = v; } },
+      targetAt: (ev) => { const el = ev.target.closest?.('[data-at]'); if (!el) return null; const [si, r, c] = el.dataset.at.split(':').map(Number); const pt = ui.point && ui.point.si === si && ui.point.r === r && ui.point.c === c ? ui.point.id : null;
         return { key: `${el.dataset.at}:${pt ?? ''}`, si, r, c, id: pt }; },
-      (at, first) => { if (first) warned = false; if (B.sandboxChip(bout, at.si, at.r, at.c, ui.sandbox.what(), ui.sandbox.op, at.id)) { ui.point = null; sync(); } else if (!warned) { warned = true; nope(tt('test.tools.cannot'), els.cells[at.si][at.r][at.c]); } });
-    ui.sandbox = { op: null, what: () => { const [k, id] = pick.value.split(':'); return k === 'made' ? { made: id } : k === 'shop' ? { shop: id } : { kind: id, value: Number(val.value) || 1 }; } };
-    return h('div', { class: 'test-tools' }, h('b', { text: tt(ctx.sandbox ? 'test.tools.sandbox' : 'test.tools.rules') }), pick, val, ...ops,
-      btn(tt('test.tools.leave'), () => onDone(), tt('test.tools.leave.tip'), 'small danger'));
+      apply: (at, op, it) => { if (!B.sandboxChip(bout, at.si, at.r, at.c, it.what, op, at.id)) return tt('test.tools.cannot'); ui.point = null; sync(); return null; },
+      warn: (msg, at) => nope(msg, els.cells[at.si][at.r][at.c]) });
+    ui.sandbox = P.state;
+    const tray = h('div', { class: 'test-rack', hidden: 'hidden' }, P.rack), brush = btn('', () => { tray.hidden = !tray.hidden; }, tt('test.tools.brush.tip'), 'small rack-open'); guided(brush, 'brush');
+    const show = () => brush.replaceChildren(chipEl(P.state.it.look)); P.rack.addEventListener('click', () => { show(); tray.hidden = true; }); show();
+    const leave = btn(tt('test.tools.leave'), () => onDone(), tt('test.tools.leave.tip'), 'small danger');
+    return h('div', { class: 'test-tools' }, h('b', { text: tt(ctx.sandbox ? 'test.tools.sandbox' : 'test.tools.rules') }), brush, P.tools, leave, tray);
   }
+  // what the test table's rack holds: every chip the game has, each as { key, what (for the engine), look (to draw) }
   function chipChoices() {
-    return [[tt('test.tools.table'), [['k:std', tx('table.royal-paradise-chip-value')], ['k:debt', tx('table.debt-value')], ['k:block', D.CHIPS.block.name], ['k:counter', D.CHIPS.counter.name], ['k:opp', D.CHIPS.opp.name]]],
-      [tt('test.tools.hazards'), ['burn', 'acid', 'shock', 'corrupt', 'poison', 'boom', 'frost', 'lava', 'puddle'].map((k) => [`k:${k}`, D.CHIPS[k].name])],
-      [tt('test.tools.made'), Object.entries(D.MADE_CHIPS).map(([k, M]) => [tx('table.made', { k }), M.name])],
-      [tt('test.tools.effect'), Object.entries(D.SHOP_CHIPS).map(([k, X]) => [tx('table.shop', { k }), X.name])]].filter(([, l]) => l.length);
+    const it = (key, what, look) => ({ key, what, look }), k = (kind) => it(`k:${kind}`, { kind }, { kind, value: 0 });
+    return [{ cap: tt('test.tools.table') }, ...D.DENOM_VALUES.map((v) => it(`std:${v}`, { kind: 'std', value: v }, { kind: 'std', value: v })), it('debt', { kind: 'debt', value: 1 }, { kind: 'stray', value: 1 }), k('block'), k('counter'), k('opp'),
+      { cap: tt('test.tools.hazards') }, ...['burn', 'acid', 'shock', 'corrupt', 'poison', 'boom', 'frost', 'lava', 'puddle'].map(k),
+      ...(Object.keys(D.MADE_CHIPS).length ? [{ cap: tt('test.tools.made') }, ...Object.entries(D.MADE_CHIPS).map(([id, M]) => it(`made:${id}`, { made: id }, { kind: 'made', model: id, value: M.value || 0, name: M.name }))] : []),
+      { cap: tt('test.tools.effect') }, ...Object.keys(D.SHOP_CHIPS).map((id) => it(`shop:${id}`, { shop: id }, { kind: 'fx', value: 0, shop: id, resist: id }))];
   }
   async function finish() {
     document.removeEventListener('keydown', onKey); if (rightClick.take) rightClick.take = null;

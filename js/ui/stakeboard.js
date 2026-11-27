@@ -17,12 +17,13 @@ export function stakeBoard({ dims, layout, set, done, effects = false, who = 'op
   const rows = dims.barRows, cap = dims.stackMax;
   const outside = (layout || []).reduce((n, sp) => n + (sp.r >= rows || sp.c >= dims.cols ? sp.chips.length : Math.max(0, sp.chips.length - cap)), 0);
   const worthEl = h('b', { class: 'num gold-t' }), countEl = h('b', { class: 'num' });
+  const tally = (L) => { const f = R.fitLayout(L, dims); worthEl.textContent = `${R.layoutWorth(f)}¢`; countEl.textContent = `${f.reduce((n, sp) => n + sp.chips.length, 0)} / ${rows * dims.cols * cap}`; };
   const P = stakePainter({ dims, cls, layout, maxW: 420, CH: 46,
     pick: { get: () => brushOf[who], set: (v) => { brushOf[who] = v; } },
     items: () => [...D.DENOM_VALUES, ...(effects ? Object.keys(D.SHOP_CHIPS) : [])],
-    set: (L) => { set(L.length ? L : null); const f = R.fitLayout(L, dims); worthEl.textContent = `${R.layoutWorth(f)}¢`; countEl.textContent = `${f.reduce((n, sp) => n + sp.chips.length, 0)} / ${rows * dims.cols * cap}`; },
+    set: (L) => { set(L.length ? L : null); tally(L); },
     done });
-  { const f = R.fitLayout(layout || [], dims); worthEl.textContent = `${R.layoutWorth(f)}¢`; countEl.textContent = `${f.reduce((n, sp) => n + sp.chips.length, 0)} / ${rows * dims.cols * cap}`; }
+  tally(layout || []);
   return h('div', { class: 'col sb-wrap' }, P.el,
     h('div', { class: 'row wrap' }, h('span', { class: 'stat', tip: t('stake.worth.tip') }, h('em', { text: t('stake.worth') }), worthEl), h('span', { class: 'stat', tip: t('stake.chips.tip') }, h('em', { text: t('stake.chips') }), countEl)),
     outside ? h('p', { class: 'sub warn-t', text: t('stake.outside', { n: outside }) }) : null,

@@ -1,6 +1,7 @@
 // Build mode: the trick maker. Every trick opens here; made tricks (roll.k 'chips') are edited part by part, and
 // tricks with a classic roll effect can be converted. Changes go into the build draft like any other edit.
 import { h, lab, btn, toast, guided } from './core.js';
+import { draftForm, numIn, typed, pairsOf, askId, makerPage, previewCol } from './form.js';
 import * as D from '../data.js';
 import * as B from '../build/draft.js';
 import { trickTip } from './parts.js';
@@ -16,7 +17,7 @@ import { CONVERT, PLACE, DEPLOY, BONUS, AIMS, ZONES, CLASSIC, NEW_TRICK } from '
 import { isMade, makeName, makeKind, makeChoices, describeRoll, describeBonus, isFxChip, DIST_OF } from '../trickmaker.js';
 
 const path = (id, ...ks) => ks.reduce((p, k) => D.subPath(p, k), D.subPath('TRICKS', id));
-const opts = (o, f = (v) => v) => Object.entries(o).map(([k, v]) => [k, typeof v === 'string' ? v : f(v)]);
+const opts = (o, f = (v) => v) => pairsOf(o, f);
 
 // keep a made trick's card text in step with its configuration
 function rewrite(id) {
@@ -25,22 +26,16 @@ function rewrite(id) {
   B.setValue(path(id, 'roll', 'text'), describeRoll(def)); B.setValue(path(id, 'bonus', 'text'), describeBonus(def));
 }
 export function newTrick() {
-  const id = (globalThis.prompt?.(t('maker.newId'), 'my_trick') || '').trim();
-  if (!id) return null; if (!/^\w+$/.test(id)) { toast(t('build.duplicate.badId'), 'warn'); return null; }
-  if (D.TRICKS[id]) { toast(t('build.duplicate.taken', { id }), 'warn'); return null; }
+  const id = askId(t('maker.newId'), 'my_trick', D.TRICKS); if (!id) return null;
   B.setValue(D.subPath('TRICKS', id), JSON.parse(JSON.stringify(NEW_TRICK))); rewrite(id); return id;
 }
 
 export function trickMaker(id, redraw) {
   const def = D.TRICKS[id]; if (!def) return h('p', { class: 'sub', text: t('maker.none') });
-  const set = (ks, v) => { B.setValue(path(id, ...ks), v); rewrite(id); redraw(); };
-  const field = (label, el, ks) => h('div', { class: `b-field ${ks && B.changed(path(id, ...ks)) ? 'ch' : ''}` }, h('label', {}, label), el,
-    ks && path(id, ...ks) in B.draft.changes ? btn('↺', () => { B.revert(path(id, ...ks)); rewrite(id); redraw(); }, null, 'small b-revert') : h('span'));
-  const select = (ks, list, value, num) => h('select', { onchange: (e) => set(ks, e.target.value === '' ? null : e.target.value === 'true' ? true : e.target.value === 'false' ? false : num ? Number(e.target.value) : e.target.value) },
-    list.map(([v, l]) => h('option', { value: v ?? '', ...(String(v ?? '') === String(value ?? '') ? { selected: 'selected' } : {}), text: l })));
-  const number = (ks, value, min = 0) => h('input', { type: 'number', min, step: 1, value: value ?? '', onchange: (e) => set(ks, Math.max(min, Math.round(Number(e.target.value) || 0))) });
-  const text = (ks, value) => h('input', { type: 'text', value, onchange: (e) => set(ks, e.target.value) });
-  const check = (ks, value) => h('input', { type: 'checkbox', ...(value ? { checked: 'checked' } : {}), onchange: (e) => set(ks, e.target.checked || null) });
+  const F = draftForm(path(id), () => { rewrite(id); redraw(); }), { set, field, text } = F;
+  const select = (ks, list, value) => F.select(ks, list, value, { parse: typed });
+  const number = (ks, value, min = 0) => F.number(ks, value, { min, whole: true, blank: min });
+  const check = (ks, value) => F.check(ks, value, { orNull: true });
   // the Bonus dice's layout on the card: how many in each row, and how they line up
   function patternField() {
     const P = patternOf(def), n = Math.min(9, def.count || 1), presets = layoutsOf(n);
@@ -54,7 +49,7 @@ export function trickMaker(id, redraw) {
   // the Bonus condition: a named pattern, or a total over/under a number
   const cond = def.bonus.cond, [ck, cn] = cond.includes(':') ? cond.split(':') : [cond, ''];
   const condEl = h('div', { class: 'row' }, select(['bonus', 'cond'], [...Object.entries(D.CONDS).map(([k, v]) => [k, v]), ['over', t('maker.cond.over')], ['under', t('maker.cond.under')]].map(([k, v]) => [k === 'over' || k === 'under' ? `${k}:${cn || 8}` : k, v]), ck === 'over' || ck === 'under' ? `${ck}:${cn}` : ck),
-    ck === 'over' || ck === 'under' ? h('input', { type: 'number', min: 1, value: cn, style: { width: '70px' }, onchange: (e) => set(['bonus', 'cond'], `${ck}:${Math.max(1, Number(e.target.value) || 1)}`) }) : null);
+    ck === 'over' || ck === 'under' ? numIn(cn, (v) => set(['bonus', 'cond'], `${ck}:${v}`), { min: 1, w: '70px', blank: 1 }) : null);
 
   const parts = [
     h('span', { class: 'cap', text: t('maker.part.card') }),
@@ -65,7 +60,7 @@ export function trickMaker(id, redraw) {
     field(lab('maker.die'), select(['die'], D.COMPLEXITY.concat(Object.keys(D.DICE).filter((k) => !D.COMPLEXITY.includes(k))).map((k) => [k, k]), def.die), ['die']),
     field(lab('maker.count'), number(['count'], Math.min(9, def.count), 1), ['count']),
     patternField(),
-    field(lab('maker.quality'), select(['q'], [[null, t('maker.quality.auto', { v: `${D.QROMAN[D.rateTrick(def)]} ${D.QNAME[D.rateTrick(def)]}` })], ...[1, 2, 3, 4].map((q) => [q, t('maker.quality.set', { v: `${D.QROMAN[q]} ${D.QNAME[q]}` })])], def.q ?? null, true), ['q']),
+    field(lab('maker.quality'), select(['q'], [[null, t('maker.quality.auto', { v: `${D.QROMAN[D.rateTrick(def)]} ${D.QNAME[D.rateTrick(def)]}` })], ...[1, 2, 3, 4].map((q) => [q, t('maker.quality.set', { v: `${D.QROMAN[q]} ${D.QNAME[q]}` })])], def.q ?? null), ['q']),
     h('span', { class: 'cap', text: t('maker.part.print') }),
     field(lab('maker.reprint'), check(['reprint'], def.reprint), ['reprint']),
     field(lab('maker.retired'), check(['retired'], def.retired), ['retired']),
@@ -109,7 +104,7 @@ export function trickMaker(id, redraw) {
   const card = h('div', { class: 'b-states' }, h('span', { class: 'cap', text: t('maker.state.list') }), trickItem(sample, () => trickTip(sample, def.cls || 'hustler')),
     h('span', { class: 'cap', text: t('maker.state.card') }), trickCard(sample, def.cls || 'hustler'), h('span', { class: 'cap', text: t('maker.state.played') }), trickPlayed(sample),
     h('span', { class: 'cap', text: t('maker.state.prints') }), h('div', { class: 'row wrap' }, ...[{ foil: 1, rar: 'foil' }, { rar: 'misprint', mis: { trait: 1 } }, { rar: 'reprint' }].map((x) => { const tt = { ...sample, ...x }; return trickItem(tt, () => trickTip(tt, def.cls || 'hustler')); })));
-  return h('div', { class: 'b-maker' }, h('div', { class: 'b-fields' }, parts), h('div', {}, h('span', { class: 'cap', text: t('maker.preview') }), card,
+  return makerPage(parts, previewCol(card,
     wordsOf(def) > WORDY ? h('p', { class: 'b-wordy', text: t('maker.wordy', { n: wordsOf(def), max: WORDY }) }) : null,
     isMade(def) ? h('p', { class: 'sub', text: t('maker.preview.note') }) : null));
 }

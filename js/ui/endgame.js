@@ -10,6 +10,8 @@ import * as R from '../run.js';
 import { flavorP } from './parts.js';
 import { cents } from '../util.js';
 import { t } from '../text.js';
+// a page with one column in the middle of it (the alley, the summary)
+const centred = (...kids) => h('div', { class: 'page', style: { top: 0, display: 'grid', placeItems: 'center' } }, ...kids);
 
 function jacketList(onPick, forSale) {
   const run = app.run, meta = app.meta, box = h('div', { class: 'items list' });
@@ -100,7 +102,7 @@ export function alleyScene(root) {
   const total = h('span', { class: 'total num', text: '—' }), verdict = h('h2', { class: 'fade-t', style: { opacity: 0 } }), kept = h('div', { class: 'inv list' });
   const cont = btn(t('title.continue'), () => { app.kept = roll.kept ? roll.cards : []; app.keptPass = roll.kept ? roll.passes : []; app.nav.summary(); }, null, 'big go off');
   import('./dev.js').then((M) => { const b = M.devButton(() => app.nav.alley()); if (b) { b.classList.add('dev-float'); root.append(b); } }).catch(() => {}); // developer mode: set your purse and roll the alley again
-  root.append(h('div', { class: 'page', style: { top: 0, display: 'grid', placeItems: 'center' } }, h('div', { class: 'col', style: { width: '620px', textAlign: 'center', alignItems: 'center', gap: '14px' } },
+  root.append(centred(h('div', { class: 'col', style: { width: '620px', textAlign: 'center', alignItems: 'center', gap: '14px' } },
     h('h1', { class: 'neon-p', text: t('alley.title') }),
     h('p', { class: 'sub', text: t('alley.sub') }),
     h('div', { class: 'box col', guide: 'wallet', style: { alignItems: 'center', width: '100%' }, tip: () => walletTip(run.wallet) }, h('span', { class: 'cap', text: t(roll.pass ? 'alley.wallet.pass' : 'alley.wallet', { name: Wl.name, n: roll.cards.length, p: roll.passes.length, pass: roll.passes.map((f) => D.PASSES[f].name).join(', '), need: roll.need }) }),
@@ -121,7 +123,7 @@ export function summaryScene(root) {
   const end = ['ripped', 'paradise', 'fallen'].includes(phase) ? phase : 'alley', head = [t(`end.head.${end}`), t(`end.head.${end}.sub`)];
   const worth = h('span', { class: 'total num' });
   const s = sum.stats, list = h('div', { class: 'scroll', style: { maxHeight: '300px' } }, sum.ledger.slice(-40).reverse().map((l) => h('div', { class: 'line' }, h('span', { text: `${l.floor ? 'F' + Math.min(l.floor, 4) + ' · ' : ''}${l.label}` }), h('span', { class: `amt ${l.amt >= 0 ? 'pos' : 'neg'}`, text: `${l.amt >= 0 ? '+' : '−'}${cents(Math.abs(l.amt))}` }))));
-  root.append(h('div', { class: 'page', style: { top: 0, display: 'grid', placeItems: 'center' } }, h('div', { class: 'col', style: { width: '760px' } },
+  root.append(centred(h('div', { class: 'col', style: { width: '760px' } },
     h('h1', { text: head[0] }), h('p', { class: 'sub', text: head[1] }),
     h('div', { class: 'cols2' }, h('div', { class: 'box col' }, h('span', { class: 'cap', text: t('end.run') }),
       [[t('end.reached'), phase === 'paradise' ? t('end.reached.top') : sum.floor > 4 ? t('ascent.title') : sum.floor ? t('end.reached.floor', { floor: sum.floor, name: D.FLOORS[sum.floor].name }) : t('end.reached.door')], [t('end.bouts'), t('end.bouts.n', { won: s.wins, of: s.bouts })], [t('end.dd'), s.dd], [t('end.turns'), s.turns], [t('end.spent'), cents(s.spent)], [t('end.won'), cents(s.won)]].map(([a, b]) => h('div', { class: 'line' }, h('span', { text: a }), h('b', { text: b }))),

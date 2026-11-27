@@ -157,7 +157,7 @@ export function genOpponent(run, floor, worthTarget, o = {}) {
   const why = { balance: [[tx('run.class', { name: K.name }), K.bvd.balance]].filter((x) => x[1]), versatility: [[tx('run.class', { name: K.name }), K.bvd.versatility]].filter((x) => x[1]), depth: [[tx('run.class', { name: K.name }), K.bvd.depth]].filter((x) => x[1]) };
   if (o.boss) { if (floor === 2 || floor === 3) tip[K.primary]++; bvd.balance++; why.balance.push([tx('run.high-roller'), 1]); }
   if (o.weak) { tip.trickery = 1; tip.proficiency = 1; tip.ingenuity = 1; }
-  const B0 = D.BASE_DIMS, dims = { cols: o.cols || B0.cols, stackMax: Math.max(1, B0.stackMax + bvd.balance), meterRows: Math.max(1, B0.meterRows + bvd.versatility), barRows: Math.max(1, B0.barRows + bvd.depth) };
+  const dims = dimsOf(bvd, o.cols);
   const pools = [null, ['d4', 'd6'], ['d6', 'd8'], ['d6', 'd8', 'd10'], ['d8', 'd8', 'd10', 'd10', 'd20']];
   // its own starting Pouch and Book when the roster gives them; otherwise dice and tricks for the floor
   const ownDice = !o.weak && X?.dice && Object.values(X.dice).some((n) => n > 0) ? Object.entries(X.dice).flatMap(([type, n]) => Array.from({ length: n }, () => type)).filter((k) => D.DICE[k]) : null;
@@ -529,11 +529,13 @@ export function validCounts(run, dims) {
 // The shape of a Roller's or an opponent's position before the table changes it: its class, its jacket, and (for a
 // High Roller) the extra chip a stack takes. The Build-mode Stake editors draw from this, so they always show the
 // right number of rows and stack height for whatever the class and gear add up to.
+// a position's shape from Balance, Versatility and Depth: the base shape with each added (never less than 1)
+function dimsOf(bvd, cols) { const B0 = D.BASE_DIMS; return { cols: cols || B0.cols, stackMax: Math.max(1, B0.stackMax + bvd.balance), meterRows: Math.max(1, B0.meterRows + bvd.versatility), barRows: Math.max(1, B0.barRows + bvd.depth) }; }
 export function posDims({ cls, jacket, boss } = {}) {
   const K = D.CLASSES[cls] || D.CLASSES.hustler, bvd = { ...K.bvd };
   for (const [k, v] of Object.entries(D.JACKETS[jacket]?.mods || {})) if (k in bvd) bvd[k] += v;
   if (boss) bvd.balance++;
-  const B0 = D.BASE_DIMS; return { cols: B0.cols, stackMax: Math.max(1, B0.stackMax + bvd.balance), meterRows: Math.max(1, B0.meterRows + bvd.versatility), barRows: Math.max(1, B0.barRows + bvd.depth) };
+  return dimsOf(bvd);
 }
 const itemWorth = (it) => (typeof it === 'number' ? it : 0); // effect chips are owned, not paid for from the purse
 export const layoutWorth = (layout) => sum(layout || [], (sp) => sum(sp.chips || [], itemWorth));
@@ -612,15 +614,17 @@ export const needsBouncer = (run) => run.phase === 'floor' && run.floor >= 1 && 
 export const startFloor = (run) => Math.max(1, Math.min(4, passFloor(run)));
 export function startBouncer(run) {
   const opp = genOpponent(run, 1, 30, { name: tx('run.the-bouncer'), title: 'Bouncer', cls: 'hustler', q: 1 });
-  const st = rollerStats(run); const n = Math.min(30, barCapacity(st.dims));
+  return doorBout(run, 'bouncer', opp, 30);
+}
+// a bout at the door (the Doorman's lesson, the Bouncer's check): 1¢ chips only, as many as `chips` and your Stake hold, no wager
+function doorBout(run, kind, opp, chips) {
+  const n = Math.min(chips, barCapacity(rollerStats(run).dims));
   const bout = createBout({ seed: run.rng.int(2 ** 31), a: playerSpec(run, { ...noCounts(), 1: n }), b: opp, rules: { maxDenom: 1 } });
-  return { bout, ctx: { kind: 'bouncer', opp, felt: 'house', wager: 0, mult: 1, committed: n } };
+  return { bout, ctx: { kind, opp, felt: 'house', wager: 0, mult: 1, committed: n } };
 }
 export function startIntro(run) {
   const Dr = D.SHOPS.door, opp = genOpponent(run, 1, Dr.oppWorth ?? 18, { weak: true, name: tx('run.low-ball'), title: 'Doorman', cls: 'technician' });
-  const st = rollerStats(run); const n = Math.min(Dr.chips ?? 30, barCapacity(st.dims));
-  const bout = createBout({ seed: run.rng.int(2 ** 31), a: playerSpec(run, { ...noCounts(), 1: n }), b: opp, rules: { maxDenom: 1 } });
-  return { bout, ctx: { kind: 'intro', opp, felt: 'house', wager: 0, mult: 1, committed: n } };
+  return doorBout(run, 'intro', opp, Dr.chips ?? 30);
 }
 // Developer mode: this table settled without playing it. The bout is set up exactly as Sit down would (your position,
 // the wager, the tilts, a Double Down), then ended: a win sends every chip across the table to the House as fees (they
