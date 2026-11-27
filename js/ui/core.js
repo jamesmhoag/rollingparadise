@@ -62,6 +62,32 @@ export function paint(el, targetAt, apply, ms = 170, onEnd, { right = false } = 
   return stop;
 }
 
+// ---------- press and carry ----------
+// Anything that can be clicked into place can be carried there. Press on a source and move: a ghost of it follows the
+// pointer and the place under it lights when it will take it; let go and drop(source, target) runs. A press that does
+// not move is still a click, and the click after a carry is swallowed. source(el, ev) → what is being picked up
+// ({ el, ... }) or null; target(el, ev, source) → where it would land or null; drop(source, target).
+export function carry(root, { source, target, drop }) {
+  let st = null;
+  const under = (ev) => target(document.elementFromPoint(ev.clientX, ev.clientY) || document.body, ev, st.src); // (an empty stretch of the screen is still a place: the target reads the pointer)
+  const mark = (t) => { if (st.over?.el !== t?.el) { st.over?.el?.classList.remove('drop-ok'); t?.el?.classList.add('drop-ok'); } st.over = t; };
+  const end = () => { document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); if (st?.g) { st.g.remove(); st.src.el.classList.remove('carried'); root.classList.remove('carrying'); document.body.classList.remove('carrying-now'); mark(null); } st = null; };
+  function move(ev) {
+    if (!st) return; if (!root.isConnected) return end();
+    if (!st.g) { if (Math.hypot(ev.clientX - st.x, ev.clientY - st.y) < 8) return;
+      const r = st.src.el.getBoundingClientRect(), g = st.src.el.cloneNode(true); g.removeAttribute('id'); g.classList.add('carry-ghost'); g.classList.remove('has-tip', 'drop-ok');
+      Object.assign(g.style, { position: 'fixed', left: '0', top: '0', margin: '0', width: `${st.src.el.offsetWidth}px`, height: `${st.src.el.offsetHeight}px`, transformOrigin: '0 0', opacity: '', animation: 'none', transition: 'none' });
+      st.g = g; st.k = r.width / (st.src.el.offsetWidth || 1); st.dx = st.x - r.left; st.dy = st.y - r.top; document.body.append(g); st.src.el.classList.add('carried'); root.classList.add('carrying'); document.body.classList.add('carrying-now'); }
+    st.g.style.transform = `translate(${ev.clientX - st.dx}px, ${ev.clientY - st.dy}px) scale(${st.k}) rotate(-3deg)`; mark(under(ev));
+  }
+  function up(ev) {
+    if (!st) return; const { src, g } = st, t = g ? under(ev) : null; end(); if (!g) return;
+    const eat = (e) => { e.stopPropagation(); e.preventDefault(); }; root.addEventListener('click', eat, { capture: true, once: true }); setTimeout(() => root.removeEventListener('click', eat, { capture: true }), 0); // the click that ends the carry (if the browser sends one) is not a click on what it ends over
+    if (t) drop(src, t);
+  }
+  root.addEventListener('pointerdown', (ev) => { if (ev.button !== 0 || st) return; const src = source(ev.target, ev); if (!src) return; st = { src, x: ev.clientX, y: ev.clientY, g: null, over: null }; document.addEventListener('pointermove', move); document.addEventListener('pointerup', up); });
+}
+
 // ---------- hover mode ----------
 // Two modes for every hover: Context (how it works, its numbers and outcomes) and Guidance (what to do with it and
 // when; see content/guidance.js). Scroll the mouse wheel over a hover to switch. Both have the concise and verbose

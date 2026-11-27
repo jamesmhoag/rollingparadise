@@ -275,7 +275,7 @@ const AMB = [], AMB_PX = 128, AMB_MS = 5; let ambAt = 0, ambRun = false;
 export const ambientOn = () => !(typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) && globalThis.RP_STILL_DICE !== true;
 function ambient(el, d, labels, fi) {
   if (!ambientOn()) return;
-  el._amb = { d, labels, base: frontOf(d.type, fi), ph: (AMB.length * 2.399) % 6.283, cv: el._amb?.cv || null };
+  el._amb = { d, labels, base: frontOf(d.type, fi), ph: (AMB.length * 2.399) % 6.283, cv: el._amb?.cv || null, ctx: el._amb?.ctx || null }; // (a die shown again keeps its canvas and what draws on it)
   if (!AMB.includes(el)) AMB.push(el);
   if (!ambRun) { ambRun = true; requestAnimationFrame(ambTick); }
 }

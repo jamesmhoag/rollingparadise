@@ -1,6 +1,6 @@
 // The table. Every chip, die, trick card and creature is one persistent element that is
 // moved, faded or flipped to follow the bout state, so nothing ever pops between states.
-import { h, tip, wait, tween, swapText, setOn, pulse, syncList, toast, btn, refreshTip, redrawTip, box, vc, detail, guided, stagePoint, rightClick } from './core.js';
+import { h, tip, wait, tween, swapText, setOn, pulse, syncList, toast, btn, refreshTip, redrawTip, box, vc, detail, guided, stagePoint, rightClick, carry } from './core.js';
 import { chipPainter } from './chippaint.js';
 import { chipSig, chipGlyph, chipName, chipText, chipTip, dieTip, trickTip, trickWord, trickWords, statTip, drinkTip, dieMarks, dieDyes, dieStyle, dieClass, trickLook, feltStyle, seenAs, traitsOf, traitsHtml, dieEl, dress3d, chipEl, trickChip, flavorP } from './parts.js';
 import { iconKids, iconFill } from './icons.js';
@@ -443,7 +443,7 @@ export function boutScene(root, bout, ctx, onDone) {
     else body.animate([{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(720deg)' }], { duration: dur * 0.84, delay, easing: 'cubic-bezier(.2,.6,.3,1)', fill: 'both' });
   }
   function mkDie(d, si = 0) {
-    const el = h('div', { class: `die ${d.chip ? 'flipc' : d.type} ${d.chip ? '' : dieClass(d)}`, style: d.chip ? {} : dieStyle(d), onclick: si ? null : () => clickDie(d.id) }, h('i', { text: d.type.slice(1) }), d.chip ? null : dieMarks(d), d.chip ? null : dieDyes(d));
+    const el = h('div', { class: `die ${d.chip ? 'flipc' : d.type} ${d.chip ? '' : dieClass(d)}`, style: d.chip ? {} : dieStyle(d), ...(si ? {} : { 'data-die': d.id }), onclick: si ? null : () => clickDie(d.id) }, h('i', { text: d.type.slice(1) }), d.chip ? null : dieMarks(d), d.chip ? null : dieDyes(d));
     if (!d.chip) el._die = d;
     if (si) { el.classList.add('theirs'); tip(el, () => { const on = B.holderOf(opp, d.id), live = on ? on.dice.find((x) => x.id === d.id) : opp.tray.find((x) => x.id === d.id), v = live ? live.value : '?';
       return d.chip ? tx('table.flipped-chip-landed-on', { value: d.chip.value, v, where: '' }) : dieTip(d, tx('table.rolled', { value: v })); }); layer.append(el); return el; }
@@ -465,7 +465,7 @@ export function boutScene(root, bout, ctx, onDone) {
   // top copy's own uid is not on the Run, so a card that answered to it could not be bid on or aimed.
   function mkCard(t, si = 0, id = t.uid) {
     const def = D.defOf(t), T = D.TYPES[def.type];
-    const el = h('div', { class: `tcard ${trickLook(t)}${si ? ' theirs' : ''}`, style: { '--tc': T.color }, ...(si ? {} : { onclick: (ev) => clickCard(id, ev), onmouseenter: () => { ui.card = id; marks(); }, onmouseleave: () => { if (ui.card === id) { ui.card = null; marks(); } } }) },
+    const el = h('div', { class: `tcard ${trickLook(t)}${si ? ' theirs' : ''}`, style: { '--tc': T.color }, ...(si ? {} : { 'data-card': id, onclick: (ev) => clickCard(id, ev), onmouseenter: () => { ui.card = id; marks(); }, onmouseleave: () => { if (ui.card === id) { ui.card = null; marks(); } } }) },
       h('div', { class: 'c-compact' }, illus(def), h('b', { class: 'tk-name', text: def.name }), h('span', { class: 'q', html: trickWord(t) }), bonusReq(t, def)),
       h('div', { class: 'c-open' },
         h('div', { class: 'c-name' }, illus(def), h('b', { class: 'tk-name', text: def.name }), h('span', { class: 'c-stack', 'data-act': 'split', tip: () => stackTip(id) }), h('span', { class: 'q', html: trickWord(t) })),
@@ -1022,6 +1022,45 @@ export function boutScene(root, bout, ctx, onDone) {
       sfx('chip'); return act(() => { ui.hand = more; if (more.length === 1 && !ui.peek && B.revivable(bout, me).length) { ui.peek = 'book'; ui.peekPhase = bout.phase; } }); // the Book opens: a chip can bring a tapped trick back
     }
   }
+  // ---------- press and carry ----------
+  // Everything a click puts in place can be carried there instead, and a carry says where: a trick from your Book onto
+  // the Run (on its own) or onto a copy of itself there (stacked); the top copy of a stack off it, onto the Run; a
+  // drawn trick back to the Book; a chip from your Stake onto a trick (a bid) or a tapped trick (bringing it back); a
+  // rolled die onto a trick; a bid trick onto the space it aims at. Each drop runs the same steps as the clicks do.
+  const plain = (more = {}) => ({ target: { dataset: {} }, shiftKey: false, ...more }), onRun = (id) => me.run.some((x) => x.uid === id);
+  // which of your zones a pointer is over, under the table: the Book (left), the Run (between the Book and your dice)
+  const zoneAt = (ev) => { const p = stagePoint(ev), R = runSpan(0), edge = R.book + (bookOpen(0) ? BOOK_W : SPINE); return p.y < RUN_Y - 24 ? null : p.x < edge ? 'book' : p.x < R.dice ? 'run' : null; };
+  carry(root, {
+    source(el) {
+      if (ui.locked || ui.sandbox?.op) return null;
+      const card = el.closest?.('[data-card]'); if (card) return { kind: 'card', id: Number(card.dataset.card), el: card, split: el.dataset?.act === 'split' };
+      const die = el.closest?.('[data-die]'); if (die) return me.tray.some((d) => String(d.id) === die.dataset.die) && bout.phase === 'aim' ? { kind: 'die', id: me.tray.find((d) => String(d.id) === die.dataset.die).id, el: die } : null;
+      const cell = el.closest?.('[data-at]'); if (!cell || bout.phase !== 'bid') return null;
+      const [si, r, c] = cell.dataset.at.split(':').map(Number), ch = si === 0 ? B.bidChip(me, r, c) : null, chEl = ch && els.chips.get(ch.id);
+      return chEl ? { kind: 'chip', r, c, el: chEl } : null;
+    },
+    target(el, ev, src) {
+      const card = el.closest?.('[data-card]'), id = card ? Number(card.dataset.card) : null;
+      if (src.kind === 'chip' || src.kind === 'die') return card && id !== src.id && (onRun(id) || (src.kind === 'chip' && me.tapped.tricks.some((x) => x.trick.uid === id))) ? { kind: 'card', id, el: card } : null;
+      if (onRun(src.id)) { // a trick on the Run: off its stack, back to the Book, or onto the space it aims at
+        const cell = el.closest?.('[data-at]'), e = me.run.find((x) => x.uid === src.id);
+        if (cell && bout.phase === 'aim' && e.state === 'bid' && B.needsTarget(e)) { const [si, r, c] = cell.dataset.at.split(':').map(Number); return { kind: 'cell', si, r, c, el: cell }; }
+        const z = zoneAt(ev); return z === 'book' ? (bout.phase === 'draw' ? { kind: 'book', el: spines.book } : null) : z === 'run' && e.stack?.length ? { kind: 'run', el: ztRun } : null;
+      }
+      if (!me.book.some((t) => t.uid === src.id)) return null; // a trick in the Book: onto a copy of itself, or onto the Run on its own
+      if (card && onRun(id) && B.canStackOn(me, me.book.find((t) => t.uid === src.id), me.run.find((x) => x.uid === id))) return { kind: 'card', id, el: card };
+      return zoneAt(ev) === 'run' ? { kind: 'run', el: me.run.length ? ztRun : runEmpty } : null;
+    },
+    drop(src, t) {
+      if (src.kind === 'chip') { const n = ui.hand.length; if (!ui.hand.some((x) => x.r === src.r && x.c === src.c)) clickCell(0, src.r, src.c); if (ui.hand.length > n || ui.hand.some((x) => x.r === src.r && x.c === src.c)) clickCard(t.id, plain()); return; }
+      if (src.kind === 'die') { if (!ui.held.includes(src.id)) clickDie(src.id); if (ui.held.includes(src.id)) clickCard(t.id, plain()); return; }
+      if (t.kind === 'cell') { if (ui.mode !== 'target' || ui.entry !== src.id) clickCard(src.id, plain()); if (ui.mode === 'target') clickCell(t.si, t.r, t.c); return; }
+      if (t.kind === 'book') return clickCard(src.id, plain());
+      if (onRun(src.id)) return clickCard(src.id, plain({ target: { dataset: { act: 'split' } } })); // the top copy comes off its stack
+      const stackOn = t.kind === 'card' ? t.id : null, why = B.canDraw(bout, me, src.id); if (why) return nope(why, src.el);
+      sfx(stackOn ? 'stack' : 'card'); act(() => B.draw(bout, me, src.id, stackOn)); // onto that copy, or on its own
+    },
+  });
   // A tapped trick in the Bid phase: with a chip in hand, bid it to bring the trick back at this turn's restore;
   // with an empty hand, take that bid back.
   function clickTapped(uid, el) {

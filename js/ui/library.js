@@ -80,7 +80,7 @@ function chipsTab(own) {
   }
   out.push(sec(tx('library.effect-chips-made-by'), tx('library.investments-insurances-and-corrections')));
   for (const [id, X] of Object.entries(D.SHOP_CHIPS)) { const mk = D.makerOf(id); if (!mk) continue; const T = D.TRICKS[mk], ch = { kind: 'fx', value: 0, resist: id, shop: id, life: T.roll.life[0], maker: mk };
-    out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), X.name, [D.shopText(id), tx('library.made-by-on-its', { name: T.name, name2: D.TYPES[T.type].name, v: T.cls ? ', ' + D.CLASSES[T.cls].name : '', v2: T.make.n[1] < 99 ? tx('library.1-per-rolled', { n: T.make.n[0], n2: T.make.n[1] }) : 'one', v3: T.make.life[0] >= 99 ? 'the bout' : tx('library.1-per-rolled-2', { life: T.roll.life[0], life2: T.make.life[1] }) })])); }
+    out.push(entry(tipped(chipEl(ch), () => chipTip(ch)), X.name, [D.shopText(id), tx('library.made-by-on-its', { name: T.name, name2: D.TYPES[T.type].name, v: T.cls ? ', ' + D.CLASSES[T.cls].name : '', v2: T.roll.n[1] < 99 ? tx('library.1-per-rolled', { n: T.roll.n[0], n2: T.roll.n[1] }) : 'one', v3: T.roll.life[0] >= 99 ? 'the bout' : tx('library.1-per-rolled-2', { life: T.roll.life[0], life2: T.roll.life[1] }) })])); }
   // a chip of the table's own kinds: its name and rule from CHIPS, and a note on where it comes from
   const chipEntry = (ch, note) => entry(tipped(chipEl(ch), () => chipTip(ch)), D.CHIPS[ch.kind].name, [D.CHIPS[ch.kind].text, dim(note)]);
   out.push(sec(tx('library.chips-made-at-the'), tx('library.they-appear-during-a')));

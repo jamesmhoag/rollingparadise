@@ -21,7 +21,7 @@ export const GUIDE = {
   'bid-space': { name: 'Bid space', def: 'Where a trick\'s bids stack up.',
     how: ['Pick up chips from your stacks, then click the trick: each click bids the top chip in your hand, one at a time.', 'While you hold a chip, clicking bids it; bids already made stay put.'] },
   die: { name: 'Die', def: 'A die from your pouch. Its faces are the values it can roll.',
-    how: ['In the Roll step, pick the dice to throw; in the Bluff, put each rolled die on a trick you bid on.',
+    how: ['In the Roll step, pick the dice to throw; in the Bluff, put each rolled die on a trick you bid on (click it then the trick, or carry it there).',
       'Any die adds its value. The first ones of the trick\'s own size are its Bonus dice; a flipped chip counts as any size.',
       'Leave rolls unused and Conviction pays you Power chips instead.'] },
   chip: { name: 'Chip', def: 'A chip in a position. Chips are your Worth: fees take them, bids spend them.',
@@ -29,12 +29,12 @@ export const GUIDE = {
       'Every chip bid on a trick adds its value to the trick\'s effect.',
       'In the Roll step you can flip a top chip into your throw instead of a die.'] },
   trick: { name: 'Trick', def: 'A card from your Book that plays an effect once it is bid on.',
-    how: ['Draw it onto your Run in the Draw step; a copy of a trick already shown stacks on it (Shift-click to draw it apart).',
+    how: ['Draw it onto your Run in the Draw step: click it, or carry it there. Dropped on a copy of itself it stacks; dropped on the Run it sits on its own (Shift-click does the same). Carry the top copy off a stack to play it apart.',
       'Bid a chip on it in the Bid step so it plays, in its type\'s phase; each chip adds its value.',
       'Put rolled dice on it in the Bluff: every die adds, and the ones of its own size make its Bonus.',
       'A stack plays one copy a turn for one bid: that is how a trick lingers.'] },
   cell: { name: 'Space', def: 'A space in a position that holds one stack of chips.',
-    how: ['Before the bout, place your chips here when you lay out your position.',
+    how: ['Before the bout, place your chips here when you lay out your position.', 'In the Bid step, click a stack to pick up its top chip, or carry the chip straight onto a trick.',
       'Tricks that target a stack aim at a space; fees that a stack cannot pay spill on down its lane.'] },
 
   // ---------- your attributes ----------

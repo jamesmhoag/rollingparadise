@@ -20,7 +20,7 @@ const server = http.createServer((req, res) => {
   await new Promise((r) => server.listen(PORT, r));
   const b = await chromium.launch(), p = await b.newPage({ viewport: { width: 1280, height: 720 } });
   const missing = new Map(), errors = [];
-  p.on('pageerror', (e) => errors.push(e.message));
+  let at = 'start'; p.on('pageerror', (e) => errors.push(`${at}: ${e.message} (${(e.stack || '').split('\n').slice(1, 3).map((l) => l.trim().replace(/^at /, '').replace(/https?:\/\/[^/]+/, '')).join(' < ')})`));
   let seen = 0;
   const take = async (where) => {
     const rows = await p.evaluate(async () => {
@@ -33,7 +33,7 @@ const server = http.createServer((req, res) => {
     seen += rows.length;
     for (const r of rows) if (!r.ok) { const x = missing.get(r.sig) || { n: 0, where: new Set(), ex: new Set(), key: r.key }; x.n++; x.where.add(where); if (x.ex.size < 3) x.ex.add(r.text); missing.set(r.sig, x); }
   };
-  const step = async (where, fn, wait = 900) => { try { await fn(); await p.waitForTimeout(wait); await take(where); } catch (e) { errors.push(`${where}: ${e.message.split('\n')[0]}`); } };
+  const step = async (where, fn, wait = 900) => { at = where; try { await fn(); await p.waitForTimeout(wait); await take(where); } catch (e) { errors.push(`${where}: ${e.message.split('\n')[0]}`); } };
   const ev = (fn, arg) => p.evaluate(fn, arg);
 
   await p.goto(`http://localhost:${PORT}/?debug&curtain=0`); // (no opening curtain: it is checked by hand) await p.waitForTimeout(1500); await take('title');

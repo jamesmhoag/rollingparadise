@@ -1361,3 +1361,12 @@ table.b-shop { border-collapse: collapse; width: 100%; font-size: 12px; margin-t
 .test-tools .rack-open { padding: 1px 4px; border-radius: 50%; line-height: 0; }
 .test-rack { position: absolute; top: calc(100% + 4px); left: 0; z-index: 901; padding: 8px 10px; background: rgba(13, 10, 28, .97); border: 1px solid var(--line); border-radius: 10px; width: min(560px, 90vw); max-height: 60vh; overflow: auto; }
 .test-rack[hidden] { display: none; } .test-rack .rack { flex-flow: row wrap; align-items: center; }
+
+/* press and carry (core.js carry): the ghost under the pointer, what was picked up, and the place that will take it */
+.carry-ghost { pointer-events: none; z-index: 6000; filter: drop-shadow(0 14px 18px rgba(0, 0, 0, .55)); opacity: .95; }
+.carried { opacity: .35 !important; }
+.carrying, .carrying * { cursor: grabbing !important; }
+.drop-ok { outline: 2px solid var(--gold) !important; outline-offset: 2px; box-shadow: 0 0 18px rgba(255, 200, 90, .55) !important; }
+.run-empty.drop-ok { opacity: 1 !important; }
+[data-card]:not(.theirs), [data-die] { cursor: grab; touch-action: none; }
+body.carrying-now #tooltip { display: none !important; } /* nothing explains itself while something is in your hand */
