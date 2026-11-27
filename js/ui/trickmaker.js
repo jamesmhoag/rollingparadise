@@ -4,7 +4,7 @@ import { h, lab, btn, toast, guided } from './core.js';
 import * as D from '../data.js';
 import * as B from '../build/draft.js';
 import { trickTip } from './parts.js';
-import { trickItem, trickCard, trickPlayed, diceHtml, patternOf } from './trickcard.js';
+import { trickItem, trickCard, trickPlayed, diceHtml, patternOf, wordsOf, WORDY } from './trickcard.js';
 
 // the ways n dice can be laid out: one row, or rows of up to four (all the splits that read well), at most 9 dice
 function layoutsOf(n) { const out = [], seen = new Set(); const go = (left, rows) => { if (!left) { const k = rows.join('-'); if (!seen.has(k) && rows.length <= 3) { seen.add(k); out.push(rows); } return; } for (let r = Math.min(4, left); r >= 1; r--) go(left - r, [...rows, r]); };
@@ -110,5 +110,6 @@ export function trickMaker(id, redraw) {
     h('span', { class: 'cap', text: t('maker.state.card') }), trickCard(sample, def.cls || 'hustler'), h('span', { class: 'cap', text: t('maker.state.played') }), trickPlayed(sample),
     h('span', { class: 'cap', text: t('maker.state.prints') }), h('div', { class: 'row wrap' }, ...[{ foil: 1, rar: 'foil' }, { rar: 'misprint', mis: { trait: 1 } }, { rar: 'reprint' }].map((x) => { const tt = { ...sample, ...x }; return trickItem(tt, () => trickTip(tt, def.cls || 'hustler')); })));
   return h('div', { class: 'b-maker' }, h('div', { class: 'b-fields' }, parts), h('div', {}, h('span', { class: 'cap', text: t('maker.preview') }), card,
+    wordsOf(def) > WORDY ? h('p', { class: 'b-wordy', text: t('maker.wordy', { n: wordsOf(def), max: WORDY }) }) : null,
     isMade(def) ? h('p', { class: 'sub', text: t('maker.preview.note') }) : null));
 }

@@ -143,8 +143,23 @@ function selectScene(root) {
     h('div', { style: { marginTop: '16px' } }, cards), h('div', { style: { marginTop: '14px' } }, jackets)));
 }
 
+// The opening curtain: a full-screen drape with the hotel's sign while the dice are made ready (every size in every
+// material, built once so the first close look at one does not stall), then it parts on the title. Any key or click
+// parts it early; the rest of the dice are then built as they are met. ?curtain=0 skips it (automated playthroughs).
+function curtain() {
+  if (new URLSearchParams(location.search).get('curtain') === '0' || globalThis.RP_FAST) return;
+  const bar = h('i'), line = h('div', { class: 'cur-line', text: t('boot.dice') });
+  const el = h('div', { class: 'curtain' }, h('div', { class: 'cur-in' }, h('div', { class: 'cur-sub', text: t('title.hotel') }), h('div', { class: 'cur-name', text: t('boot.name') }), h('div', { class: 'cur-bar' }, bar), line));
+  document.body.append(el);
+  let open = false; const part = () => { if (open) return; open = true; el.classList.add('open'); setTimeout(() => el.remove(), 1400); removeEventListener('keydown', part); el.removeEventListener('pointerdown', part); };
+  addEventListener('keydown', part); el.addEventListener('pointerdown', part);
+  const t0 = performance.now();
+  import('./ui/dice3d.js').then((M3) => M3.preload((x) => { bar.style.width = `${Math.round(x * 100)}%`; if (x >= 1) line.textContent = t('boot.ready'); }))
+    .catch(() => {}).finally(() => setTimeout(part, Math.max(250, 900 - (performance.now() - t0)))); // never a flash: the drape hangs at least a moment
+}
 window.addEventListener('resize', fit);
 loadDraft(); // your build-mode changes, live in this browser
+curtain();
 fit(); initTips(); initSpin(); initMusic(document.getElementById('stage'), { run: () => app.run, tip: (what, title) => R.tipBand(app.run, what, title) }); initSfx(document.getElementById('stage'));
 app.meta = R.loadMeta();
 nav.title();

@@ -23,7 +23,8 @@ export const TUNING = {
   },
   // tipping the lounge band (the music buttons): a skip, a request from the setlist, a swap to 8-bit chips and back,
   // and stopping or starting them
-  band: { skip: 2, request: 2, swap: 5, stop: 10, start: 10 },
+  // `favorite`: what hearting a tune costs (0: free); taking a heart off is always free
+  band: { skip: 2, request: 2, swap: 5, stop: 10, start: 10, favorite: 0 },
   // which floors each room appears on
   rooms: { smith: [1, 2, 3, 4], dice: [1, 2, 3, 4], trader: [1, 2, 3, 4], exchange: [1, 2, 3, 4], lounge: [1, 2, 3, 4], book: [1, 2, 3, 4], search: [1, 2, 3, 4] },
   // the tables' size

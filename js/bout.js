@@ -505,7 +505,7 @@ function startTurn(b) {
   b.creatures = b.creatures.filter((cr) => !cr.gone);
   b.phase = 'draw'; openPhase(b);
 }
-const snapshot = (s) => { s.snap = clone({ grid: s.grid, run: s.run, book: s.book, pouch: s.pouch, tray: s.tray, used: s.used, thrown: s.thrown, pick: s.pick, turnBonus: s.turnBonus, food: s.food }); };
+const snapshot = (s) => { s.snap = clone({ grid: s.grid, run: s.run, book: s.book, pouch: s.pouch, tray: s.tray, used: s.used, thrown: s.thrown, pick: s.pick, turnBonus: s.turnBonus, food: s.food, revive: s.revive || [] }); };
 // When a phase opens, each Roller's table is recorded as the other may see it (`pub`) until this phase closes,
 // and as the point Undo returns to (`snap`).
 function openPhase(b) { for (const s of b.sides) { snapshot(s); s.pub = clone({ grid: s.grid, run: s.run }); } }
@@ -519,7 +519,13 @@ const fitsOn = (d, e) => e.state === 'bid' && (d.chip || !sizeOn(e) || sizeOn(e)
 // All the dice on one trick are one size: the first real die put on it sets the size (a flipped chip joins any size).
 // No size is required to play; only the trick's own size makes its Bonus.
 export const sizeOn = (e) => e.dice.find((d) => !d.chip)?.type || null;
-const spare = (s, ch) => worth(s) - ch.value > 0; // spending this chip does not leave you broke
+// What a chip adds to the trick it is bid on: its value; a Debt chip takes its value away (bidding it clears the debt
+// off the stack: the trick pays for it); a chip whose value is a true 0 adds nothing but is still a bid.
+export const bidVal = (ch) => (ch.kind === 'debt' ? -ch.value : ch.value || 0);
+// A chip that can be bid: anything a fee could take, a stack's Debt marker, and a made chip whose value is set to 0
+// (a value left unset is no value at all, and cannot be bid).
+export const isBiddable = (ch) => isPayable(ch) || ch.kind === 'debt' || (ch.kind === 'made' && madeOf(ch)?.value === 0 && lastsOf(ch) !== 'match');
+const spare = (s, ch) => worth(s) - bidVal(ch) > 0; // spending this chip does not leave you broke
 export function flippable(s) { const out = []; for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const ch = bidChip(s, r, c); if (ch?.kind === 'std' && spare(s, ch)) out.push({ r, c, ch }); } return out; }
 export function biddable(s) { const out = []; for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) { const ch = bidChip(s, r, c); if (ch && spare(s, ch)) out.push({ r, c, ch }); } return out; }
 // Is the phase's one required action possible at all? If not, the phase can be closed without it.
@@ -527,7 +533,7 @@ export function canAct(b, s, phase = b.phase) {
   if (phase === 'aim') return trayPlaceable(s) || s.run.some((e) => e.state === 'bid' && (needsTarget(e) || TRICKS[e.trick.id].approach !== 'none') && validTargets(b, s, e).length > 1);
   if (phase === 'draw') return s.book.length > 0 && tipOf(s, 'trickery') > 0;
   if (phase === 'roll') return canThrowAny(s);
-  if (phase === 'bid') return s.run.some(loose) && biddable(s).length > 0;
+  if (phase === 'bid') return (s.run.some(loose) || revivable(b, s).length > 0) && biddable(s).length > 0;
   return false;
 }
 export const placedThisTurn = (b, s) => s.run.some((e) => e.dice.some((d) => d.t === b.turn));
@@ -672,13 +678,50 @@ export const tappedInOrder = (s) => ({ tricks: s.tapped.tricks.slice().sort((a, 
 // occupied Stake column. The UI calls this after every action, so it follows the board as effects change it.
 export function restorePlan(b, s) {
   const o = occupancy(s), q = tappedInOrder(s);
-  return { o, nTricks: o.betColsOcc, nDice: o.stakeColsOcc, tricks: q.tricks.slice(0, o.betColsOcc).map((x) => x.trick.uid), dice: q.dice.slice(0, o.stakeColsOcc).map((x) => x.die.id) };
+  const paid = (s.revive || []).map((x) => x.uid), rest = q.tricks.filter((x) => !paid.includes(x.trick.uid));
+  return { o, nTricks: o.betColsOcc, nDice: o.stakeColsOcc, revived: paid, tricks: [...paid, ...rest.slice(0, o.betColsOcc).map((x) => x.trick.uid)], dice: q.dice.slice(0, o.stakeColsOcc).map((x) => x.die.id) };
+}
+// ---------- bidding on a tapped trick (resuscitating it) ----------
+// In the Bid phase a chip can be bid on one of your tapped tricks instead of a trick on your Run. It is a bid like any
+// other (it uses one, and it passes the phase). The trick is brought back by this turn's restore, on top of what your
+// Bet columns restore. Bringing a trick back takes its quality level in chip value (I 1, II 2, III 3, IV 4, a Foil a
+// level more): any chip will do it, and the difference between the chip and that level stays on the trick as a base
+// effect for its next play: +1 for a 2¢ chip on a quality I trick, -1 for a 0¢ chip on it (weaker, but back in the Book).
+// A trick the restore is already bringing back cannot be bid on: the chip would be wasted.
+export const reviveCost = (t) => playQ(t);
+export const revivable = (b, s) => { const coming = restorePlan(b, s).tricks; return s.tapped.tricks.filter((x) => !coming.includes(x.trick.uid)).map((x) => x.trick); };
+export function canRevive(b, s, uid, r, c) {
+  const gate = phaseGate(b, 'bid'); if (gate) return gate;
+  if (!s.tapped.tricks.some((x) => x.trick.uid === uid)) return tx('feed.revive-not-tapped');
+  if ((s.revive || []).some((x) => x.uid === uid)) return tx('feed.revive-already-bid');
+  if (restorePlan(b, s).tricks.includes(uid)) return tx('feed.revive-already-restoring');
+  if (s.used.bid >= tipOf(s, 'ingenuity')) return tx('table.no-bids-left-this-2');
+  const ch = r == null ? null : bidChip(s, r, c);
+  if (r != null && !ch) return tx('feed.only-an-uncovered-standard');
+  if (ch && !spare(s, ch)) return tx('feed.that-would-bid-your');
+  return null;
+}
+export function revive(b, s, uid, r, c) {
+  if (r == null || canRevive(b, s, uid, r, c)) return null;
+  const ch = bidChip(s, r, c), t = s.tapped.tricks.find((x) => x.trick.uid === uid).trick; s.grid[r][c].chips.splice(s.grid[r][c].chips.indexOf(ch), 1);
+  ch.from = { r, c, base: lifted(s.grid[r][c]) };
+  (s.revive ||= []).push({ uid, ch, base: bidVal(ch) - reviveCost(t) }); s.used.bid++;
+  return ch;
+}
+export function canUnrevive(b, s, uid) { if (b.phase !== 'bid') return tx('feed.bids-can-be-taken'); return (s.revive || []).some((x) => x.uid === uid && !x.paid) ? null : tx('feed.that-chip-was-not'); }
+export function unrevive(b, s, uid) {
+  if (canUnrevive(b, s, uid)) return null;
+  const x = s.revive.splice(s.revive.findIndex((y) => y.uid === uid), 1)[0], from = x.ch.from; delete x.ch.from;
+  bidHome(b, s, x.ch, from); s.used.bid--;
+  return x.ch;
 }
 function untap(s, plan) {
   const tr = s.tapped.tricks.filter((x) => plan.tricks.includes(x.trick.uid)), di = s.tapped.dice.filter((x) => plan.dice.includes(x.die.id));
+  for (const x of s.revive || []) { const t = tr.find((y) => y.trick.uid === x.uid)?.trick; if (t) { if (x.base) t.base = x.base; else delete t.base; } } // the difference rides on the trick
+  s.revive = [];
   s.tapped.tricks = s.tapped.tricks.filter((x) => !tr.includes(x)); s.tapped.dice = s.tapped.dice.filter((x) => !di.includes(x));
   for (const x of tappedSort(tr, trickKey)) s.book.push(x.trick); for (const x of tappedSort(di, dieKey)) s.pouch.push(x.die);
-  return { tricks: tr.length, dice: di.length };
+  return { tricks: tr.length, dice: di.length, revived: plan.revived?.length || 0 };
 }
 const tappedSort = (list, key) => list.slice().sort((a, b) => cmp(key(a), key(b)));
 // End of turn: restore by column, then note whether the Bet is Fully Occupied for the start of the next turn.
@@ -691,6 +734,7 @@ function* restorePhase(b) {
     const cells = []; for (const col of [...plan.o.betCols, ...plan.o.stakeCols]) if (col.n) for (let c = 0; c < s.dims.cols; c++) if (spaceOccupied(s, col.r, c)) cells.push(ref(s, col.r, c));
     yield step(b, tx('feed.restores', { name: s.name, tricks: got.tricks, dice: got.dice, bet: plan.o.betColsOcc, betOf: plan.o.betCols.length, stake: plan.o.stakeColsOcc, stakeOf: plan.o.stakeCols.length })
 , cells, 'bonus');
+    if (got.revived) yield step(b, tx('feed.revived', { name: s.name, n: got.revived }), [], 'bonus');
   })()), cxs);
 }
 // A stat as it stands this turn: the class's base, what gear and the run add (jacket, cards, rest, floor), and each
@@ -766,6 +810,24 @@ export function draw(b, s, uid, ontoUid = null) {
   const Q = QDIE[trick.q]; if (Q) e.qroll = s.rolled['q' + uid] ?? (s.rolled['q' + uid] = 1 + b.rng.int(Q.faces)); // the same roll if drawn again this turn
   s.run.push(e); s.used.draw++;
   return e;
+}
+// Take the top copy off a stack to play on its own (while the stack is only shown: no bid, no dice). It costs nothing:
+// the copy was already drawn. It can be stacked again by putting it back in the Book and drawing it onto its twin.
+export function canUnstack(b, s, uid) {
+  const e = s.run.find((x) => x.uid === uid); if (!e?.stack?.length) return tx('feed.unstack-none');
+  if (b.phase !== 'draw' && b.phase !== 'bid') return tx('feed.unstack-when');
+  if (e.state !== 'shown' || e.dice.length) return tx('feed.that-trick-has-dice');
+  return null;
+}
+export function unstack(b, s, uid) {
+  if (canUnstack(b, s, uid)) return null;
+  const e = s.run.find((x) => x.uid === uid), top = e.trick, L = (e.layers || []).shift() || { drawn: e.drawn, bookAt: e.bookAt };
+  e.trick = e.stack.shift();
+  // the stack answers to its first-drawn copy's uid (it is still in the stack), so the copy taken off uses its own
+  const n = { uid: top.uid, trick: top, dice: [], bid: [], bidValue: 0, target: null, state: 'shown', stack: [], lingerLeft: 0, drawn: L.drawn, bookAt: L.bookAt };
+  const Q = QDIE[top.q]; if (Q) n.qroll = s.rolled['q' + top.uid] ?? (s.rolled['q' + top.uid] = 1 + b.rng.int(Q.faces));
+  s.run.splice(s.run.indexOf(e) + 1, 0, n);
+  return n;
 }
 // Click a trick drawn this turn to put it back in the Book, while the Draw phase is open.
 export function canUndraw(b, s, uid) {
@@ -887,7 +949,7 @@ export function unplace(b, s, dieId) { if (!canMove(b, s, dieId)) return null; c
 export function bidChip(s, r, c) {
   const cell = s.grid[r]?.[c]; if (!cell || !cell.chips.length || cell.chips.some((ch) => ch.kind === 'frost')) return null;
   const top = lifted(cell) ? cell.chips.find((ch) => !isHazard(ch)) : cell.chips[cell.chips.length - 1]; // a lifted stack bids from the bottom
-  return top && isPayable(top) && !top.gold && !stuckIce(top, cell) ? top : null;
+  return top && isBiddable(top) && !top.gold && !stuckIce(top, cell) ? top : null;
 }
 // A trick can take any number of bids this turn (one chip per bid); their value adds to its effect.
 export function canBid(b, s, e, r, c) {
@@ -901,7 +963,7 @@ export function bid(b, s, e, r, c) {
   if (canBid(b, s, e, r, c)) return null;
   const ch = bidChip(s, r, c); s.grid[r][c].chips.splice(s.grid[r][c].chips.indexOf(ch), 1);
   ch.from = { r, c, base: lifted(s.grid[r][c]) };
-  e.bid.push(ch); e.bidValue += ch.value; e.state = 'bid'; s.used.bid++; if (ch.shop === 'upgrade') e.upBoost = (e.upBoost || 0) + 1;
+  e.bid.push(ch); e.bidValue += bidVal(ch); e.state = 'bid'; s.used.bid++; if (ch.shop === 'upgrade') e.upBoost = (e.upBoost || 0) + 1;
   if (!e.target) e.target = validTargets(b, s, e)[0] || null;
   return ch;
 }
@@ -911,12 +973,18 @@ export function canUnbid(b, s, e, chipId) {
   if (!e || e.state !== 'bid' || !e.bid.some((ch) => ch.id === chipId)) return tx('feed.that-chip-was-not');
   return null;
 }
+// a chip taken back from a bid goes to the stack it came from (the Bet if that stack is full); a Debt marker goes
+// back on its stack whatever its height
+function bidHome(b, s, ch, from) {
+  const cell = from && s.grid[from.r]?.[from.c];
+  if (ch.kind === 'debt') { if (cell) setDebt(b, cell, debtOf(cell) + ch.value); return; }
+  if (cell && capacityLeft(s, cell) > 0 && !cell.hole) { if (from.base) cell.chips.unshift(ch); else pushChip(cell, ch); } else addToMeter(b, s, [ch]);
+}
 export function unbid(b, s, e, chipId) {
   if (canUnbid(b, s, e, chipId)) return null;
   const ch = e.bid.splice(e.bid.findIndex((x) => x.id === chipId), 1)[0], from = ch.from; delete ch.from;
-  const cell = from && s.grid[from.r]?.[from.c];
-  if (cell && capacityLeft(s, cell) > 0 && !cell.hole) { if (from.base) cell.chips.unshift(ch); else pushChip(cell, ch); } else addToMeter(b, s, [ch]);
-  e.bidValue -= ch.value; s.used.bid--; if (ch.shop === 'upgrade') e.upBoost = Math.max(0, (e.upBoost || 0) - 1);
+  bidHome(b, s, ch, from);
+  e.bidValue -= bidVal(ch); s.used.bid--; if (ch.shop === 'upgrade') e.upBoost = Math.max(0, (e.upBoost || 0) - 1);
   if (!e.bid.length) { e.state = 'shown'; e.target = null; }
   return ch;
 }
@@ -927,7 +995,7 @@ export function handChips(s, picks) {
   for (const { r, c } of picks) {
     const cell = s.grid[r]?.[c], k = taken.get(r + ':' + c) || 0; if (!cell || cell.chips.some((ch) => ch.kind === 'frost')) return null;
     const order = lifted(cell) ? cell.chips.filter((x) => !isHazard(x)) : cell.chips.slice().reverse(), ch = order[k];
-    if (!ch || !isPayable(ch) || ch.gold || stuckIce(ch, cell)) return null;
+    if (!ch || !isBiddable(ch) || ch.gold || stuckIce(ch, cell)) return null;
     out.push({ r, c, ch }); taken.set(r + ':' + c, k + 1);
   }
   return out;
@@ -938,7 +1006,7 @@ export function canBidMany(b, s, e, picks) {
   if (e.state === 'play') return tx('table.that-trick-is-already');
   if (s.used.bid + picks.length > tipOf(s, 'ingenuity')) return tx('feed.you-have-left-this', { max: Math.max(0, tipOf(s, 'ingenuity') - s.used.bid), tipOf: tipOf(s, 'ingenuity') - s.used.bid });
   const hand = handChips(s, picks); if (!hand) return tx('table.only-uncovered-standard-or');
-  if (worth(s) - sum(hand, (x) => x.ch.value) <= 0) return tx('feed.that-would-bid-your');
+  if (worth(s) - sum(hand, (x) => bidVal(x.ch)) <= 0) return tx('feed.that-would-bid-your');
   return null;
 }
 // Bid a whole hand on one trick at once: each chip is a bid.
@@ -949,7 +1017,7 @@ export function bidMany(b, s, e, picks) {
 // Undo: back to where the current phase opened (or, in the Roll phase, to just after the throw).
 export function resetPlan(b, s) {
   const snap = clone(s.snap);
-  s.grid = snap.grid; s.run = snap.run; s.book = snap.book; s.pouch = snap.pouch; s.tray = snap.tray; s.used = snap.used; s.thrown = snap.thrown; s.pick = snap.pick || { dice: [], flips: [] }; s.turnBonus = snap.turnBonus; s.food = snap.food;
+  s.grid = snap.grid; s.run = snap.run; s.book = snap.book; s.pouch = snap.pouch; s.tray = snap.tray; s.used = snap.used; s.thrown = snap.thrown; s.pick = snap.pick || { dice: [], flips: [] }; s.turnBonus = snap.turnBonus; s.food = snap.food; s.revive = snap.revive || [];
 }
 export const needsTarget = (e) => TRICKS[e.trick.id].approach !== 'none' && (e.dice.length > 0 || e.state !== 'shown');
 export function targetSide(b, s, def) { return def.side === 'opp' ? b.sides[1 - s.idx] : def.side === 'self' ? s : null; }
@@ -1027,17 +1095,22 @@ export function bonusMet(s, e) {
 // changed value, the multiplier (quality and print), Last call, a doubling bonus. Boost and Enfeeble join when the
 // trick plays, so the card shows them as they stand now.
 const bidOf = (e) => (e.state === 'play' ? sum(e.paid || []) : e.bidValue) || 0;
+// a trick brought back with a bigger chip than it needed carries the difference as a base effect on its next play
+// (less than it needed: a penalty). See revive.
+export const baseOf = (e) => e?.trick?.base || 0;
+// bid on at all this turn (a 0 or negative bid still plays the trick)
+const isBid = (e) => e.state === 'bid' || e.state === 'play';
 export function totalParts(s, e) {
   const def = TRICKS[e.trick.id], inv = def.type === 'investment';
   const dice = sum(e.dice, (d) => d.value), bid = bidOf(e), power = inv ? 0 : powerAhead(s), venge = def.vengeance ? s.paidLast || 0 : 0;
   const mult = inv ? investMult(effTrick(e)) : trickMult(effTrick(e)), heatX = def.type === 'expense' ? s.heat || 1 : 1, double = bonusMet(s, e) && def.bonus.k === 'double';
-  return { dice: e.dice.map((d) => d.value), diceSum: dice, bid, power, venge, plus: misPlus(e.trick), mult, heat: heatX, double, total: previewTotal(s, e),
+  return { dice: e.dice.map((d) => d.value), diceSum: dice, bid, base: baseOf(e), power, venge, plus: misPlus(e.trick), mult, heat: heatX, double, total: previewTotal(s, e),
     turns: (e.stack || []).length, stack: 1 + (e.stack || []).length };
 }
 // what a shown trick would do right now (for previews and the AI): nothing until it is bid on
 export function previewTotal(s, e) {
-  const def = TRICKS[e.trick.id]; if (!e.dice.length && !bidOf(e)) return 0;
-  const raw = sum(e.dice, (d) => d.value) + bidOf(e) + (def.type === 'investment' ? 0 : powerAhead(s)) + (def.vengeance ? s.paidLast || 0 : 0) + misPlus(e.trick);
+  const def = TRICKS[e.trick.id]; if (!e.dice.length && !bidOf(e) && !(isBid(e) && baseOf(e))) return 0;
+  const raw = sum(e.dice, (d) => d.value) + bidOf(e) + baseOf(e) + (def.type === 'investment' ? 0 : powerAhead(s)) + (def.vengeance ? s.paidLast || 0 : 0) + misPlus(e.trick);
   const m = def.type === 'investment' ? investMult(effTrick(e)) : trickMult(effTrick(e));
   return Math.max(0, Math.round(raw * m * (def.type === 'expense' ? s.heat || 1 : 1))) * (bonusMet(s, e) && def.bonus.k === 'double' ? 2 : 1);
 }
@@ -1453,7 +1526,7 @@ function* playChips(b, s, e, def, x) {
 // older rule: the roll effect once for each die, each worth that die (the bid's value joins the first).
 function* play(b, s, e, opt = {}) {
   const def = TRICKS[e.trick.id], o = b.sides[1 - s.idx], inv = def.type === 'investment', reprint = e.trick.rar === 'reprint';
-  if (!e.dice.length && !bidOf(e) && !opt.instance) return;
+  if (!e.dice.length && !bidOf(e) && !baseOf(e) && !opt.instance) return;
   if (opt.forgotten) { yield step(b, tx('feed.s-is-forgotten-s', { name: s.name, name2: def.name, join: e.dice.map((d) => d.value).join('+') || '0', name3: o.name }), [], 'miss'); return; }
   if (reprint && !opt.instance && e.dice.length > 1) {
     const bonus = bonusMet(s, e) ? def.bonus.k : null;
@@ -1467,7 +1540,8 @@ function* play(b, s, e, opt = {}) {
   const vals = e.dice.map((d) => (!own && fz.bend != null ? fz.bend : d.value));
   const bonus = opt.bonus !== undefined ? opt.bonus : bonusMet(s, e) ? def.bonus.k : null;
   const bidV = opt.bid ?? bidOf(e);
-  let total = sum(vals) + bidV + misPlus(e.trick);
+  const baseV = opt.instance && opt.bid === 0 ? 0 : baseOf(e); // a Reprint's dice play apart: the base rides with the first
+  let total = sum(vals) + bidV + baseV + misPlus(e.trick);
   if (!inv) { total += fz.boost - fz.enfeeble + 0 + (def.type === 'expense' ? fz.press : 0) + (def.vengeance ? s.paidLast || 0 : 0); }
   total = Math.max(0, Math.round(total * (inv ? investMult(effTrick(e)) : trickMult(effTrick(e)) * fz.mul) * (def.type === 'expense' ? heat(b.turn) : 1)));
   if (bonus === 'double') total *= 2;
@@ -2159,6 +2233,8 @@ function* sidePhase(b, s, type, cx, keep = () => true, firstPass = false) {
     cx.uid = ec.e.uid; yield* play(b, s, ec.e, { again: 'Lingering' }); ec.left--; }
   s.echoes = s.echoes.filter((x) => x.left > 0);
 }
+// a bid goes to the House: into the Pit as it was; a Debt marker is simply cleared
+function payBid(b, s, ch) { delete ch.from; if (ch.kind === 'debt') { b.fx[ch.id] = 'void'; return; } b.fx[ch.id] = 'house'; toPit(b, s.idx, ch, 'bid'); }
 export function* resolve(b) {
   b.phase = 'resolve';
   // bids go to the House; a stack of copies of a trick plays one copy a turn, so it lingers a turn per copy under the top
@@ -2166,8 +2242,10 @@ export function* resolve(b) {
   for (const s of b.sides) for (const e of s.run) if (e.state === 'bid') {
     e.lingerLeft = (e.stack || []).length; e.state = 'play';
     e.trick.wear = Math.max(0, (e.trick.wear ?? WEAR.good) - 1); // each play wears the trick (its condition, not its power)
-    for (const ch of e.bid) { b.fx[ch.id] = 'house'; delete ch.from; toPit(b, s.idx, ch, 'bid'); } e.paid = e.bid.map((ch) => ch.value); s.bidsPaid += e.bidValue; e.bid = []; any = true;
+    for (const ch of e.bid) payBid(b, s, ch); e.paid = e.bid.map(bidVal); s.bidsPaid += Math.max(0, e.bidValue); e.bid = []; any = true;
   }
+  // chips bid on tapped tricks go to the House with the rest; the tricks come back when the turn's restore is called
+  for (const s of b.sides) for (const x of s.revive || []) { payBid(b, s, x.ch); s.bidsPaid += Math.max(0, bidVal(x.ch)); x.paid = true; any = true; }
   b.ctx = { phase: 'bids' };
   if (any) yield step(b, tx('feed.the-house-collects-the'), [], 'bid');
   const plays = []; for (const s of b.sides) for (const e of s.run) if (e.state === 'play') plays.push({ s, e });
@@ -2193,6 +2271,7 @@ export function* resolve(b) {
   // finished tricks and their dice tap: they wait in the tapped piles until restored (flipped chips still come home)
   let done = 0; const at = b.tapClock = (b.tapClock || 0) + 1; // one stamp for everything tapped in this action
   for (const { s, e } of plays) {
+    delete e.trick.base; // a base effect lasts one play
     s.tapped.tricks.push({ trick: e.trick, at }); done++; // the copy that played taps
     if (e.stack?.length) { e.trick = e.stack.shift(); e.lingerLeft = e.stack.length; continue; } // the next copy plays next turn, with the same roll and target
     s.run.splice(s.run.indexOf(e), 1);

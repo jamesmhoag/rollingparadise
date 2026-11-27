@@ -10,7 +10,7 @@ function temperOf(s) { const t = behaveOf(s).temper, low = s.startWorth && B.wor
 function cheapestBidSpot(s) {
   let best = null;
   for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.dims.cols; c++) {
-    const ch = B.bidChip(s, r, c); if (!ch) continue;
+    const ch = B.bidChip(s, r, c); if (!ch || ch.kind === 'debt') continue; // it does not weaken its own trick to clear a Debt
     const score = ch.value * 100 - (ch.kind === 'opp' ? 50 : 0) - r;
     if (!best || score < best.score) best = { r, c, ch, score };
   }
@@ -173,7 +173,9 @@ function planBid(b, s) {
   // one bid is required each turn: the cheapest chip on the most useful trick
   if (!s.used.bid && B.canAct(b, s)) {
     const e = s.run.filter((x) => x.state !== 'play').sort((x, y) => fed(y) - fed(x) || prio(x) - prio(y))[0];
-    const spot = B.biddable(s).sort((x, y) => x.ch.value - y.ch.value)[0];
+    const spots = B.biddable(s).sort((x, y) => x.ch.value - y.ch.value), spot = spots.find((x) => x.ch.kind !== 'debt') || spots[0];
     if (e && spot) B.bid(b, s, e, spot.r, spot.c);
+    // nothing on the Run to bid on: bring a tapped trick back, with the smallest chip that covers its quality level
+    else if (!e && spot) { const t = B.revivable(b, s)[0], fit = spots.find((x) => x.ch.kind !== 'debt' && B.bidVal(x.ch) >= B.reviveCost(t || {})) || spot; if (t) B.revive(b, s, t.uid, fit.r, fit.c); }
   }
 }

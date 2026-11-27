@@ -131,7 +131,6 @@ export const dress3d = (el, d, value) => { if (typeof document !== 'undefined' &
 export const dieEl = (d, value, cls = '') => { const el = h('span', { class: `die static ${d.type} ${dieClass(d)} ${cls}`, style: dieStyle(d) }, h('i', { text: value ?? d.type.slice(1) }), dieMarks(d), dieDyes(d)); el._die = d; dress3d(el, d, value); return el; };
 
 // what a Misprint or a Reprint plays differently (always shown: it changes the rules)
-export const printRule = (t) => (t.rar === 'misprint' ? tx('parts.misprint', { misText: D.misText(t) }) : t.rar === 'reprint' ? tx('parts.reprint', { REPRINT: D.REPRINT[D.TRICKS[t.id]?.type] || '' }) : t.foil ? tx('parts.foil-rule') : '');
 // a trick's quality and print as classes on whatever shows it (trickcard.js draws them)
 export const trickLook = (t) => printCls(t);
 // the words for a trick's quality and print: its numeral, then the print if it is rare ("III Foil", "II Misprint")

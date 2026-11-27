@@ -5,7 +5,7 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const STOCK = ['sim', 'fieldhelp', 'rollers', 'signs', 'ascent', 'flip', 'phases', 'chips', 'round13', 'tilts', 'round15', 'round16', 'round17', 'tuning', 'round18', 'text', 'build',
+const STOCK = ['sim', 'round19', 'fieldhelp', 'rollers', 'signs', 'ascent', 'flip', 'phases', 'chips', 'round13', 'tilts', 'round15', 'round16', 'round17', 'tuning', 'round18', 'text', 'build',
   'trickmaker', 'chipmaker', 'chipwork', 'opponents', 'tuner', 'testtable', 'paint', 'pit', 'assets', 'chipterms', 'puddle', 'guidance', 'restore', 'stacks', 'flavor', 'music'];
 const SHIPPED = ['sim', 'fieldhelp', 'ascent', 'text', 'build', 'assets', 'guidance', 'content'];
 const only = process.argv.slice(2);

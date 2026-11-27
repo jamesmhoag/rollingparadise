@@ -115,10 +115,13 @@ function atlasLayout(nFaces) { const G = Math.ceil(Math.sqrt(nFaces + 1)); retur
 
 // ---------- the faces: labels sunken into each one ----------
 const PIPS = { 1: [[0, 0]], 2: [[-1, -1], [1, 1]], 3: [[-1, -1], [0, 0], [1, 1]], 4: [[-1, -1], [1, -1], [-1, 1], [1, 1]], 5: [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]], 6: [[-1, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [1, 1]] };
+// `paint`: on a die you can see through, the pips and numbers are filled with opaque white paint (a clear recess in
+// clear glass cannot be read once the die is rolled): the paint blocks the light through it and glows a little.
 const LOOK = {
-  plastic: { ink: '#1b1622', round: 1 }, glass: { ink: '#ffffff', frost: true }, metal: { ink: '#14161c' }, sparkling: { ink: '#2a1a05', flakes: 0.9 },
-  glimmering: { ink: '#ffffff', frost: true, flakes: 0.35 }, swirling: { ink: '#ffffff', frost: true }, diamond: { ink: null, frost: true }, bone: { ink: '#4a3420', grain: true },
+  plastic: { ink: '#1b1622', round: 1 }, glass: { ink: '#ffffff', frost: true, paint: true }, metal: { ink: '#14161c' }, sparkling: { ink: '#2a1a05', flakes: 0.9 },
+  glimmering: { ink: '#ffffff', frost: true, flakes: 0.35, paint: true }, swirling: { ink: '#ffffff', frost: true, paint: true }, diamond: { ink: '#ffffff', frost: true, paint: true }, bone: { ink: '#4a3420', grain: true },
 };
+export const CLEAR = Object.keys(LOOK).filter((k) => LOOK[k].paint); // the see-through materials
 const MAPS = new Map();
 function faceMaps(type, mat, labels, F, atlas, base) {
   const key = `${type}|${mat}|${labels.join(',')}|${base}`; if (MAPS.has(key)) return MAPS.get(key);
@@ -148,6 +151,8 @@ function faceMaps(type, mat, labels, F, atlas, base) {
   const nc = document.createElement('canvas'); nc.width = nc.height = S; const nx = nc.getContext('2d'), N = nx.createImageData(S, S);
   const cc = document.createElement('canvas'); cc.width = cc.height = S; const cx2 = cc.getContext('2d'), C = cx2.createImageData(S, S);
   const rc = document.createElement('canvas'); rc.width = rc.height = S; const rx = rc.getContext('2d'), Rg = rx.createImageData(S, S);
+  const pc = look.paint ? document.createElement('canvas') : null, px2 = pc ? (pc.width = pc.height = S, pc.getContext('2d')) : null, Pt = pc ? px2.createImageData(S, S) : null; // paint: white where the recess is
+  const tc = look.paint ? document.createElement('canvas') : null, tx2 = tc ? (tc.width = tc.height = S, tc.getContext('2d')) : null, Tr = tc ? tx2.createImageData(S, S) : null; // light through: none where it is painted
   const b = hexRGB(base), ink = look.ink ? hexRGB(look.ink) : null, strength = 3.2;
   for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
     const i = y * S + x, h = (xx, yy) => H[(Math.min(S - 1, Math.max(0, yy)) * S + Math.min(S - 1, Math.max(0, xx))) * 4] / 255;
@@ -159,17 +164,20 @@ function faceMaps(type, mat, labels, F, atlas, base) {
     if (look.grain) { const gr = (Math.sin(x * 0.07 + Math.sin(y * 0.011) * 9) * 0.5 + 0.5) * 0.06; col = mix3(col, [120, 90, 50], gr); }
     C.data[i * 4] = col[0]; C.data[i * 4 + 1] = col[1]; C.data[i * 4 + 2] = col[2]; C.data[i * 4 + 3] = 255;
     const rough = look.frost ? 0.08 + inside * 0.7 : 0.3 + inside * 0.3; Rg.data[i * 4 + 1] = rough * 255; Rg.data[i * 4] = Rg.data[i * 4 + 2] = 0; Rg.data[i * 4 + 3] = 255;
+    if (Pt) { const on = Math.min(1, inside * 1.6) * 255; Pt.data[i * 4] = Pt.data[i * 4 + 1] = Pt.data[i * 4 + 2] = on; Pt.data[i * 4 + 3] = 255;
+      Tr.data[i * 4] = Tr.data[i * 4 + 1] = Tr.data[i * 4 + 2] = 255 - on; Tr.data[i * 4 + 3] = 255; }
   }
-  nx.putImageData(N, 0, 0); cx2.putImageData(C, 0, 0); rx.putImageData(Rg, 0, 0);
+  nx.putImageData(N, 0, 0); cx2.putImageData(C, 0, 0); rx.putImageData(Rg, 0, 0); if (Pt) { px2.putImageData(Pt, 0, 0); tx2.putImageData(Tr, 0, 0); }
   const tex = (cv, srgb) => { const t = new T.CanvasTexture(cv); t.colorSpace = srgb ? T.SRGBColorSpace : T.NoColorSpace; t.anisotropy = 4; t.generateMipmaps = true; t.minFilter = T.LinearMipmapLinearFilter; return t; };
-  const out = { map: tex(cc, true), normalMap: tex(nc, false), roughnessMap: tex(rc, false) }; MAPS.set(key, out); return out;
+  const out = { map: tex(cc, true), normalMap: tex(nc, false), roughnessMap: tex(rc, false), ...(pc ? { paintMap: tex(pc, true), transmissionMap: tex(tc, false) } : {}) }; MAPS.set(key, out); return out;
 }
 const hexRGB = (c) => { const m = /^#?([0-9a-f]{6})$/i.exec(c || '') || [0, 'e8e2d4']; return [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16)); };
 const mix3 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
 // ---------- materials ----------
 function material(mat, maps, base) {
-  const c = new T.Color(base), common = { map: maps.map, normalMap: maps.normalMap, roughnessMap: maps.roughnessMap, normalScale: new T.Vector2(1, 1) };
+  const c = new T.Color(base), common = { map: maps.map, normalMap: maps.normalMap, roughnessMap: maps.roughnessMap, normalScale: new T.Vector2(1, 1),
+    ...(maps.paintMap ? { transmissionMap: maps.transmissionMap, emissive: new T.Color(0xffffff), emissiveMap: maps.paintMap, emissiveIntensity: 0.6 } : {}) };
   switch (mat) {
     case 'glass': return new T.MeshPhysicalMaterial({ ...common, color: 0xffffff, transmission: 1, thickness: 0.9, ior: 1.52, roughness: 0.04, attenuationColor: c, attenuationDistance: 2.2, specularIntensity: 1, clearcoat: 0.4, envMapIntensity: 1.8 });
     case 'metal': return new T.MeshPhysicalMaterial({ ...common, color: new T.Color(c).lerp(new T.Color(0xffffff), 0.35), metalness: 1, roughness: 0.22, envMapIntensity: 2.1, clearcoat: 0.25 });
@@ -248,6 +256,7 @@ async function pump() {
     const key = `${d.type}|${L.mat}|${labels.join(',')}|${fi}|${px}`;
     let url = IMG.get(key); if (!url) { url = render(d, labels, frontOf(d.type, fi), px).toDataURL('image/png'); IMG.set(key, url); }
     el.style.setProperty('--r3d', `url("${url}")`); el.classList.add('r3d');
+    ambient(el, d, labels, fi);
   }
   if (queue.length) requestAnimationFrame(pump); else busy = false;
 }
@@ -259,4 +268,53 @@ export function live(el, d, labels, size) {
   const draw = (m) => { last = m; if (!R3) return; ctx2.clearRect(0, 0, px, px); ctx2.drawImage(render(d, labels, m, px, performance.now() / 1000), 0, 0); if (!on) { on = true; el.append(cv); el.classList.add('r3d-on'); } };
   load().then(() => { if (last) draw(last); }).catch(() => {});
   return { draw };
+}
+
+// ---------- dice at rest are still lit ----------
+// A die lying in the Pouch, the Roll or on a trick is the same model as the one in your hand, so it keeps moving in
+// the light: it rocks a touch, glitter and facets glint, a swirl keeps turning. Every die on screen is redrawn in
+// turn, a few each frame (never more than AMB_MS of one), the one under the pointer every frame. Until a die's turn
+// comes its last picture stays, so nothing ever blanks.
+const AMB = [], AMB_PX = 128, AMB_MS = 5; let ambAt = 0, ambRun = false;
+export const ambientOn = () => !(typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) && globalThis.RP_STILL_DICE !== true;
+function ambient(el, d, labels, fi) {
+  if (!ambientOn()) return;
+  el._amb = { d, labels, base: frontOf(d.type, fi), ph: (AMB.length * 2.399) % 6.283, cv: el._amb?.cv || null };
+  if (!AMB.includes(el)) AMB.push(el);
+  if (!ambRun) { ambRun = true; requestAnimationFrame(ambTick); }
+}
+function ambDraw(el, t) {
+  const a = el._amb; if (!a) return;
+  if (!a.cv) { a.cv = document.createElement('canvas'); a.cv.width = a.cv.height = AMB_PX; a.cv.className = 'r3d-amb'; a.ctx = a.cv.getContext('2d'); }
+  if (!a.cv.isConnected) { el.append(a.cv); el.classList.add('r3d-amb-on'); }
+  const hov = el.matches(':hover'), k = hov ? 2.2 : 1; // under the pointer it turns further, to show itself off
+  const m = new DOMMatrix().rotateSelf(Math.sin(t * 0.9 + a.ph) * 4 * k, Math.cos(t * 0.7 + a.ph) * 6 * k, Math.sin(t * 0.5 + a.ph) * 1.5 * k).multiply(a.base);
+  a.ctx.clearRect(0, 0, AMB_PX, AMB_PX); a.ctx.drawImage(render(a.d, a.labels, m, AMB_PX, t), 0, 0);
+}
+const shown = (el) => el.isConnected && el.offsetWidth > 0 && el.style.opacity !== '0';
+function ambTick(now) {
+  if (!R3 || document.hidden) { requestAnimationFrame(ambTick); return; }
+  const t = now / 1000, start = performance.now();
+  for (let k = AMB.length - 1; k >= 0; k--) { const el = AMB[k]; if (el.isConnected) el._ambGone = 0; else if ((el._ambGone = (el._ambGone || 0) + 1) > 240) { AMB.splice(k, 1); delete el._amb; } } // gone a few seconds: forgotten
+  if (!AMB.length) { ambRun = false; return; }
+  for (const el of AMB) if (shown(el) && el.matches(':hover')) ambDraw(el, t);
+  for (let n = 0; n < AMB.length && performance.now() - start < AMB_MS; n++) { const el = AMB[ambAt++ % AMB.length]; if (shown(el) && !el.matches(':hover')) ambDraw(el, t); }
+  requestAnimationFrame(ambTick);
+}
+
+// ---------- getting ready ----------
+// Building a die the first time takes a moment (its rounded solid, its engraved faces, its material's shaders), which
+// used to land the first time you picked one up. preload builds every size in every material up front, a die at a
+// time between frames, reporting how far along it is (0 to 1); the game's opening curtain waits on it.
+export async function preload(onProgress = () => {}, { types = Object.keys(D.DICE), mats = Object.keys(LOOK), budgetMs = 9000 } = {}) {
+  try { await load(); } catch { onProgress(1); return false; }
+  const jobs = []; for (const mat of mats) for (const type of types) jobs.push({ type, mat });
+  jobs.sort((a, b) => (a.mat === D.DEFAULT_MAT ? 0 : 1) - (b.mat === D.DEFAULT_MAT ? 0 : 1)); // the dice you start with first
+  const t0 = performance.now(); let done = 0;
+  for (const j of jobs) {
+    if (performance.now() - t0 > budgetMs) break; // a slow machine is not held at the door: the rest build as they are met
+    try { const d = { type: j.type, mat: j.mat, up: [] }, labels = labelsOf(d, j.type.slice(1)); render(d, labels, frontOf(j.type, 0), AMB_PX); } catch { /* a die that will not build falls back to its CSS look */ }
+    onProgress(++done / jobs.length); await new Promise((r) => setTimeout(r, 0));
+  }
+  onProgress(1); return done === jobs.length;
 }

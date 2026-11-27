@@ -26,7 +26,13 @@ const lounge = { play: () => {}, pause: () => {}, on: () => false, touched: fals
 // the game's side: the run (whose purse pays and whose band this is) and how to take a tip from it
 const game = { run: () => null, tip: () => false };
 // what the band is doing: playing on its instruments ('band') or chips ('chip'), or silent
-export const bandOf = (run) => (run ? (run.band ||= { mode: 'band', silent: false }) : { mode: 'band', silent: false });
+// What the band was last doing is also kept in this browser: it is what plays where there is no run to ask (the title,
+// Build mode, the test table) and what a new run's band starts as, so music you switched off stays off.
+const BAND = 'rollingparadise.band';
+const lastBand = () => { try { const b = JSON.parse(localStorage.getItem(BAND) || 'null'); return { mode: b?.mode === 'chip' ? 'chip' : 'band', silent: !!b?.silent }; } catch { return { mode: 'band', silent: false }; } };
+const keepBand = (b) => { try { localStorage.setItem(BAND, JSON.stringify({ mode: b.mode, silent: !!b.silent })); } catch { /* storage unavailable */ } };
+const free = { band: null }; // the band with no run: yours to switch for nothing
+export const bandOf = (run) => (run ? (run.band ||= lastBand()) : (free.band ||= lastBand()));
 const mode = () => { const b = bandOf(game.run()); return b.silent ? 'off' : b.mode; };
 // a tune's or a loop layer's file in a sound
 export const srcOf = (tune, m = mode()) => (m === 'chip' && tune.chip ? tune.chip : tune.src);
@@ -115,9 +121,11 @@ export function initMusic(stage, { run = () => null, tip = () => false } = {}) {
   if (!MUSIC.length || typeof Audio === 'undefined') return;
   Object.assign(game, { run, tip });
   let order = setOrder(), at = 0, audio = null, sounding = null;
+  let away = false; // the tab is hidden
   const on = () => mode() !== 'off', now = () => order[at];
-  const next = () => { at++; if (at >= order.length) { order = setOrder(); at = 0; } current = now(); audio.src = srcOf(current); audio.play().catch(() => {}); };
+  const next = () => { at++; if (at >= order.length) { order = setOrder(); at = 0; } current = now(); audio.src = srcOf(current); if (on() && !away) audio.play().catch(() => {}); };
   function play() {
+    if (!on() || away) return; // never start a band that is switched off, or one nobody is in the room to hear
     if (!audio) { audio = new Audio(); audio.volume = VOL; audio.preload = 'auto'; audio.addEventListener('ended', next);
       audio.addEventListener('playing', () => { playing = true; }); audio.addEventListener('pause', () => { playing = false; }); }
     current = now(); const src = srcOf(current);
@@ -128,7 +136,7 @@ export function initMusic(stage, { run = () => null, tip = () => false } = {}) {
     audio.play().catch(() => {});
   }
   Object.assign(lounge, { play, pause: () => audio?.pause(), on });
-  const start = () => (loop ? startLoop(loop) : play()); // whatever should be playing: the bout's loop, or the band
+  const start = () => { if (!on() || away) return; return loop ? startLoop(loop) : play(); }; // whatever should be playing: the bout's loop, or the band
   // make what is sounding match what the band is doing (after a tip, or when a new run brings a fresh band)
   function sync() {
     if (!lounge.touched) return mark();
@@ -140,6 +148,15 @@ export function initMusic(stage, { run = () => null, tip = () => false } = {}) {
     mark();
   }
   setInterval(sync, 1000);
+  // Leaving the tab pauses whatever is sounding; coming back starts only what should be playing now. (Browsers hold
+  // timers and audio differently in a hidden tab: without this a switched-off band could come back on return.)
+  document.addEventListener('visibilitychange', () => {
+    away = document.hidden;
+    if (away) { audio?.pause(); if (loop?.live) silence(loop, 0.2); if (ac?.state === 'running') ac.suspend().catch(() => {}); return; }
+    if (!lounge.touched) return;
+    sounding = mode(); if (sounding !== 'off') start(); else { audio?.pause(); if (loop?.live) silence(loop, 0.1); }
+    mark();
+  });
 
   // the buttons: what each costs, greyed when the purse cannot cover it (or there is no run to pay from)
   const P = TUNING.band, purse = () => game.run()?.purse ?? -1;
@@ -153,8 +170,11 @@ export function initMusic(stage, { run = () => null, tip = () => false } = {}) {
   // each button's price is in its hover; requests, skips and swaps need the band playing (starting them is its own tip)
   const cost = (what, ok = true) => t('music.price', { price: cents(P[what]) }) + (ok ? why(P[what]) : t('music.onBreak'));
   const can = (what, playingToo = true) => !!game.run() && purse() >= P[what] && (!playingToo || on());
-  const fav = btn('♡', () => { const ti = nowTitle(); setFavorite(ti, !favorites().has(ti)); mark(); },
-    () => t(favorites().has(nowTitle()) ? 'music.unfav' : 'music.fav', { title: nowTitle(), playing: playingLine() }), 'small band-btn fav-btn');
+  // hearting a tune is free unless the band charges for it (TUNING.band.favorite); taking a heart off is always free
+  const favCost = () => P.favorite || 0;
+  const heart = (ti) => { const on = !favorites().has(ti); if (on && favCost() > 0 && !pay('favorite', ti)) return false; setFavorite(ti, on); return true; };
+  const fav = btn('♡', () => { heart(nowTitle()); mark(); },
+    () => t(favorites().has(nowTitle()) ? 'music.unfav' : 'music.fav', { title: nowTitle(), playing: playingLine() }) + (!favorites().has(nowTitle()) && favCost() > 0 ? cost('favorite') : ''), 'small band-btn fav-btn');
   // skip: in the lounge, on to the next tune; at a table, on to the next loop of its kind (tables' or High Rollers')
   const nextLoop = () => { const same = LOOPS.filter((L) => L.kind === loop.L.kind); return same[(same.indexOf(loop.L) + 1) % same.length]; };
   const upNext = () => (loop ? nextLoop() : order[(at + 1) % order.length]);
@@ -165,16 +185,17 @@ export function initMusic(stage, { run = () => null, tip = () => false } = {}) {
   }, () => t('music.skip', { title: upNext().title }) + cost('skip', on()), 'small band-btn');
   const req = btn('♫', () => openSetlist(), () => t('music.request', { playing: playingLine() }) + cost('request', on()), 'small band-btn');
   const swap = btn('⇄', () => {
-    if (!on() || !pay('swap', '')) return; const b = bandOf(game.run()); b.mode = b.mode === 'chip' ? 'band' : 'chip';
+    if (!on() || !pay('swap', '')) return; const b = bandOf(game.run()); b.mode = b.mode === 'chip' ? 'band' : 'chip'; keepBand(b);
     toast(t(b.mode === 'chip' ? 'music.toChips' : 'music.toBand')); sync();
   }, () => t(bandOf(game.run()).mode === 'chip' ? 'music.swapToBand' : 'music.swapToChip') + cost('swap', on()), 'small band-btn');
   // the band on and off: each way is a tip
+  // with no run (the title, Build mode) there is no purse to tip from, so the switch is free there
   const power = btn('✕', () => {
-    const what = on() ? 'stop' : 'start'; if (!pay(what, '')) return;
-    bandOf(game.run()).silent = what === 'stop'; toast(t(what === 'stop' ? 'music.hushed' : 'music.back')); sync();
-  }, () => t(on() ? 'music.stop' : 'music.start', { playing: playingLine() }) + cost(on() ? 'stop' : 'start'), 'small band-btn');
+    const what = on() ? 'stop' : 'start'; if (game.run() && !pay(what, '')) return;
+    const b = bandOf(game.run()); b.silent = what === 'stop'; keepBand(b); toast(t(what === 'stop' ? 'music.hushed' : 'music.back')); sync();
+  }, () => t(on() ? 'music.stop' : 'music.start', { playing: playingLine() }) + (game.run() ? cost(on() ? 'stop' : 'start') : t('music.freeHere')), 'small band-btn');
   function mark() {
-    setOn(skip, can('skip')); setOn(req, can('request')); setOn(swap, can('swap')); setOn(power, can(on() ? 'stop' : 'start', false));
+    setOn(skip, can('skip')); setOn(req, can('request')); setOn(swap, can('swap')); setOn(power, !game.run() || can(on() ? 'stop' : 'start', false));
     power.textContent = on() ? '✕' : '▶';
     const f = favorites().has(nowTitle()); fav.textContent = f ? '♥' : '♡'; fav.classList.toggle('on', f);
     swap.classList.toggle('chiptune', bandOf(game.run()).mode === 'chip');
@@ -184,7 +205,7 @@ export function initMusic(stage, { run = () => null, tip = () => false } = {}) {
     if (!can('request')) return toast(t('music.cantTip'), 'warn');
     const list = setlist(loop ? LOOPS : MUSIC), favs = favorites();
     const rowOf = (x) => h('div', { class: 'row between setlist-row' },
-      btn(favs.has(x.title) ? '♥' : '♡', (e) => { const f = !favorites().has(x.title); setFavorite(x.title, f); e.currentTarget.textContent = f ? '♥' : '♡'; mark(); }, null, 'small fav-btn' + (favs.has(x.title) ? ' on' : '')),
+      btn(favs.has(x.title) ? '♥' : '♡', (e) => { const el = e.currentTarget; if (!heart(x.title)) return; const f = favorites().has(x.title); el.textContent = f ? '♥' : '♡'; el.classList.toggle('on', f); mark(); }, null, 'small fav-btn' + (favs.has(x.title) ? ' on' : '')),
       btn(h('span', {}, h('b', { text: x.title }), ' ', h('span', { class: 'dim', text: loop ? t(x.kind === 'boss' ? 'music.kindBoss' : 'music.kindBout') : x.by })), () => request(x), null, 'setlist-pick'));
     openPanel(h('div', {}, h('h2', { text: t('music.setlist') }), h('p', { class: 'sub', text: t('music.setlistSub', { price: cents(P.request) }) }),
       h('div', { class: 'col setlist' }, ...list.map(rowOf))));
