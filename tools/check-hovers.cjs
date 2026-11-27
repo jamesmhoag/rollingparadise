@@ -36,7 +36,7 @@ const server = http.createServer((req, res) => {
   const step = async (where, fn, wait = 900) => { try { await fn(); await p.waitForTimeout(wait); await take(where); } catch (e) { errors.push(`${where}: ${e.message.split('\n')[0]}`); } };
   const ev = (fn, arg) => p.evaluate(fn, arg);
 
-  await p.goto(`http://localhost:${PORT}/?debug`); await p.waitForTimeout(1500); await take('title');
+  await p.goto(`http://localhost:${PORT}/?debug&curtain=0`); // (no opening curtain: it is checked by hand) await p.waitForTimeout(1500); await take('title');
   await step('select', () => ev(() => window.RP.nav.select()));
   await step('library', () => ev(() => window.RP.nav.title()).then(() => p.waitForTimeout(500)).then(() => p.getByRole('button', { name: 'Library' }).first().click()));
   for (const tab of await p.locator('.lib-tabs button, .tabs button').all()) await step('library tab', () => tab.click(), 250);
@@ -55,7 +55,7 @@ const server = http.createServer((req, res) => {
   await step('ascent', () => ev(() => { const { app, R } = window.RP; R.buildAscent?.(app.run, app.meta); window.RP.nav.ascent(); }));
   await step('alley', () => ev(() => { window.RP.app.run.phase = 'alley'; window.RP.nav.alley(); }), 4000);
   await step('summary', () => ev(() => { const { app, R } = window.RP; R.endRun?.(app.run, app.meta, 'You', 'alley'); window.RP.nav.summary(); }), 1200);
-  for (const tool of ['tricks', 'chips', 'classes', 'rollers', 'roster', 'shops', 'cards', 'tuner', 'test', 'tables']) await step(`build ${tool}`, () => ev((t) => window.RP.nav.build({ tool: t }), tool));
+  for (const tool of ['tricks', 'chips', 'classes', 'rollers', 'roster', 'shops', 'cards', 'gear', 'tuner', 'test', 'tables']) await step(`build ${tool}`, () => ev((t) => window.RP.nav.build({ tool: t }), tool));
   await step('test table', () => ev(() => window.RP.nav.test({ cls: 'hustler', floor: 2, q: 1, tricks: ['charge', 'block'], dice: { d6: 6 }, purse: 300, roster: null, rules: false })), 2000);
 
   await b.close(); server.close();

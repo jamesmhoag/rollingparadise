@@ -319,3 +319,36 @@ Every number below is a variable in `js/data.js` (`CHIP_TIERS`, `SHOP_CHIPS[id].
 ### Still to build
 - **Resource files (row 17):** the folder, manifest and check exist, but there are no icon, texture or material
   files yet, and ordinary chips and hazards are not in the manifest. Everything still draws with emoji and CSS.
+
+## Round 19: to confirm, and what is not built yet
+Built as proposed (say if any should change):
+1. **Bids on tapped tricks** always bring the trick back, and a chip smaller than the quality level leaves a negative
+   base effect. The alternative is that a chip under the level simply does not restore it.
+2. **Suite Keys need a pass slot.** Most wallets hold one pass, taken by the floor's own, so a Double Down's key is
+   only kept by a wallet with two or more. If the key should always be kept, say which it replaces.
+3. **Table wagers** by floor (5/10/15, 30/45/60, 150/225/300, 600/900/1200) and the High Roller's match (×1) are
+   placeholders. With the shipped content (welcome stake 0) the automated Roller rarely clears floor 1.
+4. **One quality per trick** flattens the late floors: opponents no longer play every trick at the floor's quality.
+   Their worth still grows; their multipliers do not, unless the tricks they hold are rated higher.
+5. **Trick quality rating** is unchanged (average roll × reach × how hard the Bonus is). "Effect to cost ratio" may
+   want a different formula: what counts as cost (dice count, die size, the bid)?
+6. **Losing to the High Roller** still lets you climb (not from floor 4). Should a loss at the top floor end the run,
+   or offer anything?
+
+Not built yet, or only in part:
+7. **All trick effects as chips.** Retreat, Advance, Lift, Sink and Renew are chip driven. Still on their own rules:
+   Settle, Gather, Scatter, Sweep, Bulwark, Stack Up, Stash, Expose, Rout (the sorting arrangements need a "sort"
+   action for chips), and every non-movement effect (Harden, Resist, Evade, Reflect, Freeze, Feather and the rest).
+   Which of these should become chips first, and should the sorting tricks stay as they are?
+8. **Tilt chips:** each tilt's chance curve and placement are tunable; which chips a tilt lays is still fixed in code.
+9. **Insert and remove a chosen chip** works in the test table's chip tools. The Stake painter (pre-bout, Coat
+   Check, Build) still adds to and takes from the top of a stack.
+10. **Materials** are CSS finishes on signs, cards, wallets and jackets. They are not the rendered 3D materials the
+    dice use, and a sign's symbol and crown take only a finish's colour, glint and sparkle.
+11. **A defeated sign** sparks, flickers out, greys and cracks as a whole; its tubes, bulbs and light strips do not
+    break one by one.
+12. **Tactile tricks:** stacks can be bid on and taken apart; picking a trick up and dragging it is not built.
+13. **Overlapping text:** the cases found are fixed (zone labels, the step prompt over the House sign, the pre-bout
+    bar). Others may remain: name them as you meet them.
+14. **Name plates and edging:** a plate is one fixed size and its name is fitted to it; card lettering gives way to
+    edge symbols and the border is cut round them. A sign's own text is not yet re-laid by its edging beyond that fit.

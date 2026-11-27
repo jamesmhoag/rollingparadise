@@ -3,6 +3,7 @@
 // Rollers' business cards (their traits). New discount, punch, membership, note and trading cards are made here. Each
 // card's rule is written from its numbers; its print (colours, pattern, border, symbols, ink, font) is designed here
 // with a preview. The Dodgy Corner page sets which cards turn up there and how often.
+import { FINISHES } from '../content/finishes.js';
 import { h, btn, lab, toast, guided } from './core.js';
 import { cardEl, cardRule, cardTip, shopName } from './parts.js';
 import { symbolPicker } from './neonmaker.js';
@@ -79,7 +80,11 @@ export function cardMaker(id, redraw, openTable) {
     L.edgeAt && L.edgeAt !== 'none' ? field('edge', symbolPicker(L.edge, (g) => set(LP('edge'), g)), LP('edge')) : null,
     L.edgeAt && L.edgeAt !== 'none' ? field('edgeColor', colour(LP('edgeColor'), L.edgeColor), LP('edgeColor')) : null,
     field('ink', colour(LP('ink'), L.ink), LP('ink')),
-    field('font', select(LP('font'), [['display', t('cards.font.display')], ['script', t('cards.font.script')], ['body', t('cards.font.body')]], L.font || 'display'), LP('font'))];
+    field('font', select(LP('font'), [['display', t('cards.font.display')], ['script', t('cards.font.script')], ['body', t('cards.font.body')]], L.font || 'display'), LP('font')),
+    ...['bg', 'ink'].map((part) => { const F = L.finish?.[part] || {}, put = (v) => set(['look', 'finish', part], { ...F, ...v });
+      return field(`finish.${part}`, h('span', { class: 'row wrap' }, h('select', { onchange: (e) => (e.target.value ? put({ m: e.target.value }) : set(['look', 'finish', part], null)) }, h('option', { value: '', text: t('cards.finish.print') }), ...Object.entries(FINISHES).map(([k, X]) => h('option', { value: k, text: X.name, ...(F.m === k ? { selected: 'selected' } : {}) }))),
+        F.m ? h('label', { class: 'b-check' }, h('input', { type: 'checkbox', ...(F.glint ? { checked: 'checked' } : {}), onchange: (e) => put({ glint: e.target.checked }) }), t('neon.finish.glint')) : null,
+        F.m ? h('label', { class: 'b-check' }, h('input', { type: 'checkbox', ...(F.sparkle ? { checked: 'checked' } : {}), onchange: (e) => put({ sparkle: e.target.checked }) }), t('neon.finish.sparkle')) : null), ['look', 'finish', part]); })];
   const big = cardEl(id, 'big'); big._tip = () => cardTip(id); big.classList.add('has-tip');
   return h('div', { class: 'b-maker' }, h('div', { class: 'b-fields' }, h('span', { class: 'cap', text: t('cards.rule') }), ...rule, ...design),
     h('div', { class: 'col' }, h('span', { class: 'cap', text: t('maker.preview') }), h('div', { class: 'card-preview' }, big), h('p', { class: 'sub', text: cardRule(id) }),

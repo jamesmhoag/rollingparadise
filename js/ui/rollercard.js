@@ -12,7 +12,7 @@ import { t } from '../text.js';
 export function rollerCard({ rid, v, dice, tricks, crown = null, tag = 'div', onclick = null }) {
   const X = D.ROLLERS[rid] || {}, id = X.cls, K = D.CLASSES[id]; if (!K) return h('div');
   const sign = h('div', { class: 'who me neon-sample pick-sign' }, h('div', { class: 'name nsign' }, h('b', { class: 'neon-name', text: X.name || K.name }), h('span', { class: 'neon-class', text: K.name })));
-  requestAnimationFrame(() => dressSign(sign, { ...signOf('you', X.sign), crown: crown ? { level: crown.floor, look: crownLookOf(signOf('them', D.ROSTER[crown.roster]?.sign)) } : null }, 'you'));
+  requestAnimationFrame(() => dressSign(sign, { ...signOf('you', X.sign), crown: crown ? { level: crown.floor, look: crownLookOf(signOf('them', D.ROSTER[crown.roster]?.sign)), fit: crown.fit } : null }, 'you'));
   const pc = D.primaryC(id);
   return h(tag, { class: 'pick-card roller-card', style: { '--cc': K.color }, onclick },
     sign, h('p', { class: 'sub', text: D.classRule(id) }), D.flavorOf('CLASSES', id) ? h('p', { class: 'sub flavor', text: D.flavorOf('CLASSES', id) }) : null,

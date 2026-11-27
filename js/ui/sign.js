@@ -28,6 +28,7 @@
 // Where a crown or a symbol meets the letters, its tube stops short of them with a rounded end, as a real sign's tube
 // does where it passes behind another, and picks up again on the far side. Every motion is slow and soft (well under
 // three changes a second, never fully dark) and all of them stop for players who ask their system for reduced motion.
+import { finishOn, finishSvg } from './finish.js';
 import * as D from '../data.js';
 import { SYMBOLS, symbolOf, CROWNS } from './symbols.js';
 
@@ -45,6 +46,8 @@ export const BLINKS = ['breathe', 'pulse', 'flicker', 'alternate'];
 export const MAX_PAIRS = 3;
 const PARTS = ['border', 'name', 'cls'];
 const OWN_MOTION = ['striped', 'checkered', 'gradient']; // frames whose chase is their own pattern moving
+// the parts of a sign that can be given a finish
+export const FINISH_PARTS = ['name', 'cls', 'mount', 'symbol', 'crown'];
 export const BASE_SIGN = { frame: 'plain', motion: 'chase', radius: 12, more: [], edge: 'star5', edgeAt: 'none', symbol: { on: false, id: 'star5', motion: 'breathe' }, mount: { color: '', image: '' }, blinks: {} };
 const OLD_FRAMES = { tube: ['plain', 0], double: ['plain', 1], triple: ['plain', 2], rope: ['twist', 1] };
 
@@ -59,6 +62,7 @@ export function signOf(who, own) {
   for (const k of ['nameFont', 'clsFont']) if (!SIGN_FONTS.includes(out[k])) out[k] = FONT_DEFAULT[k];
   if (!FRAMES.includes(out.frame)) out.frame = 'plain'; if (!MOTIONS.includes(out.motion)) out.motion = 'chase';
   out.more = (out.more || []).filter((p) => Array.isArray(p) && p.length === 2).slice(0, MAX_PAIRS - 1);
+  out.finish = { ...(side.finish || {}), ...(own?.finish || {}) }; // what each part is made of, when it is not plain neon (finish.js)
   out.blinks = { ...(side.blinks || {}), ...(own?.blinks || {}) };
   const old = own?.blink || side.blink; if (old?.part && old.part !== 'none' && !Object.keys(out.blinks).length) out.blinks = { [old.part]: { on: true, pattern: old.pattern || 'breathe' } };
   out.edge = symbolOf(out.edge) || [...(out.edge || '')][0] || 'star5';
@@ -313,10 +317,14 @@ function drawCrown(svg, el, spec) {
   const look = spec.crown.look || (spec.crown.colors ? { band: spec.crown.colors, prongs: spec.crown.colors, jewels: spec.crown.colors } : crownLookOf(spec));
   // set down on the letter's ink: the band's underside just touching the top of the letter where it rests (so the
   // cut round it trims the letter a little and no more), its middle over the letter's left third
-  const R0 = new DOMMatrix().rotate(CROWN_LEAN).scale(k).translate(-14, -21), w0 = Math.max(1.6, 2.1 * Math.min(1.2, k / 1.1));
+  // how its wearer has set it (the suite, when you put it on): tilted more or less, slid along the name, raised or
+  // lowered, a little bigger or smaller. Within bounds, so it always stays on the name.
+  const F = crownFit(spec.crown.fit), kf = k * F.size;
+  const R0 = new DOMMatrix().rotate(CROWN_LEAN + F.tilt).scale(kf).translate(-14, -21), w0 = Math.max(1.6, 2.1 * Math.min(1.2, kf / 1.1));
   const ink = inkOf(svg, el), band = C.band.split(/(?=M)/).filter(Boolean).flatMap((sub) => sampleSub(svg, sub)).map(([x, y]) => { const q = R0.transformPoint(new DOMPoint(x, y)); return [q.x, q.y]; });
   let ax = first.l + (first.r - first.l) * 0.32, ay = first.t + fs * 0.04;
   if (ink) { ax = ink.l + (ink.r - ink.l) * 0.3; let dy = Infinity; for (const [x, y] of band) { const top = ink.top(ax + x); if (top != null) dy = Math.min(dy, top - (y + w0 / 2) + 0.6); } if (dy < Infinity) ay = dy; }
+  ax += F.dx * fs; ay += F.dy * fs;
   const M = new DOMMatrix().translate(ax, ay).multiply(R0);
   const P = (x, y) => { const q = M.transformPoint(new DOMPoint(x, y)); return [q.x, q.y]; };
   const g = mk('g', { class: `crown crown-${lvl}` }); svg.append(g);
@@ -386,6 +394,13 @@ export function dressSign(el, spec, who) {
   const svg = spec.frame === 'none' && spec.edgeAt === 'none' ? null : mk('svg', { class: 'sign-frame', 'aria-hidden': 'true' }); if (svg) el.append(svg);
   const deco = nsign && spec.symbol?.on ? mk('svg', { class: 'sign-deco', 'aria-hidden': 'true' }) : null; if (deco) nsign.append(deco);
   const crown = nsign && spec.crown?.level ? mk('svg', { class: 'sign-crown', 'aria-hidden': 'true' }) : null; if (crown) el.append(crown);
+  // A part can be made of something instead of lit as neon: the name and the class line as letters of that material
+  // (metal, glass, glitter, diamond, leather...), the backing as a plate of it, the symbol and the crown with its light.
+  const FN = spec.finish || {};
+  finishOn(el.querySelector('.neon-name'), FN.name, 'text'); finishOn(el.querySelector('.neon-class'), FN.cls, 'text');
+  el.querySelector(':scope > .sign-mount-fin')?.remove();
+  if (FN.mount?.m) { const plate = finishOn(document.createElement('i'), FN.mount); plate.classList.add('sign-mount-fin'); el.prepend(plate); }
+  if (deco) finishSvg(deco, FN.symbol); if (crown) finishSvg(crown, FN.crown);
   let last = '';
   const redraw = () => { const w = el.offsetWidth, h = el.offsetHeight, key = `${w}x${h}`; if (key === last) return; last = key; if (svg) drawFrame(svg, spec, w, h, who); if (deco) drawDeco(deco, el, spec); if (crown) drawCrown(crown, el, spec); };
   el._signRedraw = () => { last = ''; redraw(); }; // after something inside the sign changes size (its name is fitted)
@@ -418,3 +433,8 @@ export function killSign(el) {
   }, 1250);
 }
 export function celebrateSign(el, ms = 2800) { if (!el) return; el.classList.add('sign-victory'); setTimeout(() => el.classList.remove('sign-victory'), ms); }
+
+// A crown's fit, as its wearer set it: { tilt (degrees, added to its lean), dx and dy (in letter heights: along the
+// name, and up or down), size (× its own) }, each kept within CROWN_FIT's bounds.
+export const CROWN_FIT = { tilt: [-30, 30, 1], dx: [-0.6, 3, 0.05], dy: [-0.5, 0.5, 0.02], size: [0.7, 1.5, 0.05] };
+export function crownFit(f = {}) { const c = (k, d) => { const [lo, hi] = CROWN_FIT[k], v = Number(f?.[k]); return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; }; return { tilt: c('tilt', 0), dx: c('dx', 0), dy: c('dy', 0), size: c('size', 1) }; }

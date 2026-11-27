@@ -9,6 +9,8 @@ import { traitsOf, traitsHtml } from '../traits.js';
 import { iconStyle, textureOf } from './icons.js';
 import { trickCardHtml, printCls, qMarkHtml } from './trickcard.js';
 import { SYMBOLS as SYM, symbolOf } from './symbols.js';
+import { finishOn, finishSvg } from './finish.js';
+import { walletLook, jacketLook } from '../content/finishes.js';
 import { t as tx } from '../text.js';
 
 const GLYPH = { puddle: '💧', opp: '★', block: '▣', counter: '✸', burn: '🔥', acid: '☣', shock: '⚡', corrupt: '☠', poison: '☘', boom: '💣', frost: '❄', lava: '🌋', flower: '✿', petal: '❀', clay: '▤', brick: '▦', dynamite: '🧨', tree: '🌳', wood: '▥', hard: '⛊', sticky: '◍', hive: '⬢', little: '•', egg: '🥚', hat: '🎩', doom: '☠', volcano: '🌋' };
@@ -210,18 +212,22 @@ export function cardArt(look = {}, W = 52, H = 72) {
   // the border
   const bc = L.borderColor, inset = 2.5, r = (k) => sv('rect', { x: k, y: k, width: W - 2 * k, height: H - 2 * k, rx: Math.max(1, 4 - k / 2), fill: 'none', stroke: bc });
   const B = { plain: () => [Object.assign(r(inset), {}), null], double: () => [r(inset), r(inset + 2.5)], dashed: () => [r(inset), null], dotted: () => [r(inset), null], stripes: () => [r(inset), r(inset)], notched: () => [sv('path', { d: `M${inset + 5} ${inset}H${W - inset - 5}L${W - inset} ${inset + 5}V${H - inset - 5}L${W - inset - 5} ${H - inset}H${inset + 5}L${inset} ${H - inset - 5}V${inset + 5}Z`, fill: 'none', stroke: bc }), null] }[L.border];
-  if (B) { const [a, b2] = B(); a.setAttribute('stroke-width', L.border === 'dotted' ? 1.6 : L.border === 'stripes' ? 2.2 : 1.2); if (L.border === 'dashed') a.setAttribute('stroke-dasharray', '4 2.5'); if (L.border === 'dotted') { a.setAttribute('stroke-dasharray', '0.1 3'); a.setAttribute('stroke-linecap', 'round'); }
+  // the border is cut cleanly where an edge symbol sits on it (a gap a little wider than the symbol), so the symbols are
+  // part of the border and not laid over it
+  const s7 = 6.5, edgePts = []; if (L.edge && L.edgeAt !== 'none') {
+    if (L.edgeAt === 'corners') edgePts.push([7, 7], [W - 7, 7], [7, H - 7], [W - 7, H - 7]);
+    if (L.edgeAt === 'top' || L.edgeAt === 'edge') for (let i = 0; i < 4; i++) edgePts.push([7 + (i * (W - 14)) / 3, 7]);
+    if (L.edgeAt === 'bottom' || L.edgeAt === 'edge') for (let i = 0; i < 4; i++) edgePts.push([7 + (i * (W - 14)) / 3, H - 7]); }
+  const cut = edgePts.length ? sv('mask', { id: `${id}m`, maskUnits: 'userSpaceOnUse', x: 0, y: 0, width: W, height: H }, [sv('rect', { width: W, height: H, fill: '#fff' }), ...edgePts.map(([x, y]) => sv('circle', { cx: x, cy: y, r: s7 * 0.72, fill: '#000' }))]) : null;
+  if (cut) defs.append(cut);
+  const edged = (el) => { if (cut && el) el.setAttribute('mask', `url(#${id}m)`); return el; };
+  if (B) { const [a, b2] = B(); edged(a); edged(b2); a.setAttribute('stroke-width', L.border === 'dotted' ? 1.6 : L.border === 'stripes' ? 2.2 : 1.2); if (L.border === 'dashed') a.setAttribute('stroke-dasharray', '4 2.5'); if (L.border === 'dotted') { a.setAttribute('stroke-dasharray', '0.1 3'); a.setAttribute('stroke-linecap', 'round'); }
     svg.append(a); if (b2) { b2.setAttribute('stroke-width', L.border === 'stripes' ? 2.2 : 0.8); if (L.border === 'stripes') { b2.setAttribute('stroke', L.bg[1] || '#000'); b2.setAttribute('stroke-dasharray', '3 3'); } svg.append(b2); } }
   // a symbol: a sign symbol's tube shape as ink, or a character
   const sym = (key, x, y, size, col, w = 2) => { const S = SYM[symbolOf(key)]; if (!S) return sv('text', { x, y: y + size * 0.36, 'text-anchor': 'middle', 'font-size': size, fill: col, 'font-weight': 700 }, [document.createTextNode(key || '')]);
     const g = sv('g', { transform: `translate(${x - size / 2} ${y - size / 2}) scale(${size / 24})`, fill: 'none', stroke: col, 'stroke-width': (w * 24) / size, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, [sv('path', { d: S.d })]);
     for (const [dx, dy] of S.dots || []) g.append(sv('circle', { cx: dx, cy: dy, r: 1.6, fill: col, stroke: 'none' })); return g; };
-  if (L.edge && L.edgeAt !== 'none') { const s7 = 6.5, pts = [];
-    const cornersAt = [[7, 7], [W - 7, 7], [7, H - 7], [W - 7, H - 7]];
-    if (L.edgeAt === 'corners') pts.push(...cornersAt);
-    if (L.edgeAt === 'top' || L.edgeAt === 'edge') for (let i = 0; i < 4; i++) pts.push([7 + (i * (W - 14)) / 3, 7]);
-    if (L.edgeAt === 'bottom' || L.edgeAt === 'edge') for (let i = 0; i < 4; i++) pts.push([7 + (i * (W - 14)) / 3, H - 7]);
-    for (const [x, y] of pts) svg.append(sym(L.edge, x, y, s7, L.edgeColor, 0.9)); }
+  for (const [x, y] of edgePts) svg.append(sym(L.edge, x, y, s7, L.edgeColor, 0.9));
   if (L.symbol) svg.append(sym(L.symbol, W / 2, H * 0.47, Math.min(W, H) * 0.42, L.symColor, 2));
   return svg;
 }
@@ -231,9 +237,12 @@ const PUNCH_AT = (n, W = 52, H = 72) => { const per = Math.min(n, 5), rows = Mat
   for (let i = 0; i < n; i++) { const r = Math.floor(i / per), k = i % per, inRow = Math.min(per, n - r * per); out.push([W / 2 + (k - (inRow - 1) / 2) * 8.4, H - 20 - (rows - 1 - r) * 8.4]); } return out; };
 export function cardEl(id, cls = '', o = {}) {
   const c = D.CARDS[id] || {}, L = c.look || {};
-  const ea = L.edgeAt || 'none', el = h('span', { class: `gcard art ${c.kind === 'key' ? 'gkey' : ''} ${ea === 'top' || ea === 'edge' ? 'edge-top' : ''} ${ea === 'bottom' || ea === 'edge' ? 'edge-bottom' : ''} ${cls}`, style: { '--ink': L.ink || '#fff', '--cfont': L.font === 'script' ? 'var(--script, "Yellowtail")' : L.font === 'body' ? 'inherit' : 'var(--display)' } },
+  const ea = L.edgeAt || 'none', el = h('span', { class: `gcard art ${c.kind === 'key' ? 'gkey' : ''} ${ea === 'top' || ea === 'edge' ? 'edge-top' : ''} ${ea === 'bottom' || ea === 'edge' ? 'edge-bottom' : ''} ${ea === 'corners' ? 'edge-corners' : ''} ${cls}`, style: { '--ink': L.ink || '#fff', '--cfont': L.font === 'script' ? 'var(--script, "Yellowtail")' : L.font === 'body' ? 'inherit' : 'var(--display)' } },
     h('em', { text: tx(`card.kind.${c.kind || 'other'}`) }), h('b', {}), h('small', { text: o.name || (c.name || id).replace(/^.*?: /, '') }));
   el.prepend(cardArt({ symbol: KIND_GLYPH[c.kind] || '?', ...L }));
+  // what the card is made of, and what its lettering is: a finish over its printed backing (content/finishes.js)
+  if (L.finish?.bg?.m) { const fb = finishOn(h('i', { class: 'card-fin' }), { color: L.bg?.[0], ...L.finish.bg }); el.querySelector('.card-art').after(fb); }
+  if (L.finish?.ink?.m) for (const part of el.querySelectorAll(':scope > em, :scope > small')) finishOn(part, { color: L.ink, ...L.finish.ink }, 'text');
   if (c.kind === 'punch' && c.punches > 0) { const pts = PUNCH_AT(Math.min(15, c.punches)), done = Math.max(0, Math.min(pts.length, o.punched || 0)), R0 = 2.7;
     const rings = sv('svg', { class: 'card-punches', viewBox: '0 0 52 72', 'aria-hidden': 'true' }, pts.map(([x, y], i) => sv('circle', { cx: x, cy: y, r: R0, fill: i < done ? 'none' : 'rgba(0,0,0,.18)', stroke: L.ink || '#fff', 'stroke-width': i < done ? 0.9 : 0.6, 'stroke-dasharray': i < done ? null : '1.4 1.2', opacity: i < done ? 0.9 : 0.7 })));
     el.append(rings); el.classList.add('punch');
@@ -250,15 +259,31 @@ export function passEl(f, cls = '') {
   const P = D.PASSES[f]; const el = h('span', { class: `gcard gpass ${cls}`, style: { '--gc': P.color, '--ink': '#fff' } }, h('em', { text: tx('parts.pass') }), h('b', { text: P.glyph }), h('small', { text: P.name.replace(/ Pass$/, '') }));
   el._tip = () => passTip(f); el.classList.add('has-tip'); return el;
 }
+// a sign symbol as a small drawing in one colour (for a wallet's or a jacket's emblem)
+export function symEl(id, color = '#fff', cls = '') {
+  const S = SYM[symbolOf(id)]; if (!S) return h('span', { class: cls, text: id || '' });
+  const svg = sv('svg', { class: cls, viewBox: '0 0 24 24', 'aria-hidden': 'true' }, [sv('path', { d: S.d, fill: 'none', stroke: 'currentColor', 'stroke-width': 2.4, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }), ...(S.dots || []).map(([x, y]) => sv('circle', { cx: x, cy: y, r: 1.8, fill: 'currentColor' }))]);
+  svg.style.color = color; return svg;
+}
+// A wallet and a jacket are drawn from their look (content/finishes.js): what they are made of, their colour and trim,
+// a clasp or a collar, stitching or buttons, an emblem. What a look leaves out is read from the entry as it always was.
 export function walletEl(id, cls = '') {
-  const Wl = D.WALLETS[id];
-  return h('span', { class: `gwallet ${Wl.crown ? 'crown' : ''} ${cls}`, style: { '--wc': Wl.color || '#8d8478' } }, h('i', { class: 'flap' }),
-    h('span', { class: 'slots' }, Array.from({ length: Wl.slots }, () => h('i'))), h('b', { text: Wl.keep }));
+  const Wl = D.WALLETS[id] || {}, L = walletLook(id, Wl);
+  const el = h('span', { class: `gwallet ${Wl.crown ? 'crown' : ''} ${cls}`, style: { '--wc': L.color, '--w-flap': L.flap + 'px', '--w-round': L.round + 'px', ...(L.trim ? { '--w-trim': L.trim } : {}) } }, h('i', { class: 'flap' }),
+    L.stitch ? h('i', { class: 'stitch' }) : null, L.clasp !== 'none' ? h('i', { class: `clasp ${L.clasp}` }) : null,
+    h('span', { class: 'slots' }, Array.from({ length: Wl.slots || 0 }, () => h('i'))), h('b', { text: Wl.keep ?? '' }));
+  finishOn(el, { m: L.mat, color: L.color, glint: L.glint, sparkle: L.sparkle });
+  if (L.symbol) el.append(finishSvg(symEl(L.symbol.id, L.symbol.color, 'wsym'), L.symbol.mat ? { m: L.symbol.mat, color: L.symbol.color, glint: L.glint, sparkle: L.sparkle } : null));
+  return el;
 }
 export function jacketEl(id, cls = '') {
-  const J = D.JACKETS[id];
-  return h('span', { class: `gjacket ${cls}`, style: { '--jc': J.color || '#5b6378' } }, h('i', { class: 'body' }), h('i', { class: 'lapel' }),
-    h('span', { class: 'mods' }, Object.entries(J.mods).map(([k, n]) => h('b', { class: n > 0 ? 'p' : 'n', text: `${n > 0 ? '+' : ''}${n}` }))));
+  const J = D.JACKETS[id] || {}, L = jacketLook(id, J);
+  const body = finishOn(h('i', { class: 'body' }), { m: L.mat, color: L.color, glint: L.glint, sparkle: L.sparkle });
+  const el = h('span', { class: `gjacket ${cls}`, style: { '--jc': L.color, '--j-len': L.length + 'px', ...(L.lining ? { '--j-lining': L.lining } : {}) } }, body, h('i', { class: `lapel c-${L.collar}` }),
+    L.buttons ? h('span', { class: 'btns' }, Array.from({ length: L.buttons }, () => h('i'))) : null,
+    h('span', { class: 'mods' }, Object.entries(J.mods || {}).map(([k2, n]) => h('b', { class: n > 0 ? 'p' : 'n', text: `${n > 0 ? '+' : ''}${n}` }))));
+  if (L.symbol) el.append(finishSvg(symEl(L.symbol.id, L.symbol.color, 'jsym'), L.symbol.mat ? { m: L.symbol.mat, color: L.symbol.color, glint: L.glint, sparkle: L.sparkle } : null));
+  return el;
 }
 // sips left are shown as how full the glass is
 export function drinkEl(d, sips = d.sips, max = d.max || d.sips, cls = '') {

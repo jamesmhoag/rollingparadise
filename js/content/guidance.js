@@ -14,6 +14,7 @@ export const GUIDE = {
   'layout-space': { name: 'Starting Stake', def: 'A miniature of this position\'s Stake, sized by its class and gear.', how: ['Pick a chip from the rack, then click a space to set one down; hold or sweep to keep going.', 'Right-click a space, or use the eraser, to take its top chip off.'] },
   dev: { name: 'Developer mode', def: 'Shortcuts for testing the game without playing every bout.',
     how: ['DEV in the top bar sets your purse, jumps floors and seats the High Roller.', 'At a table, Clear it or Lose it settles the bout at once with the tilts and Double Down you set; the settlement and prizes are the real ones.', 'Switch it off on the title screen. Nothing it does changes the content or the rules.'] },
+  'crown-fit': { name: 'Crown fit', def: 'How the crown you are wearing sits on your name.', how: ['Drag to set it; your sign beside it shows it as you go.', 'The fit stays with that crown for the rest of the run, at every table.'] },
   'build-option': { name: 'Build option', def: 'One setting of the thing you are building. The hover above says what it is for.',
     how: ['Change it and the draft updates; ↺ beside it puts back what it was.', 'To test a change: open the Test table (Makers), pick the floor, your tricks and who sits across, then play a bout with it. Trick and chip changes show in the Trick and Chip maker previews straight away.',
       'Shop prices and stock: start a run and walk the floor (or check the Shops section\'s floor-by-floor list). Nothing is kept until you Export the draft.'] },

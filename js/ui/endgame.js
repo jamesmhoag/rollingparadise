@@ -4,7 +4,7 @@ import { app, hud, oppTip, trickTag } from './app.js';
 import { jacketTip, trickTip, trickWords, cardTip, dieTip, dieEl, passEl } from './parts.js';
 import { planner } from './prep.js';
 import * as D from '../data.js';
-import { signOf, dressSign, crownLookOf } from './sign.js';
+import { signOf, dressSign, crownLookOf, crownFit, CROWN_FIT } from './sign.js';
 import { trickItem } from './trickcard.js';
 import * as R from '../run.js';
 import { flavorP } from './parts.js';
@@ -47,8 +47,12 @@ export function suiteScene(root, penthouse) {
     const list = run.crownCase || [];
     crowns.replaceChildren(h('h2', { text: t('suite.crowns') }), h('p', { class: 'sub', text: t(list.length ? 'suite.crowns.sub' : 'suite.crowns.none') }),
       ...list.map((c, i) => { const prev = h('div', { class: 'who me neon-sample crown-sample' }, h('div', { class: 'name nsign' }, h('b', { class: 'neon-name', text: D.ROLLERS[run.roller]?.name || K.name }), h('span', { class: 'neon-class', text: t('suite.crown.from', { name: c.from }) })));
-        dressSign(prev, { ...signOf('you', D.ROLLERS[run.roller]?.sign), crown: { level: c.floor, look: crownLookOf(signOf('them', D.ROSTER[c.roster]?.sign)) } }, 'you');
-        return h('div', { class: 'row' }, prev, btn(t(run.wearing === i ? 'suite.crown.off' : 'suite.crown.wear'), () => { R.wearCrown(run, run.wearing === i ? null : i); renderCrowns(); }, null, `small ${run.wearing === i ? 'on' : 'go'}`)); }));
+        const dress = () => dressSign(prev, { ...signOf('you', D.ROLLERS[run.roller]?.sign), crown: { level: c.floor, look: crownLookOf(signOf('them', D.ROSTER[c.roster]?.sign)), fit: c.fit } }, 'you'); dress();
+        // the crown you are wearing can be set on your name just so: tilt, along, up and down, size (you have to put it on to wear it)
+        const F = crownFit(c.fit), slide = (k) => { const [lo, hi, step] = CROWN_FIT[k]; return h('label', { class: 'crown-fit', guide: 'crown-fit', tip: t(`suite.crown.fit.${k}.tip`) }, h('span', { text: t(`suite.crown.fit.${k}`) }),
+          h('input', { type: 'range', min: lo, max: hi, step, value: F[k], oninput: (e) => { R.fitCrown(run, i, { [k]: Number(e.target.value) }); dress(); } })); };
+        const fit = run.wearing === i ? h('div', { class: 'col crown-fits' }, ...Object.keys(CROWN_FIT).map(slide), btn(t('suite.crown.fit.reset'), () => { c.fit = {}; renderCrowns(); }, null, 'small')) : null;
+        return h('div', { class: 'col' }, h('div', { class: 'row' }, prev, btn(t(run.wearing === i ? 'suite.crown.off' : 'suite.crown.wear'), () => { R.wearCrown(run, run.wearing === i ? null : i); renderCrowns(); }, null, `small ${run.wearing === i ? 'on' : 'go'}`)), fit); }));
   }
   renderCrowns();
   root.append(H.el, h('div', { class: 'page cols3' },

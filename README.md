@@ -26,12 +26,14 @@ Hover anything — every chip, die, trick, number and button explains itself.
 2. **Intro bout** on house chips earns your 200¢ welcome stake.
 3. **Each floor**: walk the floor plan to the Diesmith, Trick Trader, Chip Exchange, Lounge and Sports Book, then
    sit at a table.
-4. **Commit**: tilt the bout, lay out your position, and wager everything you left off the table.
+4. **Commit**: tilt the bout and lay out your position. Each table has a wager of its own to sit down; what you leave
+   in your purse is yours even if you lose. A table is played once, win or lose.
 5. **Bout**: each turn has three steps, taken by both Rollers together. **Draw** tricks onto your Run, **roll** dice
    (or flip chips) in one throw and put them on tricks, then **bid** chips to play them. You see each of your
    opponent's steps only after you lock in your own. Then the House calls each effect type and resolves every trick.
-6. **Settle**: take winnings and a die, two dice, or glean a trick. Close three tables (or win a Double Down) to
-   face the High Roller and take the stairs.
+6. **Settle**: take winnings and a die, two dice, or glean a trick. Play your two tables (or win a Double Down) and
+   the High Roller sits down: that one is all in, and they match you. Play them and the stairs open; beat them and
+   you climb with their crown.
 7. **After floor 4**: the Penthouse, then the Paradise Ascent, a ladder of remnant builds with no shops or wagers.
 8. **Exit through the Gift Shop** whenever you want to cut your losses. Jackets you buy there stay unlocked.
 
@@ -41,6 +43,11 @@ Hover anything — every chip, die, trick, number and button explains itself.
 Changes are live in your browser straight away, so you can play with them. **Export** downloads `overrides.js`: put it at
 `js/content/overrides.js` (or run `npm run merge-content -- overrides.js` to merge it with changes made elsewhere) and
 commit it to make the changes part of the game.
+
+## Developer mode
+
+**Developer mode** on the title screen puts a DEV button by your purse (set it to any amount, jump floors, seat the
+High Roller) and adds Clear it and Lose it to every table, settled at once with the real settlement and prizes.
 
 ## Code
 
@@ -52,13 +59,15 @@ commit it to make the changes part of the game.
 | `js/bout.js` | The bout engine. Pure logic, no DOM. `resolve()` yields a step after every visible change |
 | `js/ai.js` | The automated Roller, planning through the same API the player uses |
 | `js/run.js` | Everything between bouts: floors, shops, wagers, settlement, the Ascent, saving |
-| `js/ui/` | Screens. `core.js` has the transition helpers every screen uses |
+| `js/ui/` | Screens. `core.js` has the transition helpers every screen uses; `dev.js` is developer mode; `gearmaker.js` the wallet and jacket maker |
+| `js/content/finishes.js` | Finishes (the dice materials, cloths and hides) and how wallets and jackets look |
 | `tests/` | Headless simulations: whole runs, balance by floor, Ascent bouts, the phased turn and Debt forecasts |
 | `docs/DESIGN.md` | How the design workbook was turned into rules, and what is not built yet |
 | `docs/OPEN-QUESTIONS.md` | What is still needed from the designer to build the remaining systems |
+| `docs/ROUND-19.md` | The latest list of notes, with what was done for each |
 | `assets/` | The neon sign, split into its pink, cyan and dice tubes so each can flicker on its own |
 
 ```sh
-npm test           # AI-played runs with state checks after every turn
+npm test           # every test: the rules on the tables as written, then whole runs on the shipped content
 npm run balance    # win rates and bout length by floor
 ```

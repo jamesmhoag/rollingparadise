@@ -137,7 +137,7 @@ export function boutScene(root, bout, ctx, onDone) {
   const nameSign = (name, cls, tipFn) => h('div', { class: 'name nsign', tip: tipFn }, h('b', { class: 'neon-name', text: name }), h('span', { class: 'neon-class', text: cls }));
   // the signs: yours, theirs (their own if their roster entry has one) and the House's, all built the same way (sign.js)
   // a High Roller wears its floor's crown; you wear one you have claimed, in the colours of the sign it came off
-  const crownOf = (c) => (c ? { level: c.floor, look: crownLookOf(signOf('them', D.ROSTER[c.roster]?.sign)) } : null);
+  const crownOf = (c) => (c ? { level: c.floor, look: crownLookOf(signOf('them', D.ROSTER[c.roster]?.sign)), fit: c.fit } : null);
   const signs = { you: () => ({ ...signOf('you', me.sign), crown: crownOf(me.crown) }), them: () => ({ ...signOf('them', opp.sign), crown: opp.boss ? { level: Math.max(1, Math.min(4, opp.floor || 1)) } : null }), house: () => signOf('house') };
   // a seat's sign has a fixed slot: if its name (with its crown, symbol and frame) doesn't fit, the name is set smaller
   function fitSeat(el) {

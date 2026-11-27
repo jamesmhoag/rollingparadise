@@ -798,3 +798,102 @@ feels like one wall. Ways to give opponents their own parameters and abilities, 
 With (1) to (3) in, floor 2 worth can go back up toward the old curve, and difficulty comes from who you sit
 down with rather than how much they hold.
 
+
+## Round 19: wagers, the Pit, pushing and shoving, bids on anything, and the tools round them
+
+Built from the designer's list of 42 notes (kept, with what was done for each, in `docs/ROUND-19.md`).
+
+### The floor
+- **A table has a wager of its own** (`FLOORS[floor].wager`, one a table; unset, a quarter of its Roller's worth). You
+  put it up to sit down and the multiplier pays on it. The rest of your purse goes into your Stake as far as you
+  choose; what you leave in the purse is yours whatever happens. A loss takes the position and the wager, no more.
+- **A table is played once.** Win or lose it closes; playing table 2 or 3 closes the other. The High Roller sits down
+  once both of your tables are played, and the stairs open once the High Roller has been played. Beat them and you
+  climb with their crown (the Suite, the Penthouse and the Ascent are the winner's); lose and you can still walk up
+  from the floor plan, but not from floor 4.
+- **The High Roller is played all in:** everything you leave off the table is wagered, and they match it
+  (`bossMatch`: a win pays it back plus that many times it).
+- **Shown the door:** with a game still open that you cannot afford, the floor says so (sell a die or a trick first,
+  or leave through the Gift Shop).
+- Every one of these is a tuner (Gameplay tuner, Wagers): `minStake`, `rematch`, `bossNeedsWins`, `bossToClimb`,
+  `bossAllIn`, `bossMatch`, `forcedExit`.
+- **Developer mode** (title screen; stays on in the browser): a DEV button by the purse sets it to any amount, jumps
+  floors and seats the High Roller; every table gets Clear it (with a number of ¢ lost on the way) and Lose it,
+  settled at once with the tilts and Double Down set. It calls the game's own `settle`, so the settlement, the prize
+  pick and what opens next are the real ones.
+
+### Bids
+- **Any chip with a value is a bid**, zero and negative included: a stack's Debt marker is its top chip to bid (worth
+  minus its value; bidding it clears the debt), and a made chip whose value is set to 0 is a bid (a value left unset
+  is not). A bid still has to be made each turn; a trick bid below nothing does nothing.
+- **Bid on a tapped trick to bring it back.** It uses a bid and passes the phase. The trick returns at this turn's
+  restore, on top of what the Bet columns restore. It takes the trick's quality level in chip value (I 1 to IV 4, a
+  Foil a level more): any chip brings it back, and the difference stays on the trick as a **base effect** for its
+  next play (+1 for a 2¢ chip on a quality I trick; a smaller chip, zero or Debt, brings it back weaker). A trick the
+  restore is already bringing back cannot be bid on. The base effect is spent when the trick plays.
+- **Stacks:** a stacked trick's card answers to its Run entry (the bug that stopped bids on a stack and could lock a
+  bout). The ⧉ mark takes the top copy off to play on its own.
+- With every bid placed, clicking a rolled die shows the bids and opens the Bluff with that die in hand.
+
+### The Pit
+A grid between the positions: `TUNING.pit.cols` columns of stacks on each Roller's side (a space a row), each up to
+`stackMax` high. A lost chip lands in the column by the middle first, on a row with room, then the column behind.
+Down the middle is a bottomless pit: with a side full, what it loses falls in and is **gone for good** (it leaves the
+Stage total: a win does not restore it, nobody is paid it, Gather and Steal cannot reach it). Chips leave the Pit only
+through tricks and chips, as before.
+
+### Pushing and shoving
+- A **slide** moves a stack one space along the felt and pushes the line of stacks in its way. Nothing is pushed off
+  the back, or off the top or bottom rows (such a slide does not happen). The front is the Pit: a stack pushed off it
+  falls in, lost as a fee is. A **lift** sets the top chip (or the stack) on the next stack; a **slip** puts it under.
+  Neither makes a stack taller than its height. Anchored stacks, Holes, big chips and Trees hold their ground.
+- **Movement and Regen are chip driven.** A made chip's Move action takes how (hop, slide, lift, slip), a direction,
+  steps (a number, as far as it goes, or a space per 4 rolled) and whether it may spill into the Pit; a chip's reach
+  can be its row or its column. Retreat, Advance, Lift and Sink lay Squeeze, Draw Back, Rise and Drop chips (one a
+  point of the roll, spreading from the target); Renew lays a Mend chip that brings your lost chips back out of your
+  Pit for two turns. Shove, Tug, Hoist and Tuck are new tricks built the same way.
+- A made chip now works on the side it lies on (a chip a trick lays across the table used to be looked for on its
+  maker's side, so it never fired).
+
+### Tricks, cards and passes
+- **A trick has one quality** (set in the Trick maker, or rated from what it does for the dice it asks). There are no
+  tiered copies: shelves and packs pick tricks by quality, opponents play each at its own. A Foil is a print.
+- The trick card is one size in each of its states (every card as tall as the longest trick; the Trick maker flags a
+  wordy one), with no strip of tags, no print rule, and no mark on a Misprint.
+- **Everything collected is a card or a pass.** The lanyard is gone: punch cards and memberships take card slots. A
+  **Suite Key is a pass**: it takes a pass slot (a free one, or that of a pass for a floor below), and is cut for a
+  room, the floor's number and two digits, which is its name. No slot: it stays at the desk and the Suite stays shut.
+- A punch card shows its punches as holes through the card.
+
+### At the table
+- The name plate is one fixed sign with the name and class; Worth, the Pit, bids, tapped pieces and the steps are the
+  Roller's field beside it (the pots and ledger no longer sit between the Stakes: the Pit has that space).
+- Any trick under the pointer shows where its chips will land, with how many once the roll is known.
+- The end of a match plays one thing at a time: the call, the loser's sign sparking out, cracking and going dark, the
+  winner's lap, then the readout.
+- Dice: pips and numbers are painted white on see-through materials; dice at rest are redrawn in turn so their
+  materials stay live; every die grows a little under the pointer; all of them are built behind an opening curtain
+  (`?curtain=0` skips it). A die can be given a pet name when it is cast or from the Coat Check.
+- Music: what the band is doing is also kept in the browser, so a band switched off stays off on the title screen,
+  in Build mode, in a new run and on returning to the tab. Hearting a tune can have a price.
+
+### Build mode
+- **Gear maker:** wallets and jackets: names, what they do, and a look (a finish, colour, trim or lining, clasp or
+  collar, stitching or buttons, an emblem, glint and sparkle), drawn as you change it, within bounds.
+- **Finishes** (`content/finishes.js`): the eight dice materials and eight cloths and hides, for a sign's name, class
+  line and backing, a card's backing and lettering, wallets and jackets. A symbol and a crown take a finish's colour,
+  glint and sparkle.
+- **Organise:** any class, Roller, opponent, trick, chip, card, wallet or jacket can be moved up and down its list and
+  deleted. A deletion is a change (`'CLASSES.x': null`), exported with the rest, so the entry does not come back on a
+  merge or because the game's own tables still list it. Something still used is not deleted.
+- **Tilts:** each has its own first turn, a ramp (chance added a turn), a cap, and where what it lays lands.
+- A crown's fit (tilt, along, height, size) is set in the suite when you put it on.
+- Rule tests run on the tables as written (`RP_CONTENT=stock`); the whole-game tests run again on the shipped content.
+
+### Readings chosen in round 19
+- A bid on a tapped trick **always** brings it back; a chip under its quality level costs the difference as a
+  negative base effect rather than failing.
+- A Suite Key **needs** a pass slot; with none free it is not kept and the Suite does not open.
+- All in against the High Roller ignores `TUNING.wager.boss`: the match (`bossMatch`) sets the multiplier.
+- Table wagers ship as 5/10/15, 30/45/60, 150/225/300 and 600/900/1200 by floor: placeholders to tune.
+- A die with no pet name shows none: it goes by what it is.

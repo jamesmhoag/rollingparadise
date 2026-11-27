@@ -819,6 +819,8 @@ export function buildAscent(run, meta) {
 // wear one of the crowns you have claimed (index into run.crownCase), or none (null): it shows on your sign
 export function wearCrown(run, i) { if (i != null && !run.crownCase?.[i]) return false; run.wearing = i ?? null; return true; }
 export const crownWorn = (run) => (run.wearing != null ? run.crownCase?.[run.wearing] || null : null);
+// how you wear a crown: its fit (tilt, place, size) is set in your suite when you put it on, and kept with the crown
+export function fitCrown(run, i, fit) { const c = run.crownCase?.[i]; if (!c) return false; c.fit = { ...(c.fit || {}), ...fit }; return true; }
 export function carryCard(run, id) { if (id && !(run.bizCards || []).includes(id)) return false; run.trait = id || null; return true; }
 export const jacketFits = (cls, id) => !D.JACKETS[id].cls || D.JACKETS[id].cls === cls;
 export const jacketAvailable = (run, id) => D.JACKETS[id].level <= Math.max(0, run.floor - 1);

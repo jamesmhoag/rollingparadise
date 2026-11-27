@@ -8,7 +8,8 @@ import { h, lab, btn } from './core.js';
 import * as D from '../data.js';
 import * as B from '../build/draft.js';
 import { t } from '../text.js';
-import { signOf, dressSign, TUBES, STRIPS, LAMPS, MOTIONS, EDGE_AT, CLS_ALIGN, SIGN_FONTS, BLINK_PARTS, BLINKS, MAX_PAIRS, pairsOf, CROWN_PARTS, crownLookOf } from './sign.js';
+import { signOf, dressSign, TUBES, STRIPS, LAMPS, MOTIONS, EDGE_AT, CLS_ALIGN, SIGN_FONTS, BLINK_PARTS, BLINKS, MAX_PAIRS, pairsOf, CROWN_PARTS, crownLookOf, FINISH_PARTS } from './sign.js';
+import { FINISHES } from '../content/finishes.js';
 import { SYMBOLS, SYMBOL_GROUPS } from './symbols.js';
 
 const PARTS = ['border', 'name', 'cls'];
@@ -16,6 +17,8 @@ const SAMPLE = { you: () => [D.ROLLERS.owl?.name || 'Owl', D.CLASSES.hustler?.na
 const MAX_IMAGE = 300 * 1024; // a mount image read from a file is kept in the build as a data URL
 
 // a symbol picker: every drawn symbol, by kind, and a box for any other character
+// the ✕ beside an extra colour pair
+const dropBtn = (fn) => { const b = btn('✕', fn, t('neon.pair.drop'), 'small'); b.dataset.guide = 'build-option'; return b; };
 export function symbolPicker(value, onPick, allowChar = true) {
   const icon = (id) => { const S = SYMBOLS[id]; return `<svg viewBox="-1 -1 26 26"><path d="${S.d}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>${(S.dots || []).map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.4" fill="currentColor"/>`).join('')}</svg>`; };
   return h('div', { class: 'col' },
@@ -52,7 +55,7 @@ export function signEditor(base, who, own, redraw, sample, crown) {
   return h('div', { class: 'neon-side' }, prev,
     field(lab('neon.frame'), select(['frame'], null, spec.frame, [['tubes', TUBES], ['strips', STRIPS], ['lamps', LAMPS], ['off', ['none']]]), ['frame']),
     frameKind ? field(lab('neon.pairs'), h('div', { class: 'col' }, ...pairs.map((pair, i) => h('div', { class: 'row' }, pairEl(pair, (pr) => setPairs(pairs.map((x, j) => (j === i ? pr : x))), i),
-        i ? btn('✕', () => setPairs(pairs.filter((_, j) => j !== i)), t('neon.pair.drop'), 'small') : null)),
+        i ? dropBtn(() => setPairs(pairs.filter((_, j) => j !== i))) : null)),
       pairs.length < MAX_PAIRS ? btn(t(`neon.pair.add.${pairWord()}`), () => setPairs([...pairs, [pairs[pairs.length - 1][1], pairs[pairs.length - 1][0]]]), null, 'small') : null), ['more']) : null,
     spec.frame === 'none' ? null : field(lab('neon.motion'), select(['motion'], MOTIONS, spec.motion), ['motion']),
     field(lab('neon.radius'), h('input', { type: 'number', min: 0, max: 30, value: spec.radius, style: { width: '70px' }, onchange: (e) => set(['radius'], Math.max(0, Math.min(30, +e.target.value || 0))) }), ['radius']),
@@ -73,5 +76,13 @@ export function signEditor(base, who, own, redraw, sample, crown) {
       btn(t('neon.mount.none'), () => set(['mount', 'color'], ''), null, 'small')), ['mount', 'color']),
     field(lab('neon.image'), h('div', { class: 'row wrap' }, h('input', { type: 'text', value: spec.mount.image?.startsWith('data:') ? t('neon.image.file') : spec.mount.image || '', placeholder: t('neon.image.ph'), onchange: (e) => set(['mount', 'image'], e.target.value.trim()) }),
       h('input', { type: 'file', accept: 'image/*', onchange: readImage }), spec.mount.image ? btn(t('neon.mount.none'), () => set(['mount', 'image'], ''), null, 'small') : null), ['mount', 'image']),
+    // what each part is made of: plain neon, or a finish (any of the dice materials, or a cloth or hide), in its own colour,
+    // with a glint and a sparkle
+    field(lab('neon.finish'), h('div', { class: 'col' }, ...FINISH_PARTS.filter((p) => (p !== 'symbol' || spec.symbol.on) && (p !== 'crown' || crown || who === 'you')).map((part) => { const F = spec.finish?.[part] || {}, put = (v) => set(['finish', part], { ...F, ...v });
+      return h('div', { class: 'row wrap' }, h('small', { style: { width: '54px' }, text: t(`neon.part.${part}`) }),
+        h('select', { onchange: (e) => (e.target.value ? put({ m: e.target.value }) : set(['finish', part], null)) }, h('option', { value: '', text: t('neon.finish.neon') }), ...Object.entries(FINISHES).map(([k, X]) => h('option', { value: k, text: X.name, ...(F.m === k ? { selected: 'selected' } : {}) }))),
+        F.m ? h('input', { type: 'color', value: /^#[0-9a-f]{6}$/i.test(F.color || '') ? F.color : '#c9d3e0', oninput: (e) => put({ color: e.target.value }) }) : null,
+        F.m ? h('label', { class: 'b-check' }, h('input', { type: 'checkbox', ...(F.glint ? { checked: 'checked' } : {}), onchange: (e) => put({ glint: e.target.checked }) }), t('neon.finish.glint')) : null,
+        F.m ? h('label', { class: 'b-check' }, h('input', { type: 'checkbox', ...(F.sparkle ? { checked: 'checked' } : {}), onchange: (e) => put({ sparkle: e.target.checked }) }), t('neon.finish.sparkle')) : null); })), ['finish']),
     field(lab('neon.blinks'), h('div', { class: 'col' }, ...BLINK_PARTS.filter((p) => (p !== 'symbol' || spec.symbol.on) && (p !== 'crown' || crown || who === 'you') && (p !== 'edge' || spec.edgeAt !== 'none' || spec.frame === 'symbols')).map(blinkRow)), ['blinks']));
 }

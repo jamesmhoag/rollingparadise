@@ -1295,3 +1295,67 @@ table.b-shop { border-collapse: collapse; width: 100%; font-size: 12px; margin-t
 .die-name-row { gap: 8px; align-items: center; } .die-name-in { width: 190px; }
 #tooltip b.pet { color: var(--gold); font-family: var(--script, cursive); font-size: 1.25em; font-weight: 400; }
 .b-organise { gap: 6px; align-items: center; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.crown-fits { gap: 3px; margin: 2px 0 10px; } .crown-fit { display: grid; grid-template-columns: 54px 1fr; align-items: center; gap: 8px; font-size: 11px; color: var(--dim); } .crown-fit input { width: 100%; }
+/* ---------- finishes: what a thing is made of (content/finishes.js) ---------- */
+/* --fc: its base colour. .fin-fill paints the element; .fin-text paints its letters; .fin-glint sweeps a highlight
+   across it now and then; .fin-sparkle twinkles points of light on it. */
+@property --fin-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@property --fin-x { syntax: '<percentage>'; inherits: false; initial-value: -60%; }
+.fin { --fc: #b9b2c8; --fc-hi: color-mix(in srgb, var(--fc) 45%, #fff); --fc-lo: color-mix(in srgb, var(--fc) 60%, #000); --fin-glint: linear-gradient(0deg, transparent, transparent); --fin-spark: linear-gradient(0deg, transparent, transparent);
+  background-image: var(--fin-glint), var(--fin-spark), var(--fin-mat); background-color: var(--fc); background-size: 260% 100%, 37px 31px, var(--fin-size, 100% 100%); background-position: var(--fin-x) 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0; background-repeat: no-repeat, repeat, var(--fin-rep, no-repeat); }
+.fin-text { -webkit-background-clip: text; background-clip: text; color: transparent !important; -webkit-text-fill-color: transparent; text-shadow: none !important; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .55)); animation-name: none; }
+.fin-plastic { --fin-mat: linear-gradient(165deg, var(--fc-hi), var(--fc) 42%, var(--fc-lo)); }
+.fin-vinyl { --fin-mat: linear-gradient(150deg, #fff 0 4%, var(--fc-hi) 9%, var(--fc) 40%, var(--fc-lo) 78%, var(--fc) 100%); }
+.fin-glass { --fin-mat: linear-gradient(135deg, rgba(255, 255, 255, .7), color-mix(in srgb, var(--fc) 38%, transparent) 30%, rgba(255, 255, 255, .12) 55%, color-mix(in srgb, var(--fc) 55%, transparent) 80%, rgba(255, 255, 255, .45)); background-color: color-mix(in srgb, var(--fc) 22%, transparent); }
+.fin-fill.fin-glass { backdrop-filter: blur(2px) saturate(1.2); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .4), inset 0 6px 10px rgba(255, 255, 255, .18); }
+.fin-metal { --fin-mat: linear-gradient(100deg, var(--fc-hi) 0, #fff 8%, var(--fc) 24%, var(--fc-lo) 46%, var(--fc-hi) 60%, var(--fc) 78%, var(--fc-lo) 100%); }
+.fin-sparkling { --fin-mat: radial-gradient(circle at 20% 30%, #fff 0 1px, transparent 1.6px), radial-gradient(circle at 70% 15%, #fff 0 .8px, transparent 1.4px), radial-gradient(circle at 45% 70%, rgba(255, 255, 255, .9) 0 1px, transparent 1.6px), radial-gradient(circle at 88% 62%, rgba(255, 240, 200, .9) 0 .9px, transparent 1.5px), linear-gradient(160deg, var(--fc-hi), var(--fc) 45%, var(--fc-lo)); --fin-size: 13px 11px, 17px 13px, 11px 17px, 19px 15px, 100% 100%; --fin-rep: repeat, repeat, repeat, repeat, no-repeat; }
+.fin-glimmering { --fin-mat: repeating-radial-gradient(circle at 30% 20%, rgba(255, 255, 255, .22) 0 1px, transparent 1px 3px), linear-gradient(150deg, rgba(255, 255, 255, .75), color-mix(in srgb, var(--fc) 70%, #fff) 45%, var(--fc)); }
+.fin-swirling { --fin-mat: conic-gradient(from var(--fin-a) at 42% 46%, var(--fc), #ffd36e, #7ae7ff, var(--fc-hi), #ff9ae6, var(--fc)); animation: finSwirl 9s linear infinite; }
+.fin-diamond { --fin-mat: conic-gradient(from 20deg at 50% 45%, #fff 0 9%, color-mix(in srgb, var(--fc) 55%, #bfe9ff) 9% 21%, #fff 21% 27%, #d9c8ff 27% 39%, #fff 39% 48%, color-mix(in srgb, var(--fc) 70%, #9fe6ff) 48% 61%, #ffe9c2 61% 70%, #fff 70% 79%, #c9f3ff 79% 91%, #fff 91%); }
+.fin-bone { --fc: #efe3c2; --fin-mat: repeating-linear-gradient(96deg, rgba(120, 90, 50, .1) 0 1px, transparent 1px 5px), linear-gradient(170deg, #fffaf0, var(--fc) 50%, color-mix(in srgb, var(--fc) 75%, #6b4a20)); }
+.fin-leather { --fin-mat: radial-gradient(circle at 30% 30%, rgba(0, 0, 0, .28) 0 1px, transparent 1.6px), radial-gradient(circle at 75% 65%, rgba(255, 255, 255, .1) 0 1px, transparent 1.7px), linear-gradient(165deg, color-mix(in srgb, var(--fc) 78%, #fff), var(--fc) 40%, var(--fc-lo)); --fin-size: 5px 5px, 7px 6px, 100% 100%; --fin-rep: repeat, repeat, no-repeat; }
+.fin-suede { --fin-mat: repeating-linear-gradient(82deg, rgba(255, 255, 255, .06) 0 1px, rgba(0, 0, 0, .07) 1px 2px), linear-gradient(170deg, color-mix(in srgb, var(--fc) 88%, #fff), var(--fc-lo)); }
+.fin-velvet { --fin-mat: radial-gradient(120% 90% at 22% 12%, color-mix(in srgb, var(--fc) 55%, #fff) 0, var(--fc) 34%, color-mix(in srgb, var(--fc) 38%, #000) 78%); }
+.fin-silk { --fin-mat: linear-gradient(118deg, var(--fc) 0, var(--fc-hi) 16%, var(--fc) 30%, var(--fc-lo) 46%, var(--fc-hi) 62%, var(--fc) 76%, var(--fc-lo) 100%); }
+.fin-denim { --fin-mat: repeating-linear-gradient(45deg, rgba(255, 255, 255, .16) 0 1px, transparent 1px 3px), repeating-linear-gradient(135deg, rgba(0, 0, 0, .12) 0 1px, transparent 1px 4px), linear-gradient(170deg, color-mix(in srgb, var(--fc) 85%, #fff), var(--fc-lo)); }
+.fin-canvas { --fin-mat: repeating-linear-gradient(0deg, rgba(0, 0, 0, .12) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(255, 255, 255, .1) 0 1px, transparent 1px 3px), linear-gradient(170deg, color-mix(in srgb, var(--fc) 88%, #fff), var(--fc-lo)); }
+.fin-wool { --fin-mat: radial-gradient(circle at 25% 40%, rgba(255, 255, 255, .16) 0 .8px, transparent 1.4px), radial-gradient(circle at 70% 20%, rgba(0, 0, 0, .2) 0 .8px, transparent 1.4px), linear-gradient(170deg, color-mix(in srgb, var(--fc) 90%, #fff), var(--fc-lo)); --fin-size: 4px 5px, 6px 4px, 100% 100%; --fin-rep: repeat, repeat, no-repeat; }
+.fin-glint { --fin-glint: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, .0) 44%, rgba(255, 255, 255, .85) 50%, rgba(255, 255, 255, 0) 56%, transparent 60%); animation: finGlint 4.6s ease-in-out infinite; }
+.fin-swirling.fin-glint { animation: finSwirl 9s linear infinite, finGlint 4.6s ease-in-out infinite; }
+.fin-sparkle { --fin-spark: radial-gradient(circle at 18% 28%, #fff 0 .9px, transparent 1.7px), radial-gradient(circle at 74% 62%, #fff 0 .7px, transparent 1.5px); }
+.fin-sparkle.fin-fill::after, .gcard.fin-sparkle::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: radial-gradient(circle at 22% 30%, #fff 0 1.2px, transparent 2.2px), radial-gradient(circle at 68% 22%, #fff 0 1px, transparent 2px), radial-gradient(circle at 80% 72%, #fff 0 1.3px, transparent 2.3px), radial-gradient(circle at 38% 78%, #fff 0 1px, transparent 2px); animation: finTwinkle 2.3s steps(4, end) infinite; mix-blend-mode: screen; }
+@keyframes finGlint { 0%, 55% { --fin-x: -60%; } 80%, 100% { --fin-x: 160%; } }
+@keyframes finSwirl { to { --fin-a: 360deg; } }
+@keyframes finTwinkle { 0% { opacity: .15; } 25% { opacity: .9; } 50% { opacity: .3; } 75% { opacity: 1; } 100% { opacity: .15; } }
+/* symbols and crowns (SVG): the finish is light on the strokes */
+.fin-svg { color: var(--fc, currentColor); } .fin-svg.fin-m-metal, .fin-svg.fin-m-diamond, .fin-svg.fin-m-glass { filter: drop-shadow(0 0 1px #fff) drop-shadow(0 1px 0 rgba(0, 0, 0, .5)); }
+.fin-svg.fin-glint { animation: finSvgGlint 4.2s ease-in-out infinite; } .fin-svg.fin-sparkle { animation: finSvgSpark 1.9s steps(3, end) infinite; } .fin-svg.fin-glint.fin-sparkle { animation: finSvgGlint 4.2s ease-in-out infinite, finSvgSpark 1.9s steps(3, end) infinite; }
+@keyframes finSvgGlint { 0%, 70%, 100% { filter: brightness(1); } 80% { filter: brightness(1.9) drop-shadow(0 0 4px #fff); } }
+@keyframes finSvgSpark { 0% { opacity: 1; } 33% { opacity: .78; } 66% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .fin-glint, .fin-swirling, .fin-sparkle::after, .fin-svg { animation: none !important; } }
+/* wallets and jackets, made of a finish */
+.gwallet.fin { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22), 0 4px 10px rgba(0, 0, 0, .5); border-radius: var(--w-round, 6px) var(--w-round, 6px) calc(var(--w-round, 6px) + 3px) calc(var(--w-round, 6px) + 3px); }
+.gwallet.fin .flap { height: var(--w-flap, 15px); background: color-mix(in srgb, var(--w-trim, var(--fc)) 62%, #000); mix-blend-mode: multiply; opacity: .75; }
+.gwallet .stitch { position: absolute; inset: 3px; border-radius: inherit; border: 1px dashed rgba(255, 255, 255, .45); pointer-events: none; }
+.gwallet .clasp { position: absolute; left: 50%; top: var(--w-flap, 15px); translate: -50% -50%; pointer-events: none; }
+.gwallet .clasp.snap { width: 9px; height: 9px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #b9b9c6 45%, #55566a); box-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
+.gwallet .clasp.zip { left: 6px; right: 6px; translate: 0 -50%; height: 3px; background: repeating-linear-gradient(90deg, #d8d8e4 0 2px, #55566a 2px 4px); border-radius: 2px; } .gwallet .clasp.zip::after { content: ''; position: absolute; right: -2px; top: -3px; width: 5px; height: 9px; border-radius: 2px; background: #d8d8e4; }
+.gwallet .clasp.clip { top: 50%; width: 46%; height: 62%; border: 2px solid #d6dde6; border-radius: 4px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .35), 0 1px 2px rgba(0, 0, 0, .5); }
+.gwallet .clasp.chain { left: auto; right: -9px; top: 8px; translate: 0 0; width: 22px; height: 18px; border: 2px dotted #cfd3df; border-top: 0; border-radius: 0 0 12px 12px; }
+.gwallet .wsym, .gjacket .jsym { position: absolute; pointer-events: none; } .gwallet .wsym { right: 5px; top: calc(var(--w-flap, 15px) + 2px); width: 14px; height: 14px; } .gjacket .jsym { left: 60%; top: 30%; width: 11px; height: 11px; }
+.gjacket.fin { background: none !important; } .gjacket .body.fin { position: absolute; inset: 0 0 calc(var(--j-len, 0px) * -1) 0; }
+.gjacket .lapel.c-stand { left: 30%; right: 30%; height: 14%; clip-path: none; border-radius: 0 0 4px 4px; background: color-mix(in srgb, var(--j-lining, #000) 55%, #000); opacity: .8; }
+.gjacket .lapel.c-crew { left: 36%; right: 36%; height: 12%; clip-path: none; border-radius: 0 0 50% 50%; background: color-mix(in srgb, var(--j-lining, #000) 60%, #000); opacity: .85; }
+.gjacket .lapel.c-hood { left: 26%; right: 26%; top: -8%; height: 30%; clip-path: none; border-radius: 50% 50% 30% 30%; background: color-mix(in srgb, var(--j-lining, #000) 45%, #000); opacity: .7; }
+.gjacket .lapel.c-lapel { background: color-mix(in srgb, var(--j-lining, #000) 60%, #000); opacity: .7; }
+.gjacket .btns { position: absolute; left: 50%; top: 52%; translate: -50% 0; display: grid; gap: 3px; pointer-events: none; } .gjacket .btns i { width: 3.5px; height: 3.5px; border-radius: 50%; background: rgba(255, 255, 255, .75); box-shadow: 0 0 0 1px rgba(0, 0, 0, .4); }
+.gear-preview { display: grid; place-items: center; padding: 26px 20px 60px; min-height: 190px; } .gear-preview > * { transform: scale(3); transform-origin: center top; }
+.fin-swatch { display: inline-block; width: 46px; height: 28px; border-radius: 6px; position: relative; vertical-align: middle; }
+.gcard .card-fin { position: absolute; inset: 0; border-radius: inherit; z-index: 0; mix-blend-mode: hard-light; opacity: .92; pointer-events: none; }
+.fin-pick { gap: 4px; max-width: 460px; } .btn.fin-btn { display: inline-grid; justify-items: center; gap: 2px; padding: 3px 4px; height: auto; } .btn.fin-btn small { font-size: 8.5px; letter-spacing: 0; text-transform: none; } .btn.fin-btn.on { box-shadow: 0 0 0 2px var(--gold); }
+.sign-mount-fin { position: absolute; inset: 3px; border-radius: calc(var(--sign-r, 12px) - 2px); z-index: 0; pointer-events: none; } .neonsign > .nsign, .neonsign > .name { position: relative; z-index: 1; }
+/* a card's lettering makes room for its edge symbols: narrower beside corner symbols, smaller between two edged rows */
+.gcard.art.edge-corners > em, .gcard.art.edge-corners > small { max-width: calc(100% - 20px); margin-inline: auto; }
+.gcard.art.edge-top.edge-bottom > small { font-size: 7px; max-height: 15px; } .gcard.art.edge-top.edge-bottom > em { font-size: 6px; }
+.gear-preview > * { transform: scale(2.6); }

@@ -9,6 +9,7 @@ import { trickMaker, newTrick } from './trickmaker.js';
 import { chipMaker, newChip } from './chipmaker.js';
 import { classicChips } from '../chipmodel.js';
 import { tuner, TUNER_SECTIONS } from './tuner.js';
+import { gearMaker, gearList, gearKeys } from './gearmaker.js';
 import { shopMaker, SHOP_PAGES } from './shopmaker.js';
 import { cardMaker, cardList, CORNER } from './cardmaker.js';
 import { testTable } from './testtable.js';
@@ -65,7 +66,7 @@ export function buildScene(root, opts = {}) {
   function drawStatus() { const n = B.count(); status.textContent = n ? t('build.status', { n }) : t('build.status.none'); }
   function drawTables() {
     const tool = (k, label) => h('button', { class: `b-item tool ${ui.tool === k ? 'on' : ''}`, text: label, onclick: () => { ui.tool = k; ui.key = null; ui.filter = ''; filter.value = ''; draw(); } });
-    tables.replaceChildren(h('span', { class: 'cap', text: t('build.group.makers') }), tool('tricks', t('maker.title')), tool('chips', t('chipmaker.title')), tool('classes', t('roster.class.title')), tool('rollers', t('roster.roller.title')), tool('roster', t('roster.title')), tool('shops', t('shops.title')), tool('cards', t('cards.title')), tool('tuner', t('tuner.title')), tool('test', t('test.title')),
+    tables.replaceChildren(h('span', { class: 'cap', text: t('build.group.makers') }), tool('tricks', t('maker.title')), tool('chips', t('chipmaker.title')), tool('classes', t('roster.class.title')), tool('rollers', t('roster.roller.title')), tool('roster', t('roster.title')), tool('shops', t('shops.title')), tool('cards', t('cards.title')), tool('gear', t('gear.title')), tool('tuner', t('tuner.title')), tool('test', t('test.title')),
       ...GROUPS.flatMap(([g, list]) => [h('span', { class: 'cap', text: t(g) }),
       ...list.filter((tb) => D.TABLES[tb]).map((tb) => h('button', { class: `b-item ${ui.tool === 'tables' && ui.table === tb ? 'on' : ''} ${B.changed(tb) ? 'ch' : ''}`, text: t(`build.table.${tb}`), onclick: () => { ui.tool = 'tables'; ui.table = tb; ui.key = null; ui.filter = ''; filter.value = ''; draw(); } }))]));
   }
@@ -75,6 +76,7 @@ export function buildScene(root, opts = {}) {
       filter.style.display = ''; if (!ui.key || !(D.CARDS[ui.key] || ui.key === CORNER || (ui.key.startsWith('biz:') && D.BOSS_TRAITS[ui.key.slice(4)]))) ui.key = Object.keys(D.CARDS)[0];
       entries.replaceChildren(...cardList(ui.key, (k) => { ui.key = k; draw(); }, ui.filter)); return;
     }
+    if (ui.tool === 'gear') { filter.style.display = ''; if (!gearKeys().includes(ui.key)) ui.key = gearKeys()[0]; entries.replaceChildren(...gearList(ui.key, (k) => { ui.key = k; draw(); }, ui.filter)); return; }
     if (ui.tool === 'shops') {
       filter.style.display = 'none'; if (!SHOP_PAGES.includes(ui.key)) ui.key = SHOP_PAGES[0];
       entries.replaceChildren(...SHOP_PAGES.map((k) => h('button', { class: `b-item ${ui.key === k ? 'on' : ''} ${B.changed(D.subPath('SHOPS', k)) ? 'ch' : ''}`, onclick: () => { ui.key = k; draw(); } }, h('b', { text: t(`shops.${k}`) }), h('small', { text: t(`shops.${k}.sub`) }))));
@@ -132,6 +134,7 @@ export function buildScene(root, opts = {}) {
     if (ui.tool === 'cards') { const nm = ui.key === CORNER ? t('cards.corner') : ui.key.startsWith('biz:') ? D.BOSS_TRAITS[ui.key.slice(4)].name : D.CARDS[ui.key]?.name || '';
       editor.replaceChildren(h('h2', { text: nm }), h('p', { class: 'sub mono', text: ui.key === CORNER ? 'SHADY · CARDS.*.corner' : ui.key.startsWith('biz:') ? D.subPath('BOSS_TRAITS', ui.key.slice(4)) : D.subPath('CARDS', ui.key) }),
         cardMaker(ui.key, draw, (tb) => { ui.tool = 'tables'; ui.table = tb; ui.key = null; draw(); })); return; }
+    if (ui.tool === 'gear') { const tb = ui.key[0] === 'w' ? 'WALLETS' : 'JACKETS', gid = ui.key.slice(2); editor.replaceChildren(h('h2', { text: D[tb][gid]?.name || '' }), h('p', { class: 'sub mono', text: D.subPath(tb, gid) }), gearMaker(ui.key, draw)); return; }
     if (ui.tool === 'shops') { editor.replaceChildren(h('h2', { text: t(`shops.${ui.key}`) }), h('p', { class: 'sub mono', text: D.subPath('SHOPS', ui.key) }), shopMaker(ui.key, draw, (tb) => { ui.tool = 'tables'; ui.table = tb; ui.key = null; draw(); })); return; }
     if (ui.tool === 'tuner') { editor.replaceChildren(h('h2', { text: t(`tuner.${ui.key}`) }), h('p', { class: 'sub mono', text: ui.key === 'gear' ? '' : D.subPath('TUNING', ui.key) }), tuner(ui.key, draw, (tb) => { ui.tool = 'tables'; ui.table = tb; ui.key = null; draw(); })); return; }
     if ((ui.tool === 'rollers' || ui.tool === 'roster') && SHARED_SIGNS[ui.key]) { editor.replaceChildren(h('h2', { text: t(`neon.list.${SHARED_SIGNS[ui.key]}`) }), h('p', { class: 'sub mono', text: `NEON.${SHARED_SIGNS[ui.key]}` }), sharedSign(ui.key, draw)); return; }
@@ -221,7 +224,8 @@ export function buildScene(root, opts = {}) {
   // Organise: the entry open in the editor can be moved up or down its list, or deleted. A deleted entry stays deleted
   // (the deletion is exported like any other change). Something still using it is named, and it stays.
   function organise() {
-    const table = { classes: 'CLASSES', rollers: 'ROLLERS', roster: 'ROSTER', tricks: 'TRICKS', chips: 'MADE_CHIPS', cards: 'CARDS', tables: ui.table }[ui.tool], id = ui.key;
+    const gear = ui.tool === 'gear' && ui.key;
+    const table = gear ? (ui.key[0] === 'w' ? 'WALLETS' : 'JACKETS') : { classes: 'CLASSES', rollers: 'ROLLERS', roster: 'ROSTER', tricks: 'TRICKS', chips: 'MADE_CHIPS', cards: 'CARDS', tables: ui.table }[ui.tool], id = gear ? ui.key.slice(2) : ui.key;
     if (!table || !D.DELETABLE.includes(table) || !id || !D.TABLES[table]?.[id]) return;
     const keys = Object.keys(D.TABLES[table]), i = keys.indexOf(id), name = D.TABLES[table][id].name || id;
     const move = (dir) => { if (B.moveEntry(table, id, dir)) draw(); };
