@@ -15,6 +15,7 @@ import { loadDraft } from './build/draft.js';
 import * as D from './data.js';
 import { startCard } from './ui/rollercard.js';
 import { titleSign } from './ui/titlesign.js';
+import { initThings } from './ui/thing.js';
 import * as B from './bout.js';
 import { devOn, setDev } from './ui/dev.js';
 import * as R from './run.js';
@@ -143,7 +144,7 @@ function curtain() {
 window.addEventListener('resize', fit);
 loadDraft(); // your build-mode changes, live in this browser
 curtain();
-fit(); initTips(); watchText(); initSpin(); initMusic(document.getElementById('stage'), { run: () => app.run, tip: (what, title) => R.tipBand(app.run, what, title) }); initSfx(document.getElementById('stage'));
+fit(); initTips(); watchText(); initSpin(); initThings(); initMusic(document.getElementById('stage'), { run: () => app.run, tip: (what, title) => R.tipBand(app.run, what, title) }); initSfx(document.getElementById('stage'));
 app.meta = R.loadMeta();
 nav.title();
 if (new URLSearchParams(location.search).has('debug')) window.RP = { app, R, D, nav, B };

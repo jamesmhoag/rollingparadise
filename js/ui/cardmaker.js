@@ -107,7 +107,9 @@ function bizPage(id, redraw, openTable) {
   const T = D.BOSS_TRAITS[id]; if (!T) return h('p', { class: 'sub', text: t('maker.none') });
   const tableBtn = () => btn(t('cards.biz.table'), () => openTable('BOSS_TRAITS'), t('cards.biz.table.tip'), 'small');
   const F = draftForm(D.subPath('BOSS_TRAITS', id), redraw), text = (k, long) => F.text([k], T[k], { long }), field = (k, el) => F.field(lab(`cards.biz.${k}`), el, [k]);
-  const card = h('span', { class: 'gcard bizcard big', guide: 'boss-trait', tip: () => t('trait.card-tip', { name: '', title: T.title, trait: T.name, rule: traitRule(T), flavor: T.flavor }) }, h('em', { text: t('table.biz-card') }), h('b', { text: T.name }));
+  // the card of the first High Roller who carries this trait (each has their own, with their own name sign)
+  const rid = Object.keys(D.ROSTER).find((r) => D.ROSTER[r].boss && D.ROSTER[r].trait === id), card = rid && D.CARDS[D.bizCardId(rid)] ? cardEl(D.bizCardId(rid), 'big') : h('span', { class: 'sub', text: t('cards.biz.nobody') });
+  card._tip = () => t('trait.card-tip', { name: '', title: T.title, trait: T.name, rule: traitRule(T), flavor: T.flavor }); card.classList.add('has-tip'); guided(card, 'boss-trait');
   const who = Object.entries(D.ROSTER).filter(([, X]) => X.trait === id).map(([, X]) => X.name);
   return h('div', { class: 'b-maker' }, h('div', { class: 'b-fields' }, h('p', { class: 'sub', text: t('cards.biz.about') }), field('name', text('name')), field('title', text('title')), field('flavor', text('flavor', true)),
     fieldRow(lab('cards.biz.rule'), h('p', { html: traitRule(T) })), fieldRow(lab('cards.biz.who'), h('p', { text: who.join(', ') || t('cards.biz.nobody') })),

@@ -770,8 +770,8 @@ export const JACKETS = {
   denim: { name: 'Denim', color: '#3c5f9e', effect: 'Unique · Convoluted', mods: { balance: 2, charisma: -1 }, price: 2000000, level: 2 },
   regal: { name: 'Regal', color: '#7a2d7a', effect: 'Royal · Privileged', mods: { balance: 2, versatility: 2, depth: 2 }, price: 20000000000, level: 4 },
 };
-import { CARDS, SHADY, CARD_SHOPS, CARD_KINDS } from './content/cards.js';
-export { CARDS, SHADY, CARD_SHOPS, CARD_KINDS };
+import { CARDS, SHADY, CARD_SHOPS, CARD_KINDS, BUSINESS_LOOK, bizCardId } from './content/cards.js';
+export { CARDS, SHADY, CARD_SHOPS, CARD_KINDS, bizCardId };
 // Wallets hold the cards that grant benefits. `slots`: cards it holds. `passes`: passes it holds, each in its own pass
 // slot (cards never use them). `keep` is the total two of your dice must reach in the alley to retain them.
 export const WALLETS = {
@@ -821,7 +821,8 @@ export { BOSS_TRAITS };
 import { FLAVOR } from './content/flavor.js';
 export { FLAVOR };
 // a thing's line of flavour (content/flavor.js), by the table it lives in and its id; '' when it has none
-export const flavorOf = (table, id) => FLAVOR[table]?.[id] || '';
+// (a business card speaks in its High Roller's own voice: their trait's flavour, unless the card has a line of its own)
+export const flavorOf = (table, id) => FLAVOR[table]?.[id] || (table === 'CARDS' && CARDS[id]?.kind === 'business' ? BOSS_TRAITS[ROSTER[CARDS[id].roller]?.trait]?.flavor || '' : '');
 import { TUNING } from './content/tuning.js';
 import { SHOPS, perFloor } from './content/shops.js';
 export { TUNING, SHOPS, perFloor };
@@ -883,6 +884,10 @@ export function refreshDerived() {
   STARTER_CARDS.splice(0, STARTER_CARDS.length, ...C0.filter(([, c]) => c.starter).map(([k]) => k));
   FIND_CARDS.splice(0, FIND_CARDS.length, ...C0.filter(([, c]) => (c.corner || 0) > 0).map(([k]) => k));
   FELT_POOL.splice(0, FELT_POOL.length, ...Object.keys(FELTS).filter((k) => FELTS[k].pool !== false));
+  // every High Roller with a trait has a business card (a card of kind 'business'); one whose Roller is gone goes too
+  for (const [k, c] of Object.entries(CARDS)) if (c?.kind === 'business' && !(ROSTER[c.roller]?.boss && BOSS_TRAITS[ROSTER[c.roller].trait])) delete CARDS[k];
+  for (const [rid, X] of Object.entries(ROSTER)) if (X?.boss && X.name && BOSS_TRAITS[X.trait]) { const id = bizCardId(rid), was = CARDS[id] || {};
+    CARDS[id] = { ...was, kind: 'business', roller: rid, name: was.name || `Business Card: ${X.name}`, look: { ...BUSINESS_LOOK, ...(was.look || {}) } }; }
   const R0 = Object.values(ROSTER);
   OPPONENTS.splice(0, OPPONENTS.length, ...R0.filter((x) => !x.boss && x.name).map((x) => x.name));
   for (let f = 1; f <= 4; f++) BOSSES[f] = R0.filter((x) => x.boss && x.name && (x.floors || [1, 2, 3, 4]).includes(f)).map((x) => x.name);

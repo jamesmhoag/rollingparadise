@@ -1,9 +1,11 @@
 // Small visual pieces and the tooltip text used across screens.
-import { h } from './core.js';
+import { h, fitText } from './core.js';
+import { thing } from './thing.js';
+import { nameSign, signOf } from './sign.js';
 import * as D from '../data.js';
 import * as CM from '../content/chipmaker.js';
 import { cents, cap } from '../util.js';
-import { multOf, makeOf, fxOf } from '../bout.js';
+import { multOf, makeOf, fxOf, traitRule } from '../bout.js';
 import { facesOf, faceValue, matOf, dieName, petName } from '../dice.js';
 import { traitsOf, traitsHtml } from '../traits.js';
 import { iconStyle, textureOf } from './icons.js';
@@ -178,6 +180,7 @@ export const cardRule = (id) => { const c = D.CARDS[id]; if (!c) return '';
     case 'punch': return tx(c.per === 'visit' ? 'card.rule.punch.visit' : 'card.rule.punch', { n: c.punches || 5, shop, free: freeName(c) });
     case 'membership': return [c.early ? tx('card.rule.member.early', { n: c.early, shop }) : tx('card.rule.member', { shop }), tx('card.rule.member.only', { shop }), c.pct ? tx('card.rule.member.pct', { pct: c.pct }) : '', c.earn?.buys ? tx('card.rule.member.earn', { n: c.earn.buys, shop }) : ''].filter(Boolean).join(' ');
     case 'key': return tx('card.rule.key', { floor: D.FLOORS[c.floor]?.name || c.floor });
+    case 'business': { const X = D.ROSTER[c.roller], T = D.BOSS_TRAITS[X?.trait]; return T ? tx('card.rule.business', { name: X.name, trait: T.name, rule: traitRule(T) }) : ''; }
     default: return c.resist ? tx('parts.resist-card', { r: c.resist }) : c.text || '';
   } };
 export function cardTip(id, v) {
@@ -198,7 +201,7 @@ export function jacketTip(id, v) {
 const SVGNS = 'http://www.w3.org/2000/svg';
 const sv = (tag, attrs = {}, kids = []) => { const e = document.createElementNS(SVGNS, tag); for (const [k, v] of Object.entries(attrs)) if (v != null) e.setAttribute(k, v); for (const k of kids) e.append(k); return e; };
 let artN = 0;
-const KIND_GLYPH = { discount: '%', punch: '●●', membership: 'M', key: '⚿', note: '✉', trading: '✧', other: '?' };
+const KIND_GLYPH = { discount: '%', punch: '●●', membership: 'M', key: '⚿', note: '✉', trading: '✧', business: '', other: '?' };
 export function cardArt(look = {}, W = 52, H = 72) {
   const id = `ca${++artN}`, L = { bg: ['#93a3c8', '#3a4a6a'], pattern: 'plain', border: 'plain', borderColor: '#ffffff', symColor: '#ffffff', edgeAt: 'none', edgeColor: '#ffffff', ...look };
   const svg = sv('svg', { class: 'card-art', viewBox: `0 0 ${W} ${H}`, width: W, height: H, 'aria-hidden': 'true' });
@@ -238,29 +241,69 @@ export function cardArt(look = {}, W = 52, H = 72) {
 // (the card is masked there, so whatever is behind it shows through). `o.punched`: how many are made (the run's count).
 const PUNCH_AT = (n, W = 52, H = 72) => { const per = Math.min(n, 5), rows = Math.ceil(n / per), out = [];
   for (let i = 0; i < n; i++) { const r = Math.floor(i / per), k = i % per, inRow = Math.min(per, n - r * per); out.push([W / 2 + (k - (inRow - 1) / 2) * 8.4, H - 20 - (rows - 1 - r) * 8.4]); } return out; };
-export function cardEl(id, cls = '', o = {}) {
-  const c = D.CARDS[id] || {}, L = c.look || {};
-  const ea = L.edgeAt || 'none', el = h('span', { class: `gcard art ${c.kind === 'key' ? 'gkey' : ''} ${ea === 'top' || ea === 'edge' ? 'edge-top' : ''} ${ea === 'bottom' || ea === 'edge' ? 'edge-bottom' : ''} ${ea === 'corners' ? 'edge-corners' : ''} ${cls}`, style: { '--ink': L.ink || '#fff', '--cfont': L.font === 'script' ? 'var(--script, "Yellowtail")' : L.font === 'body' ? 'inherit' : 'var(--display)' } },
-    h('em', { text: tx(`card.kind.${c.kind || 'other'}`) }), h('b', {}), h('small', { text: o.name || (c.name || id).replace(/^.*?: /, '') }));
-  el.prepend(cardArt({ symbol: KIND_GLYPH[c.kind] || '?', ...L }));
-  // what the card is made of, and what its lettering is: a finish over its printed backing (content/finishes.js)
+// ---------- cards, passes and keys ----------
+// Everything you collect is printed the same way and held the same way: a face and a back, printed from a look, on a
+// body of some material (ui/thing.js: thickness, the lean under the pointer, the close look). A card is 52 by 72; a
+// pass, a key's cut and a business card lie the other way. `spec` is what is printed:
+//   { kind (the small line at the top), name, look, wide, punches, punched, id, table (for its flavour), rule, plate }
+const WIDE = [72, 52], TALL = [52, 72];
+const bodyOf = (L) => ({ mat: L.finish?.bg?.m || 'paper', color: L.finish?.bg?.color || L.bg?.[0] || '#e9e2d0' });
+function printFace(spec, cls = '') {
+  const L = spec.look || {}, ea = L.edgeAt || 'none', [W, H] = spec.wide ? WIDE : TALL;
+  const el = h('span', { class: `gcard art ${spec.wide ? 'wide' : ''} ${ea === 'top' || ea === 'edge' ? 'edge-top' : ''} ${ea === 'bottom' || ea === 'edge' ? 'edge-bottom' : ''} ${ea === 'corners' ? 'edge-corners' : ''} ${cls}`, style: { '--ink': L.ink || '#fff', '--cfont': L.font === 'script' ? 'var(--script, "Yellowtail")' : L.font === 'body' ? 'inherit' : 'var(--display)' } },
+    h('em', { text: spec.kind || '' }), h('b', {}), h('small', { text: spec.name || '' }));
+  el.prepend(cardArt({ ...L, symbol: spec.plate ? '' : L.symbol }, W, H));
+  if (spec.plate) { el.classList.add('plated'); el.querySelector('b').replaceWith(h('b', { class: 'card-plate' }, spec.plate())); } // a business card carries its Roller's own name sign
+  // what it is made of, and what its lettering and symbols are: finishes over the print (content/finishes.js)
   if (L.finish?.bg?.m) { const fb = finishOn(h('i', { class: 'card-fin' }), { color: L.bg?.[0], ...L.finish.bg }); el.querySelector('.card-art').after(fb); }
   if (L.finish?.ink?.m) for (const part of el.querySelectorAll(':scope > em, :scope > small')) finishOn(part, { color: L.ink, ...L.finish.ink }, 'text');
   if (L.finish?.symbol?.m) finishSvg(el.querySelector('.card-syms'), { color: L.symColor, ...L.finish.symbol });
-  if (c.kind === 'punch' && c.punches > 0) { const pts = PUNCH_AT(Math.min(15, c.punches)), done = Math.max(0, Math.min(pts.length, o.punched || 0)), R0 = 2.7;
+  if (spec.punches > 0) { const pts = PUNCH_AT(Math.min(15, spec.punches)), done = Math.max(0, Math.min(pts.length, spec.punched || 0)), R0 = 2.7;
     const rings = sv('svg', { class: 'card-punches', viewBox: '0 0 52 72', 'aria-hidden': 'true' }, pts.map(([x, y], i) => sv('circle', { cx: x, cy: y, r: R0, fill: i < done ? 'none' : 'rgba(0,0,0,.18)', stroke: L.ink || '#fff', 'stroke-width': i < done ? 0.9 : 0.6, 'stroke-dasharray': i < done ? null : '1.4 1.2', opacity: i < done ? 0.9 : 0.7 })));
     el.append(rings); el.classList.add('punch');
     if (done) { const holes = pts.slice(0, done).map(([x, y]) => `radial-gradient(circle ${R0 - 0.4}px at ${(x / 52 * 100).toFixed(2)}% ${(y / 72 * 100).toFixed(2)}%, transparent 97%, #000 100%)`).join(', ');
       for (const k of ['maskImage', 'webkitMaskImage']) el.style[k] = holes; for (const k of ['maskComposite']) el.style[k] = 'intersect'; el.style.webkitMaskComposite = 'source-in'; } }
+  fitText(el.querySelector(':scope > small'), 5);
   return el;
 }
+// The back: printed from the look's `back` (its own colours, pattern, border, ink and symbol; left out, it follows the
+// face, darker), with the lines it is set to show: the name, what the card does, its flavour, a serial number, a note.
+export const BACK_SHOWS = ['name', 'rule', 'flavor', 'serial', 'note'];
+export function backLook(L = {}) { const Bk = L.back || {}, bg = L.bg || ['#93a3c8', '#3a4a6a'];
+  return { bg: Bk.bg || [bg[1] || bg[0], '#15111f'], pattern: Bk.pattern || 'checks', border: Bk.border || 'double', borderColor: Bk.borderColor || L.borderColor || '#ffffff', symbol: Bk.symbol ?? '', symColor: Bk.symColor || L.symColor || '#ffffff',
+    edge: Bk.edge || L.edge, edgeAt: Bk.edgeAt || 'corners', edgeColor: Bk.edgeColor || L.edgeColor || '#ffffff', ink: Bk.ink || '#ffffff', font: Bk.font || L.font, show: Array.isArray(Bk.show) ? Bk.show : ['name', 'rule', 'flavor'], note: Bk.note || '', finish: L.finish?.bg ? { bg: L.finish.bg } : null }; }
+const serialOf = (key) => { let n = 7; for (const ch of String(key)) n = (n * 31 + ch.charCodeAt(0)) % 100000; return String(n).padStart(5, '0'); };
+function printBack(spec, cls = '') {
+  const Bk = backLook(spec.look), [W, H] = spec.wide ? WIDE : TALL, shows = (k) => Bk.show.includes(k);
+  const el = h('span', { class: `gcard art cback ${spec.wide ? 'wide' : ''} ${cls}`, style: { '--ink': Bk.ink, '--cfont': Bk.font === 'script' ? 'var(--script, "Yellowtail")' : Bk.font === 'body' ? 'inherit' : 'var(--display)' } },
+    cardArt(Bk, W, H), h('span', { class: 'cback-lines' },
+      shows('name') && spec.name ? h('b', { text: spec.name }) : null, shows('rule') && spec.rule ? h('p', { html: spec.rule }) : null,
+      shows('flavor') && spec.flavor ? h('q', { text: spec.flavor }) : null, shows('note') && Bk.note ? h('p', { class: 'note', text: Bk.note }) : null,
+      shows('serial') ? h('small', { text: tx('card.back.serial', { n: serialOf(spec.id ?? spec.name) }) }) : null));
+  if (Bk.finish?.bg?.m) { const fb = finishOn(h('i', { class: 'card-fin' }), { color: Bk.bg?.[0], ...Bk.finish.bg }); el.querySelector('.card-art').after(fb); }
+  return el;
+}
+// → the thing: its printed face on its body, its back behind, ready to be leaned and looked at
+function printed(spec, cls = '') {
+  return thing(printFace(spec, cls), { ...bodyOf(spec.look || {}), radius: spec.wide ? 4 : 6, back: () => printBack(spec, cls), make: () => printFace(spec, cls), name: spec.name, sub: spec.kind, cls: spec.wide ? 'th-wide' : '' });
+}
+// a card's spec from the table. o: { name (in place of its own), punched }
+export function cardSpec(id, o = {}) {
+  const c = D.CARDS[id] || {}, biz = c.kind === 'business' ? D.ROSTER[c.roller] : null, T = biz ? D.BOSS_TRAITS[biz.trait] : null;
+  return { id, kind: tx(`card.kind.${c.kind || 'other'}`), name: o.name || (c.name || id).replace(/^.*?: /, ''), look: { ...(c.look || {}), symbol: c.look?.symbol ?? (KIND_GLYPH[c.kind] || '?') }, wide: c.kind === 'business',
+    punches: c.kind === 'punch' ? c.punches : 0, punched: o.punched, rule: cardRule(id), flavor: T ? T.flavor : D.flavorOf('CARDS', id),
+    plate: biz ? () => nameSign('them', biz.name, T?.title || D.CLASSES[biz.cls]?.name || '', signOf('them', biz.sign), 'card-sign') : null };
+}
+export function cardEl(id, cls = '', o = {}) { const c = D.CARDS[id] || {}, el = printed(cardSpec(id, o), `${c.kind === 'key' ? 'gkey' : ''} ${cls}`); return el; }
 // a Suite Key: a pass cut for one room, printed as its floor's key design with the room number for its name
 export const keyTip = (k) => tx('parts.suite-key', { room: k.room, floor: D.FLOORS[k.floor]?.name || k.floor }) + flavorP('CARDS', `suite_${k.floor}`);
 export function keyEl(k, cls = '') { const el = cardEl(`suite_${k.floor}`, cls, { name: tx('parts.suite-key-room', { room: k.room }) }); el.classList.add('gpasskey'); el._tip = () => keyTip(k); el.classList.add('has-tip'); return el; }
-// a pass: not a card, it rides in the wallet's own pass slot
+// a pass: printed as a card is, from its own look (PASSES[f].look; without one, its colour and glyph), lying wide
 export const passTip = (f) => tx('parts.every-wallet-holds-one', { name: D.PASSES[f].name, text: D.PASSES[f].text }) + flavorP('PASSES', f);
+const shade = (hex, k) => (/^#[0-9a-f]{6}$/i.test(hex) ? '#' + [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * k).toString(16).padStart(2, '0')).join('') : hex);
+export const passLook = (P) => ({ bg: [P.color, shade(P.color, 0.45)], pattern: 'plain', border: 'dashed', borderColor: '#ffffff', symbol: P.glyph, symColor: '#ffffff', edgeAt: 'none', ink: '#ffffff', font: 'display', ...(P.look || {}) });
 export function passEl(f, cls = '') {
-  const P = D.PASSES[f]; const el = h('span', { class: `gcard gpass ${cls}`, style: { '--gc': P.color, '--ink': '#fff' } }, h('em', { text: tx('parts.pass') }), h('b', { text: P.glyph }), h('small', { text: P.name.replace(/ Pass$/, '') }));
+  const P = D.PASSES[f], el = printed({ id: `pass${f}`, kind: tx('parts.pass'), name: P.name.replace(/ Pass$/, ''), look: passLook(P), wide: true, rule: P.text, flavor: D.flavorOf('PASSES', f) }, `gpass ${cls}`);
   el._tip = () => passTip(f); el.classList.add('has-tip'); return el;
 }
 // a sign symbol as a small drawing in one colour (for a wallet's or a jacket's emblem)

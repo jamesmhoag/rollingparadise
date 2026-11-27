@@ -18,7 +18,9 @@ function dress(el, f, cls) {
 // The material itself is a picture rendered as the dice are (dice3d.js swatch: the same materials, room and light),
 // laid on when it is ready; until then, and where there is no renderer, the CSS look of the same name stands in.
 const FALLBACK = { plastic: '#c9c2d8', glass: '#bfe6ff', metal: '#c9d3e0', sparkling: '#ffd76a', glimmering: '#cfe9ff', swirling: '#c9a6ff', diamond: '#ffffff', bone: '#efe3c2' };
-const pictured = (el, F, then) => { const key = `${F.m}|${F.color}`; el._fin = key; swatch(F.m, F.color || FALLBACK[F.m] || '#b9b2c8').then((url) => { if (url && el._fin === key) then(url); }).catch(() => {}); };
+const pictured = (el, F, then, slot = '_fin') => { const key = `${F.m}|${F.color}`; el[slot] = key; swatch(F.m, F.color || FALLBACK[F.m] || '#b9b2c8').then((url) => { if (url && el[slot] === key) then(url); }).catch(() => {}); }; // slot: an element can carry several pictures, each under its own name
+// the material's picture as a CSS variable on `el` (for a thing whose parts take it: an edge, a pocket), once it is ready
+export function materialVar(el, f, name = '--fin-tex') { const F = finishOf(f); el.style.removeProperty(name); if (F) pictured(el, F, (url) => el.style.setProperty(name, `url(${url})`), name); return el; }
 export const finishOn = (el, f, mode = 'fill') => { el?.style.removeProperty('--fin-tex'); el?.classList.remove('fin-tex'); if (el) el._fin = null;
   const out = dress(el, f, (F) => ['fin', `fin-${F.m}`, mode === 'text' ? 'fin-text' : 'fin-fill']), F = finishOf(f);
   if (el && F) pictured(el, F, (url) => { el.style.setProperty('--fin-tex', `url(${url})`); el.classList.add('fin-tex'); });

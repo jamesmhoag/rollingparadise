@@ -19,7 +19,13 @@
 // border, edge symbols and big symbol, ink and font, like a neon sign but printed. Shops: diesmith, trader, lounge,
 // dice, exchange. The High Rollers' business cards are their traits (bosstraits.js); the Cards section lists them too.
 export const CARD_SHOPS = ['diesmith', 'trader', 'lounge', 'dice', 'exchange'];
-export const CARD_KINDS = ['discount', 'punch', 'membership', 'key', 'note', 'trading', 'other'];
+export const CARD_KINDS = ['discount', 'punch', 'membership', 'key', 'note', 'trading', 'business', 'other'];
+// A High Roller's business card: a card like any other (it takes a wallet slot), carrying its Roller's own name sign.
+// While it is in your wallet you play by that Roller's trait (the first business card in the wallet, if you hold
+// several). There is one for every High Roller, made as they are (data.js refreshDerived); its look can be edited.
+export const BUSINESS_LOOK = { bg: ['#f3ead2', '#d9c9a0'], pattern: 'grain', border: 'double', borderColor: '#8b6a2c', symbol: '', symColor: '#8b6a2c', edge: 'star4', edgeAt: 'none', edgeColor: '#8b6a2c', ink: '#2a1c0a', font: 'display',
+  back: { bg: ['#2a1c0a', '#120b04'], ink: '#f3ead2', borderColor: '#d9b45a', show: ['name', 'rule', 'flavor', 'serial'] } };
+export const bizCardId = (rosterId) => `biz_${rosterId}`;
 export const CARD_PATTERNS = ['plain', 'stripes', 'checks', 'dots', 'rays', 'grain'];
 export const CARD_BORDERS = ['plain', 'double', 'dashed', 'dotted', 'stripes', 'notched', 'none'];
 export const CARD_EDGE_AT = ['none', 'corners', 'top', 'bottom', 'edge'];

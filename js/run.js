@@ -24,6 +24,9 @@ function migrate(run) {
   if (run.cards?.includes('suite')) run.cards = run.cards.filter((c) => c !== 'suite'); // the one Suite Key became a key per floor
   // Suite Keys are passes now (run.keys, each cut for a room); a key card held by an older save moves over
   if (run.cards?.some((c) => /^suite_\d$/.test(c))) { run.keys = run.keys || []; for (const c of run.cards.filter((x) => /^suite_\d$/.test(x))) { const f = +c.slice(6); if (!run.keys.some((k) => k.floor === f)) run.keys.push({ floor: f, room: `${f}${String((run.nextId * 37 + f * 11) % 100).padStart(2, '0')}` }); } run.cards = run.cards.filter((x) => !/^suite_\d$/.test(x)); }
+  // business cards were a list of traits with one carried; they are cards now, in the wallet (as many as it has room for, the carried one first)
+  if (run.bizCards) { const ids = [run.trait, ...run.bizCards].filter((t, i, a) => t && a.indexOf(t) === i).map((t) => Object.keys(D.ROSTER).find((r) => D.ROSTER[r].boss && D.ROSTER[r].trait === t)).filter(Boolean).map(D.bizCardId);
+    run.cards = run.cards || []; for (const id of ids) if (D.CARDS[id] && !run.cards.includes(id) && walletCards(run).length < walletOf(run).slots) run.cards.push(id); delete run.bizCards; delete run.trait; }
   if (run.suiteKey && run.floor && !(run.keys || []).some((k) => k.floor === run.floor)) (run.keys = run.keys || []).push({ floor: run.floor, room: `${run.floor}${String((run.nextId * 37) % 100).padStart(2, '0')}` });
   if (typeof run.punches === 'number') { run.punch = run.punches && D.CARDS.punch ? { punch: run.punches } : {}; delete run.punches; } // punch cards count their own punches
   if (!Array.isArray(run.passes)) run.passes = run.pass ? [run.pass] : []; // a wallet can hold more than one pass
@@ -51,6 +54,8 @@ export const hasCard = (run, id) => run.cards.includes(id);
 // The wallet: everything you collect is a card or a pass. A card (discounts, punch cards, memberships, notes, trading
 // cards...) takes one of the wallet's card slots; a pass (a floor's pass, a Suite Key) takes one of its pass slots.
 // Nothing rides anywhere else: there is no lanyard.
+// The trait you play by: the High Roller's whose business card is in your wallet (the first, if you hold several)
+export const traitOf = (run) => { const id = (run.cards || []).find((c) => D.CARDS[c]?.kind === 'business'); return id ? D.ROSTER[D.CARDS[id].roller]?.trait || null : null; };
 export const walletCards = (run) => run.cards.filter((id) => D.CARDS[id]?.kind !== 'key');
 export const walletOf = (run) => D.WALLETS[run.wallet] || D.WALLETS.worn_cloth;
 export const walletFull = (run) => walletCards(run).length >= walletOf(run).slots;
@@ -101,7 +106,7 @@ export function newRun(who, jacketReq = 'standard', seed = (Date.now() ^ (Math.r
   const roller = D.rollerOf(who), Rl = D.ROLLERS[roller], cls = Rl.cls;
   const jacket = jacketFits(cls, jacketReq) ? jacketReq : 'standard'; // a level 0 jacket only fits the class it was cut for
   const kept = [].concat(gear.passes ?? gear.pass ?? []).filter((f) => f > 0);
-  const run = { v: 1, rng: new RNG(seed), seed, cls, roller, worth0: Rl.worth ?? D.SHOPS.door.welcome ?? 200, bizCards: [], trait: null, crownCase: [], wearing: null, jacket, wallet: gear.wallet || 'worn_cloth', pass: 0, passes: [], pendingCard: null, floor: 0, purse: 0, nextId: 1, dice: [], tricks: [], chips: {},
+  const run = { v: 1, rng: new RNG(seed), seed, cls, roller, worth0: Rl.worth ?? D.SHOPS.door.welcome ?? 200, crownCase: [], wearing: null, jacket, wallet: gear.wallet || 'worn_cloth', pass: 0, passes: [], pendingCard: null, floor: 0, purse: 0, nextId: 1, dice: [], tricks: [], chips: {},
     drink: null, cards: [], punch: {}, rest: null, suiteKey: false, phase: 'intro', fs: null, bets: [], news: [], ledger: [], ascent: null,
     plan: { spacing: 'row', stacking: 'maxed', counts: null, resist: {}, layout: Rl.layout?.length ? JSON.parse(JSON.stringify(Rl.layout)) : null }, // your Roller's own position, to change before each bout
     stats: { bouts: 0, wins: 0, losses: 0, spent: 0, won: 0, turns: 0, dd: 0 } };
@@ -146,6 +151,8 @@ export const chipFloor = (run) => (run.phase === 'ascent' ? D.ASCENT_FLOOR : run
 export const rosterFor = (floor, table) => Object.entries(D.ROSTER).filter(([, X]) => (table === 'boss' ? X.boss : !X.boss) && (!X.floors || X.floors.includes(floor)) && (table === 'boss' || !X.tables || X.tables.includes(table))).map(([id]) => id);
 // the generation options a roster entry sets
 // a High Roller dealt by name from BOSSES (no roster entry) takes the trait of the roster entry with that name
+// the roster entry an opponent was made from (by its id, or for a High Roller met by name, by that name)
+export const rosterIdOf = (o) => (o?.roster && D.ROSTER[o.roster] ? o.roster : Object.keys(D.ROSTER).find((k) => D.ROSTER[k].boss && D.ROSTER[k].name === o?.name) || null);
 const bossTraitByName = (name) => Object.values(D.ROSTER).find((x) => x.boss && x.name === name)?.trait || null;
 function rosterOpts(id, o = {}) { const X = D.ROSTER[id]; if (!X) return o; return { ...o, name: X.name, roster: id, ...(X.cls && D.CLASSES[X.cls] ? { cls: X.cls } : {}) }; }
 export function genOpponent(run, floor, worthTarget, o = {}) {
@@ -574,7 +581,7 @@ function planGroups(run, counts, resist) {
 // ---------- bouts ----------
 function playerSpec(run, counts, extra = {}, dimsOverride) {
   const st = rollerStats(run, extra), K = D.CLASSES[run.cls];
-  return { name: 'You', title: K.name, cls: run.cls, roller: run.roller || D.rollerOf(run.cls), trait: run.trait || null, crown: crownWorn(run), sign: D.ROLLERS[run.roller]?.sign || null, tip: st.tip, c: st.c, dims: dimsOverride || st.dims, why: dimsOverride ? { note: tx('run.a-bar-table-one') } : dimsWhy(run, extra), deploy: K.deploy, tricks: run.tricks, dice: run.dice,
+  return { name: 'You', title: K.name, cls: run.cls, roller: run.roller || D.rollerOf(run.cls), trait: traitOf(run), crown: crownWorn(run), sign: D.ROLLERS[run.roller]?.sign || null, tip: st.tip, c: st.c, dims: dimsOverride || st.dims, why: dimsOverride ? { note: tx('run.a-bar-table-one') } : dimsWhy(run, extra), deploy: K.deploy, tricks: run.tricks, dice: run.dice,
     plan: { chips: planGroups(run, counts, extra.resist), spacing: run.plan.spacing, stacking: run.plan.stacking, ...(validLayout(run, dimsOverride || st.dims) ? { layout: validLayout(run, dimsOverride || st.dims) } : {}), resistChips: run.cards.map((id) => D.CARDS[id]?.resist).filter(Boolean) }, drink: run.drink && run.drink.sips > 0 ? run.drink : null, ...extra.side };
 }
 const committed = (bout) => sum(bout.sides[0].grid.flat().flatMap((c) => c.chips).filter((ch) => ch.kind === 'std' && !ch.resist), (ch) => ch.value);
@@ -753,8 +760,8 @@ export function settle(run, ctx, bout) {
       // and their crown: yours to keep, and to wear from your suite (style only)
       run.crownCase = run.crownCase || []; run.crownCase.push({ floor: ctx.opp.floor || run.floor, from: ctx.opp.name, roster: ctx.opp.roster || null });
       res.news.push(tx('run.crown-claimed', { name: ctx.opp.name }));
-      const card = ctx.opp.trait; if (card && D.BOSS_TRAITS[card]) { run.bizCards = run.bizCards || []; if (!run.bizCards.includes(card)) run.bizCards.push(card); if (!run.trait) run.trait = card;
-        res.news.push(tx('run.biz-card-kept', { name: ctx.opp.name, trait: D.BOSS_TRAITS[card].name })); } }
+      const rid = rosterIdOf(ctx.opp), card = rid ? D.bizCardId(rid) : null; if (card && D.CARDS[card]) { const kept = addCard(run, card); // a card like any other: it wants a wallet slot
+        res.news.push(tx(kept ? 'run.biz-card-kept' : 'run.biz-card-full', { name: ctx.opp.name, trait: D.BOSS_TRAITS[D.ROSTER[rid].trait].name })); } }
   } else {
     // a loss takes your position and your wager; what you left in your purse is still yours
     const kept = ctx.kept || 0; run.purse = kept + bounty;
@@ -825,7 +832,6 @@ export function wearCrown(run, i) { if (i != null && !run.crownCase?.[i]) return
 export const crownWorn = (run) => (run.wearing != null ? run.crownCase?.[run.wearing] || null : null);
 // how you wear a crown: its fit (tilt, place, size) is set in your suite when you put it on, and kept with the crown
 export function fitCrown(run, i, fit) { const c = run.crownCase?.[i]; if (!c) return false; c.fit = { ...(c.fit || {}), ...fit }; return true; }
-export function carryCard(run, id) { if (id && !(run.bizCards || []).includes(id)) return false; run.trait = id || null; return true; }
 export const jacketFits = (cls, id) => !D.JACKETS[id].cls || D.JACKETS[id].cls === cls;
 export const jacketAvailable = (run, id) => D.JACKETS[id].level <= Math.max(0, run.floor - 1);
 export function buyJacket(run, meta, id) {

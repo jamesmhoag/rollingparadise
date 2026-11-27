@@ -4,7 +4,7 @@ import { chipPainter } from './chippaint.js';
 import { stackEdit, ADDS } from '../stackedit.js';
 import { sfx } from './sfx.js';
 import { app, hud, oppTip, trickTag, diceSummary } from './app.js';
-import { chipEl, chipSig, chipGlyph, chipTip, dieEl, dieTip, statTip, trickTip, trickChip, trickLook, trickWord, jacketEl, drinkEl } from './parts.js';
+import { chipEl, chipSig, chipGlyph, chipTip, dieEl, dieTip, statTip, trickTip, trickChip, trickLook, trickWord, jacketEl, drinkEl, cardEl } from './parts.js';
 import { signOf, dressSign, nameSign } from './sign.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
@@ -150,12 +150,14 @@ export function planner(getExtra, onChange, { maxW = 400 } = {}) {
 // ---------- the opponent, as they will sit down ----------
 const bookCard = (tr, cls) => trickTag(tr, cls);
 function oppPanel(opp) {
+  // their business card: the same card you will hold if you win it
+  const bizCard = (o, Tr) => { const c = cardEl(D.bizCardId(o.roster || R.rosterIdOf(o))); c._tip = () => t('trait.card-tip', { name: o.name, title: Tr.title, trait: Tr.name, rule: B.traitRule(Tr), flavor: Tr.flavor }); c.classList.add('has-tip'); return guided(c, 'boss-trait'); };
   const sign = nameSign('them', opp.name, D.CLASSES[opp.cls].name, { ...signOf('them', opp.sign), crown: opp.boss ? { level: Math.max(1, Math.min(4, opp.floor || 1)) } : null }, 'prep-sign');
   const T = opp.trait ? D.BOSS_TRAITS[opp.trait] : null;
   const gear = h('div', { class: 'row wrap gear' },
     opp.jacket && D.JACKETS[opp.jacket] ? jacketEl(opp.jacket) : h('span', { class: 'gear-none', text: t('prep.opp.nojacket') }),
     opp.drink ? drinkEl(opp.drink) : h('span', { class: 'gear-none', text: t('prep.opp.nodrink') }),
-    T ? h('span', { class: 'gcard bizcard', guide: 'boss-trait', tip: () => t('trait.card-tip', { name: opp.name, title: T.title, trait: T.name, rule: B.traitRule(T), flavor: T.flavor }) }, h('em', { text: t('table.biz-card') }), h('b', { text: T.name })) : null);
+    T && D.CARDS[D.bizCardId(opp.roster || R.rosterIdOf(opp))] ? bizCard(opp, T) : null);
   let sd = null; try { sd = R.previewOpponent(opp); } catch { sd = null; }
   const V = positionView({ CH: 34, maxW: 380, mirror: true }); if (sd) V.draw(sd);
   return h('div', { class: 'box col opp-panel', guide: 'opponent' },

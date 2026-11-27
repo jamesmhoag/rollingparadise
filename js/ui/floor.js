@@ -317,7 +317,6 @@ function kitPanel() {
       h('div', { class: 'row wrap', style: { alignItems: 'flex-end' } }, walletEl(run.wallet), ...R.passesOf(run).map((f) => passEl(f)), ...R.keysOf(run).map((k) => keyEl(k)), jacketEl(run.jacket), run.drink ? drinkEl(run.drink, run.drink.sips, run.drink.max) : null,
         h('div', { class: 'inv', style: { alignItems: 'flex-end' } }, R.walletCards(run).map((c) => { const el = cardEl(c, '', { punched: R.punchesOf(run, c) }); el.style.cursor = 'pointer'; el._tip = () => cardTip(c, R.rollerStats(run).v) + tx('floor.takes-a-wallet-slot'); el.classList.add('has-tip');
         el.onclick = () => { if (!el._armed) { el._armed = true; el.classList.add('armed'); return toast(tx('floor.click-again-to-drop', { name: D.CARDS[c].name }), 'warn'); } if (!R.dropCard(run, c)) return toast(tx('floor.you-need-that-one'), 'warn'); closePanel(); rerender(); toast(tx('floor.dropped', { name: D.CARDS[c].name })); }; return el; }))),
-      ...bizCards(run, () => { closePanel(); rerender(); }),
       // your dice by name: click one to give it a pet name, change it or take it away
       h('span', { class: 'cap', text: tx('floor.die-names') }), (() => { const edit = h('div', {}), list = h('div', { class: 'dicebox named' });
         const draw = () => list.replaceChildren(...run.dice.map((d) => { const el = dieEl(d); el._tip = () => dieTip(d) + tx('floor.die-name.click'); el.classList.add('has-tip');
@@ -329,13 +328,6 @@ function kitPanel() {
 }
 
 // the High Rollers' business cards you have won: pick the one you play by
-function bizCards(run, done) {
-  const won = (run.bizCards || []).filter((id) => D.BOSS_TRAITS[id]); if (!won.length) return [];
-  return [h('span', { class: 'cap', text: tx('floor.biz-cards') }), h('div', { class: 'row wrap' },
-    ...[null, ...won].map((id) => btn(id ? D.BOSS_TRAITS[id].name : tx('floor.biz-none'), () => { R.carryCard(run, id); done(); },
-      () => (id ? `<b>${D.BOSS_TRAITS[id].name}</b> <span class="dim">${D.BOSS_TRAITS[id].title}</span><p>${traitRule(D.BOSS_TRAITS[id])}</p><p class="dim">${D.BOSS_TRAITS[id].flavor}</p>` : tx('floor.biz-none.tip')),
-      `small ${(run.trait || null) === id ? 'on' : ''}`)))];
-}
 // what you give up by dropping a card, in plain words
 function dropText(run, c) {
   const card = D.CARDS[c], v = R.rollerStats(run).v;

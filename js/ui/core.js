@@ -62,6 +62,16 @@ export function paint(el, targetAt, apply, ms = 170, onEnd, { right = false } = 
   return stop;
 }
 
+// ---------- text that fits ----------
+// Set an element's text smaller, a little at a time, until it fits the box it has (down to `min` px). Run once it is
+// on the page and again when the fonts have loaded; a box that is not laid out yet is left alone.
+export function fitText(el, min = 6) {
+  if (!el) return el;
+  const fit = () => { if (!el.isConnected || !el.clientWidth) return; el.style.fontSize = ''; let fs = parseFloat(getComputedStyle(el).fontSize) || 8;
+    while (fs > min && (el.scrollHeight > el.clientHeight + 0.5 || el.scrollWidth > el.clientWidth + 0.5)) { fs -= 0.5; el.style.fontSize = `${fs}px`; } };
+  requestAnimationFrame(() => requestAnimationFrame(fit)); document.fonts?.ready?.then(() => requestAnimationFrame(fit)); return el;
+}
+
 // ---------- text that gives way ----------
 // Text that arrives for a moment has the floor: a prompt, a call, a toast, a tag over a stack. Standing text it lands on
 // (a zone's title, a label, a caption, a sign's small line) fades out until it has gone, then comes back. This is one

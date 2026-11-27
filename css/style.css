@@ -442,7 +442,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 .gcard em { font-style: normal; font-size: 7px; max-width: 100%; overflow: hidden; text-overflow: clip; white-space: nowrap; text-transform: uppercase; letter-spacing: .1em; opacity: .85; } .gcard b { font-size: 18px; line-height: 1; } .gcard small { font-size: 7.5px; line-height: 1.05; max-height: 17px; overflow: hidden; }
 .gcard.lanyard { border-radius: 10px; } .gcard.lanyard::before { content: ''; position: absolute; top: 3px; width: 10px; height: 3px; border-radius: 2px; background: rgba(0, 0, 0, .45); }
 /* a pass: a ticket, not a card, with a torn-off stub line */
-.gcard.gpass { width: 72px; height: 52px; border-radius: 4px; } .gcard.gpass::after { content: ''; position: absolute; top: 4px; bottom: 4px; right: 14px; border-right: 1.5px dashed rgba(255, 255, 255, .45); }
+.gcard.gpass::after { content: ''; position: absolute; top: 4px; bottom: 4px; right: 14px; border-right: 1.5px dashed rgba(255, 255, 255, .45); z-index: 1; }
 .gcard.armed { box-shadow: 0 0 0 2px var(--bad), 0 3px 8px rgba(0, 0, 0, .45); }
 .gwallet { position: relative; display: inline-block; flex: none; width: 70px; height: 46px; border-radius: 6px 6px 9px 9px; background: linear-gradient(170deg, color-mix(in srgb, var(--wc) 85%, #fff), color-mix(in srgb, var(--wc) 75%, #000)); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25), 0 4px 10px rgba(0, 0, 0, .5); }
 .gwallet .flap { position: absolute; left: 0; right: 0; top: 0; height: 15px; border-radius: 6px 6px 50% 50%; background: color-mix(in srgb, var(--wc) 70%, #000); }
@@ -1394,3 +1394,29 @@ body.carrying-now #tooltip { display: none !important; } /* nothing explains its
 .fin-svg.fin-tex .halo { opacity: .14 !important; } .fin-svg.fin-tex .hot { opacity: .28 !important; }
 /* a sign standing on its own takes the room its frame and edging need on each side; the lettering sits in what is left */
 .neon-sample.neonsign { padding: calc(var(--sign-room-t, 6px) + 3px) calc(var(--sign-room, 6px) + 8px) calc(var(--sign-room-b, 6px) + 3px); }
+
+/* ---------- things you hold (ui/thing.js): a face, a back, and the edge between, as thick as the material ---------- */
+.thing { display: inline-block; position: relative; flex: none; perspective: 520px; vertical-align: bottom; line-height: 0; cursor: grab; touch-action: none; --th-rx: 9deg; --th-ry: -15deg; }
+.thing > .th-body { display: inline-block; position: relative; transform-style: preserve-3d; transition: transform .22s var(--ease); line-height: normal; }
+.thing .th-face { position: relative; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.thing .th-edge, .thing .th-back { position: absolute; inset: 0; border-radius: var(--th-r); pointer-events: none; }
+.thing i.th-edge { background: var(--th-tex, none) center / cover, var(--th-c); filter: brightness(.7) saturate(.9); }
+.thing .th-back { transform: translateZ(calc(var(--th-d) * -1)) rotateY(180deg); backface-visibility: hidden; -webkit-backface-visibility: hidden; display: grid; overflow: hidden; }
+.thing .th-back > * { width: 100%; height: 100%; box-sizing: border-box; }
+.thing:not(.th-still):hover { z-index: 40; }
+.thing:not(.th-still):hover:not(:has(.thing:not(.th-still):hover)) > .th-body { transform: translateZ(14px) rotateX(var(--th-rx)) rotateY(var(--th-ry)) scale(1.1); }
+body.spinning .thing > .th-body, body.carrying-now .thing > .th-body { transition: none; }
+.th-look { display: grid; place-items: center; perspective: 900px; } .th-look .th-zoom { transform-style: preserve-3d; } .th-look .thing { cursor: inherit; }
+.th-look .thing > .th-body { transition: none; }
+@media (prefers-reduced-motion: reduce) { .thing > .th-body { transition: none; } }
+
+/* cards, passes, keys and business cards (ui/parts.js): a wide one lies the other way; the back and its lines; a
+   business card's name sign */
+.gcard.wide { width: 72px; height: 52px; border-radius: 4px; }
+.gcard.art > small { max-height: 17px; width: 100%; }
+.gcard.cback { justify-content: center; padding: 6px 5px; } .gcard.cback .cback-lines { position: relative; z-index: 1; display: grid; gap: 1.5px; justify-items: center; max-height: 100%; overflow: hidden; color: var(--ink); text-align: center; font-family: inherit; }
+.cback-lines b { font-family: var(--cfont); font-size: 5.4px; line-height: 1.1; } .cback-lines p { margin: 0; font-size: 3.5px; line-height: 1.25; } .cback-lines q { font-size: 3.2px; line-height: 1.25; font-style: italic; opacity: .85; quotes: none; }
+.cback-lines small { font-size: 3px; letter-spacing: .14em; opacity: .7; font-variant-numeric: tabular-nums; } .cback-lines .note { opacity: .9; }
+.gcard.plated { justify-content: space-between; } .gcard .card-plate { display: grid; place-items: center; width: 100%; flex: 1; min-height: 0; position: relative; z-index: 1; }
+.gcard .card-sign { zoom: .34; pointer-events: none; background: #07040f; }
+.thing.armed .gcard { box-shadow: 0 0 0 2px var(--bad), 0 3px 8px rgba(0, 0, 0, .45); }

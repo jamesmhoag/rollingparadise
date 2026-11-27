@@ -1,8 +1,9 @@
-// Grab and spin: press on any die and drag to turn it over in your hand. The die grows into its real solid over
-// where it sits, every face showing its value, and turns with the pointer; let go and it keeps rolling a moment,
-// then settles back. Grab the solid again to keep turning it. A spin is not a click, so it never picks the die,
-// and the hover stays hidden while you spin. Works on every die drawn with parts.js dieEl or the match's dice
-// (any element with `_die`).
+// Grab and spin: press on a die, or on any thing you hold (a card, a pass, a wallet, a jacket: ui/thing.js), and
+// drag to turn it over in your hand. It comes up close over where it sits (a die as its real solid, every face
+// showing its value; a thing as its own body, front, back and edge) and turns with the pointer; let go and it keeps
+// turning a moment, then settles back. Grab it again to keep turning. A spin is not a click, so it never picks what
+// it turns, and the hover stays hidden while you spin. Works on every die (any element with `_die`) and every
+// element that offers a look (`_look`).
 import { h, box } from './core.js';
 import { solidEl } from './solid.js';
 import { dieName, faceList } from '../dice.js';
@@ -19,20 +20,25 @@ function close(now) {
   if (now) return v.el.remove();
   v.el.classList.add('out'); setTimeout(() => v.el.remove(), 260);
 }
-function open(dieNode, d) {
+// what a node offers for a close look: a die its solid (every face showing its value), anything else its own (`_look`,
+// see ui/thing.js). → { el, setRotation(m), matrix, name, sub, start }
+function lookOf(node) {
+  if (node._look) return node._look(SIZE);
+  const d = node._die, solid = solidEl(d, SIZE), shown = node.firstChild?.textContent, at = solid.faceOf(shown); // a rolled die starts with its value toward you
+  return { el: solid.el, name: dieName(d), sub: faceList(d).join(' · '), start: (at >= 0 ? solid.faceFront(at) : new DOMMatrix()).preMultiplySelf(new DOMMatrix().rotateSelf(-14, 18, 0)), get matrix() { return solid.matrix; }, setRotation: (m) => solid.setRotation(m) };
+}
+function open(node) {
   close(true);
-  const b = box(dieNode), solid = solidEl(d, SIZE);
-  const shown = dieNode.firstChild?.textContent, at = solid.faceOf(shown); // a rolled die starts with its value toward you
-  solid.setRotation((at >= 0 ? solid.faceFront(at) : new DOMMatrix()).preMultiplySelf(new DOMMatrix().rotateSelf(-14, 18, 0)));
-  const el = h('div', { class: 'spin-view' }, solid.el, h('div', { class: 'spin-cap' }, h('b', { text: dieName(d) }), h('span', { text: faceList(d).join(' · ') })));
-  const W = stage().offsetWidth, H = stage().offsetHeight;
-  const x = Math.max(8, Math.min(W - SIZE - 8, b.x + b.w / 2 - SIZE / 2)), y = Math.max(8, Math.min(H - SIZE - 40, b.y + b.h / 2 - SIZE / 2));
+  const b = box(node), solid = lookOf(node); solid.setRotation(solid.start);
+  const el = h('div', { class: 'spin-view' }, solid.el, h('div', { class: 'spin-cap' }, h('b', { text: solid.name }), h('span', { text: solid.sub })));
+  const W = stage().offsetWidth, H = stage().offsetHeight, S = solid.size || SIZE; // (a thing comes up larger than a die: it has print to read)
+  const x = Math.max(8, Math.min(W - S - 8, b.x + b.w / 2 - S / 2)), y = Math.max(8, Math.min(H - S - 40, b.y + b.h / 2 - S / 2));
   Object.assign(el.style, { left: x + 'px', top: y + 'px' });
   el.addEventListener('pointerdown', (ev) => { if (ev.button !== 0 || !view) return; ev.preventDefault(); ev.stopPropagation(); grab(ev, el); });
   el.addEventListener('pointerenter', () => { if (view) clearTimeout(view.leave); });
   el.addEventListener('pointerleave', () => { if (view && !view.held) { clearTimeout(view.leave); view.leave = setTimeout(() => close(), 450); } });
   stage().append(el); document.body.classList.add('spinning');
-  view = { el, node: dieNode, solid, die: d, vx: 0, vy: 0, raf: 0, held: false, leave: 0 };
+  view = { el, node, solid, vx: 0, vy: 0, raf: 0, held: false, leave: 0 };
 }
 function turn(dx, dy) { const m = new DOMMatrix().rotateSelf(-dy * SENS, dx * SENS, 0).multiplySelf(view.solid.matrix); view.solid.setRotation(m); }
 // after you let go: it keeps turning, slows, and closes unless the pointer is on it
@@ -61,10 +67,10 @@ function swallowClick() {
 export function initSpin() {
   document.addEventListener('pointerdown', (ev) => {
     if (ev.button !== 0) return;
-    const node = ev.target.closest?.('.die'); if (!node?._die || node.classList.contains('flipc')) return;
+    const node = ev.target.closest?.('.die, .thing'); if (!node || !(node._die || node._look) || node.classList.contains('flipc')) return;
     const x0 = ev.clientX, y0 = ev.clientY, k = scaleOf(); let spinning = false;
     const move = (e) => {
-      if (!spinning) { if (Math.hypot(e.clientX - x0, e.clientY - y0) / k < GRAB) return; spinning = true; open(node, node._die); view.held = true; }
+      if (!spinning) { if (Math.hypot(e.clientX - x0, e.clientY - y0) / k < GRAB) return; spinning = true; open(node); view.held = true; }
       if (!view) return; const dx = e.movementX / k, dy = e.movementY / k; view.vx = dx; view.vy = dy; turn(dx, dy);
     };
     const up = () => { document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); document.removeEventListener('pointercancel', up);
