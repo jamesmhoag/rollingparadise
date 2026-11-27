@@ -8,6 +8,7 @@ import { signOf, dressSign, crownLookOf, crownFit, CROWN_FIT, signFace } from '.
 import { trickItem } from './trickcard.js';
 import * as R from '../run.js';
 import { flavorP } from './parts.js';
+import { walletEl, jacketEl } from './gear.js';
 import { cents } from '../util.js';
 import { t } from '../text.js';
 // a page with one column in the middle of it (the alley, the summary)
@@ -17,7 +18,7 @@ function jacketList(onPick, forSale) {
   const run = app.run, meta = app.meta, box = h('div', { class: 'items list' });
   function render() {
     const ids = Object.keys(D.JACKETS).filter((id) => (forSale ? !meta.jackets.includes(id) && id !== 'standard' : meta.jackets.includes(id) && R.jacketFits(run.cls, id)));
-    syncList(box, ids, (id) => id, (id) => { const J = D.JACKETS[id]; const el = h('div', { class: 'item', tip: () => jacketTip(id) }, h('div', { class: 'main' }, h('b', { text: `🧥 ${J.name}` }), h('small', { text: J.effect })), h('span', { class: 'price' }), btn(t(forSale ? 'shop.buy' : 'end.jacket.wear'), () => onPick(id, el), null, 'small')); return el; },
+    syncList(box, ids, (id) => id, (id) => { const J = D.JACKETS[id]; const el = h('div', { class: 'item', tip: () => jacketTip(id) }, h('div', { class: 'main with-thing' }, jacketEl(id, 'mini'), h('div', {}, h('b', { text: J.name }), h('small', { text: J.effect }))), h('span', { class: 'price' }), btn(t(forSale ? 'shop.buy' : 'end.jacket.wear'), () => onPick(id, el), null, 'small')); return el; },
       (el, id) => { const J = D.JACKETS[id]; el.querySelector('.price').textContent = forSale ? (R.jacketAvailable(run, id) ? cents(J.price) : t('end.reachFloor', { floor: J.level + 1 })) : run.jacket === id ? t('end.jacket.wearing') : '';
         el.classList.toggle('sel', !forSale && run.jacket === id); el.lastChild.classList.toggle('off', forSale ? !R.jacketAvailable(run, id) || run.purse + (meta.debit ? meta.atm : 0) < J.price : run.jacket === id); });
   }
@@ -28,7 +29,7 @@ export const walletTip = (id) => { const Wl = D.WALLETS[id]; return t('end.walle
 function walletList(onBuy) {
   const run = app.run, meta = app.meta, box = h('div', { class: 'items list' });
   function render() {
-    syncList(box, Object.keys(D.WALLETS).filter((id) => D.WALLETS[id].price > 0 && !meta.wallets.includes(id)), (id) => id, (id) => { const Wl = D.WALLETS[id]; const el = h('div', { class: 'item', tip: () => walletTip(id) }, h('div', { class: 'main' }, h('b', { text: `👛 ${Wl.name}` }), h('small', { text: t('end.wallet.line', { n: Wl.slots, p: R.passCap(id), keep: Wl.keep }) })), h('span', { class: 'price' }), btn(t('shop.buy'), () => onBuy(id, el), null, 'small')); return el; },
+    syncList(box, Object.keys(D.WALLETS).filter((id) => D.WALLETS[id].price > 0 && !meta.wallets.includes(id)), (id) => id, (id) => { const Wl = D.WALLETS[id]; const el = h('div', { class: 'item', tip: () => walletTip(id) }, h('div', { class: 'main with-thing' }, walletEl(id, 'mini'), h('div', {}, h('b', { text: Wl.name }), h('small', { text: t('end.wallet.line', { n: Wl.slots, p: R.passCap(id), keep: Wl.keep }) }))), h('span', { class: 'price' }), btn(t('shop.buy'), () => onBuy(id, el), null, 'small')); return el; },
       (el, id) => { const Wl = D.WALLETS[id], ok = R.walletAvailable(run, meta, id); el.querySelector('.price').textContent = ok ? cents(Wl.price) : Wl.crown && !meta.crowns ? t('end.wallet.crown') : t('end.reachFloor', { floor: Wl.level + 1 }); el.lastChild.classList.toggle('off', !ok || run.purse + (meta.debit ? meta.atm : 0) < Wl.price); });
   }
   render(); return { el: box, render };

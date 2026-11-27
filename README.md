@@ -51,6 +51,10 @@ High Roller) and adds Clear it and Lose it to every table, settled at once with 
 
 ## Code
 
+**One of everything.** Nothing is coded twice: `npm test` fails on duplicated code (`tests/dupes.mjs`). Before writing
+a helper, an input, a drawing or a rule, look for the one that exists (`ui/form.js`, `ui/chippaint.js`, `ui/thing.js`,
+`ui/finish.js`, `ui/sign.js`, `ui/core.js`, `util.js`) and use or extend it; content shown in two places is drawn by the same function in both.
+
 | Path | What it holds |
 | --- | --- |
 | `js/data.js` | All content: Rollers, tricks, dice, chips, tilts, floors, drinks, sports, jackets, cards |

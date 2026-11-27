@@ -6,7 +6,7 @@
 import { finishPicker } from './finish.js';
 import { draftForm, fieldRow, numIn, colourIn, tick, typed, askId, makerPage, previewCol } from './form.js';
 import { h, btn, lab, toast, guided } from './core.js';
-import { cardEl, cardRule, cardTip, shopName } from './parts.js';
+import { cardEl, cardRule, cardTip, shopName, cardBackEl, passEl, passBackEl, passLook, backLook, BACK_SHOWS } from './parts.js';
 import { symbolPicker } from './neonmaker.js';
 import { flavorField } from './rostermaker.js';
 import { traitRule } from '../bout.js';
@@ -25,7 +25,53 @@ export function cardList(sel, pick, filter = '') {
   return [h('div', { class: 'row wrap' }, ...MAKE.map((kind) => btn(t(`cards.new.${kind}`), () => { const id = newCard(kind); if (id) pick(id); }, t('cards.new.tip', { kind: t(`card.kind.${kind}`) }), 'small go'))),
     h('button', { class: `b-item ${sel === CORNER ? 'on' : ''}`, onclick: () => pick(CORNER) }, h('b', { text: t('cards.corner') }), h('small', { text: t('cards.corner.sub', { n: D.FIND_CARDS.length }) })),
     ...groups.flatMap(([kind, ids]) => (ids.length ? [h('span', { class: 'cap', text: t(`cards.group.${kind}`) }), ...ids.map((k) => item(k, D.CARDS[k].name, D.CARDS[k].shop ? shopName(D.CARDS[k].shop) : D.CARDS[k].kind === 'key' ? D.FLOORS[D.CARDS[k].floor]?.name || '' : k))] : [])),
-    h('span', { class: 'cap', text: t('cards.group.business') }), ...Object.entries(D.BOSS_TRAITS).filter(([k, T]) => hit(k, T.name)).map(([k, T]) => item(`biz:${k}`, T.name, T.title))];
+    h('span', { class: 'cap', text: t('cards.group.pass') }), ...D.PASSES.map((P, f) => (P && hit(`pass${f}`, P.name) ? h('button', { class: `b-item ${sel === `pass:${f}` ? 'on' : ''} ${B.changed(D.subPath('PASSES', f)) ? 'ch' : ''}`, onclick: () => pick(`pass:${f}`) }, h('b', { text: P.name }), h('small', { text: D.FLOORS[f - 1]?.name || '' })) : null)),
+    h('span', { class: 'cap', text: t('cards.group.traits') }), ...Object.entries(D.BOSS_TRAITS).filter(([k, T]) => hit(k, T.name)).map(([k, T]) => item(`biz:${k}`, T.name, T.title))];
+}
+// The print design of anything printed as a card is (a card, a pass): its face, what it and its lettering and symbols
+// are made of, and its back. F: the form of the entry (its look is at `look`); L: the look as it is drawn now.
+function designFields(F, L) {
+  const { set } = F, field = (key, el, ks) => F.field(lab(`cards.f.${key}`), el, ks), select = (ks, list, value) => F.select(ks, list, value, { parse: typed }), colour = (ks, value) => F.colour(ks, value, { fallback: '#ffffff' });
+  const two = (ks, bg) => h('div', { class: 'row' }, ...[0, 1].map((i) => colourIn((bg || [])[i], (v) => { const out = [...(bg || ['#888888', '#444444'])]; out[i] = v; set(ks, out); })));
+  const patterns = CARD_PATTERNS.map((k) => [k, t(`cards.pattern.${k}`)]), borders = CARD_BORDERS.map((k) => [k, t(`cards.border.${k}`)]), edges = CARD_EDGE_AT.map((k) => [k, t(`cards.edgeAt.${k}`)]);
+  const LP = (k) => ['look', k], BP = (k) => ['look', 'back', k], Bk = backLook(L);
+  return [
+    h('span', { class: 'cap', text: t('cards.design') }),
+    field('bg', two(LP('bg'), L.bg), LP('bg')),
+    field('pattern', select(LP('pattern'), patterns, L.pattern || 'plain'), LP('pattern')),
+    field('border', select(LP('border'), borders, L.border || 'plain'), LP('border')),
+    field('borderColor', colour(LP('borderColor'), L.borderColor), LP('borderColor')),
+    field('symbol', symbolPicker(L.symbol, (g) => set(LP('symbol'), g)), LP('symbol')),
+    field('symColor', colour(LP('symColor'), L.symColor), LP('symColor')),
+    field('edgeAt', select(LP('edgeAt'), edges, L.edgeAt || 'none'), LP('edgeAt')),
+    L.edgeAt && L.edgeAt !== 'none' ? field('edge', symbolPicker(L.edge, (g) => set(LP('edge'), g)), LP('edge')) : null,
+    L.edgeAt && L.edgeAt !== 'none' ? field('edgeColor', colour(LP('edgeColor'), L.edgeColor), LP('edgeColor')) : null,
+    field('ink', colour(LP('ink'), L.ink), LP('ink')),
+    field('font', select(LP('font'), [['display', t('cards.font.display')], ['script', t('cards.font.script')], ['body', t('cards.font.body')]], L.font || 'display'), LP('font')),
+    ...['bg', 'ink', 'symbol'].map((part) => { const at = ['look', 'finish', part], Fn = L.finish?.[part] || {};
+      return field(`finish.${part}`, finishPicker(Fn, (v) => set(at, { ...Fn, ...v }), () => set(at, null), { none: t(part === 'bg' ? 'cards.finish.stock' : 'cards.finish.print'), colour: false }), at); }),
+    // the back
+    h('span', { class: 'cap', text: t('cards.back') }),
+    field('back.show', F.checks(BP('show'), BACK_SHOWS.map((k) => [k, t(`cards.back.show.${k}`)]), Bk.show), BP('show')),
+    Bk.show.includes('note') ? field('back.note', F.text(BP('note'), Bk.note, { long: true, rows: 2 }), BP('note')) : null,
+    field('back.bg', two(BP('bg'), Bk.bg), BP('bg')),
+    field('back.pattern', select(BP('pattern'), patterns, Bk.pattern), BP('pattern')),
+    field('back.border', select(BP('border'), borders, Bk.border), BP('border')),
+    field('back.borderColor', colour(BP('borderColor'), Bk.borderColor), BP('borderColor')),
+    field('back.symbol', symbolPicker(Bk.symbol, (g) => set(BP('symbol'), g)), BP('symbol')),
+    field('back.symColor', colour(BP('symColor'), Bk.symColor), BP('symColor')),
+    field('back.edgeAt', select(BP('edgeAt'), edges, Bk.edgeAt), BP('edgeAt')),
+    field('back.ink', colour(BP('ink'), Bk.ink), BP('ink'))];
+}
+// a printed thing shown for the maker: its face and its back, side by side (drag either for a close look)
+const bothSides = (front, back) => h('div', { class: 'card-preview' }, front, h('span', { class: 'card-preview-back' }, back));
+// a pass: its name, what it says, its colour and glyph, and its print design
+function passPage(f, redraw) {
+  const P = D.PASSES[f]; if (!P) return h('p', { class: 'sub', text: t('maker.none') });
+  const F = draftForm(D.subPath('PASSES', f), redraw), field = (key, el, ks) => F.field(lab(`cards.f.${key}`), el, ks);
+  return h('div', { class: 'b-maker' }, h('div', { class: 'b-fields' }, h('span', { class: 'cap', text: t('cards.rule') }), field('name', F.text(['name'], P.name), ['name']), field('passText', F.text(['text'], P.text, { long: true }), ['text']),
+    field('passColor', F.colour(['color'], P.color), ['color']), flavorField('PASSES', f, redraw), ...designFields(F, passLook(P))),
+    h('div', { class: 'col' }, h('span', { class: 'cap', text: t('maker.preview') }), bothSides(passEl(f, 'big'), passBackEl(f, 'big')), h('p', { class: 'sub', text: P.text })));
 }
 export function newCard(kind) {
   const id = askId(t('cards.newId'), `${kind}_new`, D.CARDS); if (!id) return null;
@@ -35,6 +81,7 @@ export function newCard(kind) {
 export function cardMaker(id, redraw, openTable) {
   if (id === CORNER) return cornerPage(redraw);
   if (id?.startsWith('biz:')) return bizPage(id.slice(4), redraw, openTable);
+  if (id?.startsWith('pass:')) return passPage(Number(id.slice(5)), redraw);
   const C = D.CARDS[id]; if (!C) return h('p', { class: 'sub', text: t('maker.none') });
   const F = draftForm(D.subPath('CARDS', id), redraw), { set } = F;
   const field = (key, el, ks) => F.field(lab(`cards.f.${key}`), el, ks);
@@ -60,28 +107,13 @@ export function cardMaker(id, redraw, openTable) {
     kind === 'membership' ? membersOnly(C.shop, redraw) : null,
     kind === 'key' ? field('floor', select(['floor'], [1, 2, 3, 4].map((f) => [f, D.FLOORS[f]?.name || f]), C.floor), ['floor']) : null,
     ['note', 'trading', 'other'].includes(kind) ? field('text', text(['text'], C.text, true), ['text']) : null,
-    field('starter', check(['starter'], C.starter), ['starter']),
-    field('corner', h('div', { class: 'row' }, num(['corner'], C.corner, { step: 0.01 }), h('small', { class: 'dim', text: C.corner ? t('cards.corner.pct', { pct: pctOf(C.corner) }) : t('cards.corner.never') })), ['corner']),
+    ...(kind === 'business' ? [fieldRow(lab('cards.f.roller'), h('b', { text: D.ROSTER[C.roller]?.name || '' }))] : [field('starter', check(['starter'], C.starter), ['starter']),
+    field('corner', h('div', { class: 'row' }, num(['corner'], C.corner, { step: 0.01 }), h('small', { class: 'dim', text: C.corner ? t('cards.corner.pct', { pct: pctOf(C.corner) }) : t('cards.corner.never') })), ['corner'])]),
     flavorField('CARDS', id, redraw)];
-  const LP = (k) => ['look', k];
-  const design = [
-    h('span', { class: 'cap', text: t('cards.design') }),
-    field('bg', h('div', { class: 'row' }, ...[0, 1].map((i) => colourIn((L.bg || [])[i], (v) => { const bg = [...(L.bg || ['#888888', '#444444'])]; bg[i] = v; set(LP('bg'), bg); }))), LP('bg')),
-    field('pattern', select(LP('pattern'), CARD_PATTERNS.map((k) => [k, t(`cards.pattern.${k}`)]), L.pattern || 'plain'), LP('pattern')),
-    field('border', select(LP('border'), CARD_BORDERS.map((k) => [k, t(`cards.border.${k}`)]), L.border || 'plain'), LP('border')),
-    field('borderColor', colour(LP('borderColor'), L.borderColor), LP('borderColor')),
-    field('symbol', symbolPicker(L.symbol, (g) => set(LP('symbol'), g)), LP('symbol')),
-    field('symColor', colour(LP('symColor'), L.symColor), LP('symColor')),
-    field('edgeAt', select(LP('edgeAt'), CARD_EDGE_AT.map((k) => [k, t(`cards.edgeAt.${k}`)]), L.edgeAt || 'none'), LP('edgeAt')),
-    L.edgeAt && L.edgeAt !== 'none' ? field('edge', symbolPicker(L.edge, (g) => set(LP('edge'), g)), LP('edge')) : null,
-    L.edgeAt && L.edgeAt !== 'none' ? field('edgeColor', colour(LP('edgeColor'), L.edgeColor), LP('edgeColor')) : null,
-    field('ink', colour(LP('ink'), L.ink), LP('ink')),
-    field('font', select(LP('font'), [['display', t('cards.font.display')], ['script', t('cards.font.script')], ['body', t('cards.font.body')]], L.font || 'display'), LP('font')),
-    ...['bg', 'ink', 'symbol'].map((part) => { const at = ['look', 'finish', part], Fn = L.finish?.[part] || {};
-      return field(`finish.${part}`, finishPicker(Fn, (v) => set(at, { ...Fn, ...v }), () => set(at, null), { none: t('cards.finish.print'), colour: false }), at); })];
+  const design = designFields(F, L);
   const big = cardEl(id, 'big'); big._tip = () => cardTip(id); big.classList.add('has-tip');
   return h('div', { class: 'b-maker' }, h('div', { class: 'b-fields' }, h('span', { class: 'cap', text: t('cards.rule') }), ...rule, ...design),
-    h('div', { class: 'col' }, h('span', { class: 'cap', text: t('maker.preview') }), h('div', { class: 'card-preview' }, big), h('p', { class: 'sub', text: cardRule(id) }),
+    h('div', { class: 'col' }, h('span', { class: 'cap', text: t('maker.preview') }), bothSides(big, cardBackEl(id, 'big')), h('p', { class: 'sub', html: cardRule(id) }),
       h('p', { class: 'dim', text: t(C.kind === 'key' ? 'cards.on.pass' : 'cards.on.wallet') })));
 }
 // the shop's members-only items, switched on and off here (they are kept on the items themselves)

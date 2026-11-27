@@ -4,7 +4,7 @@ import { thing } from './thing.js';
 import { nameSign, signOf } from './sign.js';
 import * as D from '../data.js';
 import * as CM from '../content/chipmaker.js';
-import { cents, cap } from '../util.js';
+import { cents, cap, shade } from '../util.js';
 import { multOf, makeOf, fxOf, traitRule } from '../bout.js';
 import { facesOf, faceValue, matOf, dieName, petName } from '../dice.js';
 import { traitsOf, traitsHtml } from '../traits.js';
@@ -12,7 +12,6 @@ import { iconStyle, textureOf } from './icons.js';
 import { trickCardHtml, printCls, qMarkHtml } from './trickcard.js';
 import { SYMBOLS as SYM, symbolOf } from './symbols.js';
 import { finishOn, finishSvg } from './finish.js';
-import { walletLook, jacketLook } from '../content/finishes.js';
 import { t as tx } from '../text.js';
 
 const GLYPH = { puddle: '💧', opp: '★', block: '▣', counter: '✸', burn: '🔥', acid: '☣', shock: '⚡', corrupt: '☠', poison: '☘', boom: '💣', frost: '❄', lava: '🌋', flower: '✿', petal: '❀', clay: '▤', brick: '▦', dynamite: '🧨', tree: '🌳', wood: '▥', hard: '⛊', sticky: '◍', hive: '⬢', little: '•', egg: '🥚', hat: '🎩', doom: '☠', volcano: '🌋' };
@@ -285,7 +284,7 @@ function printBack(spec, cls = '') {
 }
 // → the thing: its printed face on its body, its back behind, ready to be leaned and looked at
 function printed(spec, cls = '') {
-  return thing(printFace(spec, cls), { ...bodyOf(spec.look || {}), radius: spec.wide ? 4 : 6, back: () => printBack(spec, cls), make: () => printFace(spec, cls), name: spec.name, sub: spec.kind, cls: spec.wide ? 'th-wide' : '' });
+  return thing(printFace(spec, cls), { ...bodyOf(spec.look || {}), radius: spec.wide ? 4 : 6, back: () => printBack(spec, cls), make: () => printFace(spec, cls), name: spec.name, sub: spec.kind, cls: `${spec.wide ? 'th-wide' : ''} ${spec.pass ? 'th-pass' : ''}` });
 }
 // a card's spec from the table. o: { name (in place of its own), punched }
 export function cardSpec(id, o = {}) {
@@ -294,16 +293,18 @@ export function cardSpec(id, o = {}) {
     punches: c.kind === 'punch' ? c.punches : 0, punched: o.punched, rule: cardRule(id), flavor: T ? T.flavor : D.flavorOf('CARDS', id),
     plate: biz ? () => nameSign('them', biz.name, T?.title || D.CLASSES[biz.cls]?.name || '', signOf('them', biz.sign), 'card-sign') : null };
 }
+export const cardBackEl = (id, cls = '') => printBack(cardSpec(id), cls); // (for the maker, which shows both sides at once)
 export function cardEl(id, cls = '', o = {}) { const c = D.CARDS[id] || {}, el = printed(cardSpec(id, o), `${c.kind === 'key' ? 'gkey' : ''} ${cls}`); return el; }
 // a Suite Key: a pass cut for one room, printed as its floor's key design with the room number for its name
 export const keyTip = (k) => tx('parts.suite-key', { room: k.room, floor: D.FLOORS[k.floor]?.name || k.floor }) + flavorP('CARDS', `suite_${k.floor}`);
-export function keyEl(k, cls = '') { const el = cardEl(`suite_${k.floor}`, cls, { name: tx('parts.suite-key-room', { room: k.room }) }); el.classList.add('gpasskey'); el._tip = () => keyTip(k); el.classList.add('has-tip'); return el; }
+export function keyEl(k, cls = '') { const el = cardEl(`suite_${k.floor}`, cls, { name: tx('parts.suite-key-room', { room: k.room }) }); el.classList.add('gpasskey', 'th-pass'); el._tip = () => keyTip(k); el.classList.add('has-tip'); return el; }
 // a pass: printed as a card is, from its own look (PASSES[f].look; without one, its colour and glyph), lying wide
 export const passTip = (f) => tx('parts.every-wallet-holds-one', { name: D.PASSES[f].name, text: D.PASSES[f].text }) + flavorP('PASSES', f);
-const shade = (hex, k) => (/^#[0-9a-f]{6}$/i.test(hex) ? '#' + [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * k).toString(16).padStart(2, '0')).join('') : hex);
 export const passLook = (P) => ({ bg: [P.color, shade(P.color, 0.45)], pattern: 'plain', border: 'dashed', borderColor: '#ffffff', symbol: P.glyph, symColor: '#ffffff', edgeAt: 'none', ink: '#ffffff', font: 'display', ...(P.look || {}) });
+const passSpec = (f) => { const P = D.PASSES[f]; return { pass: true, id: `pass${f}`, kind: tx('parts.pass'), name: P.name.replace(/ Pass$/, ''), look: passLook(P), wide: true, rule: P.text, flavor: D.flavorOf('PASSES', f) }; };
+export const passBackEl = (f, cls = '') => printBack(passSpec(f), `gpass ${cls}`);
 export function passEl(f, cls = '') {
-  const P = D.PASSES[f], el = printed({ id: `pass${f}`, kind: tx('parts.pass'), name: P.name.replace(/ Pass$/, ''), look: passLook(P), wide: true, rule: P.text, flavor: D.flavorOf('PASSES', f) }, `gpass ${cls}`);
+  const el = printed(passSpec(f), `gpass ${cls}`);
   el._tip = () => passTip(f); el.classList.add('has-tip'); return el;
 }
 // a sign symbol as a small drawing in one colour (for a wallet's or a jacket's emblem)
@@ -311,28 +312,6 @@ export function symEl(id, color = '#fff', cls = '') {
   const S = SYM[symbolOf(id)]; if (!S) return h('span', { class: cls, text: id || '' });
   const svg = sv('svg', { class: cls, viewBox: '0 0 24 24', 'aria-hidden': 'true' }, [sv('path', { d: S.d, fill: 'none', stroke: 'currentColor', 'stroke-width': 2.4, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }), ...(S.dots || []).map(([x, y]) => sv('circle', { cx: x, cy: y, r: 1.8, fill: 'currentColor' }))]);
   svg.style.color = color; return svg;
-}
-// A wallet and a jacket are drawn from their look (content/finishes.js): what they are made of, their colour and trim,
-// a clasp or a collar, stitching or buttons, an emblem. What a look leaves out is read from the entry as it always was.
-export function walletEl(id, cls = '') {
-  const Wl = D.WALLETS[id] || {}, L = walletLook(id, Wl);
-  const el = h('span', { class: `gwallet ${Wl.crown ? 'crown' : ''} ${cls}`, style: { '--wc': L.color, '--w-flap': L.flap + 'px', '--w-round': L.round + 'px', ...(L.trim ? { '--w-trim': L.trim } : {}) } }, h('i', { class: 'flap' }),
-    L.stitch ? h('i', { class: 'stitch' }) : null, L.clasp !== 'none' ? h('i', { class: `clasp ${L.clasp}` }) : null,
-    h('span', { class: 'slots' }, Array.from({ length: Wl.slots || 0 }, () => h('i'))), h('b', { text: Wl.keep ?? '' }));
-  finishOn(el, lookFinish(L)); gearSymbol(el, L, 'wsym');
-  return el;
-}
-// a wallet's or a jacket's look as a finish, and its emblem (in the emblem's own material, lit as the piece is)
-const lookFinish = (L, over = {}) => ({ m: L.mat, color: L.color, glint: L.glint, sparkle: L.sparkle, ...over });
-function gearSymbol(el, L, cls) { if (L.symbol) el.append(finishSvg(symEl(L.symbol.id, L.symbol.color, cls), L.symbol.mat ? lookFinish(L, { m: L.symbol.mat, color: L.symbol.color }) : null)); }
-export function jacketEl(id, cls = '') {
-  const J = D.JACKETS[id] || {}, L = jacketLook(id, J);
-  const body = finishOn(h('i', { class: 'body' }), lookFinish(L));
-  const el = h('span', { class: `gjacket ${cls}`, style: { '--jc': L.color, '--j-len': L.length + 'px', ...(L.lining ? { '--j-lining': L.lining } : {}) } }, body, h('i', { class: `lapel c-${L.collar}` }),
-    L.buttons ? h('span', { class: 'btns' }, Array.from({ length: L.buttons }, () => h('i'))) : null,
-    h('span', { class: 'mods' }, Object.entries(J.mods || {}).map(([k2, n]) => h('b', { class: n > 0 ? 'p' : 'n', text: `${n > 0 ? '+' : ''}${n}` }))));
-  gearSymbol(el, L, 'jsym');
-  return el;
 }
 // sips left are shown as how full the glass is
 export function drinkEl(d, sips = d.sips, max = d.max || d.sips, cls = '') {

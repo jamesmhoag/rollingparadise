@@ -133,7 +133,7 @@ export function buildScene(root, opts = {}) {
   }
   function drawEditor() {
     if (ui.tool === 'test') { editor.replaceChildren(h('h2', { text: t('test.title') }), testTable(draw, (o) => app.nav.test(o))); return; }
-    if (ui.tool === 'cards') { const nm = ui.key === CORNER ? t('cards.corner') : ui.key.startsWith('biz:') ? D.BOSS_TRAITS[ui.key.slice(4)].name : D.CARDS[ui.key]?.name || '';
+    if (ui.tool === 'cards') { const nm = ui.key === CORNER ? t('cards.corner') : ui.key.startsWith('biz:') ? D.BOSS_TRAITS[ui.key.slice(4)].name : ui.key.startsWith('pass:') ? D.PASSES[ui.key.slice(5)]?.name || '' : D.CARDS[ui.key]?.name || '';
       editor.replaceChildren(h('h2', { text: nm }), h('p', { class: 'sub mono', text: ui.key === CORNER ? 'SHADY · CARDS.*.corner' : ui.key.startsWith('biz:') ? D.subPath('BOSS_TRAITS', ui.key.slice(4)) : D.subPath('CARDS', ui.key) }),
         cardMaker(ui.key, draw, openTable)); return; }
     if (ui.tool === 'gear') { const tb = ui.key[0] === 'w' ? 'WALLETS' : 'JACKETS', gid = ui.key.slice(2); editor.replaceChildren(h('h2', { text: D[tb][gid]?.name || '' }), h('p', { class: 'sub mono', text: D.subPath(tb, gid) }), gearMaker(ui.key, draw)); return; }

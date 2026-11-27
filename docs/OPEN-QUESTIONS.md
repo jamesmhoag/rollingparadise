@@ -352,3 +352,18 @@ Not built yet, or only in part:
     bar). Others may remain: name them as you meet them.
 14. **Name plates and edging:** a plate is one fixed size and its name is fitted to it; card lettering gives way to
     edge symbols and the border is cut round them. A sign's own text is not yet re-laid by its edging beyond that fit.
+
+## Round 20
+
+- **Expenses.** Every other trick effect is now a chip's work. An Expense still charges its fee directly: the fee is
+  Debt chips and takes chips, so it was read as chip-driven already. Say if an Expense should lay a chip that then
+  charges the fee.
+- **Several business cards.** The engine plays one trait a Roller. With several business cards in your wallet, the
+  first one counts. Say if all of them should.
+- **A full wallet when you win a business card.** It waits, as any card does, and you are asked to drop a card for it.
+- **Wallet types.** Each existing wallet's type is read from its name (clip, zip, snap and chain are a clip or a
+  clasped pouch, the rest billfolds) until its look sets one.
+- **Jacket styles.** Likewise read from the name until its look sets one (Long, Reading and Regal are long coats;
+  Bomber, Down, Sports and Leather are bombers; Rain is a parka; the rest blazers).
+- **The lit title sign** only breathes once it is on (no buzz or flicker at all). Say if a rare flicker should come back.
+- **Materials on dice.** The cloths, card stock and skins are in the renderer but are not offered as dice castings.

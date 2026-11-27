@@ -28,9 +28,19 @@ export const finishOn = (el, f, mode = 'fill') => { el?.style.removeProperty('--
 // A symbol or a crown (an SVG of tubes or strokes) is painted with the same picture: a pattern over its box that its
 // strokes and fills take as their paint. paintSvg puts the pattern back after the SVG is redrawn (ui/sign.js).
 let paintN = 0;
+const SVGNS = 'http://www.w3.org/2000/svg', svgEl = (tag, a) => { const e = document.createElementNS(SVGNS, tag); for (const [k, v] of Object.entries(a)) e.setAttribute(k, v); return e; };
+// A paint for one part of an SVG drawing (a jacket's sleeve, its trim): the material's picture over the drawing's box,
+// in its colour until the picture is ready. → what to put in `fill` or `stroke`. No material: the plain colour.
+export function svgPaint(svg, f, fallback = '#888888') {
+  const F = finishOf(f); if (!F) return f?.color || fallback;
+  const vb = svg.viewBox.baseVal, id = `finp${++paintN}`; let defs = svg.querySelector(':scope > defs.part-defs'); if (!defs) { defs = svgEl('defs', { class: 'part-defs' }); svg.prepend(defs); }
+  const pat = svgEl('pattern', { id, patternUnits: 'userSpaceOnUse', x: vb.x, y: vb.y, width: vb.width, height: vb.height }); pat.append(svgEl('rect', { x: 0, y: 0, width: vb.width, height: vb.height, fill: F.color || fallback })); defs.append(pat);
+  pictured(pat, F, (url) => pat.append(svgEl('image', { href: url, x: 0, y: 0, width: vb.width, height: vb.height, preserveAspectRatio: 'none' })));
+  return `url(#${id})`;
+}
 export function paintSvg(svg) {
   svg.querySelector(':scope > defs.fin-defs')?.remove(); const url = svg._finUrl; if (!url) { svg.classList.remove('fin-tex'); svg.style.removeProperty('--fin-paint'); return; }
-  const NS = 'http://www.w3.org/2000/svg', mk = (tag, a) => { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(a)) e.setAttribute(k, v); return e; };
+  const mk = svgEl;
   const vb = svg.viewBox?.baseVal, W = (vb && vb.width) || svg.clientWidth || 24, H = (vb && vb.height) || svg.clientHeight || 24, id = `finp${++paintN}`;
   const defs = mk('defs', { class: 'fin-defs' }), pat = mk('pattern', { id, patternUnits: 'userSpaceOnUse', x: vb?.x || 0, y: vb?.y || 0, width: W, height: H });
   pat.append(mk('image', { href: url, x: 0, y: 0, width: W, height: H, preserveAspectRatio: 'none' })); defs.append(pat); svg.prepend(defs);

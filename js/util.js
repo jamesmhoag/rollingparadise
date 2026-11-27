@@ -52,3 +52,6 @@ export const vnorm = (a) => { const l = vlen(a) || 1; return [a[0] / l, a[1] / l
 // how far apart two spaces are, in steps along rows and columns; and a sort that puts the nearest to `o` first
 export const steps = (a, b) => Math.abs(a.r - b.r) + Math.abs(a.c - b.c);
 export const nearestTo = (o) => (x, y) => steps(x, o) - steps(y, o);
+
+// a hex colour made darker (k under 1) or lighter (over 1); anything that is not #rrggbb is given back as it is
+export const shade = (hex, k) => (/^#[0-9a-f]{6}$/i.test(hex || '') ? '#' + [1, 3, 5].map((i) => Math.max(0, Math.min(255, Math.round(parseInt(hex.slice(i, i + 2), 16) * k))).toString(16).padStart(2, '0')).join('') : hex);

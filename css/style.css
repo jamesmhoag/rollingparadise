@@ -444,14 +444,6 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; color: va
 /* a pass: a ticket, not a card, with a torn-off stub line */
 .gcard.gpass::after { content: ''; position: absolute; top: 4px; bottom: 4px; right: 14px; border-right: 1.5px dashed rgba(255, 255, 255, .45); z-index: 1; }
 .gcard.armed { box-shadow: 0 0 0 2px var(--bad), 0 3px 8px rgba(0, 0, 0, .45); }
-.gwallet { position: relative; display: inline-block; flex: none; width: 70px; height: 46px; border-radius: 6px 6px 9px 9px; background: linear-gradient(170deg, color-mix(in srgb, var(--wc) 85%, #fff), color-mix(in srgb, var(--wc) 75%, #000)); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25), 0 4px 10px rgba(0, 0, 0, .5); }
-.gwallet .flap { position: absolute; left: 0; right: 0; top: 0; height: 15px; border-radius: 6px 6px 50% 50%; background: color-mix(in srgb, var(--wc) 70%, #000); }
-.gwallet .slots { position: absolute; left: 7px; bottom: 7px; display: flex; gap: 3px; } .gwallet .slots i { width: 7px; height: 11px; border-radius: 2px; background: rgba(255, 255, 255, .55); box-shadow: 0 0 0 1px rgba(0, 0, 0, .3); }
-.gwallet b { position: absolute; right: 6px; bottom: 5px; font-size: 11px; color: #fff; text-shadow: 0 1px 2px #000; } .gwallet.crown::after { content: '♛'; position: absolute; left: 50%; top: -12px; translate: -50% 0; color: var(--amber); font-size: 14px; text-shadow: 0 0 6px var(--amber); }
-.gjacket { position: relative; display: inline-block; flex: none; width: 54px; height: 58px; }
-.gjacket .body { position: absolute; inset: 0; clip-path: polygon(30% 0, 70% 0, 100% 18%, 100% 62%, 84% 62%, 84% 100%, 16% 100%, 16% 62%, 0 62%, 0 18%); background: linear-gradient(170deg, color-mix(in srgb, var(--jc) 80%, #fff), color-mix(in srgb, var(--jc) 80%, #000)); }
-.gjacket .lapel { position: absolute; left: 34%; right: 34%; top: 0; height: 52%; clip-path: polygon(0 0, 100% 0, 50% 100%); background: rgba(0, 0, 0, .35); }
-.gjacket .mods { position: absolute; left: 0; right: 0; bottom: -6px; display: flex; justify-content: center; gap: 2px; } .gjacket .mods b { font-size: 9px; padding: 0 3px; border-radius: 5px; background: #06040f; } .gjacket .mods b.p { color: var(--good); } .gjacket .mods b.n { color: var(--bad); }
 .gdrink { position: relative; display: inline-block; flex: none; width: 34px; height: 46px; clip-path: polygon(0 0, 100% 0, 84% 100%, 16% 100%); background: rgba(220, 240, 255, .16); box-shadow: inset 0 0 0 2px rgba(220, 240, 255, .5); }
 .gdrink .liquid { position: absolute; left: 0; right: 0; bottom: 0; height: var(--fill); background: linear-gradient(180deg, color-mix(in srgb, var(--dk) 70%, #fff), var(--dk)); transition: height .5s var(--ease); }
 .gdrink b { position: absolute; inset: 0; display: grid; place-items: center; font-size: 13px; color: #fff; text-shadow: 0 1px 2px #000; }
@@ -1097,7 +1089,7 @@ table.b-shop { border-collapse: collapse; width: 100%; font-size: 12px; margin-t
 .gcard.art { background: none; overflow: hidden; } .gcard.art > .card-art { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; border-radius: inherit; }
 .gcard.art > em, .gcard.art > b, .gcard.art > small { position: relative; z-index: 1; } .gcard.art > small { font-family: var(--cfont); font-size: 8px; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
 .gcard.art.lanyard::before { z-index: 2; }
-.card-preview { padding: 18px; display: flex; justify-content: center; } .card-preview .gcard.big { transform: scale(2.4); transform-origin: center top; margin-bottom: 110px; }
+.card-preview { padding: 18px 8px 28px; display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 18px; } .card-preview > .thing, .card-preview-back { zoom: 2.4; } .card-preview-back { display: inline-block; line-height: 0; border-radius: 6px; box-shadow: 0 3px 8px rgba(0, 0, 0, .5); }
 .card-preview .gcard.bizcard.big { transform: scale(1.8); margin-bottom: 40px; }
 .gcard.art.edge-top { padding-top: 12px; } .gcard.art.edge-bottom { padding-bottom: 11px; }
 /* ---------- tricks: the list item, the full card, the played card (trickcard.js) ---------- */
@@ -1343,22 +1335,7 @@ table.b-shop { border-collapse: collapse; width: 100%; font-size: 12px; margin-t
 @keyframes finSvgSpark { 0% { opacity: 1; } 33% { opacity: .78; } 66% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .fin-glint, .fin-swirling, .fin-sparkle::after, .fin-svg { animation: none !important; } }
 /* wallets and jackets, made of a finish */
-.gwallet.fin { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22), 0 4px 10px rgba(0, 0, 0, .5); border-radius: var(--w-round, 6px) var(--w-round, 6px) calc(var(--w-round, 6px) + 3px) calc(var(--w-round, 6px) + 3px); }
-.gwallet.fin .flap { height: var(--w-flap, 15px); background: color-mix(in srgb, var(--w-trim, var(--fc)) 62%, #000); mix-blend-mode: multiply; opacity: .75; }
-.gwallet .stitch { position: absolute; inset: 3px; border-radius: inherit; border: 1px dashed rgba(255, 255, 255, .45); pointer-events: none; }
-.gwallet .clasp { position: absolute; left: 50%; top: var(--w-flap, 15px); translate: -50% -50%; pointer-events: none; }
-.gwallet .clasp.snap { width: 9px; height: 9px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #b9b9c6 45%, #55566a); box-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
-.gwallet .clasp.zip { left: 6px; right: 6px; translate: 0 -50%; height: 3px; background: repeating-linear-gradient(90deg, #d8d8e4 0 2px, #55566a 2px 4px); border-radius: 2px; } .gwallet .clasp.zip::after { content: ''; position: absolute; right: -2px; top: -3px; width: 5px; height: 9px; border-radius: 2px; background: #d8d8e4; }
-.gwallet .clasp.clip { top: 50%; width: 46%; height: 62%; border: 2px solid #d6dde6; border-radius: 4px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .35), 0 1px 2px rgba(0, 0, 0, .5); }
-.gwallet .clasp.chain { left: auto; right: -9px; top: 8px; translate: 0 0; width: 22px; height: 18px; border: 2px dotted #cfd3df; border-top: 0; border-radius: 0 0 12px 12px; }
-.gwallet .wsym, .gjacket .jsym { position: absolute; pointer-events: none; } .gwallet .wsym { right: 5px; top: calc(var(--w-flap, 15px) + 2px); width: 14px; height: 14px; } .gjacket .jsym { left: 60%; top: 30%; width: 11px; height: 11px; }
-.gjacket.fin { background: none !important; } .gjacket .body.fin { position: absolute; inset: 0 0 calc(var(--j-len, 0px) * -1) 0; }
-.gjacket .lapel.c-stand { left: 30%; right: 30%; height: 14%; clip-path: none; border-radius: 0 0 4px 4px; background: color-mix(in srgb, var(--j-lining, #000) 55%, #000); opacity: .8; }
-.gjacket .lapel.c-crew { left: 36%; right: 36%; height: 12%; clip-path: none; border-radius: 0 0 50% 50%; background: color-mix(in srgb, var(--j-lining, #000) 60%, #000); opacity: .85; }
-.gjacket .lapel.c-hood { left: 26%; right: 26%; top: -8%; height: 30%; clip-path: none; border-radius: 50% 50% 30% 30%; background: color-mix(in srgb, var(--j-lining, #000) 45%, #000); opacity: .7; }
-.gjacket .lapel.c-lapel { background: color-mix(in srgb, var(--j-lining, #000) 60%, #000); opacity: .7; }
-.gjacket .btns { position: absolute; left: 50%; top: 52%; translate: -50% 0; display: grid; gap: 3px; pointer-events: none; } .gjacket .btns i { width: 3.5px; height: 3.5px; border-radius: 50%; background: rgba(255, 255, 255, .75); box-shadow: 0 0 0 1px rgba(0, 0, 0, .4); }
-.gear-preview { display: grid; place-items: center; padding: 26px 20px 60px; min-height: 190px; } .gear-preview > * { transform: scale(3); transform-origin: center top; }
+.gear-preview { display: grid; place-items: center; padding: 26px 20px 34px; min-height: 190px; } .gear-preview > .th-jacket { zoom: 3; } .gear-preview > .th-wallet { zoom: 1.5; }
 .fin-swatch { display: inline-block; width: 46px; height: 28px; border-radius: 6px; position: relative; vertical-align: middle; }
 .gcard .card-fin { position: absolute; inset: 0; border-radius: inherit; z-index: 0; mix-blend-mode: hard-light; opacity: .92; pointer-events: none; }
 .fin-pick { gap: 4px; max-width: 460px; } .btn.fin-btn { display: inline-grid; justify-items: center; gap: 2px; padding: 3px 4px; height: auto; } .btn.fin-btn small { font-size: 8.5px; letter-spacing: 0; text-transform: none; } .btn.fin-btn.on { box-shadow: 0 0 0 2px var(--gold); }
@@ -1366,7 +1343,6 @@ table.b-shop { border-collapse: collapse; width: 100%; font-size: 12px; margin-t
 /* a card's lettering makes room for its edge symbols: narrower beside corner symbols, smaller between two edged rows */
 .gcard.art.edge-corners > em, .gcard.art.edge-corners > small { max-width: calc(100% - 20px); margin-inline: auto; }
 .gcard.art.edge-top.edge-bottom > small { font-size: 7px; max-height: 15px; } .gcard.art.edge-top.edge-bottom > em { font-size: 6px; }
-.gear-preview > * { transform: scale(2.6); }
 
 /* the chip painter (ui/chippaint.js): its four tools, and its rack where it opens from a button (the test table) */
 .paint-ops { gap: 4px; flex-wrap: nowrap; } .paint-ops .btn.on { outline: 2px solid var(--gold); }
@@ -1420,3 +1396,38 @@ body.spinning .thing > .th-body, body.carrying-now .thing > .th-body { transitio
 .gcard.plated { justify-content: space-between; } .gcard .card-plate { display: grid; place-items: center; width: 100%; flex: 1; min-height: 0; position: relative; z-index: 1; }
 .gcard .card-sign { zoom: .34; pointer-events: none; background: #07040f; }
 .thing.armed .gcard { box-shadow: 0 0 0 2px var(--bad), 0 3px 8px rgba(0, 0, 0, .45); }
+
+/* ---------- wallets and jackets (ui/gear.js) ---------- */
+/* a wallet lies open with what it holds tucked in: .gw-tuck is the row of cards and passes, .gw-front the pocket over
+   their lower halves, .gw-inside the lining behind them */
+.gw { position: relative; display: inline-block; --wr: var(--w-round, 6px); }
+.gw i { position: absolute; display: block; pointer-events: none; } .gw .fin { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16), inset 0 -8px 14px rgba(0, 0, 0, .28); }
+.gw-tuck { position: absolute; left: 6px; top: 7px; display: flex; align-items: flex-start; z-index: 2; } .gw-tuck > .thing { flex: none; }
+.gw .gw-inside { background: var(--w-lining); box-shadow: inset 0 6px 12px rgba(0, 0, 0, .55); z-index: 1; }
+.gw .gw-front { z-index: 3; border-top: 1.5px solid var(--w-trim); } .gw .gw-stitch { z-index: 4; inset: 3px; border: 1px dashed rgba(255, 255, 255, .34); border-radius: calc(var(--wr) - 2px); }
+.gw-billfold { display: inline-flex; gap: 0; } .gw-leaf { position: relative; display: block; width: 112px; height: 90px; }
+.gw-leaf .gw-panel { inset: 0; border-radius: var(--wr) 2px 2px var(--wr); } .gw-leaf.r .gw-panel { border-radius: 2px var(--wr) var(--wr) 2px; }
+.gw-leaf .gw-inside { left: 4px; right: 4px; top: 4px; bottom: 40px; border-radius: 3px; } .gw-leaf .gw-front { left: 0; right: 0; bottom: 0; height: 44px; border-radius: 0 0 2px var(--wr); } .gw-leaf.r .gw-front { border-radius: 0 0 var(--wr) 2px; }
+.gw .gw-spine { position: relative; width: 5px; height: 90px; background: linear-gradient(90deg, rgba(0, 0, 0, .55), var(--w-trim), rgba(0, 0, 0, .55)); }
+.gw-clasped { width: 168px; height: calc(92px + var(--w-flap) * 1.6); }
+.gw-clasped .gw-flap { left: 0; right: 0; top: 0; height: calc(var(--w-flap) * 1.6 + 8px); border-radius: 50% 50% 0 0 / 100% 100% 0 0; filter: brightness(.82); }
+.gw-clasped .gw-inside { left: 0; right: 0; top: calc(var(--w-flap) * 1.6); bottom: 0; border-radius: 2px 2px var(--wr) var(--wr); }
+.gw-clasped .gw-tuck { top: calc(var(--w-flap) * 1.6 + 6px); } .gw-clasped .gw-front { left: 0; right: 0; bottom: 0; height: 46px; border-radius: 2px 2px var(--wr) var(--wr); }
+.gw-clasped .gw-stitch { top: calc(var(--w-flap) * 1.6 + 49px); border-top: 0; border-radius: 0 0 calc(var(--wr) - 2px) calc(var(--wr) - 2px); }
+.gw .gw-clasp { left: 50%; top: 3px; translate: -50% 0; z-index: 5; } .gw-clasp.snap, .gw-clasp.magnet { width: 10px; height: 10px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #b9c0cc 45%, #5a6170); box-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
+.gw-clasp.magnet { border-radius: 2px; width: 14px; height: 8px; background: linear-gradient(180deg, #7b8496, #2b3040); } .gw-clasp.zip { left: 8px; right: 8px; translate: 0 0; top: calc(var(--w-flap) * 1.6 + 6px); height: 3px; background: repeating-linear-gradient(90deg, #e8e8f2 0 2px, #6a6f7d 2px 4px); border-radius: 2px; }
+.gw-clasp.chain { left: auto; right: -14px; top: 30%; translate: 0 0; width: 26px; height: 22px; border: 2px dotted #cfd5df; border-radius: 0 0 50% 50%; border-top: 0; }
+.gw-clip { width: 162px; height: 84px; } .gw-clip .gw-tuck { left: 6px; top: 6px; } .gw-clip .gw-band { left: 50%; top: -4px; bottom: 8px; width: 20px; translate: -50% 0; border-radius: 5px 5px 9px 9px; z-index: 3; box-shadow: 0 2px 5px rgba(0, 0, 0, .6), inset 0 0 0 1px rgba(255, 255, 255, .3); }
+.gw-clip .gw-band-shine { left: calc(50% - 6px); top: 0; bottom: 14px; width: 3px; border-radius: 2px; background: linear-gradient(180deg, rgba(255, 255, 255, .7), rgba(255, 255, 255, .1)); z-index: 4; }
+.gw.crown .gw-front, .gw.crown .gw-band { box-shadow: inset 0 0 0 1.5px #ffd76a, 0 0 8px rgba(255, 215, 106, .45); }
+.gw .wsym { position: absolute; right: 8px; bottom: 8px; width: 15px; height: 15px; z-index: 5; pointer-events: none; } .gw-back { display: block; position: relative; border-radius: var(--w-round, 6px); } .gw-back .wsym.big { position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: 30%; height: auto; aspect-ratio: 1; }
+/* a wallet shown small (a shop's shelf, the library): the same wallet, scaled */
+.thing.mini.th-wallet, .item .thing.th-wallet, .lib .thing.th-wallet { zoom: .42; }
+/* a jacket: the drawing, the changes it makes to your attributes under it, its emblem on the chest */
+.gj { position: relative; display: inline-block; line-height: 0; } .gj .gj-art { display: block; overflow: visible; }
+.gj .mods { position: absolute; left: 0; right: 0; bottom: -7px; display: flex; justify-content: center; gap: 2px; line-height: 1; }
+.gj .mods b { font-size: 8.5px; padding: 0 3px; border-radius: 4px; background: rgba(4, 2, 12, .85); } .gj .mods b.p { color: var(--good); } .gj .mods b.n { color: var(--bad); }
+.gj .jsym { position: absolute; left: 60%; top: 26%; width: 11px; height: 11px; pointer-events: none; } .gj .jsym.big { left: 50%; top: 38%; translate: -50% -50%; width: 22px; height: 22px; }
+.thing.th-jacket span.th-edge, .thing.th-wallet span.th-edge { filter: brightness(.75); }
+/* a shop row that shows the thing it sells beside its name */
+.item .main.with-thing { display: flex; align-items: center; gap: 12px; } .item .main.with-thing > div { display: grid; min-width: 0; } .thing.mini.th-jacket { zoom: .62; }

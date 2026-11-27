@@ -38,29 +38,43 @@ export const finishOf = (f) => (f && FINISHES[f.m] ? { m: f.m, color: /^#[0-9a-f
 // ---------- wallets and jackets ----------
 // What a wallet or a jacket can be made to look like (its `look`), within what their shapes allow. Anything left out is
 // read from the entry as it was before looks: its colour, and a material guessed from its name.
-export const WALLET_CLASPS = { none: 'No clasp', snap: 'Snap', zip: 'Zip', clip: 'Money clip', chain: 'Chain' };
+// A wallet is one of three types, and a jacket one of a few styles; within each, its parts can be set: what each is
+// made of and its colour, and the details its shape has.
+//   billfold  folds in two and lies open: your cards in one side, your passes in the other
+//   clasped   a pouch with a flap, held shut by its clasp, and lying open: cards and passes stand in it
+//   clip      a band over the stack: everything it holds is in plain sight
+export const WALLET_TYPES = { billfold: 'Billfold', clasped: 'Clasped', clip: 'Clip' };
+export const WALLET_CLASPS = { snap: 'Snap', zip: 'Zip', chain: 'Chain', magnet: 'Magnet' };
+export const JACKET_STYLES = { blazer: 'Blazer', bomber: 'Bomber', coat: 'Long coat', parka: 'Parka' };
 export const JACKET_COLLARS = { lapel: 'Lapels', stand: 'Stand collar', crew: 'Crew neck', hood: 'Hood' };
+export const JACKET_CLOSURES = { buttons: 'Buttons', zip: 'Zip', open: 'Worn open' };
+// what a style is unless its look says otherwise
+const STYLE = { blazer: { collar: 'lapel', closure: 'buttons', buttons: 2, length: 0, pockets: 2, ribbed: false }, bomber: { collar: 'stand', closure: 'zip', buttons: 0, length: 0, pockets: 2, ribbed: true },
+  coat: { collar: 'lapel', closure: 'buttons', buttons: 3, length: 10, pockets: 2, ribbed: false }, parka: { collar: 'hood', closure: 'zip', buttons: 0, length: 5, pockets: 2, ribbed: false } };
 // bounds for the numbers a look can set (kept to what the drawn shapes can show)
-export const LOOK_BOUNDS = { buttons: [0, 4], flap: [8, 26], round: [2, 14], length: [0, 12], slots: [0, 8], keep: [2, 24], passes: [1, 6] };
+export const LOOK_BOUNDS = { buttons: [0, 4], flap: [8, 26], round: [2, 14], length: [0, 12], pockets: [0, 2], slots: [0, 8], keep: [2, 24], passes: [1, 6] };
 const GUESS = [['leather', 'leather'], ['suede', 'suede'], ['velvet', 'velvet'], ['denim', 'denim'], ['silk', 'silk'], ['royal', 'silk'], ['cloth', 'canvas'], ['bomber', 'canvas'], ['tape', 'vinyl'], ['neon', 'vinyl'], ['rain', 'vinyl'],
   ['silver', 'metal'], ['magnetic', 'metal'], ['diamond', 'diamond'], ['down', 'silk'], ['sports', 'silk'], ['long', 'wool'], ['reading', 'wool'], ['standard', 'wool']];
 const guessMat = (name, id) => (GUESS.find(([w]) => `${id} ${name}`.toLowerCase().includes(w)) || [0, 'canvas'])[1];
 const clamp = (k, v, d) => { const [lo, hi] = LOOK_BOUNDS[k]; const n = Number(v); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
 // a look's emblem: a symbol, its colour and the material it is made of (none: drawn plain)
 const emblem = (L) => (L.symbol?.id ? { id: L.symbol.id, color: L.symbol.color || '#ffffff', mat: FINISHES[L.symbol.mat] ? L.symbol.mat : '' } : null);
+// a part of a piece ({ mat, color }): its own, or the piece's
+const part = (P, mat, color) => ({ mat: FINISHES[P?.mat] ? P.mat : mat, color: P?.color || color });
 export function walletLook(id, W = {}) {
-  const L = W.look || {}, nm = `${id} ${W.name || ''}`.toLowerCase();
-  return { mat: FINISHES[L.mat] ? L.mat : guessMat(W.name, id), color: L.color || W.color || '#8d8478', trim: L.trim || '', glint: !!L.glint, sparkle: !!L.sparkle, stitch: L.stitch ?? /leather|cloth/.test(nm),
-    clasp: WALLET_CLASPS[L.clasp] ? L.clasp : /zip/.test(nm) ? 'zip' : /snap/.test(nm) ? 'snap' : /clip/.test(nm) ? 'clip' : /chain/.test(nm) ? 'chain' : 'none',
-    flap: clamp('flap', L.flap, 15), round: clamp('round', L.round, 6), symbol: emblem(L) };
+  const L = W.look || {}, nm = `${id} ${W.name || ''}`.toLowerCase(), mat = FINISHES[L.mat] ? L.mat : guessMat(W.name, id), color = L.color || W.color || '#8d8478';
+  const type = WALLET_TYPES[L.type] ? L.type : /clip/.test(nm) || L.clasp === 'clip' ? 'clip' : /zip|snap|chain|magnet/.test(nm) || WALLET_CLASPS[L.clasp] ? 'clasped' : 'billfold';
+  return { type, mat, color, trim: L.trim || '', lining: L.lining || '', glint: !!L.glint, sparkle: !!L.sparkle, stitch: L.stitch ?? /leather|cloth/.test(nm),
+    clasp: WALLET_CLASPS[L.clasp] ? L.clasp : /zip/.test(nm) ? 'zip' : /chain/.test(nm) ? 'chain' : /magnet/.test(nm) ? 'magnet' : 'snap',
+    flap: clamp('flap', L.flap, 15), round: clamp('round', L.round, 6), pocket: part(L.pocket, mat, color), symbol: emblem(L) };
 }
 export function jacketLook(id, J = {}) {
-  const L = J.look || {}, nm = `${id} ${J.name || ''}`.toLowerCase();
-  return { mat: FINISHES[L.mat] ? L.mat : guessMat(J.name, id), color: L.color || J.color || '#5b6378', lining: L.lining || '', glint: !!L.glint, sparkle: !!L.sparkle,
-    collar: JACKET_COLLARS[L.collar] ? L.collar : /bomber|down/.test(nm) ? 'stand' : /rain/.test(nm) ? 'hood' : /sports/.test(nm) ? 'crew' : 'lapel',
-    buttons: clamp('buttons', L.buttons, /long|reading/.test(nm) ? 3 : /leather|bomber|rain|down|sports/.test(nm) ? 0 : 2), length: clamp('length', L.length, /long/.test(nm) ? 10 : 0),
-    symbol: emblem(L) };
+  const L = J.look || {}, nm = `${id} ${J.name || ''}`.toLowerCase(), mat = FINISHES[L.mat] ? L.mat : guessMat(J.name, id), color = L.color || J.color || '#5b6378';
+  const style = JACKET_STYLES[L.style] ? L.style : /long|reading|regal/.test(nm) ? 'coat' : /bomber|down|sports|leather/.test(nm) ? 'bomber' : /rain/.test(nm) ? 'parka' : 'blazer', S = STYLE[style];
+  return { style, mat, color, lining: L.lining || '', glint: !!L.glint, sparkle: !!L.sparkle, ribbed: L.ribbed ?? S.ribbed,
+    collar: JACKET_COLLARS[L.collar] ? L.collar : S.collar, closure: JACKET_CLOSURES[L.closure] ? L.closure : S.closure, buttons: clamp('buttons', L.buttons, S.buttons), buttonColor: L.buttonColor || '',
+    length: clamp('length', L.length, S.length), pockets: clamp('pockets', L.pockets, S.pockets), sleeves: part(L.sleeves, mat, color), trim: part(L.trim, mat, L.lining || ''), symbol: emblem(L) };
 }
 // a new wallet or jacket from the Gear maker starts as this
-export const NEW_WALLET = { name: 'New Wallet', color: '#7a4b2a', slots: 2, keep: 8, passes: 1, price: 1000, level: 0, look: { mat: 'leather', clasp: 'snap', stitch: true } };
-export const NEW_JACKET = { name: 'New Jacket', color: '#5b6378', effect: 'New · Untested', mods: {}, price: 200, level: 0, look: { mat: 'wool', collar: 'lapel', buttons: 2 } };
+export const NEW_WALLET = { name: 'New Wallet', color: '#7a4b2a', slots: 2, keep: 8, passes: 1, price: 1000, level: 0, look: { type: 'billfold', mat: 'leather', stitch: true } };
+export const NEW_JACKET = { name: 'New Jacket', color: '#5b6378', effect: 'New · Untested', mods: {}, price: 200, level: 0, look: { style: 'blazer', mat: 'wool' } };

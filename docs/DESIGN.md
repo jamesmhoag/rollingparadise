@@ -899,3 +899,45 @@ through tricks and chips, as before.
 - All in against the High Roller ignores `TUNING.wager.boss`: the match (`bossMatch`) sets the multiplier.
 - Table wagers ship as 5/10/15, 30/45/60, 150/225/300 and 600/900/1200 by floor: placeholders to tune.
 - A die with no pet name shows none: it goes by what it is.
+
+## Round 20: one of everything
+
+**Nothing is coded twice.** `tests/dupes.mjs` fails on any stretch of code that appears twice in `js/`. The shared
+pieces: `ui/form.js` (every Build-mode input, the draft-bound form, the id prompt), `ui/chippaint.js` with
+`stackedit.js` (the one chip painter: Add, Insert below the chip pointed at, Change, Remove; on your Stake, Build
+mode's positions and the test table), `ui/finish.js` (the one finish picker, the material pictures), `ui/thing.js`
+(the body of anything held), `ui/sign.js nameSign` (the one name sign), `core.js carry` (press and carry),
+`core.js fitText` and `giveWay`. `tests/syntax.mjs` parses every source file.
+
+**The title sign** is drawn from the design's own pieces (`assets/title`, cut into tubes by `tools/title-sign.py`)
+and lights a tube at a time with no flicker (see The title sign).
+
+**Every trick effect is a chip's work.** A trick is an Expense charging a fee, or it lays chips. Each Insurance,
+Investment and Correction lays its own chip (`content/chipmaker.js`, action `fx`); the chip plays the effect
+(`bout.js FX`) with the roll it was made with. A trick lays it under the stack it aims at (or on your Bet) and it is
+gone at the end of the turn; laid by anything else (another chip, a tilt, the painter) it plays the same effect on
+the space it sits on. Makers lay their effect chips the same way (`roll: { chip, n, life }`). A tilt can be given
+chips to lay (`TILTS.*.chips`, `count`, `countPer`, `own`).
+
+**Materials.** One table (`content/finishes.js`), one renderer (`dice3d.js`): the dice's eight, card stock, and the
+cloths, hides, skins and fur, each a physical material with its grain as relief. `swatch()` pictures a material as a
+slab in the dice's room and light; a finish lays that picture on letters, backings, cards, wallets and jackets, and
+paints symbols, crowns and emblems with it. Each material says how thick a thing of it is and how it breaks.
+
+**Things you hold** (`ui/thing.js`): a card, a pass, a key, a business card, a wallet, a jacket is a face, a back and
+the edge between, as thick as its material. Under the pointer it leans toward you; press and drag and it comes up
+for a close look, to be turned over (`ui/spin.js`, the look a die gets).
+- Cards, passes and keys are printed by one drawing (`parts.js printFace`, `printBack`) from a look; the back has its
+  own colours, pattern, border, symbol and the lines it shows (name, rule, flavour, serial, a note). Passes have a
+  look as cards do, set in the Cards section.
+- A business card is a card (kind `business`), one for every High Roller, carrying their name sign. It takes a wallet
+  slot; while it is in your wallet you play by their trait (the first, if you hold several).
+- A wallet is a billfold, a clasped pouch or a clip, and lies open holding the cards and passes you carry (the same
+  elements drawn anywhere else). No slot marks.
+- A jacket has a style (blazer, bomber, long coat, parka) and parts (body, sleeves, trim, collar, closure, pockets,
+  emblem), each with its own material and colour.
+
+**At the table.** Press and carry does what clicks do, and says where: a trick onto the Run or onto a copy of
+itself, the top copy off a stack, a chip onto a trick, a die onto a trick, a trick onto its target. A die grows
+where it stands (it used to leap across the table under the pointer). A defeated sign fails a part at a time, by
+material. A sign's lettering is set and fitted in the room its edging leaves.
