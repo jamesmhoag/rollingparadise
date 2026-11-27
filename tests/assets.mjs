@@ -19,7 +19,7 @@ for (const [k, p] of Object.entries(D.IMAGES)) want(p, `image ${k}`);
 for (const [k, I] of Object.entries(D.ICONS)) { want(I.src, `icon ${k}`); ok(I.src || I.glyph || ['creature', 'orbital', 'chip'].includes(k.split(':')[0]), `icon ${k}: no file and no glyph`); }
 for (const [k, p] of Object.entries(D.TEXTURES)) want(p, `texture ${k}`);
 for (const M of MUSIC) { want(M.src, `music ${M.title}`); want(M.chip, `chiptune ${M.title}`); ok(Number.isInteger(M.key) && M.key >= 0 && M.key < 12 && M.genre, `music ${M.title}: a key and a genre`); }
-for (const L of LOOPS) { for (const k of ['base', 'theme', 'drive', 'peril']) { want(L.layers[k], `loop ${L.title} ${k}`); want(L.chip?.[k], `chiptune loop ${L.title} ${k}`); } ok(L.length > 0 && L.start >= 0 && Number.isInteger(L.key), `loop ${L.title}: a span and a key`); }
+for (const L of LOOPS) { for (const k of ['base', 'theme', 'alt', 'drive', 'peril', 'surge']) { want(L.layers[k], `loop ${L.title} ${k}`); want(L.chip?.[k], `chiptune loop ${L.title} ${k}`); } ok(L.length > 0 && L.start >= 0 && Number.isInteger(L.key), `loop ${L.title}: a span and a key`); }
 for (let f = 1; f <= D.ASCENT_FLOOR; f++) for (const kind of ['bout', 'boss']) ok(LOOPS.some((L) => L.floor === f && L.kind === kind), `no ${kind} loop for floor ${f}`);
 const { SAMPLES } = await import('../js/ui/sfx.js').catch(() => ({ SAMPLES: null }));
 for (const n of SAMPLES || []) want(`assets/sfx/${n}.mp3`, `sound sample ${n}`);

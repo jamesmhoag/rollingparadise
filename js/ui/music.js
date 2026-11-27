@@ -10,9 +10,15 @@
 // in the tune is kept), and ✕ / ▶ pays them to stop or to start again. While they are stopped only ▶ works. What the band is doing belongs to the run (run.band); the favorites to this browser.
 //
 // At a table the band plays the floor's bout loop instead (content/loops.js; the High Roller and the Ascent's last
-// climb have their own). A loop is four layers played together through Web Audio, sample for sample: the groove and
-// the tune always, then the drive and the peril, faded in as either Roller's Worth runs down (tensionOf), so the
-// music tightens as the bout does. When the bout is over the loop fades and the lounge band comes back.
+// climb have their own). A loop is six layers played together through Web Audio, sample for sample:
+//   the groove, always;
+//   two tunes over the same changes, one at a time: each time round the band plays the theme, its second tune, or
+//   neither (TURNS), handed over on the bar line, so a long bout does not hear one melody over and over;
+//   the drive, faded in as either Roller's Worth runs down (tensionOf), so the music tightens as the bout does;
+//   the peril, when YOU are close to broke, and the surge, when your OPPONENT is (stakesOf): losing and winning
+//   do not sound alike.
+// The lounge band fades out as a bout's loop comes in, and when the bout is over the loop fades and the band eases
+// back in behind it, so two tunes are never loud at once.
 import { MUSIC, LOOPS } from '../content/assets.js';
 import { btn, h, toast, openPanel, closePanel, setOn } from './core.js';
 import { t } from '../text.js';
@@ -20,7 +26,7 @@ import { worth } from '../bout.js';
 import { TUNING } from '../content/tuning.js';
 import { cents } from '../util.js';
 
-const FAVS = 'rollingparadise.favorites', VOL = 0.3, LOOP_VOL = 0.36, LAYERS = ['base', 'theme', 'drive', 'peril'];
+const FAVS = 'rollingparadise.favorites', VOL = 0.3, LOOP_VOL = 0.36, LAYERS = ['base', 'theme', 'alt', 'drive', 'peril', 'surge'];
 let current = null, playing = false, loop = null;
 const lounge = { play: () => {}, pause: () => {}, on: () => false, touched: false };
 // the game's side: the run (whose purse pays and whose band this is) and how to take a tip from it
@@ -53,19 +59,27 @@ export function setOrder(list = MUSIC, rnd = Math.random) {
 }
 
 // ---------- bout loops ----------
-// How tense a bout is, 0 to 1: how far the lower Roller has fallen from the Worth they sat down with, full at a
-// quarter of it left. Your own Worth counts in full, your opponent's a little less.
-export function tensionOf(bout) {
-  const low = (s) => (s?.startWorth ? 1 - worth(s) / s.startWorth : 0);
+// How close each Roller is to broke, 0 to 1: how far they have fallen from the Worth they sat down with, full at a
+// quarter of it left.
+export function stakesOf(bout) {
+  const low = (s) => (s?.startWorth ? Math.min(1, Math.max(0, (1 - worth(s) / s.startWorth) / 0.75)) : 0);
   const [me, opp] = bout.sides;
-  return Math.min(1, Math.max(0, Math.max(low(me), 0.85 * low(opp)) / 0.75));
+  return { mine: low(me), theirs: low(opp) };
 }
-// each layer's level at a tension: the groove and the tune always; the drive from a fifth of the way down, full by
-// half; the peril from a little past half, full near broke (the tune steps back a touch to make room)
-export function layerMix(x) {
-  const ramp = (a, b) => { const u = Math.min(1, Math.max(0, (x - a) / (b - a))); return u * u * (3 - 2 * u); };
-  return { base: 1, theme: 1 - 0.15 * ramp(0.7, 1), drive: ramp(0.2, 0.5), peril: ramp(0.55, 0.85) };
+// How tense a bout is, 0 to 1: the lower Roller's fall. Your own Worth counts in full, your opponent's a little less.
+export function tensionOf(bout) { const s = stakesOf(bout); return Math.max(s.mine, 0.85 * s.theirs); }
+// each layer's level: the groove always; the drive by the bout's tension x, from a fifth of the way down, full by
+// half; the peril as YOUR Worth nears broke and the surge as your OPPONENT's does, each from a little past half, full
+// near broke (the tune steps back a touch to make room). With only x given, the stakes are taken as yours.
+export function layerMix(x, stakes = { mine: x, theirs: 0 }) {
+  const ramp = (v, a, b) => { const u = Math.min(1, Math.max(0, (v - a) / (b - a))); return u * u * (3 - 2 * u); };
+  const tune = 1 - 0.15 * Math.max(ramp(stakes.mine, 0.7, 1), ramp(stakes.theirs, 0.7, 1));
+  return { base: 1, theme: tune, alt: tune, drive: ramp(x, 0.2, 0.5), peril: ramp(stakes.mine, 0.55, 0.85), surge: ramp(stakes.theirs, 0.55, 0.85) };
 }
+// Which tune the band plays each time round a loop: the theme twice so it lands, its second tune, a round where they
+// just vamp, and on through both. No melody is heard more than twice running.
+export const TURNS = ['theme', 'theme', 'alt', 'rest', 'theme', 'alt', 'alt', 'rest'];
+export const turnOf = (pass) => TURNS[((pass % TURNS.length) + TURNS.length) % TURNS.length];
 // the loop for a floor's tables or its High Roller (floor 5 is the Ascent)
 export const loopFor = (floor, boss, list = LOOPS) => list.find((L) => L.floor === floor && L.kind === (boss ? 'boss' : 'bout')) || list.find((L) => L.kind === (boss ? 'boss' : 'bout'));
 
@@ -78,7 +92,7 @@ const decode = (src) => { if (!buffers.has(src)) buffers.set(src, fetch(src).the
 export function boutMusic(bout, { floor, boss, where } = {}) {
   endLoop(0.3, false);
   const L = loopFor(floor, boss); if (!L || !AC() || typeof fetch === 'undefined') return;
-  loop = { L, bout, where, x: tensionOf(bout), live: false };
+  loop = { L, bout, where, x: tensionOf(bout), ...stakesOf(bout), live: false };
   if (lounge.on() && lounge.touched) startLoop(loop);
 }
 // the bout is over or left: the loop fades, and the lounge band comes back
@@ -86,26 +100,38 @@ export function endBoutMusic() { endLoop(2.5, true); }
 
 async function startLoop(lp, at = 0) {  // at: where in the loop to come in, in seconds (a switch of sound keeps its place)
   const a = audioCtx(); if (a.state === 'suspended') a.resume().catch(() => {});
-  const m = mode(), bufs = await Promise.all(LAYERS.map((k) => decode(layerSrc(lp.L, k, m)))).catch(() => null);
+  const m = mode(), ks = LAYERS.filter((k) => layerSrc(lp.L, k, m)), bufs = await Promise.all(ks.map((k) => decode(layerSrc(lp.L, k, m)))).catch(() => null);
   if (!bufs || loop !== lp || lp.live || !lounge.on() || mode() !== m) return;
-  lounge.pause();
-  const master = a.createGain(), when = a.currentTime + 0.08, mix = layerMix(lp.x);
+  lounge.pause(at ? 0 : 0.6); // the lounge band fades out under the loop's first bar
+  const master = a.createGain(), when = a.currentTime + 0.08, mix = layerMix(lp.x, lp);
   master.gain.value = 0; master.connect(a.destination); master.gain.setTargetAtTime(LOOP_VOL, when, at ? 0.15 : 0.6);
-  lp.nodes = LAYERS.map((k, i) => {
+  lp.pass = Math.floor(at / lp.L.length); // how many times round so far: it picks the tune (turnOf)
+  lp.nodes = ks.map((k, i) => {
     const g = a.createGain(), s = a.createBufferSource(); g.gain.value = mix[k]; g.connect(master);
-    s.buffer = bufs[i]; s.loop = true; s.loopStart = lp.L.start; s.loopEnd = lp.L.start + lp.L.length; s.connect(g); s.start(when, lp.L.start + (at % lp.L.length));
-    return { k, g, s };
+    // the two tunes each pass through a gate of their own, opened and shut on the bar line
+    const turn = k === 'theme' || k === 'alt' ? a.createGain() : null;
+    if (turn) { turn.gain.value = turnOf(lp.pass) === k ? 1 : 0; turn.connect(g); }
+    s.buffer = bufs[i]; s.loop = true; s.loopStart = lp.L.start; s.loopEnd = lp.L.start + lp.L.length; s.connect(turn || g); s.start(when, lp.L.start + (at % lp.L.length));
+    return { k, g, s, turn };
   });
   lp.master = master; lp.live = true; lp.began = when - at;
   lp.timer = setInterval(() => follow(lp), 250);
 }
-// four times a second: ease toward the bout's tension (about two seconds to catch up) and set the layers
+// four times a second: ease toward the bout's tension and each Roller's stakes (about two seconds to catch up), set
+// the layers, and, just before the loop comes round, hand the tune over for the next time through
 function follow(lp) {
   if (loop !== lp) return;
   if (lp.bout.over || !document.querySelector('.bout')) return endBoutMusic();
-  lp.x += (tensionOf(lp.bout) - lp.x) * 0.12;
-  const mix = layerMix(lp.x), now = ac.currentTime;
+  const st = stakesOf(lp.bout);
+  lp.x += (tensionOf(lp.bout) - lp.x) * 0.12; lp.mine += (st.mine - lp.mine) * 0.12; lp.theirs += (st.theirs - lp.theirs) * 0.12;
+  const mix = layerMix(lp.x, lp), now = ac.currentTime;
   for (const n of lp.nodes) n.g.gain.setTargetAtTime(mix[n.k], now, 0.4);
+  const len = lp.L.length, pass = Math.floor((now - lp.began) / len), edge = lp.began + (pass + 1) * len;
+  if (edge - now < 0.7 && lp.pass !== pass + 1) {
+    lp.pass = pass + 1; const who = turnOf(lp.pass);
+    // the tune coming in opens just ahead of the bar line; the one going out lets its last note ring a moment past it
+    for (const n of lp.nodes) if (n.turn) { if (n.k === who) n.turn.gain.setTargetAtTime(1, edge - 0.04, 0.012); else n.turn.gain.setTargetAtTime(0, edge, 0.09); }
+  }
 }
 function silence(lp, secs) {
   clearInterval(lp.timer); if (!lp.live) return;
@@ -113,7 +139,12 @@ function silence(lp, secs) {
   for (const n of lp.nodes) n.s.stop(now + secs);
   lp.live = false; lp.nodes = null;
 }
-function endLoop(secs, back) { const lp = loop; loop = null; if (lp) silence(lp, secs); if (back && lp && lounge.on()) lounge.play(); }
+// (the lounge band waits for the loop to die away, then eases back in: two tunes are never loud at once)
+let returning = null;
+function endLoop(secs, back) {
+  const lp = loop, was = !!lp?.live; loop = null; clearTimeout(returning); if (lp) silence(lp, secs);
+  if (back && lp && lounge.on()) returning = setTimeout(() => { if (!loop && lounge.on()) lounge.play(was ? 1.5 : 0); }, was ? secs * 520 : 0);
+}
 
 // ---------- the lounge band, and the tip buttons ----------
 // run: () => the run in play (or null); tip: (what, title) => true if the purse paid for it
@@ -124,7 +155,20 @@ export function initMusic(stage, { run = () => null, tip = () => false } = {}) {
   let away = false; // the tab is hidden
   const on = () => mode() !== 'off', now = () => order[at];
   const next = () => { at++; if (at >= order.length) { order = setOrder(); at = 0; } current = now(); audio.src = srcOf(current); if (on() && !away) audio.play().catch(() => {}); };
-  function play() {
+  // the band's volume, eased over `secs` (then: what to do once it gets there); any fade under way is dropped
+  let fading = null;
+  const settle = () => { clearInterval(fading); fading = null; };
+  const fadeTo = (to, secs, then) => {
+    settle(); const from = audio.volume, t0 = Date.now();
+    fading = setInterval(() => { const u = Math.min(1, (Date.now() - t0) / (secs * 1000)); audio.volume = Math.min(1, Math.max(0, from + (to - from) * u)); if (u >= 1) { settle(); then?.(); } }, 40);
+  };
+  // stop the band: at once, or faded out over `secs` (a bout's loop is coming in over it)
+  const pause = (secs = 0) => {
+    if (!audio) return;
+    if (!secs || audio.paused) { settle(); audio.pause(); audio.volume = VOL; return; }
+    fadeTo(0, secs, () => { audio.pause(); audio.volume = VOL; });
+  };
+  function play(fadeIn = 0) {  // fadeIn: seconds to ease in over (coming back after a bout), or 0 to start at full
     if (!on() || away) return; // never start a band that is switched off, or one nobody is in the room to hear
     if (!audio) { audio = new Audio(); audio.volume = VOL; audio.preload = 'auto'; audio.addEventListener('ended', next);
       audio.addEventListener('playing', () => { playing = true; }); audio.addEventListener('pause', () => { playing = false; }); }
@@ -133,16 +177,18 @@ export function initMusic(stage, { run = () => null, tip = () => false } = {}) {
       const pos = audio.src && audio.src.split('/').pop().replace('.mp3', '') === src.split('/').pop().replace('.mp3', '') ? audio.currentTime : 0; audio.src = src;
       if (pos) audio.addEventListener('loadedmetadata', () => { audio.currentTime = Math.min(pos, (audio.duration || pos) - 0.5); }, { once: true });
     }
+    settle(); audio.volume = fadeIn ? 0 : VOL;
     audio.play().catch(() => {});
+    if (fadeIn) fadeTo(VOL, fadeIn);
   }
-  Object.assign(lounge, { play, pause: () => audio?.pause(), on });
+  Object.assign(lounge, { play, pause, on });
   const start = () => { if (!on() || away) return; return loop ? startLoop(loop) : play(); }; // whatever should be playing: the bout's loop, or the band
   // make what is sounding match what the band is doing (after a tip, or when a new run brings a fresh band)
   function sync() {
     if (!lounge.touched) return mark();
     const m = mode(); if (m === sounding) return mark();
     const was = sounding; sounding = m;
-    if (m === 'off') { audio?.pause(); if (loop) silence(loop, 0.4); }
+    if (m === 'off') { pause(); if (loop) silence(loop, 0.4); }
     else if (loop) { const pos = loop.live ? ac.currentTime - loop.began : 0; silence(loop, 0.15); startLoop(loop, was === 'off' ? 0 : Math.max(0, pos)); }
     else play();
     mark();
@@ -152,9 +198,9 @@ export function initMusic(stage, { run = () => null, tip = () => false } = {}) {
   // timers and audio differently in a hidden tab: without this a switched-off band could come back on return.)
   document.addEventListener('visibilitychange', () => {
     away = document.hidden;
-    if (away) { audio?.pause(); if (loop?.live) silence(loop, 0.2); if (ac?.state === 'running') ac.suspend().catch(() => {}); return; }
+    if (away) { pause(); if (loop?.live) silence(loop, 0.2); if (ac?.state === 'running') ac.suspend().catch(() => {}); return; }
     if (!lounge.touched) return;
-    sounding = mode(); if (sounding !== 'off') start(); else { audio?.pause(); if (loop?.live) silence(loop, 0.1); }
+    sounding = mode(); if (sounding !== 'off') start(); else { pause(); if (loop?.live) silence(loop, 0.1); }
     mark();
   });
 

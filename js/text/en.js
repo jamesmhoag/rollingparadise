@@ -1315,7 +1315,7 @@ export default {
   "table.win-call": "Jackpot",
   "table.lose-call": "Busted",
   "music.playing": "The lounge band plays {title} ({style}).",
-  "music.bout": "The band plays {title}, for {where}; it tightens as either Roller runs low on Worth.",
+  "music.bout": "The band plays {title}, for {where}; it tightens as either Roller runs low on Worth: darker when it is you, brassier when it is them.",
   "music.silent": "The band is taking a break.",
   "music.chipNote": " On 8-bit chips tonight.",
   "music.fav": "<b>Favorite</b><p>{playing}</p><p>Click to heart {title}: favorites top the band's setlist.</p>",

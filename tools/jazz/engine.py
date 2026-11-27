@@ -11,6 +11,9 @@
 #   - solos: phrased improvisation (call and response, chord tones on the beat, chromatic approaches, a held note
 #     to end each phrase)
 #   - horns get scoops into long notes and late vibrato; big-band brass harmonise the lead in close position
+#   - the players listen: a comping chord or a bossa bass note on the 'and' before a change plays the chord it is
+#     pushing into; a melody line is one player's (a note ends where the next begins) and in swing a quarter note
+#     inside a line is played short; the rhythm section's dynamics follow the tune's shape (Band.shape)
 import math, random, zlib
 import mido
 
@@ -151,12 +154,14 @@ class Band:
             else: v = min(vs, key=lambda v: sum(abs(a - b) for a, b in zip(v, prev)) + 0.2 * abs(sum(v) / len(v) - (lo + hi) / 2))
             prev = v; return v
         hit = lambda t, d, ch, vv=vel: [self.note(name, t, d, p, vv + rng.randint(-6, 6)) for p in voice(ch)]
+        # the chord a hit plays: on an offbeat it is the one the hit pushes into (an anticipation), as a comper plays it
+        at = lambda t: self.chart.at(t + .51) if (t % 1) > .49 else self.chart.at(t)
         for bar in range(b0, b1):
             t0 = bar * 4; cells = self.chart.bars[bar]
             if style == 'swing':
                 pats = [[(0, .9)], [(1.5, .5), (3, .6)], [(0, .5), (1.5, 1.4)], [(2.5, 1.2)], [(1, .5), (2.5, .5)], [(0, .4), (2, .4), (3.5, .45)], [(.5, 1.2), (3, .5)]]
                 if len(cells) > 1: pats = [[(0, .9), (2, .9)], [(0, .4), (1.5, .5), (2, .9)], [(.5, 1), (2.5, 1)]]
-                for st, d in rng.choice(pats): hit(t0 + st, d, self.chart.at(t0 + st))
+                for st, d in rng.choice(pats): hit(t0 + st, d, at(t0 + st))
             elif style == 'ballad':
                 for st, ch in cells:
                     dur = 4 / len(cells)
@@ -166,10 +171,10 @@ class Band:
                         for i, p in enumerate(vv[::-1][:2]): self.note(name, t0 + 2.5 + i * .5, .5, p + 12, vel - 12, tri=True)
             elif style == 'bossa':
                 pat = [0, 1.5, 3] if bar % 2 == 0 else [1, 2.5]
-                for st in pat: hit(t0 + st, .45, self.chart.at(t0 + st), vel - 4)
+                for st in pat: hit(t0 + st, .45, at(t0 + st), vel - 4)
             elif style == 'funk':
                 pat = rng.choice([[(0, .2), (.75, .2), (1.5, .45), (2.75, .2), (3.5, .3)], [(.5, .2), (1, .2), (1.75, .45), (3, .2), (3.75, .2)], [(0, .45), (1.75, .2), (2.5, .2), (3.25, .45)]])
-                for st, d in pat: hit(t0 + st, d, self.chart.at(t0 + st), vel + (6 if st % 1 else 0))
+                for st, d in pat: hit(t0 + st, d, at(t0 + st), vel + (6 if st % 1 else 0))
             elif style == 'pad':
                 for st, ch in cells:
                     for p in voice(ch): self.note(name, t0 + st, 4 / len(cells) - .02, p, vel, tri=True)
@@ -189,7 +194,7 @@ class Band:
                             for p in vv: self.note(name, t0 + s2, d2, p, vel + 4)
             elif style == 'chank':  # funk / soul-jazz guitar: short high chords
                 for st in ([1, 3] if self.swing > .5 else [.75, 1, 2.25, 2.75, 3.5]):
-                    for p in voice(self.chart.at(t0 + st), 62, 78)[-3:]: self.note(name, t0 + st, .12, p, vel + rng.randint(-8, 4))
+                    for p in voice(at(t0 + st), 62, 78)[-3:]: self.note(name, t0 + st, .12, p, vel + rng.randint(-8, 4))
             elif style == 'stabs':  # big-band saxes: held pads under the lead
                 for st, ch in cells:
                     for p in voice(ch): self.note(name, t0 + st, 4 / len(cells) - .1, p, vel)
@@ -224,9 +229,9 @@ class Band:
                     if beat == 2 and rng.random() < .08: self.note(name, t + 2 / 3, 1 / 3, p, vel - 30, tri=True)
             elif style == 'bossa':
                 for st, ch in self.chart.bars[bar]:
-                    r = root(ch, 36); f = nearest({(ch[0] + 7) % 12}, r - 5, lo, hi)
+                    r = root(ch, 41); f = nearest({(ch[0] + 7) % 12}, r - 5, lo, hi)  # (the last note of a bar pushes into the next chord)
                     if len(self.chart.bars[bar]) == 1:
-                        for s2, p, d in ((0, r, 1.4), (1.5, f, .45), (2, f, 1.4), (3.5, r, .45)): self.note(name, t0 + s2, d, p, vel - 4 + rng.randint(-4, 4))
+                        for s2, p, d in ((0, r, 1.4), (1.5, f, .45), (2, f, 1.4), (3.5, root(nxt, 41), .45)): self.note(name, t0 + s2, d, p, vel - 4 + rng.randint(-4, 4))
                     else:
                         for s2, p, d in ((st, r, 1.4), (st + 1.5, f, .45)): self.note(name, t0 + s2, d, p, vel - 4)
                     prev = r
@@ -410,6 +415,30 @@ class Band:
             t += length + rng.choice([.5, 1, 1, 1.5, 2])
             t = math.floor(t * 2) / 2
 
+    # ---- one player's line: a note ends where the next begins (a pickup cuts the note before it short), and in
+    # swing a quarter note inside a line is played short and a lone eighth that ends a phrase is clipped and leaned on
+    def articulate(self, names, detach=0):
+        chans = {self.chans[n] for n in names if n in self.chans}
+        for c in chans:
+            idx = sorted((i for i, n in enumerate(self.notes) if n[0] == c), key=lambda i: self.notes[i][1])
+            groups = []
+            for i in idx:
+                if groups and abs(self.notes[groups[-1][0]][1] - self.notes[i][1]) < 1e-6: groups[-1].append(i)
+                else: groups.append([i])
+            for g, nxt in zip(groups, groups[1:] + [None]):
+                t = self.notes[g[0]][1]; t2 = self.notes[nxt[0]][1] if nxt else None
+                for i in g:
+                    ch, _, dur, p, vel, ns = self.notes[i]; gap = None if t2 is None else t2 - (t + dur)
+                    if gap is not None and gap < .02: dur = max(.08, t2 - t - .02)
+                    elif detach and gap is not None and gap < .6 and .9 <= dur <= 1.1 and abs(t % 1) < .01: dur *= detach
+                    elif detach and dur <= .55 and (t % 1) > .4 and (gap is None or gap >= .5): dur = .34; vel = min(127, vel + 7)
+                    self.notes[i] = (ch, t, dur, p, vel, ns)
+
+    # ---- dynamics: the named parts play louder or softer through the tune, by fn(beat) (1 is as written)
+    def shape(self, names, fn):
+        chans = {self.chans[n] for n in names if n in self.chans}
+        self.notes = [(c, t, d, p, max(1, min(127, round(v * fn(t)))) if c in chans else v, ns) for c, t, d, p, v, ns in self.notes]
+
     # ---- the end: a held tonic chord, a ritard into it
     def ending(self, bar, parts, bars=2, ritard=True):
         t = bar * 4
@@ -421,7 +450,7 @@ class Band:
         mid = mido.MidiFile(ticks_per_beat=PPQ); tr = mido.MidiTrack(); mid.tracks.append(tr)
         ev = []; rng = random.Random(zlib.crc32(self.title.encode()))
         # how a player sits on the time: a steady lean (self.lean, in ticks, + is behind the beat) and a slow drift
-        waves = {ch: (rng.uniform(0, 6.3), rng.uniform(0, 6.3), rng.uniform(5, 9), rng.uniform(2.5, 4)) for ch in range(16)}
+        waves = {ch: (rng.uniform(0, 6.3), rng.uniform(0, 6.3), rng.uniform(5, 9), rng.uniform(2.5, 4)) for ch in range(32)}  # parts past 15 are remapped to a real channel
         remap = remap or {}; drum = {9} | {c for c, d in remap.items() if d == 9}
         def feel(ch, t):
             if self.period: t = t % self.period  # a loop's feel repeats exactly with it

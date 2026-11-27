@@ -2,6 +2,12 @@
 # conversation between two voices over a chord chart, with the rhythm section from engine.py under it. A tune is
 # a genre, one of the genre's charts, a key, a tempo and the voices that talk (the genre's lead and answer, picked
 # per tune), and is repeatable: its seed is fixed.
+#
+# How a tune is played: the head (in swing the bass plays 'in two' for its first half and walks from the bridge on), a
+# chorus where each voice improvises on the tune's motif and then they trade, the head out, the ending. The rhythm
+# section follows the story: under the head it sits back, it builds through the solos to the trading, and plays out
+# on the last head. The showroom big band also has its section (trumpets and trombones) behind the tune: kicks
+# that push into every fourth bar of the head, set up by the drums, and a shout chorus before the head out.
 import random
 from engine import Band
 from story import Story, transpose
@@ -140,8 +146,11 @@ def arrange(slug, title, genre, ci, key, bpm, li, ai, rng):
     if g.get('section'):  # a horn line is voiced for its section; a piano, vibes or guitar line plays alone
         if wind(lead[0]): b.chan('lead2', 6, lead[0], 84, 88, 50); b.chan('lead3', 10, lead[0], 78, 98, 50)
         if wind(answer[0]): b.chan('answer2', 7, answer[0], 84, 36, 55); b.chan('answer3', 11, answer[0], 78, 26, 55)
+        # the band behind them, for the kicks and the shout chorus: two trumpets and two trombones, a part each
+        b.chan('brassA', 8, TRUMPET, 90, 34, 55); b.chan('brassA2', 12, TRUMPET, 82, 44, 55); b.chan('brassB', 13, TROMBONE, 86, 90, 55); b.chan('brassB2', 14, TROMBONE, 80, 100, 55)
     lean = LEAN[genre]
-    b.lean = {0: lean, 3: lean + 4, 6: lean + 4, 7: lean + 6, 10: lean + 4, 11: lean + 6, 1: lean // 3, 4: 0, 5: lean // 2, 2: -3 if g['bass'] == 'walk' else 0}
+    b.lean = {0: lean, 3: lean + 4, 6: lean + 4, 7: lean + 6, 10: lean + 4, 11: lean + 6, 1: lean // 3, 4: 0, 5: lean // 2, 2: -3 if g['bass'] == 'walk' else 0,
+              8: lean + 3, 12: lean + 4, 13: lean + 5, 14: lean + 6}
     first = chord(chart['A'].split('|')[0].split()[0])
     minor = first[0] == 0 and first[1] in ('m7', 'm6', 'm7b5')
     end = chart.get('Z') or (ENDING_MINOR if minor else ENDING.get(genre, ENDING_MAJ))
@@ -162,8 +171,10 @@ def arrange(slug, title, genre, ci, key, bpm, li, ai, rng):
     if g.get('comp2'): b.comp(g['comp2'][0], starts[1], stop, g['comp2'][2], vel=52)
     if g.get('pad'): b.comp('pad', starts[1], n, 'pad', 55, 72, g['pad'][1])
     bass = g['bass']
-    if bass == 'walk': b.bass(0, starts[1], 'two'); b.bass(starts[1], stop, 'walk', vel=88)
-    elif bass == 'two': b.bass(0, stop, 'two', vel=84)
+    # a swing head is played 'in two' until the bridge, then the bass walks; a blues walks from the top
+    walk_from = head[2][0] if bass == 'walk' and genre in ('swing', 'bigband') and len(head) >= 3 else starts[1]
+    if bass == 'walk': b.bass(0, walk_from, 'two'); b.bass(walk_from, stop, 'walk', vel=88)
+    elif bass == 'two': b.bass(0, stop, 'two', lo=33, vel=84)  # a ballad's long bass notes stay off the bottom of the instrument
     else: b.bass(0, stop, bass, vel=90)
     if not button and bass != 'two': b.bass(n - 2, n, 'two', vel=84)
     sect = {s for s in starts[1:-1]} | ({n - 2} if button else set())
@@ -180,10 +191,38 @@ def arrange(slug, title, genre, ci, key, bpm, li, ai, rng):
     st.solo('lead', talk[0], *lo_hi['lead'], vel['lead'] - 2, SOLO[genre])
     rest = talk[1:]
     if len(talk) >= 3: st.solo('answer', talk[1], *lo_hi['answer'], vel['answer'], SOLO[genre]); rest = talk[2:]
-    arc = lambda x: .45 + .55 * (x / .66 if x < .66 else 1 - (x - .66) / .34 * .6)
+    shout = rest[-1] if g.get('section') and len(rest) >= 2 else None  # the big band: the last of the trading is the shout chorus
+    if shout: rest = rest[:-1]
+    arc = (lambda x: .5 + .5 * x) if shout else lambda x: .45 + .55 * (x / .66 if x < .66 else 1 - (x - .66) / .34 * .6)
     if rest: st.converse(voices, rest, lo_hi, vel, 'talk', arc)
+    if shout:
+        st.horn['brassA'] = st.bend['brassA'] = True
+        st.shout('brassA', shout, 65, 84, 100)
     st.converse(voices, out, lo_hi, vel, 'out')
     st.coda(voices, n - 2, lo_hi, vel, slow=not button)
+    # each line is one player's; in swing and the blues a quarter note inside a line is played short
+    b.articulate(['lead', 'answer', 'brassA'], detach=.68 if g['feel'] in ('swing', 'blues') and bpm >= 90 else 0)
+    if shout:  # the section under the lead trumpet, in block harmony: each part the next chord tone down
+        for (ch, t, dur, p, v, ns) in [x for x in b.notes if x[0] == b.chans['brassA']]:
+            cht = b.chart.at(t + .51) if (t % 1) > .49 and dur >= .6 else b.chart.at(t)
+            good = strong_pcs(cht) | tones(cht); x = p
+            for part in ('brassA2', 'brassB', 'brassB2'):
+                x = next((x - gap for gap in (3, 4, 5, 2, 6) if (x - gap) % 12 in good), x - 4)
+                b.notes.append((b.chans[part], t, dur, x, max(1, v - 8), ns))
+        for k in range(0, shout[1], 2):  # the drums: a crash on each phrase, a fill into the next
+            t0 = (shout[0] + k) * 4
+            for d_, v_ in ((49, 96), (36, 100)): b.note('drums', t0, .5, d_, v_)
+            for st_, d_ in ((6.5, 38), (7, 38), (7.5, 45)): b.note('drums', t0 + st_, .1, d_, 88 + rng.randint(-5, 5))
+    if g.get('section'):  # kicks: the section pushes into every fourth bar of the head, the drums setting it up and catching it
+        for s0, nb_, _ in head + out:
+            for bar in range(s0 + 3, s0 + nb_, 4):
+                t0 = bar * 4
+                for st_, du, vv in ((2.5, .3, 84), (3.5, 1.0, 94)):
+                    v4 = voicing(b.chart.at(t0 + st_ + .51), 55, 79)
+                    for part, x in zip(('brassA', 'brassA2', 'brassB', 'brassB2'), v4[::-1]): b.note(part, t0 + st_, du, x, vv - 4 * ('brassA', 'brassA2', 'brassB', 'brassB2').index(part) + rng.randint(-3, 3))
+                    for d_, v_ in ((38, 92), (36, 96)): b.note('drums', t0 + st_, .1, d_, v_)
+                b.note('drums', t0 + 2, .1, 38, 70)  # the set-up
+                if bar == s0 + nb_ - 1: b.note('drums', t0 + 3.5, .8, 49, 84)
     if g.get('section'):  # big band: each line voiced for its section, three parts in close harmony under the lead
         voiced = [c for c, two in ((b.chans['lead'], 'lead2'), (b.chans['answer'], 'answer2')) if two in b.chans]
         for (ch, t, dur, p, v, ns) in [x for x in b.notes if x[0] in voiced]:
@@ -196,7 +235,21 @@ def arrange(slug, title, genre, ci, key, bpm, li, ai, rng):
             if x2 is not None: b.notes.append((b.chans[three], t, dur, x2, max(1, v - 18), ns))
     st.clear_bass()
     st.clear_comp([cname] + ([g['comp2'][0]] if g.get('comp2') else []) + (['pad'] if g.get('pad') else []))
-    root = 24 + (zc[0] % 12) + (12 if zc[0] % 12 < 4 else 0)
+    # the rhythm section follows the story: back under the head, building through the solos to the trading (each solo
+    # starts a little under where the last one left off), full for the shout chorus, and playing out on the last head
+    t_a, t_z = talk[0][0], out[0][0]
+    def dyn(t):
+        bar = t / 4
+        if bar < head[0][0]: return .86
+        if bar < t_a: return .96 if bar >= head[-1][0] else .9
+        if bar < t_z:
+            if shout and bar >= shout[0]: return 1.2
+            lvl = .84 + .3 * min(1, (bar - t_a) / max(1, t_z - t_a) / .75)
+            return lvl - (.06 if any(0 <= bar - s0 < 2 for s0, _, _ in talk[:2]) else 0)
+        return 1.08 if bar < n - 2 else .9
+    soft = .5 if g['feel'] == 'ballad' else 1  # a ballad's swells are half as wide: it plays under the game, and its quiet must still be heard
+    b.shape([cname, 'bass', 'drums'] + ([g['comp2'][0]] if g.get('comp2') else []), lambda t: 1 + (dyn(t) - 1) * soft)
+    root = 24 + (zc[0] % 12) + (12 if zc[0] % 12 < 7 else 0)  # the last note: the tonic, no lower than the bass's G
     if button:  # the band stops together on beat one of the last bar
         th = (n - 1) * 4; kept = []
         for x in b.notes:

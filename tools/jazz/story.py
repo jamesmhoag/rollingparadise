@@ -8,6 +8,12 @@
 #   - the middle chorus is the conversation: the voices trade phrases, each one picking up the tail of the last,
 #     and the story builds (more notes, higher, louder) to a peak about two thirds through, then settles
 #   - the last head is played in harmony, and the coda lets the motif out slowly over the tonic
+#   - phrases breathe the way players do: a motif may start with a pickup before its bar or late in it, and may end
+#     pushed over the barline (a long note on an offbeat belongs to the chord it pushes into)
+#   - an improvised chorus grows out of the tune (Story.solo): it opens on the head's motif, develops it, runs lines
+#     over the changes (aimed at the chords' guide tones, reached by an enclosure or a half step, with an arpeggio now
+#     and then) as it climbs to a peak two thirds through, and comes home on the motif
+#   - the big band has a shout chorus (Story.shout): the ensemble on the motif, in block harmony
 #
 # Consonance rules every voice keeps: notes on strong beats are chord tones (no 4th over a major or dominant chord,
 # no b6 over a minor one); notes between them are scale steps that lead to the next chord tone; a harmony voice sits
@@ -78,29 +84,38 @@ class Motif:
         return Motif([(o - self.rhythm[-n][0], d, a) for o, d, a in self.rhythm[-n:]], self.contour[-n:])
 
 
-RHYTHMS = {  # 2-bar rhythm cells by feel: (onset, length, accented)
+# 2-bar rhythm cells by feel: (onset, length, accented). A cell is not boxed into its two bars: an onset before 0 is a
+# pickup played at the end of the bar before, and a last note may start on the 'and' of four and ring over the barline.
+RHYTHMS = {
     'swing': [[(0, 1.5, 1), (1.5, .5, 0), (2, .5, 0), (2.5, 1.5, 1), (4.5, .5, 0), (5, .5, 0), (5.5, 2, 1)],
-              [(.5, .5, 0), (1, 1, 1), (2, .5, 0), (2.5, .5, 0), (3, 1.5, 1), (5, .5, 0), (5.5, .5, 0), (6, 2, 1)],
+              [(-1, .5, 0), (-.5, .5, 0), (0, 1, 1), (1, .5, 0), (1.5, 1.5, 1), (3.5, .5, 0), (4, 1, 1), (5, .5, 0), (5.5, 1.5, 1)],
+              [(1.5, .5, 0), (2, .5, 0), (2.5, 1, 1), (3.5, 1.5, 1), (5.5, .5, 0), (6, .5, 0), (6.5, .5, 0), (7, .5, 0), (7.5, 1.5, 1)],
               [(0, 1, 1), (1, 1, 0), (2, .5, 0), (2.5, 2, 1), (5, 1, 0), (6, 2, 1)],
-              [(0, .5, 0), (.5, 1, 1), (1.5, .5, 0), (2, 2, 1), (4.5, .5, 0), (5, .5, 0), (5.5, .5, 0), (6, 2, 1)],
+              [(-.5, .5, 0), (0, .5, 0), (.5, 1, 1), (1.5, .5, 0), (2, 2, 1), (4.5, .5, 0), (5, .5, 0), (5.5, .5, 0), (6, 1.5, 1)],
               [(0, .5, 0), (.5, .5, 0), (1, .5, 0), (1.5, 1, 1), (2.5, .5, 0), (3, 1, 1), (4.5, .5, 0), (5, .5, 0), (5.5, .5, 0), (6, .5, 0), (6.5, 1.5, 1)],
-              [(1, .5, 0), (1.5, 1.5, 1), (3.5, .5, 0), (4, 1, 1), (5, .5, 0), (5.5, 2.5, 1)]],
+              [(1, .5, 0), (1.5, 1.5, 1), (3.5, .5, 0), (4, 1, 1), (5, .5, 0), (5.5, 1, 1), (7.5, 1.5, 1)],
+              [(-1.5, .5, 0), (-1, .5, 0), (-.5, .5, 0), (0, 2, 1), (2.5, .5, 0), (3, .5, 0), (3.5, 1.5, 1), (5.5, .5, 0), (6, .5, 1)]],
     'ballad': [[(0, 1, 1), (1, .5, 0), (1.5, .5, 0), (2, 2, 1), (4, 1.5, 1), (5.5, .5, 0), (6, 2, 1)],
-               [(.5, .5, 0), (1, 1.5, 1), (2.5, .5, 0), (3, 1, 0), (4, 4, 1)],
+               [(-1, .5, 0), (-.5, .5, 0), (0, 2, 1), (2, 1, 0), (3, 1, 0), (4, 3, 1)],
                [(0, 2, 1), (2, 1, 0), (3, 1, 0), (4, 3, 1)],
-               [(.5, .5, 0), (1, .5, 0), (1.5, 2, 1), (3.5, .5, 0), (4, 1, 1), (5, .5, 0), (5.5, 2.5, 1)]],
-    'latin': [[(0, 1.5, 1), (1.5, 1, 0), (2.5, .5, 0), (3, 1, 1), (4, .5, 0), (4.5, 3.5, 1)],
-              [(0, .5, 0), (.5, 1, 1), (1.5, 1, 0), (2.5, 1.5, 1), (4.5, 1, 0), (5.5, 2.5, 1)],
+               [(.5, .5, 0), (1, .5, 0), (1.5, 2, 1), (3.5, .5, 0), (4, 1, 1), (5, .5, 0), (5.5, 1.5, 1), (7.5, 1.5, 1)]],
+    'latin': [[(0, 1.5, 1), (1.5, 1, 0), (2.5, .5, 0), (3, 1, 1), (4, .5, 0), (4.5, 3, 1)],
+              [(-.5, 1, 1), (.5, 1, 0), (1.5, 1, 1), (2.5, 1, 0), (3.5, 2, 1), (5.5, .5, 0), (6, 1.5, 1)],
+              [(0, .5, 0), (.5, 1, 1), (1.5, 1, 0), (2.5, 1.5, 1), (4.5, 1, 0), (5.5, 2, 1)],
               [(0, 2, 1), (2, 1, 0), (3, 1, 0), (4.5, 1.5, 1), (6, 2, 1)],
-              [(.5, 1, 1), (1.5, 1, 0), (2.5, 1, 1), (3.5, 1, 0), (4.5, .5, 0), (5, 3, 1)]],
+              [(1, 1, 1), (2, .5, 0), (2.5, 1, 0), (3.5, 1.5, 1), (5, .5, 0), (5.5, 1, 0), (6.5, 1, 0), (7.5, 1.5, 1)],
+              [(-1, .5, 0), (-.5, .5, 0), (0, 1.5, 1), (1.5, .5, 0), (2, 1.5, 1), (3.5, 2.5, 1), (6, 1, 0)]],
     'funk': [[(0, .5, 1), (.75, .25, 0), (1, .5, 0), (1.5, 1, 1), (2.75, .25, 0), (3, 1, 1), (4.5, .5, 0), (5, .5, 0), (5.5, 2, 1)],
-             [(.5, .5, 0), (1, .5, 1), (1.75, .75, 0), (2.5, 1.5, 1), (4.75, .25, 0), (5, .5, 0), (5.5, .5, 0), (6, 1.5, 1)],
+             [(-.5, .25, 0), (-.25, .25, 0), (0, .5, 1), (.75, .25, 0), (1, .5, 0), (1.5, 1, 1), (2.75, .25, 0), (3, 1, 1), (4.5, .5, 0), (5, .5, 0), (5.5, 1.5, 1)],
              [(0, 1, 1), (1.5, .5, 0), (2, .5, 0), (2.5, 1.5, 1), (4.5, .5, 0), (5, 1, 0), (6, 2, 1)],
-             [(0, .25, 0), (.25, .5, 1), (1, .25, 0), (1.25, .25, 0), (1.5, 1, 1), (3, .5, 1), (3.5, .25, 0), (3.75, .25, 0), (4, 1, 1), (5.5, .5, 0), (6, 1.5, 1)]],
+             [(0, .25, 0), (.25, .5, 1), (1, .25, 0), (1.25, .25, 0), (1.5, 1, 1), (3, .5, 1), (3.5, .25, 0), (3.75, .25, 0), (4, 1, 1), (5.5, .5, 0), (6, 1.5, 1)],
+             [(.5, .5, 0), (1, .5, 1), (1.75, .75, 0), (2.5, 1, 1), (3.75, 1.25, 1), (5.5, .25, 0), (5.75, .25, 0), (6, .5, 1), (6.75, 1, 1)]],
     'blues': [[(0, .5, 0), (.5, 1.5, 1), (2, .5, 0), (2.5, 1.5, 1), (4.5, .5, 0), (5, 1, 0), (6, 2, 1)],
-              [(0, 1, 1), (1, .5, 0), (1.5, .5, 0), (2, 2, 1), (4, .5, 0), (4.5, .5, 0), (5, 3, 1)],
+              [(-1, .5, 0), (-.5, .5, 0), (0, 1, 1), (1, .5, 0), (1.5, .5, 0), (2, 2, 1), (4, .5, 0), (4.5, .5, 0), (5, 2, 1)],
               [(0, .5, 1), (.5, .5, 0), (1, 1, 1), (2.5, .5, 0), (3, 1, 1), (4, .5, 1), (4.5, .5, 0), (5, 1, 1), (6.5, 1.5, 1)],
-              [(.5, .5, 0), (1, 1.5, 1), (3, .5, 0), (3.5, .5, 0), (4, 2, 1), (6, .5, 0), (6.5, 1.5, 1)]],
+              [(.5, .5, 0), (1, 1.5, 1), (3, .5, 0), (3.5, 1.5, 1), (5.5, .5, 0), (6, .5, 0), (6.5, .5, 0), (7.5, 1.5, 1)],
+              [(0, .5, 0), (.5, .5, 0), (1, 1, 1), (2.5, .5, 0), (3, .5, 0), (3.5, 1, 1), (5, .5, 0), (5.5, .5, 0), (6, 1.5, 1)],
+              [(-.5, .5, 0), (0, 2, 1), (2, .5, 0), (2.5, .5, 0), (3, 1, 1), (4.5, .5, 0), (5, .5, 0), (5.5, 1.5, 1)]],
 }
 CONTOURS = [[0, 1, 1, 1, -2, -1, -1, 1, 1], [0, 2, -1, -1, 2, 1, -1, -2, 1], [0, -1, -1, 2, 1, 1, -1, -1, 1],
             [0, 1, 2, -1, -1, 1, -2, 1, 1], [0, 2, 1, -1, -2, 1, 1, -1, -1], [0, -1, 2, 1, -2, 1, -1, 1, 1],
@@ -115,9 +130,10 @@ class Story:
         self.b, self.feel, self.key, self.rng = band, feel, key, rng
         self.mel = []  # (t, dur, pitch) of every melody note, for the comping to step round
         R = RHYTHMS[feel]
-        pairs = [(r, c) for r in range(len(R)) for c in range(len(CONTOURS)) if (feel, r, c) not in USED]
+        pairs = [(r, c) for r in range(len(R)) for c in range(len(CONTOURS)) if (feel, r, c) not in USED and not (feel == 'ballad' and c == 9)]  # (the jumping riff is no ballad)
         fresh = [(r, c) for r, c in pairs if not any(u[0] == feel and u[2] == c for u in USED)]
-        r, c = rng.choice(fresh or pairs); USED.add((feel, r, c))
+        new = [(r, c) for r, c in fresh if not any(u[0] == feel and u[1] == r for u in USED)]  # a rhythm cell no tune of this feel has yet
+        r, c = rng.choice(new or fresh or pairs); USED.add((feel, r, c))
         self.motif = Motif(R[r], CONTOURS[c])
         self.horn, self.rng_lo = {}, {}  # voices that bend into long notes like a horn; the lowest a harmony may go
         self.bend = {}  # voices that can bend a note (horns, guitars), for blue notes
@@ -128,8 +144,9 @@ class Story:
     def realise(self, voice, t0, m, lo, hi, prev, vel, cadence=False, harm=None, susp=.0, home=None):
         b, rng = self.b, self.rng; out = []
         n = len(m.rhythm)
-        for i, ((on, dur, acc), c) in enumerate(zip(m.rhythm, m.contour + [0] * n)):
-            t = t0 + on; ch = b.chart.at(t); pcs = set(scale(ch)); strong = (on % 1 == 0 and on % 2 == 0) or dur >= 1.5 or acc
+        for i, ((on, dur, acc), c) in enumerate(zip(m.rhythm, m.contour + (m.contour[1:] or [1]) * n)):  # a rhythm longer than its contour takes the contour round again
+            t = t0 + on; ch = b.chart.at(t + .51) if (on % 1) > .49 and dur >= 1 else b.chart.at(t)  # a long note on an offbeat belongs to the chord it pushes into
+            pcs = set(scale(ch)); strong = (on % 1 == 0 and on % 2 == 0) or dur >= 1.5 or acc
             sp = self.strong(ch)
             if self.blue_i(ch): pcs |= {(self.key + 3) % 12, (self.key + 6) % 12}  # the blues scale over the tonic
             p = step(prev, c, pcs, lo, hi) if c else nearest(sp, prev, lo, hi)
@@ -175,13 +192,80 @@ class Story:
     def strong(self, ch):  # chord tones fit for a strong beat; in the blues the b3 (a #9) may sit on the tonic
         return strong_pcs(ch) | ({(self.key + 3) % 12} if self.blue_i(ch) else set())
 
-    # ---- an improvised chorus: phrased lines over the changes (engine.solo), with chromatic approaches
+    # ---- an improvised chorus that grows out of the tune: it opens by quoting the head's motif, develops it (answered,
+    # extended from its own tail, busier), runs lines over the changes as it climbs to a peak about two thirds through
+    # (louder and higher as it goes), and comes home on the motif's fragment
     def solo(self, voice, seg, lo, hi, vel, density):
-        b = self.b; st, nb, _ = seg; ch = b.chans[voice]; n0 = len(b.notes)
-        b.solo(voice, st, st + nb, lo, hi, vel, density=density, horn=self.horn.get(voice, True),
-               mode='blues' if self.feel == 'blues' else None, key=self.key, tri_rate=.08 if self.feel in ('swing', 'blues', 'ballad') else 0)
-        for x in b.notes[n0:]:
-            if x[0] == ch: self.mel.append((x[1], x[2], x[3]))
+        rng = self.rng; st, nb, _ = seg; slots = max(2, nb // 2)
+        peak = max(1, min(slots - 2, round((slots - 1) * .66))); prev = (lo + hi) // 2 - 2
+        for i in range(slots):
+            t0 = (st + 2 * i) * 4; x = i / max(1, slots - 1)
+            lvl = .45 + .55 * (x / .66 if x < .66 else 1 - (x - .66) / .34 * .5)
+            v = vel - 10 + int(18 * lvl); home = (lo + hi) // 2 - 4 + int((hi - lo) * .32 * lvl)
+            if i == 0: prev = self.realise(voice, t0, self.motif, lo, hi, prev, v, home=home)
+            elif i == slots - 1: prev = self.realise(voice, t0, self.motif.fragment(), lo, hi, prev, v, cadence=True)
+            elif i == peak or rng.random() < density + .2 * lvl: prev = self.line(voice, t0, lo, hi, prev, v, lvl, peak=i == peak)
+            else:
+                m = rng.choice([self.motif.inverted(), self.motif.busier(rng), self.motif.inverted().busier(rng)])
+                prev = self.realise(voice, t0, m, lo, hi, prev, v, home=home)
+
+    # a soloist's running line over two bars: eighths that aim at the guide tones of the chords ahead and reach them by
+    # an enclosure (the note above, the half step below, then the note) or a half step, an arpeggio up or down a chord
+    # now and then, a breath in the middle when the chorus is still quiet, and a long note to end (held high at the peak)
+    def line(self, voice, t0, lo, hi, prev, vel, lvl, peak=False):
+        b, rng = self.b, self.rng
+        start = rng.choice([0, .5]) if peak else rng.choice([.5, 1, 1.5])
+        stop = min(7, math.floor((4.5 + 2.5 * lvl) * 2) / 2)  # where the last, long note starts
+        pos = [start + k * .5 for k in range(int(round((stop - start) * 2)))]
+        held = set()
+        if lvl < .78 and len(pos) >= 8 and rng.random() < .65:  # a breath: the note before it is a quarter, then a rest
+            g = len(pos) // 2 + rng.choice([-1, 0]); held.add(pos[g - 1]); pos = pos[:g] + pos[g + 2:]
+        d = 1 if peak or prev < (lo + hi) / 2 else -1; p = prev; queue = []; out = []
+        for i, u in enumerate(pos):
+            t = t0 + u; ch = b.chart.at(t); pcs = set(scale(ch))
+            if self.blue_i(ch): pcs |= {(self.key + 3) % 12, (self.key + 6) % 12}
+            run = lambda k: i + k < len(pos) and abs(pos[i + k] - u - k * .5) < 1e-6  # the line runs on unbroken for k more eighths
+            if queue: q = queue.pop(0)
+            else:
+                if p >= hi - 3: d = -1
+                elif p <= lo + 3: d = 1
+                elif rng.random() < .15: d = -d
+                if run(2) and pos[i + 2] % 2 == 0 and rng.random() < self.chrom + .2:  # an enclosure of the guide tone two eighths on
+                    tch = b.chart.at(t0 + pos[i + 2]); tgt = nearest(land_pcs(tch), p + d * 2, lo + 1, hi - 1, d)
+                    q = step(tgt, 1, set(scale(tch)), lo, hi + 2); queue = [tgt - 1, tgt]
+                elif run(1) and pos[i + 1] % 2 == 0:  # the next eighth is a strong beat: lead into its guide tone
+                    tch = b.chart.at(t0 + pos[i + 1]); tgt = nearest(land_pcs(tch), p + d, lo + 1, hi - 1, d)
+                    q = tgt - 1 if tgt > p or rng.random() < .3 else step(tgt, 1, set(scale(tch)), lo, hi + 2)
+                    queue = [tgt]
+                elif u % 2 == 0 and run(3) and rng.random() < .3:  # an arpeggio through the chord, then turn round
+                    ct = tones(ch, (1, 3, 5, 7, 9)); q = nearest(ct, p, lo, hi); x = q
+                    for _ in range(3): x = step(x, d, ct, lo, hi); queue.append(x)
+                    if abs(queue[-1] - q) > 12: queue = []  # it wrapped round the range: walk instead
+                    d = -d
+                else: q = step(p, d, pcs, lo, hi)
+            if out and q == out[-1][2]: q = step(q, d, pcs, lo, hi)
+            p = fit(q, lo, hi); out.append((t, 1 if u in held else .5, p))
+        # the long note that ends it: a guide tone, reached high at the peak; it may ring over the barline
+        t = t0 + stop; ch = b.chart.at(t + .51) if stop % 1 else b.chart.at(t)
+        p = nearest(land_pcs(ch), max(p, hi - 5) if peak else p + d, lo, hi)
+        if out and p == out[-1][2]: p = nearest(land_pcs(ch) - {p % 12} or land_pcs(ch), p + (2 if peak else -2), lo, hi)
+        out.append((t, 2 if peak else rng.choice([1.5, 2]) if stop <= 6 else 1.5, p))
+        top = max(o[2] for o in out)
+        for j, (t, dur, q) in enumerate(out):
+            last = j == len(out) - 1; off = (t % 1) > .01
+            v = vel + (5 if off else 0) + (5 if q == top else 0) - (14 if off and not last and rng.random() < .12 else 0) + ((4 if peak else -4) if last else 0)
+            b.play(voice, t, dur, q, v + rng.randint(-3, 3), horn=self.horn.get(voice, True), fall=last)
+            self.mel.append((t, dur, q))
+        return p
+
+    # ---- the big band's shout chorus: one voice (the lead trumpet) on the motif, loud; the band voices the section under it
+    def shout(self, voice, seg, lo, hi, vel):
+        st, nb, _ = seg; prev = (lo + hi) // 2 + 2
+        for k in range(0, nb, 2):
+            slot = k // 2 % 4; t0 = (st + k) * 4
+            m = self.motif.busier(self.rng) if slot in (0, 2) else self.motif.inverted() if slot == 1 else self.motif.fragment()
+            prev = self.realise(voice, t0, m, lo, hi, prev, vel + (4 if slot == 2 else 0), cadence=slot == 3, home=prev + 3 if slot == 2 else None)
+        return prev
 
     # a harmony voice: a 3rd or a 6th under the lead, on a chord tone (a 4th or 5th only if nothing else fits)
     def harmony(self, voice, t, dur, p, vel):
@@ -221,10 +305,14 @@ class Story:
             elif phase == 'talk':
                 lvl = intensity(x) if intensity else .5
                 who = L if i % 2 == 0 else A
+                if lvl > .8 and i < total - 1 and rng.random() < .5:  # near the peak a voice lets go and runs a line
+                    prev[who] = self.line(who, t0, *lo_hi[who], prev[who], vel[who] - 8 + int(16 * lvl), lvl, peak=lvl > .97); continue
                 base = last.tail() if rng.random() < .55 and i else self.motif
                 # pick up the last phrase's tail, then carry on in the motif's rhythm
-                m = Motif(base.rhythm + [(o + base.rhythm[-1][0] + base.rhythm[-1][1] + .5, d, a) for o, d, a in self.motif.rhythm if o + base.rhythm[-1][0] + base.rhythm[-1][1] + .5 < 7.5],
-                          base.contour + (self.motif.contour if who == L else self.motif.inverted().contour))
+                off = base.rhythm[-1][0] + base.rhythm[-1][1] + .5; ext = [(o + off, d, a) for o, d, a in self.motif.rhythm]
+                keep = [k for k, (o, d, a) in enumerate(ext) if base.rhythm[-1][0] + .25 < o < 7.5]  # (a pickup may lean back onto the tail's last note)
+                co = self.motif.contour if who == L else self.motif.inverted().contour
+                m = Motif(base.rhythm + [ext[k] for k in keep], base.contour + [co[k] if k < len(co) else 0 for k in keep])
                 m.rhythm = [r for r in m.rhythm if r[0] < 7.5]; m.contour = m.contour[:len(m.rhythm)]
                 if lvl > .55: m = m.busier(rng)
                 lo, hi = lo_hi[who]; lift = int((hi - lo) * .35 * lvl)

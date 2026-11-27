@@ -1,6 +1,7 @@
 // The bout music, written by tools/jazz/loops.py (edit loops.py and render, not this file): a loop for each floor's
-// tables and one for its High Roller (floor 5 is the Ascent), each in four layers the game mixes by how close a
-// Roller is to broke. start/length: the loop's span in each file, in seconds. key: its tonic (0 = C ... 11 = B).
+// tables and one for its High Roller (floor 5 is the Ascent), each in six layers the game mixes: the groove, two
+// tunes it takes in turn, the drive, the peril (you are close to broke) and the surge (your opponent is).
+// start/length: the loop's span in each file, in seconds. key: its tonic (0 = C ... 11 = B).
 export const LOOPS = [
  {
   "slug": "basement-bout",
@@ -14,14 +15,18 @@ export const LOOPS = [
   "layers": {
    "base": "assets/music/loops/basement-bout-base.mp3",
    "theme": "assets/music/loops/basement-bout-theme.mp3",
+   "alt": "assets/music/loops/basement-bout-alt.mp3",
    "drive": "assets/music/loops/basement-bout-drive.mp3",
-   "peril": "assets/music/loops/basement-bout-peril.mp3"
+   "peril": "assets/music/loops/basement-bout-peril.mp3",
+   "surge": "assets/music/loops/basement-bout-surge.mp3"
   },
   "chip": {
    "base": "assets/music/chip/loops/basement-bout-base.mp3",
    "theme": "assets/music/chip/loops/basement-bout-theme.mp3",
+   "alt": "assets/music/chip/loops/basement-bout-alt.mp3",
    "drive": "assets/music/chip/loops/basement-bout-drive.mp3",
-   "peril": "assets/music/chip/loops/basement-bout-peril.mp3"
+   "peril": "assets/music/chip/loops/basement-bout-peril.mp3",
+   "surge": "assets/music/chip/loops/basement-bout-surge.mp3"
   }
  },
  {
@@ -36,14 +41,18 @@ export const LOOPS = [
   "layers": {
    "base": "assets/music/loops/basement-boss-base.mp3",
    "theme": "assets/music/loops/basement-boss-theme.mp3",
+   "alt": "assets/music/loops/basement-boss-alt.mp3",
    "drive": "assets/music/loops/basement-boss-drive.mp3",
-   "peril": "assets/music/loops/basement-boss-peril.mp3"
+   "peril": "assets/music/loops/basement-boss-peril.mp3",
+   "surge": "assets/music/loops/basement-boss-surge.mp3"
   },
   "chip": {
    "base": "assets/music/chip/loops/basement-boss-base.mp3",
    "theme": "assets/music/chip/loops/basement-boss-theme.mp3",
+   "alt": "assets/music/chip/loops/basement-boss-alt.mp3",
    "drive": "assets/music/chip/loops/basement-boss-drive.mp3",
-   "peril": "assets/music/chip/loops/basement-boss-peril.mp3"
+   "peril": "assets/music/chip/loops/basement-boss-peril.mp3",
+   "surge": "assets/music/chip/loops/basement-boss-surge.mp3"
   }
  },
  {
@@ -58,14 +67,18 @@ export const LOOPS = [
   "layers": {
    "base": "assets/music/loops/haven-bout-base.mp3",
    "theme": "assets/music/loops/haven-bout-theme.mp3",
+   "alt": "assets/music/loops/haven-bout-alt.mp3",
    "drive": "assets/music/loops/haven-bout-drive.mp3",
-   "peril": "assets/music/loops/haven-bout-peril.mp3"
+   "peril": "assets/music/loops/haven-bout-peril.mp3",
+   "surge": "assets/music/loops/haven-bout-surge.mp3"
   },
   "chip": {
    "base": "assets/music/chip/loops/haven-bout-base.mp3",
    "theme": "assets/music/chip/loops/haven-bout-theme.mp3",
+   "alt": "assets/music/chip/loops/haven-bout-alt.mp3",
    "drive": "assets/music/chip/loops/haven-bout-drive.mp3",
-   "peril": "assets/music/chip/loops/haven-bout-peril.mp3"
+   "peril": "assets/music/chip/loops/haven-bout-peril.mp3",
+   "surge": "assets/music/chip/loops/haven-bout-surge.mp3"
   }
  },
  {
@@ -80,14 +93,18 @@ export const LOOPS = [
   "layers": {
    "base": "assets/music/loops/haven-boss-base.mp3",
    "theme": "assets/music/loops/haven-boss-theme.mp3",
+   "alt": "assets/music/loops/haven-boss-alt.mp3",
    "drive": "assets/music/loops/haven-boss-drive.mp3",
-   "peril": "assets/music/loops/haven-boss-peril.mp3"
+   "peril": "assets/music/loops/haven-boss-peril.mp3",
+   "surge": "assets/music/loops/haven-boss-surge.mp3"
   },
   "chip": {
    "base": "assets/music/chip/loops/haven-boss-base.mp3",
    "theme": "assets/music/chip/loops/haven-boss-theme.mp3",
+   "alt": "assets/music/chip/loops/haven-boss-alt.mp3",
    "drive": "assets/music/chip/loops/haven-boss-drive.mp3",
-   "peril": "assets/music/chip/loops/haven-boss-peril.mp3"
+   "peril": "assets/music/chip/loops/haven-boss-peril.mp3",
+   "surge": "assets/music/chip/loops/haven-boss-surge.mp3"
   }
  },
  {
@@ -102,14 +119,18 @@ export const LOOPS = [
   "layers": {
    "base": "assets/music/loops/suite-bout-base.mp3",
    "theme": "assets/music/loops/suite-bout-theme.mp3",
+   "alt": "assets/music/loops/suite-bout-alt.mp3",
    "drive": "assets/music/loops/suite-bout-drive.mp3",
-   "peril": "assets/music/loops/suite-bout-peril.mp3"
+   "peril": "assets/music/loops/suite-bout-peril.mp3",
+   "surge": "assets/music/loops/suite-bout-surge.mp3"
   },
   "chip": {
    "base": "assets/music/chip/loops/suite-bout-base.mp3",
    "theme": "assets/music/chip/loops/suite-bout-theme.mp3",
+   "alt": "assets/music/chip/loops/suite-bout-alt.mp3",
    "drive": "assets/music/chip/loops/suite-bout-drive.mp3",
-   "peril": "assets/music/chip/loops/suite-bout-peril.mp3"
+   "peril": "assets/music/chip/loops/suite-bout-peril.mp3",
+   "surge": "assets/music/chip/loops/suite-bout-surge.mp3"
   }
  },
  {
@@ -124,14 +145,18 @@ export const LOOPS = [
   "layers": {
    "base": "assets/music/loops/suite-boss-base.mp3",
    "theme": "assets/music/loops/suite-boss-theme.mp3",
+   "alt": "assets/music/loops/suite-boss-alt.mp3",
    "drive": "assets/music/loops/suite-boss-drive.mp3",
-   "peril": "assets/music/loops/suite-boss-peril.mp3"
+   "peril": "assets/music/loops/suite-boss-peril.mp3",
+   "surge": "assets/music/loops/suite-boss-surge.mp3"
   },
   "chip": {
    "base": "assets/music/chip/loops/suite-boss-base.mp3",
    "theme": "assets/music/chip/loops/suite-boss-theme.mp3",
+   "alt": "assets/music/chip/loops/suite-boss-alt.mp3",
    "drive": "assets/music/chip/loops/suite-boss-drive.mp3",
-   "peril": "assets/music/chip/loops/suite-boss-peril.mp3"
+   "peril": "assets/music/chip/loops/suite-boss-peril.mp3",
+   "surge": "assets/music/chip/loops/suite-boss-surge.mp3"
   }
  },
  {
@@ -146,14 +171,18 @@ export const LOOPS = [
   "layers": {
    "base": "assets/music/loops/paradise-bout-base.mp3",
    "theme": "assets/music/loops/paradise-bout-theme.mp3",
+   "alt": "assets/music/loops/paradise-bout-alt.mp3",
    "drive": "assets/music/loops/paradise-bout-drive.mp3",
-   "peril": "assets/music/loops/paradise-bout-peril.mp3"
+   "peril": "assets/music/loops/paradise-bout-peril.mp3",
+   "surge": "assets/music/loops/paradise-bout-surge.mp3"
   },
   "chip": {
    "base": "assets/music/chip/loops/paradise-bout-base.mp3",
    "theme": "assets/music/chip/loops/paradise-bout-theme.mp3",
+   "alt": "assets/music/chip/loops/paradise-bout-alt.mp3",
    "drive": "assets/music/chip/loops/paradise-bout-drive.mp3",
-   "peril": "assets/music/chip/loops/paradise-bout-peril.mp3"
+   "peril": "assets/music/chip/loops/paradise-bout-peril.mp3",
+   "surge": "assets/music/chip/loops/paradise-bout-surge.mp3"
   }
  },
  {
@@ -168,14 +197,18 @@ export const LOOPS = [
   "layers": {
    "base": "assets/music/loops/paradise-boss-base.mp3",
    "theme": "assets/music/loops/paradise-boss-theme.mp3",
+   "alt": "assets/music/loops/paradise-boss-alt.mp3",
    "drive": "assets/music/loops/paradise-boss-drive.mp3",
-   "peril": "assets/music/loops/paradise-boss-peril.mp3"
+   "peril": "assets/music/loops/paradise-boss-peril.mp3",
+   "surge": "assets/music/loops/paradise-boss-surge.mp3"
   },
   "chip": {
    "base": "assets/music/chip/loops/paradise-boss-base.mp3",
    "theme": "assets/music/chip/loops/paradise-boss-theme.mp3",
+   "alt": "assets/music/chip/loops/paradise-boss-alt.mp3",
    "drive": "assets/music/chip/loops/paradise-boss-drive.mp3",
-   "peril": "assets/music/chip/loops/paradise-boss-peril.mp3"
+   "peril": "assets/music/chip/loops/paradise-boss-peril.mp3",
+   "surge": "assets/music/chip/loops/paradise-boss-surge.mp3"
   }
  },
  {
@@ -184,20 +217,24 @@ export const LOOPS = [
   "floor": 5,
   "kind": "bout",
   "key": 2,
-  "bpm": 100.0,
+  "bpm": 120.0,
   "start": 0.5,
-  "length": 38.4,
+  "length": 32.0,
   "layers": {
    "base": "assets/music/loops/ascent-bout-base.mp3",
    "theme": "assets/music/loops/ascent-bout-theme.mp3",
+   "alt": "assets/music/loops/ascent-bout-alt.mp3",
    "drive": "assets/music/loops/ascent-bout-drive.mp3",
-   "peril": "assets/music/loops/ascent-bout-peril.mp3"
+   "peril": "assets/music/loops/ascent-bout-peril.mp3",
+   "surge": "assets/music/loops/ascent-bout-surge.mp3"
   },
   "chip": {
    "base": "assets/music/chip/loops/ascent-bout-base.mp3",
    "theme": "assets/music/chip/loops/ascent-bout-theme.mp3",
+   "alt": "assets/music/chip/loops/ascent-bout-alt.mp3",
    "drive": "assets/music/chip/loops/ascent-bout-drive.mp3",
-   "peril": "assets/music/chip/loops/ascent-bout-peril.mp3"
+   "peril": "assets/music/chip/loops/ascent-bout-peril.mp3",
+   "surge": "assets/music/chip/loops/ascent-bout-surge.mp3"
   }
  },
  {
@@ -206,20 +243,24 @@ export const LOOPS = [
   "floor": 5,
   "kind": "boss",
   "key": 4,
-  "bpm": 125.0,
+  "bpm": 130.43,
   "start": 0.5,
-  "length": 30.72,
+  "length": 29.44,
   "layers": {
    "base": "assets/music/loops/ascent-boss-base.mp3",
    "theme": "assets/music/loops/ascent-boss-theme.mp3",
+   "alt": "assets/music/loops/ascent-boss-alt.mp3",
    "drive": "assets/music/loops/ascent-boss-drive.mp3",
-   "peril": "assets/music/loops/ascent-boss-peril.mp3"
+   "peril": "assets/music/loops/ascent-boss-peril.mp3",
+   "surge": "assets/music/loops/ascent-boss-surge.mp3"
   },
   "chip": {
    "base": "assets/music/chip/loops/ascent-boss-base.mp3",
    "theme": "assets/music/chip/loops/ascent-boss-theme.mp3",
+   "alt": "assets/music/chip/loops/ascent-boss-alt.mp3",
    "drive": "assets/music/chip/loops/ascent-boss-drive.mp3",
-   "peril": "assets/music/chip/loops/ascent-boss-peril.mp3"
+   "peril": "assets/music/chip/loops/ascent-boss-peril.mp3",
+   "surge": "assets/music/chip/loops/ascent-boss-surge.mp3"
   }
  }
 ];

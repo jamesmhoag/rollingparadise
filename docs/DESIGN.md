@@ -389,23 +389,54 @@ of either Roller explains its size: depth (2 or 3 base rows + Versatility or Dep
 and stack height (3 + Balance), with where each bonus comes from.
 
 ### Music
-The lounge band (`tools/jazz`, rendered with FluidSynth and the FluidR3 General MIDI soundfont to `assets/music`,
-listed in `js/content/music.js`) plays 24 original tunes: eight kinds of Vegas jazz (lounge swing, bossa nova,
-showroom big band, ballad, jazz-funk, jump blues, smooth jazz, soul-jazz organ), three tunes each. `setlist.py` gives
-each kind its charts, feel, rhythm section and the voices that may lead and answer; `story.py` composes each tune
-as a conversation between two voices built from one 2-bar motif:
+The lounge band (`tools/jazz`, rendered with FluidSynth and the GeneralUser GS General MIDI soundfont to
+`assets/music`, listed in `js/content/music.js`) plays 24 original tunes: eight kinds of Vegas jazz (lounge swing,
+bossa nova, showroom big band, ballad, jazz-funk, jump blues, smooth jazz, soul-jazz organ), three tunes each.
+`setlist.py` gives each kind its charts, feel, rhythm section and the voices that lead and answer; `story.py`
+composes each tune as a conversation between two voices built from one 2-bar motif:
+- the motif is a rhythm cell and a contour, and no two tunes of a feel share a cell. A cell is not boxed into its
+  two bars: it may start with a pickup in the bar before, or late, and may end pushed over the barline (a long note
+  on an offbeat belongs to the chord it pushes into).
 - the head: the lead states the motif, the second voice answers it (inverted, in its own register, from where the
   lead stopped), the lead sequences it up a step, and both close the phrase together in harmony; the answer has the
   last word, leading back to the top. The bridge develops a fragment of the motif, traded between the voices.
-- the middle chorus is the conversation: the voices trade phrases, each picking up the tail of the last and carrying
-  on in the motif's rhythm, building (busier, higher, louder) to a peak about two thirds through, then settling.
+- the solos grow out of the tune: each opens by quoting the motif, develops it, runs lines over the changes (aimed
+  at the chords' guide tones and reached by an enclosure or a half step, with an arpeggio now and then) as it climbs
+  to a peak about two thirds through, louder and higher, and comes home on the motif's fragment.
+- then the voices trade phrases, each picking up the tail of the last, building to a peak and settling. The big
+  band instead ends its trading with a shout chorus: trumpets and trombones on the motif in four-part block harmony,
+  the drums crashing each phrase in. Its section also kicks into every fourth bar of the head, set up by the drums.
 - the out-head is played in harmony, and the coda lets the motif out slowly over the tonic, with a ritard.
+The players listen to each other (`engine.py`): a comping chord or a bossa bass note on the "and" before a change
+plays the chord it is pushing into; a swing head is played "in two" until the bridge, then the bass walks; a line is
+one player's (a pickup cuts the note before it short) and in swing a quarter note inside a line is played short; and
+the rhythm section's dynamics follow the story (back under the head, building through the solos, full for the shout
+chorus, out on the last head).
 Consonance is a rule, not luck: strong-beat notes are chord tones (no 4th over a major or dominant chord), passing
 notes are scale steps leading to the next chord tone, a harmony voice sits a 3rd or 6th under the lead, the comping
 drops any voice a half step under the melody or above it, and the walking bass steps off a half-step rub with a
 held melody note. The dissonance left is chosen: suspensions held over a chord change that resolve down a step,
-and dominant colour on the way home. Only real instrument patches are used (no vibraphone or xylophone leads). The
-player shuffles the set so no kind of jazz follows itself, and shares the tune's key with the sound effects.
+and dominant colour on the way home. Struck and plucked instruments (piano, vibraphone, guitar, Rhodes), which
+sound real from samples, carry the melodies and solos; horns answer from further back in the room.
+The mix (`render.py`) keeps the band's dynamics: a light compressor and one gain per tune to -20 LUFS, the drum kit
+brightened, the rumble under the bass's lowest note filtered out. The player shuffles the set so no kind of jazz
+follows itself, and shares the tune's key with the sound effects.
+
+At a table the band plays the floor's bout loop (`tools/jazz/loops.py`, `js/content/loops.js`; each floor's tables
+and its High Roller have their own): 16 bars written by hand, in six layers the game mixes live (`js/ui/music.js`):
+- **base**, the groove, always;
+- **theme** and **alt**, two tunes over the same changes on different instruments. Each time round the band plays
+  one of them or neither (`TURNS`: theme, theme, alt, rest, theme, alt, alt, rest), handed over on the bar line, so a
+  long bout does not hear one melody on repeat;
+- **drive**, the full kit and the horn section (backgrounds that answer in the tunes' gaps, or hits), faded in as
+  either Roller's Worth runs down;
+- **peril**, when *you* are close to broke: toms, a heartbeat, brass stabs, and tremolo strings that climb a step a
+  bar through each bar's chord;
+- **surge**, when your *opponent* is: handclaps, tambourine, crashes and a brass riff. Losing and winning do not
+  sound alike.
+The layers are levelled against the groove so each is heard arriving. The lounge band fades out as a loop comes in
+and eases back in after it has died away. The floors' tempos: tables 138, 172, 116, 100, 120; High Rollers 112, 176,
+152, 108, 130.
 
 ### Sound
 Every step of play is heard (`js/ui/sfx.js`). The musical sounds are real instruments: short samples rendered from

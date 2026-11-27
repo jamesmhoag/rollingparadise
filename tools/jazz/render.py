@@ -8,8 +8,10 @@
 #
 # The band plays in one small lounge. Each tune is rendered as stems: the band (rhythm section and the lead),
 # the horns and reeds, and the organ. The horns are set further back in the room and darkened a little; the organ
-# goes through a rotating-speaker (Leslie) effect; then all of it is put in the same room (a convolution with a
-# small club's response), warmed like a microphone into tape, given a little room tone, and levelled.
+# goes through a rotating-speaker (Leslie) effect; the drum kit is brightened (a soundfont's cymbals and brushes are
+# dull); then all of it is put in the same room (a convolution with a small club's response), given a little room
+# tone, and levelled: a light compressor, then one gain for the whole tune to -20 LUFS, so the band's own dynamics
+# (the build through the solos, the shout chorus, the quiet coda) are still there.
 import os, subprocess, sys, random, json
 from multiprocessing import Pool
 import numpy as np
@@ -23,6 +25,10 @@ TMP = os.environ.get('TMPDIR', '/tmp')
 SR = 44100
 WIND = range(56, 80)  # brass, reeds and pipes
 ORGAN = range(16, 24)
+# the last of the chain, for tunes and loops alike: the rumble under the bass's lowest note taken out (two filters:
+# 24 dB an octave), the bass's bottom octave eased (a soundfont bass is nearly all fundamental, which small speakers
+# cannot play and headphones overplay), and a little air on top
+MASTER = 'highpass=f=40,highpass=f=40,lowshelf=g=-3:f=65,treble=g=2:f=7000'
 
 
 def room(path, rt_low=.85, rt_high=.35, seed=7):
@@ -51,10 +57,22 @@ def synth(mid, wav, chorus=0.4, reverb=0.12):
                     '-o', f'synth.chorus.level={chorus}', '-o', f'synth.chorus.active={int(chorus > 0)}', SF2, mid], check=True)
 
 
+def level(pre, mp3, target=-20):
+    """Encode a tune at `target` LUFS with one gain for the whole of it (a limiter catches the odd peak), so loud and
+    quiet passages keep their distance."""
+    meas = subprocess.run(['ffmpeg', '-hide_banner', '-f', 'f32le', '-ar', str(SR), '-ac', '2', '-i', pre, '-af', 'ebur128', '-f', 'null', '-'], capture_output=True, text=True).stderr
+    lufs = float([l for l in meas.splitlines() if l.strip().startswith('I:')][-1].split()[1])
+    subprocess.run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-f', 'f32le', '-ar', str(SR), '-ac', '2', '-i', pre,
+                    '-af', f'volume={target - lufs:.2f}dB,alimiter=limit=0.8:level=false:attack=5:release=80',
+                    '-ar', str(SR), '-c:a', 'libmp3lame', '-b:a', '96k', mp3], check=True)
+    os.remove(pre)
+
+
 def render(job):
     slug, band, ir = job
     chans = set(band.progs)
-    stems = {'band': {c for c in chans if c == 9 or (band.progs[c] not in WIND and band.progs[c] not in ORGAN)},
+    stems = {'kit': {9} & chans,
+             'band': {c for c in chans if c != 9 and band.progs[c] not in WIND and band.progs[c] not in ORGAN},
              'horns': {c for c in chans if c != 9 and band.progs[c] in WIND},
              'organ': {c for c in chans if c != 9 and band.progs[c] in ORGAN}}
     ins, graph, outs, k = [], [], [], 0
@@ -65,7 +83,7 @@ def render(job):
     ins += ['-i', ir]; irn = k
     graph.append(f'[{irn}:a]asplit={len(outs)}' + ''.join(f'[ir{i}]' for i in range(len(outs))))
     # each stem: its own treatment, then dry + room, weighted by how far back it sits
-    treat = {'band': ('anull', 1.0, .30),
+    treat = {'kit': ('treble=g=5:f=6000', 1.0, .30), 'band': ('anull', 1.0, .30),
              'horns': ('highpass=f=140,equalizer=f=2800:t=q:w=1.4:g=-3.5,treble=g=-4:f=7000', .8, .55),
              'organ': ('volume=1.5,asoftclip=type=tanh,volume=0.62,apulsator=mode=sine:hz=6.1:amount=0.38:offset_l=0:offset_r=0.5,'
                        'vibrato=f=6.1:d=0.15,lowpass=f=6500', .9, .34)}
@@ -78,12 +96,12 @@ def render(job):
     graph.append(''.join(mixed) + f'amix=inputs={len(mixed)}:normalize=0:duration=longest,'
                  'silenceremove=start_periods=1:start_threshold=-60dB,areverse,silenceremove=start_periods=1:start_threshold=-60dB,areverse[mix]')
     graph.append(f'anoisesrc=color=pink:amplitude=0.0012:sample_rate={SR},lowpass=f=2500[tone]')
-    graph.append('[mix][tone]amix=inputs=2:weights=1 1:normalize=0:duration=first,'
-                 'highpass=f=32,equalizer=f=220:t=q:w=1:g=1.2,treble=g=-1.5:f=10000,'
-                 'acompressor=threshold=-18dB:ratio=2.5:attack=15:release=200,loudnorm=I=-20:TP=-2[out]')
-    mp3 = os.path.join(OUT, slug + '.mp3')
+    graph.append(f'[mix][tone]amix=inputs=2:weights=1 1:normalize=0:duration=first,{MASTER},'
+                 'acompressor=threshold=-15dB:ratio=1.5:attack=20:release=300[out]')
+    pre = os.path.join(TMP, slug + '.f32'); mp3 = os.path.join(OUT, slug + '.mp3')
     subprocess.run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', *ins, '-filter_complex', ';'.join(graph),
-                    '-map', '[out]', '-ar', str(SR), '-c:a', 'libmp3lame', '-b:a', '96k', mp3], check=True)
+                    '-map', '[out]', '-ar', str(SR), '-ac', '2', '-f', 'f32le', pre], check=True)
+    level(pre, mp3)
     return f'{slug}: {"+".join(n for n, _ in outs)} -> {os.path.getsize(mp3) // 1024} KB'
 
 

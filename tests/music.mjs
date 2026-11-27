@@ -1,5 +1,5 @@
-// The bout music: how tense a bout reads from the Rollers' Worth, how that sets the four layers, and which loop plays.
-import { tensionOf, layerMix, loopFor, srcOf, bandOf, setlist } from '../js/ui/music.js';
+// The bout music: how tense a bout reads from the Rollers' Worth, how that sets the layers, which tune each time round, and which loop plays.
+import { tensionOf, stakesOf, layerMix, loopFor, srcOf, bandOf, setlist, TURNS, turnOf } from '../js/ui/music.js';
 import { tipBand } from '../js/run.js';
 import { TUNING } from '../js/content/tuning.js';
 import { LOOPS, MUSIC } from '../js/content/assets.js';
@@ -21,6 +21,18 @@ ok(calm.base === 1 && calm.theme === 1 && calm.drive === 0 && calm.peril === 0, 
 ok(tense.drive === 1 && tense.peril === 1, 'near broke: everything');
 ok(mid.drive === 1 && mid.peril === 0, 'halfway: the drive, not the peril yet');
 for (let x = 0; x < 1; x += 0.05) { const a = layerMix(x), b = layerMix(x + 0.05); ok(b.drive >= a.drive && b.peril >= a.peril, `the layers only build as tension rises (${x.toFixed(2)})`); }
+// losing and winning do not sound alike: the peril is for your Worth, the surge for your opponent's
+ok(stakesOf(bout(25, 100)).mine === 1 && stakesOf(bout(25, 100)).theirs === 0 && stakesOf(bout(100, 25)).theirs === 1, 'each Roller\'s stakes: full a quarter from broke');
+{ const b = bout(25, 100), losing = layerMix(tensionOf(b), stakesOf(b)); ok(losing.peril === 1 && losing.surge === 0 && losing.drive === 1, 'you near broke: the peril, no surge'); }
+{ const b = bout(100, 25), winning = layerMix(tensionOf(b), stakesOf(b)); ok(winning.surge === 1 && winning.peril === 0 && winning.drive === 1, 'your opponent near broke: the surge, no peril'); }
+{ const b = bout(100, 100), even = layerMix(tensionOf(b), stakesOf(b)); ok(even.surge === 0 && even.peril === 0 && even.drive === 0 && even.theme === 1 && even.alt === 1, 'even: the groove and a tune only'); }
+for (let x = 0; x < 1; x += 0.05) { const a = layerMix(0, { mine: 0, theirs: x }), b = layerMix(0, { mine: 0, theirs: x + 0.05 }); ok(b.surge >= a.surge && a.peril === 0, `the surge only builds as your opponent falls (${x.toFixed(2)})`); }
+// the two tunes take turns: one at a time, neither more than twice running, and some rounds the band just vamps
+ok(TURNS.every((k) => ['theme', 'alt', 'rest'].includes(k)) && TURNS[0] === 'theme', 'a loop opens on its theme');
+ok(['theme', 'alt', 'rest'].every((k) => TURNS.includes(k)), 'the theme, the second tune and a rest each get a turn');
+for (let i = 0; i < TURNS.length * 2; i++) ok(!(turnOf(i) === turnOf(i + 1) && turnOf(i) === turnOf(i + 2)), `no tune three times running (round ${i})`);
+ok(turnOf(TURNS.length) === TURNS[0] && turnOf(-1) === TURNS[TURNS.length - 1], 'the turns come round again');
+for (const L of LOOPS) ok(L.layers.alt && L.layers.surge && L.layers.alt !== L.layers.theme, `${L.title}: a second tune and a surge`);
 for (let f = 1; f <= 5; f++) { ok(loopFor(f, false)?.kind === 'bout' && loopFor(f, false).floor === f, `floor ${f}: a table loop`); ok(loopFor(f, true)?.kind === 'boss' && loopFor(f, true).floor === f, `floor ${f}: a High Roller loop`); }
 ok(new Set(LOOPS.map((L) => L.title)).size === LOOPS.length, 'every loop has its own title');
 // tipping the band: priced from the purse, refused when it is short, in the ledger; the band's state is the run's
@@ -34,4 +46,4 @@ ok(P.skip === 2 && P.request === 2 && P.swap === 5 && P.stop === 10 && P.start =
 for (const M of MUSIC) ok(srcOf(M, 'band') === M.src && srcOf(M, 'chip') === M.chip && M.chip !== M.src, `${M.title}: a band and a chiptune file`);
 ok(srcOf({ src: 'a.mp3' }, 'chip') === 'a.mp3', 'a tune with no chiptune version plays the band');
 if (fail) process.exit(1);
-console.log(`ok, music: tension from Worth, four layers, ${LOOPS.length} loops`);
+console.log(`ok, music: tension from Worth, six layers, tunes in turn, ${LOOPS.length} loops`);
