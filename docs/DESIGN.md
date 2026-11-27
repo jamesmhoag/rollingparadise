@@ -954,9 +954,16 @@ for a close look, to be turned over (`ui/spin.js`, the look a die gets).
   shows as notes in it). A billfold and a pouch lie shut; under the pointer, or clicked to keep them so, the cover
   swings open or the flap lifts, and what you carry is inside (the same elements drawn anywhere else). A clip holds a
   folded wad with everything in plain sight. No slot marks.
-- Wallets and jackets rest a little turned so their body shows. A jacket is drawn as cloth that hangs: curved
-  sleeves and shoulders, shading round the chest and each sleeve, the lining seen through the neck, collar and pocket
-  shadows, each part still in its own material and colour.
+- **One material, everywhere.** A material is defined once (`material()` in `ui/dice3d.js`) and a wallet or a jacket
+  is a body made of it, rendered in the same room and light as a die of it (`ui/gear3d.js`): any material a die can be,
+  gear can be, and tuning a material tunes it on everything. A part is only a shape: `soft()` makes an outline into a
+  padded body (a slab with rounded edges that swells toward its middle), and the look says what it is made of. A
+  wallet's leaves, pockets, flap, band, notes, stitches and clasp, and a jacket's back, fronts, sleeves, cuffs, hem,
+  collar, pockets, zip and buttons are each such a part. At rest the piece is a picture of its body, a little turned;
+  it is drawn live while a wallet opens, while a jacket turns toward the pointer, and when either is turned in the
+  hand. What a wallet holds stays the real cards and passes, lying in the pockets of the picture. Jackets show no
+  numbers. Without WebGL the drawn pieces (`ui/gear.js`) stand in; both are cut from the same shapes (`JACKET_CUT`).
+- Still a flat picture of the same material, not a body of it: cards and passes, sign letters, symbols and crowns.
 - A jacket has a style (blazer, bomber, long coat, parka) and parts (body, sleeves, trim, collar, closure, pockets,
   emblem), each with its own material and colour.
 

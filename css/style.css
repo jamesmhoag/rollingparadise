@@ -1444,6 +1444,17 @@ body.spinning .thing > .th-body, body.carrying-now .thing > .th-body { transitio
 .gw .wsym { position: absolute; right: 9px; bottom: 9px; width: 16px; height: 16px; pointer-events: none; transform: translateZ(.3px); } .gw-clasped .gw-out .wsym { right: auto; left: 10px; bottom: auto; top: 8px; width: 13px; height: 13px; }
 .gw-back { display: block; position: relative; border-radius: var(--w-round, 6px); } .gw-back .wsym.big { position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: 30%; height: auto; aspect-ratio: 1; }
 @media (prefers-reduced-motion: reduce) { .gw .gw-cover, .gw .gw-flap { transition: none; } }
+/* gear as a body (ui/gear3d.js): the piece's own drawing gives way to pictures of the body made of its materials.
+   .g3-under is the body, .g3-over the parts of it that lie over what it holds; .shown: open, what it holds is in view;
+   .shut: fully shut */
+.g3-under, .g3-over { position: absolute; pointer-events: none; max-width: none; } .gw .g3-under { transform: translateZ(-.1px); } .gw .g3-over { transform: translateZ(3px); }
+.gw.g3d i, .gw.g3d .gw-cash, .gw.g3d .gw-wad, .gw.g3d .wsym:not(.g3-em) { visibility: hidden; } .gw.g3d .gw-base::after { display: none; } .gw.g3d > .gw-flap { display: none; }
+.gw.g3d > .gw-cover { transform: translateZ(.6px) rotateY(180deg) !important; transition: none; }
+.gw.g3d .gw-tuck { transition: opacity .16s; } .gw.g3d:not(.shown) .gw-tuck { opacity: 0; visibility: hidden; }
+.gw .g3-em { display: none; left: var(--g3-ex, 0); top: var(--g3-ey, 0); right: auto; bottom: auto; transform: translateZ(4px); } .gw.g3d.shut .g3-em { display: block; }
+.gj.g3d .gj-art { visibility: hidden; }
+.thing.g3d > .th-body { transform: none !important; } .thing.g3d > .th-body > .th-edge, .thing.g3d > .th-body > .th-back { display: none; }
+.g3-look { display: grid; place-items: center; }
 .thing.mini.th-wallet, .item .thing.th-wallet, .lib .thing.th-wallet { zoom: .6; }
 /* a jacket: the drawing, the changes it makes to your attributes under it, its emblem on the chest */
 .gj { position: relative; display: inline-block; line-height: 0; } .gj .gj-art { display: block; overflow: visible; }

@@ -215,17 +215,23 @@ function swirl(scale, tint) {
 
 // a die's look: its material and colour, and the labels its faces carry
 const lookOf = (d) => { const mat = matOf(d); return { mat: LOOK[mat] ? mat : 'plastic', base: mat === 'diamond' ? '#ffffff' : mat === 'glass' || mat === 'glimmering' || mat === 'swirling' ? '#ffffff' : D.MATERIALS[mat]?.color || '#e8e2d4', tint: D.MATERIALS[mat]?.color || '#e8e2d4' }; };
+// A body of geometry `g` made of a material: what every die is, and every other thing made of the same materials
+// (ui/gear3d.js: wallets, jackets). A clear one shows its own far faces through itself: a mirror-bright shell of them
+// inside, which the front refracts.
+const SEE_THROUGH = ['glass', 'diamond', 'glimmering', 'swirling'];
+function bodyOf(g, mat, tint, maps) {
+  const grp = new T.Group();
+  if (SEE_THROUGH.includes(mat)) {
+    const inner = new T.Mesh(g, new T.MeshPhysicalMaterial({ side: T.BackSide, color: mat === 'diamond' ? 0xffffff : new T.Color(tint).lerp(new T.Color(0xffffff), 0.5), metalness: 1, roughness: mat === 'glimmering' ? 0.35 : 0.03, envMapIntensity: mat === 'diamond' ? 4 : 2.2, emissive: new T.Color(mat === 'diamond' ? 0x3a3550 : 0x20283a), normalMap: maps.normalMap }));
+    inner.renderOrder = -1; grp.add(inner);
+  }
+  grp.add(new T.Mesh(g, material(mat, maps, tint))); return grp;
+}
 const MODELS = new Map();
 function model(d, labels) {
   const L = lookOf(d), key = `${d.type}|${L.mat}|${labels.join(',')}`; if (MODELS.has(key)) return MODELS.get(key);
   const { g, F, atlas, s } = roundedGeometry(d.type, L.mat), maps = faceMaps(d.type, L.mat, labels, F, atlas, L.base);
-  const grp = new T.Group(), mesh = new T.Mesh(g, material(L.mat, maps, L.tint));
-  // a clear die shows its own far faces through itself: a mirror-bright shell of them inside, which the front refracts
-  if (['glass', 'diamond', 'glimmering', 'swirling'].includes(L.mat)) {
-    const inner = new T.Mesh(g, new T.MeshPhysicalMaterial({ side: T.BackSide, color: L.mat === 'diamond' ? 0xffffff : new T.Color(L.tint).lerp(new T.Color(0xffffff), 0.5), metalness: 1, roughness: L.mat === 'glimmering' ? 0.35 : 0.03, envMapIntensity: L.mat === 'diamond' ? 4 : 2.2, emissive: new T.Color(L.mat === 'diamond' ? 0x3a3550 : 0x20283a), normalMap: maps.normalMap }));
-    inner.renderOrder = -1; grp.add(inner);
-  }
-  grp.add(mesh);
+  const grp = bodyOf(g, L.mat, L.tint, maps);
   if (L.mat === 'swirling') { const sw = swirl(s * 0.78, L.tint); grp.add(sw); grp.userData.swirl = sw; }
   grp.matrixAutoUpdate = false; MODELS.set(key, grp); return grp;
 }
@@ -284,6 +290,19 @@ export async function swatch(mat, color = '#b9b2c8', px = 192) {
 
 // ---------- drawing ----------
 const flipY = () => new T.Matrix4().makeScale(1, -1, 1);
+// For the other things made of these materials (ui/gear3d.js): three.js itself, a body of any geometry in a material
+// and colour (the material's own grain as its relief), and a picture of a group of them: turned by m (a DOMMatrix in
+// CSS's axes), seen square on over the rectangle `view` ([left, bottom, right, top], in the scene's units), w × h pixels.
+export const three = () => T;
+export const body = (g, mat, color) => bodyOf(g, mat, color, { map: null, normalMap: grainMap(mat), roughnessMap: null });
+let flatCam = null;
+export function renderGroup(grp, { w, h, view, turn }) {
+  const { renderer, scene, canvas } = R3; flatCam ||= new T.OrthographicCamera(-1, 1, 1, -1, 0.1, 80);
+  Object.assign(flatCam, { left: view[0], bottom: view[1], right: view[2], top: view[3] }); flatCam.position.set(0, 0, 30); flatCam.updateProjectionMatrix();
+  const M = new T.Matrix4().fromArray((turn || new DOMMatrix()).toFloat64Array()), S = flipY(); grp.matrixAutoUpdate = false; grp.matrix.copy(S).multiply(M).multiply(S);
+  scene.add(grp); if (canvas.width !== w || canvas.height !== h) renderer.setSize(w, h, false);
+  renderer.render(scene, flatCam); scene.remove(grp); return canvas;
+}
 // render die d (with these face labels) turned by m (a DOMMatrix in CSS's axes) at px pixels; returns the canvas
 function render(d, labels, m, px, time = 0) {
   const { renderer, scene, camera, canvas } = R3, g = model(d, labels);

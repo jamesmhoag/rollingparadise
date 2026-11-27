@@ -7,6 +7,8 @@
 // (a band over a folded wad: everything it holds is in plain sight).
 // A jacket is drawn in its style (blazer, bomber, long coat, parka), part by part: body, sleeves, collar and trim,
 // closure, pockets, emblem, each made of its own material in its own colour, shaded as cloth that hangs.
+// What is drawn here is the piece's place and its stand-in: where the renderer is there, each is a body made of its
+// materials (ui/gear3d.js: the same material a die of it has), and this drawing gives way to it.
 import { h } from './core.js';
 import * as D from '../data.js';
 import { thing } from './thing.js';
@@ -14,6 +16,7 @@ import { finishOn, finishSvg, svgPaint } from './finish.js';
 import { walletLook, jacketLook, WALLET_TYPES, JACKET_STYLES, FINISHES } from '../content/finishes.js';
 import { symEl } from './parts.js';
 import { shade } from '../util.js';
+import { embody, JACKET_CUT } from './gear3d.js';
 
 const lookFinish = (L, over = {}) => ({ m: L.mat, color: L.color, glint: L.glint, sparkle: L.sparkle, ...over });
 // the emblem of a look, in its own material (lit as the piece is)
@@ -43,7 +46,7 @@ function walletFace(id, cls, hold) {
     h('span', { class: 'gw-flap' }, outside('', L.clasp === 'chain' ? null : h('i', { class: `gw-clasp ${L.clasp}` }), emblemEl(L, 'wsym')), h('span', { class: 'gw-in' }, h('i', { class: 'gw-lining' })))];
   else kids = [h('span', { class: 'gw-base' }, made('gw-skin'), cashEl(hold.cash), ...well(passes, 100)),
     h('span', { class: 'gw-cover' }, outside('', emblemEl(L, 'wsym')), h('span', { class: 'gw-in' }, made('gw-skin'), ...well(cards, 100)))];
-  return h('span', { class: `gw gw-${L.type} ${Wl.crown ? 'crown' : ''} ${cls}`, style: vars }, ...kids);
+  return h('span', { class: `gw gw-${L.type} ${Wl.crown ? 'crown' : ''} ${cls}`, style: vars }, ...kids, L.type === 'clip' ? null : emblemEl(L, 'wsym g3-em'));
 }
 export function walletEl(id, cls = '', hold = {}) {
   const Wl = D.WALLETS[id] || {}, L = walletLook(id, Wl), copy = (list) => (list || []).map((el) => el.cloneNode(true));
@@ -54,6 +57,8 @@ export function walletEl(id, cls = '', hold = {}) {
     make: () => { const f = walletFace(id, cls, { cards: copy(hold.cards), passes: copy(hold.passes), cash: hold.cash }); f.classList.toggle('pin', face.classList.contains('pin')); return f; } });
   // a click keeps it open, or shuts it again (a click on something it holds is that thing's own)
   if (!clip) el.addEventListener('click', (ev) => { if (ev.target.closest('.thing') === el) face.classList.toggle('pin'); });
+  const notes = clip ? notesFor(hold.cash || 1) : notesFor(hold.cash);
+  embody(el, face, { kind: 'wallet', key: `w|${JSON.stringify(L)}|${notes}`, look: L, notes, name: Wl.name || id, sub: WALLET_TYPES[L.type], pinned: () => face.classList.contains('pin') });
   return el;
 }
 
@@ -73,9 +78,8 @@ function jacketSvg(L, flat = null) {
   const line = { stroke: `${INK}.5)`, 'stroke-width': 0.5, 'stroke-linejoin': 'round' }, P = (d, fill, more = {}) => s('path', { d, fill, ...line, ...more });
   const both = (make) => [make(), s('g', { transform: 'matrix(-1 0 0 1 64 0)' }, [make()])]; // a part and its mirror image
   // the shapes: a sleeve hanging from the shoulder with a bend at the elbow, the torso with sloped shoulders and a waist
-  const sleeve = 'M17.2 10.6C11.5 11.6 7.6 16 6.6 23L2.9 44.4Q6.4 47.4 10.3 46.2L14.2 29.5Q15.6 25.6 17.4 22.6Z';
-  const torso = `M23 7.6L15.6 11.6Q17.4 17 17.3 23Q18.6 ${(hem + 23) / 2} 16.8 ${hem}Q32 ${hem + 2.4} 47.2 ${hem}Q45.4 ${(hem + 23) / 2} 46.7 23Q46.6 17 48.4 11.6L41 7.6Q32 4.4 23 7.6Z`;
-  if (L.collar === 'hood') svg.append(P('M19.4 11.4C15.4 -5.6 48.6 -5.6 44.6 11.4Z', body), flat ? null : P('M23.4 10.6C21.6 -0.6 42.4 -0.6 40.6 10.6Z', lining, { stroke: 'none' }), flat ? null : P('M23.4 10.6C21.6 -0.6 42.4 -0.6 40.6 10.6Z', grad(svg, [[0, `${INK}.7)`], [1, `${INK}.15)`]], true), { stroke: 'none' }));
+  const { sleeve, cuff, lapel: lap, stand, hood, hoodIn } = JACKET_CUT, torso = JACKET_CUT.torso(hem); // the cut is the body's too (ui/gear3d.js)
+  if (L.collar === 'hood') svg.append(P(hood, body), flat ? null : P(hoodIn, lining, { stroke: 'none' }), flat ? null : P(hoodIn, grad(svg, [[0, `${INK}.7)`], [1, `${INK}.15)`]], true), { stroke: 'none' }));
   svg.append(...both(() => P(sleeve, arms)), P(torso, body));
   if (flat) return svg;
   // the inside of the back, seen through the neck (with its label), behind everything at the front
@@ -89,10 +93,10 @@ function jacketSvg(L, flat = null) {
     ...both(() => s('path', { d: `M19.6 ${hem - 15}Q21.4 ${hem - 8} 20.2 ${hem - 1.4}M8.3 29.4Q10.6 30.8 12.8 29.6M6.6 34.6Q8.8 36 11.4 34.9`, fill: 'none', stroke: `${INK}.2)`, 'stroke-width': 0.7, 'stroke-linecap': 'round' })),
     ...both(() => s('path', { d: 'M22.6 8.2L16.4 11.5', fill: 'none', stroke: `${LIT}.28)`, 'stroke-width': 0.6, 'stroke-linecap': 'round' })));
   // cuffs and hem
-  const cuff = 'M3.5 40.4Q7.2 42.6 11.3 42L10.3 46.2Q6.4 47.4 2.9 44.4Z', ribs = (x0, x1, y0, y1, n) => Array.from({ length: n }, (_, i) => { const x = x0 + ((x1 - x0) * (i + 0.5)) / n; return s('line', { x1: x, y1: y0, x2: x, y2: y1, stroke: `${INK}.32)`, 'stroke-width': 0.45 }); });
+  const ribs = (x0, x1, y0, y1, n) => Array.from({ length: n }, (_, i) => { const x = x0 + ((x1 - x0) * (i + 0.5)) / n; return s('line', { x1: x, y1: y0, x2: x, y2: y1, stroke: `${INK}.32)`, 'stroke-width': 0.45 }); });
   if (L.ribbed || L.trim.color) svg.append(...both(() => P(cuff, trim)), ...both(() => s('path', { d: 'M3.5 40.4Q7.2 42.6 11.3 42', fill: 'none', stroke: `${INK}.45)`, 'stroke-width': 0.9 })));
   else svg.append(...both(() => s('path', { d: 'M3.4 41.2Q7.2 43.3 11.2 42.7', fill: 'none', stroke: `${INK}.3)`, 'stroke-width': 0.5 })));
-  if (L.ribbed) svg.append(P(`M17 ${hem - 4.2}Q32 ${hem - 2.4} 47 ${hem - 4.2}L47.2 ${hem}Q32 ${hem + 2.4} 16.8 ${hem}Z`, trim), ...ribs(18.5, 45.5, hem - 3.2, hem + 0.6, 12));
+  if (L.ribbed) svg.append(P(JACKET_CUT.hem(hem), trim), ...ribs(18.5, 45.5, hem - 3.2, hem + 0.6, 12));
   else svg.append(s('path', { d: `M17.2 ${hem - 1.6}Q32 ${hem + 0.8} 46.8 ${hem - 1.6}`, fill: 'none', stroke: `${INK}.26)`, 'stroke-width': 0.5 }));
   // the closure down the front, under the collar; `open` is how far down the collar opens
   const open = L.collar === 'lapel' ? 24 : 9.6;
@@ -103,11 +107,10 @@ function jacketSvg(L, flat = null) {
   if (L.closure === 'buttons') for (let i = 0; i < L.buttons; i++) { const y = open + 4 + (L.buttons > 1 ? (i * (hem - open - 10)) / (L.buttons - 1) : (hem - open) * 0.28), c = L.buttonColor || '#f1e7c8';
     svg.append(s('ellipse', { cx: 31.5, cy: y + 0.5, rx: 1.5, ry: 1.3, fill: `${INK}.35)` }), s('circle', { cx: 31.3, cy: y, r: 1.3, fill: c, stroke: `${INK}.6)`, 'stroke-width': 0.35 }), s('circle', { cx: 30.9, cy: y - 0.4, r: 0.5, fill: `${LIT}.6)` }), s('path', { d: `M30.9 ${y}h0.01M31.7 ${y}h0.01`, stroke: `${INK}.7)`, 'stroke-width': 0.35, 'stroke-linecap': 'round' })); }
   // the collar, over the closure, with the shadow it throws on the chest
-  if (L.collar === 'lapel') { const lap = 'M25.6 7.4Q23.4 8.2 22.4 9.6L20.6 16.2L24.4 17.4L23.4 19.2L32.6 24.4Q29 15 25.6 7.4Z';
-    svg.append(P('M25.6 7.6Q32 12 38.4 7.6L32.6 24.2Z', lining), P('M25.6 7.6Q32 12 38.4 7.6L32.6 24.2Z', grad(svg, [[0, `${INK}.6)`], [1, `${INK}.05)`]], true), { stroke: 'none' }),
+  if (L.collar === 'lapel') svg.append(P('M25.6 7.6Q32 12 38.4 7.6L32.6 24.2Z', lining), P('M25.6 7.6Q32 12 38.4 7.6L32.6 24.2Z', grad(svg, [[0, `${INK}.6)`], [1, `${INK}.05)`]], true), { stroke: 'none' }),
       ...both(() => s('path', { d: lap, fill: `${INK}.3)`, transform: 'translate(0.5 1.1)' })), ...both(() => P(lap, trim)), ...both(() => P(lap, grad(svg, [[0, `${LIT}.2)`], [0.6, `${LIT}0)`], [1, `${INK}.3)`]]), { stroke: 'none' })),
-      ...both(() => s('path', { d: 'M25.9 9Q28.6 16 32 23', fill: 'none', stroke: `${LIT}.2)`, 'stroke-width': 0.45 }))); }
-  else if (L.collar === 'stand') svg.append(P('M24 9.6Q23.4 5.4 25.4 4.4Q32 2.6 38.6 4.4Q40.6 5.4 40 9.6Q32 12.6 24 9.6Z', trim), P('M24 9.6Q23.4 5.4 25.4 4.4Q32 2.6 38.6 4.4Q40.6 5.4 40 9.6Q32 12.6 24 9.6Z', grad(svg, [[0, `${INK}.4)`], [0.5, `${LIT}.14)`], [1, `${INK}.4)`]]), { stroke: 'none' }),
+      ...both(() => s('path', { d: 'M25.9 9Q28.6 16 32 23', fill: 'none', stroke: `${LIT}.2)`, 'stroke-width': 0.45 })));
+  else if (L.collar === 'stand') svg.append(P(stand, trim), P(stand, grad(svg, [[0, `${INK}.4)`], [0.5, `${LIT}.14)`], [1, `${INK}.4)`]]), { stroke: 'none' }),
     ...(L.ribbed ? ribs(25, 39, 4.4, 10.4, 9) : []), s('path', { d: 'M24.2 10.4Q32 13.6 39.8 10.4', fill: 'none', stroke: `${INK}.35)`, 'stroke-width': 0.9 }));
   else if (L.collar === 'crew') svg.append(s('path', { d: 'M24.4 8.2Q32 15.6 39.6 8.2', fill: 'none', stroke: `${INK}.35)`, 'stroke-width': 3.4, 'stroke-linecap': 'round', transform: 'translate(0 0.7)' }), s('path', { d: 'M24.4 8.2Q32 15.6 39.6 8.2', fill: 'none', stroke: trim, 'stroke-width': 2.6, 'stroke-linecap': 'round' }), s('path', { d: 'M24.6 7.6Q32 14.6 39.4 7.6', fill: 'none', stroke: `${LIT}.22)`, 'stroke-width': 0.5 }));
   else if (L.collar === 'hood') svg.append(s('path', { d: 'M23.6 9.6Q32 15 40.4 9.6', fill: 'none', stroke: `${INK}.45)`, 'stroke-width': 1 }), ...both(() => s('path', { d: 'M29.4 11.6Q28.8 16 29.6 19.6', fill: 'none', stroke: `${LIT}.75)`, 'stroke-width': 0.5, 'stroke-linecap': 'round' })), ...both(() => s('circle', { cx: 29.6, cy: 20, r: 0.6, fill: '#d9dbe6' })));
@@ -128,7 +131,9 @@ function jacketFace(id, cls) {
 }
 export function jacketEl(id, cls = '') {
   const J = D.JACKETS[id] || {}, L = jacketLook(id, J), dark = shade(L.color, 0.62);
-  return thing(jacketFace(id, cls), { mat: L.mat, color: L.color, depth: 4.5, name: J.name || id, sub: `${JACKET_STYLES[L.style]} · ${J.effect || ''}`, cls: `th-jacket ${cls}`,
+  const face = jacketFace(id, cls), el = thing(face, { mat: L.mat, color: L.color, depth: 4.5, name: J.name || id, sub: `${JACKET_STYLES[L.style]} · ${J.effect || ''}`, cls: `th-jacket ${cls}`,
     edge: () => h('span', { class: 'gj' }, jacketSvg(L, dark)), back: () => { const b = h('span', { class: 'gj gj-backside' }, jacketSvg({ ...L, collar: L.collar === 'hood' ? 'hood' : 'none', closure: 'none', buttons: 0, pockets: 0 })); const em = emblemEl(L, 'jsym big'); if (em) b.append(em); return b; },
     make: () => jacketFace(id, cls) });
+  embody(el, face, { kind: 'jacket', key: `j|${JSON.stringify(L)}`, look: L, name: J.name || id, sub: `${JACKET_STYLES[L.style]} · ${J.effect || ''}` });
+  return el;
 }
