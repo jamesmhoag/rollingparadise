@@ -223,7 +223,7 @@ export function resultScene(root, ctx, res) {
     h('div', { class: 'box' }, lines, h('div', { class: 'row between', style: { marginTop: '10px' } }, h('span', { class: 'cap', text: t('result.purse') }), totalEl)), newsEl, h('div', { class: 'row' }, cont));
   root.append(h('div', { class: 'page', style: { top: 0, display: 'flex', gap: '24px', justifyContent: 'center', alignItems: 'center' } }, left, res.prizes ? h('div', { class: 'col', style: { width: '700px' } }, h('h2', { text: t('result.prize') }), h('p', { class: 'sub', text: t('result.prize.sub', { amt: cents(res.winnings) }) }), prizeBox, h('div', { class: 'row' }, h('span', { class: 'grow' }), claimBtn())) : null));
 
-  function claimBtn() { const b = btn(t('result.claim'), () => { if (claimed) return; claimed = true; R.claimPrize(run, ctx, res, choice, picks); tween(totalEl, run.purse, cents, 900); prizeBox.classList.add('off'); b.classList.add('off'); cont.classList.remove('off'); toast(t('result.claimed')); }, null, 'go off'); claimBtn.el = b; return b; }
+  function claimBtn() { const b = btn(t('result.claim'), () => { if (claimed) return; claimed = true; R.claimPrize(run, ctx, res, choice, picks); sfx('earn', 0, { n: 10 }); tween(totalEl, run.purse, cents, 900); prizeBox.classList.add('off'); b.classList.add('off'); cont.classList.remove('off'); toast(t('result.claimed')); }, null, 'go off'); claimBtn.el = b; return b; }
   const need = () => (choice === 'dice' ? 2 : 1);
   function renderPrizes() {
     const P = res.prizes, offers = [
@@ -241,9 +241,10 @@ export function resultScene(root, ctx, res) {
   const betPay = res.prizes ? run.purse - ctx.committed - ctx.wager - (ctx.kept || 0) : 0;
   async function reveal() {
     const shown = [];
-    for (const [label, amt] of res.lines) { shown.push({ label, amt, k: shown.length });
+    for (const [label, amt] of res.lines) { shown.push({ label, amt, k: shown.length }); if (amt) sfx('chip'); // each line of the settlement is a chip set down
       syncList(lines, shown, (l) => l.k, (l) => h('div', { class: 'line' }, h('span', { text: l.label }), h('span', { class: `amt ${l.amt > 0 ? 'pos' : l.amt < 0 ? 'neg' : ''}`, text: l.amt ? `${l.amt > 0 ? '+' : '−'}${cents(Math.abs(l.amt))}` : '' }))); await wait(170); }
     tween(totalEl, res.prizes ? res.base + res.winnings + betPay : run.purse, cents, 900);
+    { const net = res.lines.reduce((a, [, amt]) => a + (amt || 0), 0); if (net) sfx(net > 0 ? 'earn' : 'spend', 0, { n: Math.abs(net) }); } // and the total, at its size
     syncList(newsEl, res.news.map((text, k) => ({ text, k })), (n) => n.k, (n) => h('li', { text: n.text }));
     if (run.fs && !reveal.done) { reveal.done = true; run.news.push(...res.news); }
     if (res.prizes) renderPrizes(); else cont.classList.remove('off');

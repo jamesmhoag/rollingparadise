@@ -30,6 +30,8 @@ const STAGE = [{ x: PX + 18, y: TOP + 2 * CH }, { x: OX - 50, y: TOP + 2 * CH }]
 const fmtX = (m) => '×' + (m % 1 ? m.toFixed(2).replace(/0$/, '') : m);
 
 let testBrush = null; // the test table's chip, kept between visits
+// a die showing the highest face it has (and it has more than one value): a roll worth hearing
+const topFace = (d, v) => { const f = facesOf(d).map(faceValue).filter(Number.isFinite); return f.length > 1 && Math.max(...f) > Math.min(...f) && v >= Math.max(...f); };
 export function boutScene(root, bout, ctx, onDone) {
   const [me, opp] = bout.sides;
   const cw = bout.sides.map((s) => Math.min(SPACE, Math.floor((PX - 30) / s.rows))), ck = cw.map((w) => w / SPACE_REF); // column width, chip scale
@@ -262,7 +264,7 @@ export function boutScene(root, bout, ctx, onDone) {
   const phaseCall = h('div', { class: 'phase-call' });
   let callT = 0;
   function neonCall(text, color, ms = 1500) { clearTimeout(callT); phaseCall.textContent = text; phaseCall.style.setProperty('--pc', color); phaseCall.classList.remove('in'); void phaseCall.offsetWidth; phaseCall.classList.add('in'); callT = setTimeout(() => phaseCall.classList.remove('in'), ms / ui.speed); }
-  function turnSign() { sfx('turn'); const last = me.heat > 1; neonCall(tx(last ? 'table.turn-call-last' : 'table.turn-call', { turn: bout.turn }), last ? '#ff4d6a' : '#6ef0ff'); lights('flash', 1300); }
+  function turnSign() { const last = me.heat > 1; sfx(last ? 'lastturn' : 'turn'); neonCall(tx(last ? 'table.turn-call-last' : 'table.turn-call', { turn: bout.turn }), last ? '#ff4d6a' : '#6ef0ff'); lights('flash', 1300); }
   const arms = [0, 1].map((i) => { const piv = { x: i ? 726 : 554, y: 74 }, rest = i ? 62 : 118, el = h('div', { class: `stick arm${i}`, style: { left: `${piv.x}px`, top: `${piv.y - 2.5}px`, width: '30px', transform: `rotate(${rest}deg)` } }); let ang = rest; // the arms hang from the sign's lower corners
     return { el, to(x, y) { const dx = x - piv.x, dy = y - piv.y; let a = Math.atan2(dy, dx) * 180 / Math.PI; while (a - ang > 180) a -= 360; while (a - ang < -180) a += 360; ang = a;
       el.style.width = `${Math.max(30, Math.hypot(dx, dy) - 8)}px`; el.style.transform = `rotate(${a}deg)`; el.classList.add('live'); },
@@ -630,7 +632,8 @@ export function boutScene(root, bout, ctx, onDone) {
       el.classList.toggle('lit', !!w.lit); el.classList.toggle('spent', !!w.spent); if (w.lc) el.style.setProperty('--lc', w.lc);
       const label = el.firstChild, text = w.rolled ? String(w.value) : w.d.type.slice(1);
       if (!w.d.chip && el._text !== text) dress3d(el, w.d, w.rolled ? w.value : undefined);
-      if (w.rolled && !el._rolled) { label.textContent = text; sfx('roll'); toss(el, w.d, w.value, from ? { x: +from[1], y: +from[2] } : { x: w.x, y: w.y + 90 }, { x: w.x, y: w.y }, tossN++); }
+      if (w.rolled && !el._rolled) { label.textContent = text; sfx('roll'); if (!w.si && !w.d.chip && topFace(w.d, w.value)) sfx('hot', 700); // one of yours on its top face: heard once the dice have settled
+        toss(el, w.d, w.value, from ? { x: +from[1], y: +from[2] } : { x: w.x, y: w.y + 90 }, { x: w.x, y: w.y }, tossN++); }
       else if (label.textContent !== text && !el.classList.contains('rolling')) label.textContent = text;
       el._text = text; el._rolled = !!w.rolled;
     }
@@ -678,12 +681,13 @@ export function boutScene(root, bout, ctx, onDone) {
       const sig = chipSig(w.ch);
       if (el._sig !== sig) { el._sig = sig; pulse(el, 'mutate'); setTimeout(() => { el.className = `chip ${sig} mutate`; el.firstChild.textContent = chipGlyph(w.ch); }, 170); }
     }
+    const paidN = [...els.chips.keys()].filter((id) => !want.has(id) && fx[id] === 'stage').length; // how many chips are paid away in this step: the cascade is that long
     for (const [id, el] of els.chips) if (!want.has(id)) {
       const how = fx[id] || 'void', m = /translate\(([-\d.]+)px, ([-\d.]+)px\)/.exec(el.style.transform), x = +m[1], y = +m[2];
       el.style.zIndex = 950; el.style.opacity = '0';
-      if (how === 'stage') { sfx('pay', 0, { pan: el._side ? 0.5 : -0.3 }); el.classList.add('paying'); place(el, STAGE[el._side].x, STAGE[el._side].y, 'scale(.6)'); }
+      if (how === 'stage') { sfx('pay', 0, { pan: el._side ? 0.5 : -0.3, n: paidN }); el.classList.add('paying'); place(el, STAGE[el._side].x, STAGE[el._side].y, 'scale(.6)'); }
       else if (how === 'house') { el.classList.add('paying'); place(el, HOUSE.x, HOUSE.y, 'scale(.5)'); }
-      else if (how === 'gone') { sfx('pay', 0, { pan: 0 }); el.classList.add('falling'); place(el, (PIT.left + PIT.right) / 2 - CHIP / 2, y, 'scale(.12) rotate(200deg)'); } // no room left in the Pit: down the middle, for good
+      else if (how === 'gone') { sfx('lost', 0, { pan: 0 }); el.classList.add('falling'); place(el, (PIT.left + PIT.right) / 2 - CHIP / 2, y, 'scale(.12) rotate(200deg)'); } // no room left in the Pit: down the middle, for good
       else if (how === 'abduct') place(el, x, y - 190, 'scale(.7)');
       else place(el, x, y - 6, 'scale(.1) rotate(140deg)');
       els.chips.delete(id); setTimeout(() => el.remove(), 620);
@@ -1169,6 +1173,12 @@ export function boutScene(root, bout, ctx, onDone) {
   // misses and bonuses have their own
   const ELEMENT_SOUND = ['burn', 'shock', 'frost', 'acid', 'boom', 'poison', 'corrupt', 'lava'];
   function stepSound(st, parts) {
+    // a fee landing is heard at its size, from the side it lands on: what shields took, what was paid, what became Debt
+    for (const f of parts.filter((x) => x.kind === 'fee' || x.kind === 'debt')) {
+      const pan = f.cells[0]?.side ? 0.5 : -0.3;
+      if (f.blocked) sfx('block', 0, { pan });
+      if (f.paid) sfx('fee', f.blocked ? 90 : 0, { pan, n: f.paid }); else if (f.owes) sfx('debt', f.blocked ? 90 : 0, { pan });
+    }
     const p = parts.find((x) => x.kind === 'play') || parts[0]; if (!p) return;
     if (p.kind === 'creature') return sfx('creature');
     if (p.kind === 'hazard') return sfx('hazard');
@@ -1176,8 +1186,7 @@ export function boutScene(root, bout, ctx, onDone) {
     if (p.kind === 'bonus' || p.kind === 'familiar') return sfx('bonus');
     if (p.kind !== 'play') return;
     const e = p.uid != null ? bout.sides.flatMap((s) => s.run).find((x) => x.uid === p.uid) : null, def = e ? D.TRICKS[e.trick.id] : null;
-    const el = def?.element === 'lava' ? 'burn' : def?.element;
-    sfx(el && ELEMENT_SOUND.includes(def.element) ? el : (def?.type || p.phase || 'expense'));
+    sfx(ELEMENT_SOUND.includes(def?.element) ? def.element : (def?.type || p.phase || 'expense'));
   }
   async function playTurn() {
     if (ui.locked || bout.over) return;
@@ -1269,7 +1278,7 @@ export function boutScene(root, bout, ctx, onDone) {
     // (the card with Continue) come in; the settlement follows from there.
     const win = bout.winner === 0; ui.locked = true; setMode(null); ui.hand = []; prompt = ''; renderFeed(); showForecast(null); showLanding(null);
     const [mineEl, theirsEl] = [root.querySelector('.who.me .plate'), root.querySelector('.who.them .plate')];
-    sfx(win ? 'win' : 'lose'); lights('flash'); neonCall(tx(win ? 'table.win-call' : 'table.lose-call'), win ? '#7dff9e' : '#ff4d6a', 2600);
+    sfx(win ? 'win' : 'lose', 0, { tier: opp.boss ? (ctx?.kind === 'ascent' ? 2 : 1) : 0 }); lights('flash'); // a High Roller is a bigger win, the top of the Ascent the biggest neonCall(tx(win ? 'table.win-call' : 'table.lose-call'), win ? '#7dff9e' : '#ff4d6a', 2600);
     killSign(win ? theirsEl : mineEl); celebrateSign(win ? mineEl : theirsEl, 3000); sfx('spent', 250, { pan: win ? 0.5 : -0.3 }); sfx('spent', 900, { pan: win ? 0.5 : -0.3 }); // the sign sparks and buzzes out
     await wait(3100 / ui.speed);
     banner.append(h('div', { class: `banner-card ${win ? 'win' : 'lose'}` }, h('h1', { text: win ? tx('table.the-table-is-yours') : tx('table.broke') }),
@@ -1280,6 +1289,6 @@ export function boutScene(root, bout, ctx, onDone) {
 
   paintNeon();
   if (globalThis.RP) globalThis.RP.table = { sync, commit, finish }; // ?debug: for automated playthroughs and checks (tools/)
-  requestAnimationFrame(() => { spyPhase(); sync(); hint(); turnSign(); autoSkip(); });
+  requestAnimationFrame(() => { spyPhase(); sync(); hint(); sfx('sit'); turnSign(); autoSkip(); });
   void ctx; void sum;
 }

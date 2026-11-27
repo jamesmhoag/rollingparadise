@@ -6,6 +6,7 @@ import { trickItem } from './trickcard.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
 import { cents } from '../util.js';
+import { sfx } from './sfx.js';
 
 export const app = { run: null, meta: null, nav: {} };
 
@@ -39,8 +40,11 @@ export function hud(place, sub) {
     if (run.rest && run.rest.bouts > 0) items.push({ k: 'rest', text: `🛏 +${run.rest.amt}`, tip: () => `<b>Rested</b><p>+${run.rest.amt} ${D.STATS[D.CLASSES[run.cls].primary].name} for ${run.rest.bouts} more bout${run.rest.bouts > 1 ? 's' : ''}.</p>` });
     syncList(gear, items, (x) => x.k, (x) => h('span', { class: 'stat', tip: x.tip }), (e, x) => { if (e.textContent !== x.text) e.textContent = x.text; });
     tween(purse, run.purse, cents);
+    // the purse is heard when it changes while you watch: chips out, or chips in, at the size of the sum
+    if (shown != null && run.purse !== shown) sfx(run.purse < shown ? 'spend' : 'earn', 0, { n: Math.abs(run.purse - shown) });
+    shown = run.purse;
   }
-  update();
+  let shown = null; update();
   // developer mode: its button sits by the purse on every screen with this bar (dev.js is loaded only when it is on)
   import('./dev.js').then((M) => { const b = M.devButton(() => { update(); document.dispatchEvent(new Event('rp:dev')); }); if (b) el.append(b); }).catch(() => {});
   const paid = () => { if (!el.isConnected) return document.removeEventListener('rp:purse', paid); update(); }; // a tip to the band

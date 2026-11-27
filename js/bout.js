@@ -1367,7 +1367,8 @@ function* settleSide(b, s) {
     const list = paidChips.length > 1 ? ` (${paidChips.map((ch) => ch.value).join(' + ')})` : '';
     const head = paid ? tx('feed.pays', { name: s.name, paid, list, v: due.glean != null ? ` straight to ${b.sides[due.glean].name}'s Bet` : ' to the Stage' })
       : tx('feed.owes', { name: s.name, owed, v: next && pool ? tx('feed.short-of-the-chip', { value: next.value }) : '' });
-    yield step(b, `${head}${bits.length ? ': ' + bits.join(', ') : ''}.`, [ref(s, r, c)], paid ? 'fee' : 'debt');
+    // (what the fee came to rides on the step, for the table to sound it at its size: paid, blocked by shields, left as Debt)
+    yield Object.assign(step(b, `${head}${bits.length ? ': ' + bits.join(', ') : ''}.`, [ref(s, r, c)], paid ? 'fee' : 'debt'), { paid: paid + reached, blocked, owes: pool });
   }
 }
 // settle both Rollers side by side; Counter chips can add Debt that needs another pass

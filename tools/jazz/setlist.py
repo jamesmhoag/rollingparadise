@@ -153,6 +153,7 @@ def arrange(slug, title, genre, ci, key, bpm, li, ai, rng):
               8: lean + 3, 12: lean + 4, 13: lean + 5, 14: lean + 6}
     first = chord(chart['A'].split('|')[0].split()[0])
     minor = first[0] == 0 and first[1] in ('m7', 'm6', 'm7b5')
+    b.mode = 'minor' if minor else 'blues' if first[0] == 0 and first[1] in ('7', '7#9', '7b9') else 'major'  # for the sound effects: which 3rd and 7th fit the tune
     end = chart.get('Z') or (ENDING_MINOR if minor else ENDING.get(genre, ENDING_MAJ))
     S = {k: transpose(v, key) for k, v in chart.items()}
     S['I'] = transpose(' | '.join(chart['A'].split('|')[-4:]), key); S['Z'] = transpose(end, key)

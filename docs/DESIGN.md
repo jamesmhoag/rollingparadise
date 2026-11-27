@@ -439,24 +439,39 @@ and eases back in after it has died away. The floors' tempos: tables 138, 172, 1
 152, 108, 130.
 
 ### Sound
-Every step of play is heard (`js/ui/sfx.js`). The musical sounds are real instruments: short samples rendered from
-the FluidR3 soundfont by `tools/sfx/render.py` (`assets/sfx`: piano, Rhodes, nylon and jazz guitar, upright bass,
-muted trumpet, flute, horn, strings, harp, and a jazz kit's brushes, ride, rim, wood blocks, castanets, shaker,
-triangle and more), pitched to the key the band is playing in (`musicKey` from the player) so they sound as harmony
-inside the music. The table itself is clay and wood: chips clack (castanets), dice knock (wood blocks), cards slide.
-- Your actions, stage by stage: a soft touch on anything you can use; the pick-up (a guitar note); each step (a die
-  set on a trick, an aim chosen on the harp); the result: a piano chord when a phase is locked in, a soft low
-  "uh-uh" on the bass when something is refused, a falling guitar pair for undo. A new turn opens on the ride and a
-  brush swish; a phase on a brush; a win on a piano and strings chord, a loss on a falling muted trumpet.
-- The opponent's moves are heard as they are shown, from the right of the stereo field (yours sit left): its draw,
-  its throw, its bids, its dice going down and its aim.
+Every step of play is heard (`js/ui/sfx.js`). The sounds are real instruments: short samples rendered from the
+FluidR3 soundfont by `tools/sfx/render.py` (`assets/sfx`: piano, Rhodes, nylon and jazz guitar, upright bass,
+muted trumpet, flute, horn, strings, harp, and a jazz kit's brushes, ride, rim, wood blocks, castanets, claves,
+shaker, tambourine, triangle and hand drums), pitched to the key **and the mode** the band is playing in
+(`musicKey`, `musicMode`; each tune and loop lists its mode) so they sound as harmony inside the music: over a minor
+tune a sound's 3rd, 6th and 7th are the minor ones, over a blues its 7th is flat. A gesture of several notes keeps
+its shape in every key (a falling line always falls). The table itself is clay and wood: chips clack (castanets),
+dice knock (wood blocks), cards slide. Everything passes a limiter, so a busy moment cannot clip.
+- Your actions, stage by stage: a soft touch on a control (the table's own pieces have their own sounds instead); the
+  pick-up (a guitar note); each step (a die set on a trick, an aim chosen on the harp); the result: a piano chord
+  when a phase is locked in, the same low bass note twice with a wooden tick when something is refused (it does not
+  resolve), a falling guitar pair for undo. Doing the same thing again straight away climbs a pentatonic scale, so
+  four dice set down are a run. A bout opens on a brush and a soft chord; a new turn on the ride and a swish; the
+  last turn adds the horn's call; a die of yours on its top face rings.
+- What happens is heard at its size: a fee lands as a knock and the bass, with the kick under it from 3¢ and the
+  room from 8¢; a shield taking it is a knock that goes nowhere; what could not be paid is written down as Debt on
+  the low horn; a payout cascades a clack a chip; chips lost for want of room clatter away. A win is a piano and
+  strings chord at a table, with the horn and chimes for a High Roller, and everything for the top of the Ascent;
+  a loss is a falling muted trumpet.
+- The opponent's moves are heard as they are shown, from the right of the stereo field (yours sit left).
 - The House's plays have the voice of their type: Investments rise on the Rhodes, Insurances thud (bass, kick and
-  brush), Expenses are called on the muted trumpet, Corrections strum across the nylon guitar; misses, bonuses and
-  creatures (a flute trill) have their own, and an element trick adds its texture (fire crackles, a shock buzzes up
-  a half step, frost rings the triangle, Boom thumps, poison bubbles on the hand drums, corruption is a low minor 2nd).
+  brush), Expenses are called on the muted trumpet, Corrections strum across the nylon guitar; misses, bonuses,
+  hazards (a warning on the horn) and creatures (a flute trill) have their own. An element trick is played on the
+  instruments too: fire crackles (dry wood ticks over a slow brush), lava rolls (slow low drums), a shock buzzes up a
+  half step, frost rings the triangle, acid fizzes (a quickening cabasa), Boom thumps, poison creeps (a low tritone
+  on the muted trumpet), corruption is a low minor 2nd. Only a card's slide and a neon tube's sparks are noise.
 - The board's own movements: made chips appear with a triangle and land with a clack, chips pushed across the
-  table rustle, chips paid away cascade.
-The 🔊 button beside the music's ♪ turns them off.
+  table rustle.
+- Away from the table: the purse clinks out or in at the size of the sum (shops, bets, tips to the band), the
+  settlement is counted out chip by chip, the harp runs up the scale on the way to the next floor, and the band sees
+  a run out.
+`tests/sfx.mjs` checks that every sound the game asks for exists, that every sound and sample is used, and that
+every element and type of trick has its own. The 🔊 button beside the music's ♪ turns them off.
 ### The Library
 Opens from the title screen, the HUD on the floor and the commitment screen, and the bout table. Tabs for chips,
 tricks, dice, cards, drinks, wallets, jackets and felts show each piece as it is drawn in the game, with its

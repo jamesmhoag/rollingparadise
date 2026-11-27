@@ -110,7 +110,7 @@ if __name__ == '__main__':
     ir = os.path.join(TMP, 'lounge-room.wav'); room(ir)
     for i, (slug, title, genre, ci, key, bpm, li, ai) in enumerate(SET):
         band, style, k = arrange(slug, title, genre, ci, key, bpm, li, ai, random.Random(2000 + i))
-        listing.append({'title': title, 'by': style, 'genre': genre, 'key': k, 'src': f'assets/music/{slug}.mp3', 'chip': f'assets/music/chip/{slug}.mp3'})
+        listing.append({'title': title, 'by': style, 'genre': genre, 'key': k, 'mode': band.mode, 'src': f'assets/music/{slug}.mp3', 'chip': f'assets/music/chip/{slug}.mp3'})
         if not want or slug in want: jobs.append((slug, band, ir))
     with Pool(int(os.environ.get('JOBS', os.cpu_count() or 1))) as pool:
         for line in pool.imap(render, jobs): print(line, flush=True)

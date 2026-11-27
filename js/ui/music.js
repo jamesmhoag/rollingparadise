@@ -50,6 +50,8 @@ const setFavorite = (title, on) => { const f = favorites(); if (on) f.add(title)
 export const setlist = (list, favs = favorites()) => [...list.filter((x) => favs.has(x.title)), ...list.filter((x) => !favs.has(x.title))];
 // the key the band is playing in (0 = C ... 11 = B), or C when it is quiet
 export const musicKey = () => (loop?.live ? loop.L.key : playing && current ? current.key || 0 : 0);
+// and its mode ('major', 'minor', or 'blues': a major 3rd with a flat 7th), so the sounds take the 3rd and 7th that fit
+export const musicMode = () => (loop?.live ? loop.L.mode : playing && current ? current.mode : null) || 'major';
 
 // a running order: shuffled, then nudged so a kind of jazz never follows itself
 export function setOrder(list = MUSIC, rnd = Math.random) {

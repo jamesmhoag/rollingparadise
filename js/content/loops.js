@@ -1,7 +1,7 @@
 // The bout music, written by tools/jazz/loops.py (edit loops.py and render, not this file): a loop for each floor's
 // tables and one for its High Roller (floor 5 is the Ascent), each in six layers the game mixes: the groove, two
 // tunes it takes in turn, the drive, the peril (you are close to broke) and the surge (your opponent is).
-// start/length: the loop's span in each file, in seconds. key: its tonic (0 = C ... 11 = B).
+// start/length: the loop's span in each file, in seconds. key: its tonic (0 = C ... 11 = B); mode: minor, blues or major.
 export const LOOPS = [
  {
   "slug": "basement-bout",
@@ -27,7 +27,8 @@ export const LOOPS = [
    "drive": "assets/music/chip/loops/basement-bout-drive.mp3",
    "peril": "assets/music/chip/loops/basement-bout-peril.mp3",
    "surge": "assets/music/chip/loops/basement-bout-surge.mp3"
-  }
+  },
+  "mode": "blues"
  },
  {
   "slug": "basement-boss",
@@ -53,7 +54,8 @@ export const LOOPS = [
    "drive": "assets/music/chip/loops/basement-boss-drive.mp3",
    "peril": "assets/music/chip/loops/basement-boss-peril.mp3",
    "surge": "assets/music/chip/loops/basement-boss-surge.mp3"
-  }
+  },
+  "mode": "minor"
  },
  {
   "slug": "haven-bout",
@@ -79,7 +81,8 @@ export const LOOPS = [
    "drive": "assets/music/chip/loops/haven-bout-drive.mp3",
    "peril": "assets/music/chip/loops/haven-bout-peril.mp3",
    "surge": "assets/music/chip/loops/haven-bout-surge.mp3"
-  }
+  },
+  "mode": "minor"
  },
  {
   "slug": "haven-boss",
@@ -105,7 +108,8 @@ export const LOOPS = [
    "drive": "assets/music/chip/loops/haven-boss-drive.mp3",
    "peril": "assets/music/chip/loops/haven-boss-peril.mp3",
    "surge": "assets/music/chip/loops/haven-boss-surge.mp3"
-  }
+  },
+  "mode": "minor"
  },
  {
   "slug": "suite-bout",
@@ -131,7 +135,8 @@ export const LOOPS = [
    "drive": "assets/music/chip/loops/suite-bout-drive.mp3",
    "peril": "assets/music/chip/loops/suite-bout-peril.mp3",
    "surge": "assets/music/chip/loops/suite-bout-surge.mp3"
-  }
+  },
+  "mode": "minor"
  },
  {
   "slug": "suite-boss",
@@ -157,7 +162,8 @@ export const LOOPS = [
    "drive": "assets/music/chip/loops/suite-boss-drive.mp3",
    "peril": "assets/music/chip/loops/suite-boss-peril.mp3",
    "surge": "assets/music/chip/loops/suite-boss-surge.mp3"
-  }
+  },
+  "mode": "minor"
  },
  {
   "slug": "paradise-bout",
@@ -183,7 +189,8 @@ export const LOOPS = [
    "drive": "assets/music/chip/loops/paradise-bout-drive.mp3",
    "peril": "assets/music/chip/loops/paradise-bout-peril.mp3",
    "surge": "assets/music/chip/loops/paradise-bout-surge.mp3"
-  }
+  },
+  "mode": "major"
  },
  {
   "slug": "paradise-boss",
@@ -209,7 +216,8 @@ export const LOOPS = [
    "drive": "assets/music/chip/loops/paradise-boss-drive.mp3",
    "peril": "assets/music/chip/loops/paradise-boss-peril.mp3",
    "surge": "assets/music/chip/loops/paradise-boss-surge.mp3"
-  }
+  },
+  "mode": "minor"
  },
  {
   "slug": "ascent-bout",
@@ -235,7 +243,8 @@ export const LOOPS = [
    "drive": "assets/music/chip/loops/ascent-bout-drive.mp3",
    "peril": "assets/music/chip/loops/ascent-bout-peril.mp3",
    "surge": "assets/music/chip/loops/ascent-bout-surge.mp3"
-  }
+  },
+  "mode": "minor"
  },
  {
   "slug": "ascent-boss",
@@ -261,6 +270,7 @@ export const LOOPS = [
    "drive": "assets/music/chip/loops/ascent-boss-drive.mp3",
    "peril": "assets/music/chip/loops/ascent-boss-peril.mp3",
    "surge": "assets/music/chip/loops/ascent-boss-surge.mp3"
-  }
+  },
+  "mode": "blues"
  }
 ];

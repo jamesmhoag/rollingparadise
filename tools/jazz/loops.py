@@ -429,6 +429,13 @@ def raw(path):
     return np.fromfile(path, dtype='<f4').reshape(-1, 2)
 
 
+def mode_of(L):
+    """A loop's mode, from its first chord, for the sound effects (which 3rd and 7th fit): minor, blues (a dominant
+    tonic: major 3rd, flat 7th) or major."""
+    q = L['chart'].split('|')[0].split()[0].lstrip('ABCDEFG#b')
+    return 'minor' if q.startswith('m') and not q.startswith('maj') else 'blues' if q.startswith('7') else 'major'
+
+
 def lufs_of(x):
     """A stereo float array's integrated loudness (EBU R128), in LUFS."""
     f = os.path.join(TMP, f'lufs-{os.getpid()}.f32'); x.astype('<f4').tofile(f)
@@ -483,7 +490,7 @@ def render_loop(L, ir):
                         '-ar', str(SR), '-ac', '2', '-f', 'f32le', dst], check=True)
         out[layer] = raw(dst)
     n = min(len(x) for x in out.values()); out, lufs = balance({k: x[:n] for k, x in out.items()})
-    os.makedirs(OUT, exist_ok=True); entry = {'slug': L['slug'], 'title': L['title'], 'floor': L['floor'], 'kind': L['kind'], 'key': L['key'], 'bpm': round(bpm_of(L), 2),
+    os.makedirs(OUT, exist_ok=True); entry = {'slug': L['slug'], 'title': L['title'], 'floor': L['floor'], 'kind': L['kind'], 'key': L['key'], 'mode': mode_of(L), 'bpm': round(bpm_of(L), 2),
                                               'start': PAD, 'length': round(secs, 6), 'layers': {},
                                               'chip': {k: f'assets/music/chip/loops/{L["slug"]}-{k}.mp3' for k in LAYERS}}
     for layer, x in out.items():
@@ -507,9 +514,11 @@ if __name__ == '__main__':
     if want and os.path.exists(path):
         txt = open(path).read(); old = {e['slug']: e for e in json.loads(txt[txt.index('['):txt.rindex(']') + 1])}
     listing = [done.get(L['slug']) or old.get(L['slug']) for L in LOOPS]
+    for L, e in zip(LOOPS, listing):
+        if e: e['mode'] = mode_of(L)  # (a listing kept from an earlier render gets its mode too)
     with open(path, 'w') as f:
         f.write("// The bout music, written by tools/jazz/loops.py (edit loops.py and render, not this file): a loop for each floor's\n"
                 "// tables and one for its High Roller (floor 5 is the Ascent), each in six layers the game mixes: the groove, two\n"
                 "// tunes it takes in turn, the drive, the peril (you are close to broke) and the surge (your opponent is).\n"
-                "// start/length: the loop's span in each file, in seconds. key: its tonic (0 = C ... 11 = B).\n")
+                "// start/length: the loop's span in each file, in seconds. key: its tonic (0 = C ... 11 = B); mode: minor, blues or major.\n")
         f.write('export const LOOPS = ' + json.dumps([x for x in listing if x], indent=1) + ';\n')

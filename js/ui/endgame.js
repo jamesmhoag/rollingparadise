@@ -11,6 +11,7 @@ import { flavorP } from './parts.js';
 import { walletEl, jacketEl } from './gear.js';
 import { cents } from '../util.js';
 import { t } from '../text.js';
+import { sfx } from './sfx.js';
 // a page with one column in the middle of it (the alley, the summary)
 const centred = (...kids) => h('div', { class: 'page', style: { top: 0, display: 'grid', placeItems: 'center' } }, ...kids);
 
@@ -63,7 +64,7 @@ export function suiteScene(root, penthouse) {
     h('div', { class: 'box col scroll' }, h('h2', { text: t('suite.wardrobe') }), h('p', { class: 'sub', text: t('suite.wardrobe.sub') }), J.el, crowns),
     h('div', { class: 'box col' }, h('h2', { text: t(penthouse ? 'suite.bed.nice' : 'suite.bed') }),
       h('p', { class: 'sub', text: t(penthouse ? 'suite.bed.nice.sub' : 'suite.bed.sub', { stat: D.STATS[K.primary].name }) }),
-      h('span', { class: 'grow' }), btn(t(penthouse ? 'suite.sleep.ascent' : 'suite.sleep'), () => { R.goToBed(run, penthouse); if (penthouse) { R.buildAscent(run, app.meta); app.nav.ascent(); } else { R.enterFloor(run, run.floor + 1); app.nav.hub(); } }, null, 'big go'))));
+      h('span', { class: 'grow' }), btn(t(penthouse ? 'suite.sleep.ascent' : 'suite.sleep'), () => { R.goToBed(run, penthouse); if (penthouse) { R.buildAscent(run, app.meta); app.nav.ascent(); } else { R.enterFloor(run, run.floor + 1); sfx('floor'); app.nav.hub(); } }, null, 'big go'))));
 }
 
 export function giftScene(root) {
@@ -122,6 +123,7 @@ export function alleyScene(root) {
 export function summaryScene(root) {
   const run = app.run, phase = run.phase, sum = R.endRun(run, app.meta, t('end.you'), app.kept || [], app.keptPass || 0); app.run = null; app.kept = null; app.keptPass = null;
   const end = ['ripped', 'paradise', 'fallen'].includes(phase) ? phase : 'alley', head = [t(`end.head.${end}`), t(`end.head.${end}.sub`)];
+  sfx('runend', 350, { end });
   const worth = h('span', { class: 'total num' });
   const s = sum.stats, list = h('div', { class: 'scroll', style: { maxHeight: '300px' } }, sum.ledger.slice(-40).reverse().map((l) => h('div', { class: 'line' }, h('span', { text: `${l.floor ? 'F' + Math.min(l.floor, 4) + ' · ' : ''}${l.label}` }), h('span', { class: `amt ${l.amt >= 0 ? 'pos' : 'neg'}`, text: `${l.amt >= 0 ? '+' : '−'}${cents(Math.abs(l.amt))}` }))));
   root.append(centred(h('div', { class: 'col', style: { width: '760px' } },
