@@ -228,8 +228,10 @@ export function cardArt(look = {}, W = 52, H = 72) {
   const sym = (key, x, y, size, col, w = 2) => { const S = SYM[symbolOf(key)]; if (!S) return sv('text', { x, y: y + size * 0.36, 'text-anchor': 'middle', 'font-size': size, fill: col, 'font-weight': 700 }, [document.createTextNode(key || '')]);
     const g = sv('g', { transform: `translate(${x - size / 2} ${y - size / 2}) scale(${size / 24})`, fill: 'none', stroke: col, 'stroke-width': (w * 24) / size, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, [sv('path', { d: S.d })]);
     for (const [dx, dy] of S.dots || []) g.append(sv('circle', { cx: dx, cy: dy, r: 1.6, fill: col, stroke: 'none' })); return g; };
-  for (const [x, y] of edgePts) svg.append(sym(L.edge, x, y, s7, L.edgeColor, 0.9));
-  if (L.symbol) svg.append(sym(L.symbol, W / 2, H * 0.47, Math.min(W, H) * 0.42, L.symColor, 2));
+  // the symbols sit in a layer of their own, so they can be made of something (a finish paints that layer)
+  const syms = sv('svg', { class: 'card-syms', viewBox: `0 0 ${W} ${H}`, width: W, height: H }); svg.append(syms);
+  for (const [x, y] of edgePts) syms.append(sym(L.edge, x, y, s7, L.edgeColor, 0.9));
+  if (L.symbol) syms.append(sym(L.symbol, W / 2, H * 0.47, Math.min(W, H) * 0.42, L.symColor, 2));
   return svg;
 }
 // A punch card shows its punches: a ring for each one it takes, and a real hole through the card for each one made
@@ -244,6 +246,7 @@ export function cardEl(id, cls = '', o = {}) {
   // what the card is made of, and what its lettering is: a finish over its printed backing (content/finishes.js)
   if (L.finish?.bg?.m) { const fb = finishOn(h('i', { class: 'card-fin' }), { color: L.bg?.[0], ...L.finish.bg }); el.querySelector('.card-art').after(fb); }
   if (L.finish?.ink?.m) for (const part of el.querySelectorAll(':scope > em, :scope > small')) finishOn(part, { color: L.ink, ...L.finish.ink }, 'text');
+  if (L.finish?.symbol?.m) finishSvg(el.querySelector('.card-syms'), { color: L.symColor, ...L.finish.symbol });
   if (c.kind === 'punch' && c.punches > 0) { const pts = PUNCH_AT(Math.min(15, c.punches)), done = Math.max(0, Math.min(pts.length, o.punched || 0)), R0 = 2.7;
     const rings = sv('svg', { class: 'card-punches', viewBox: '0 0 52 72', 'aria-hidden': 'true' }, pts.map(([x, y], i) => sv('circle', { cx: x, cy: y, r: R0, fill: i < done ? 'none' : 'rgba(0,0,0,.18)', stroke: L.ink || '#fff', 'stroke-width': i < done ? 0.9 : 0.6, 'stroke-dasharray': i < done ? null : '1.4 1.2', opacity: i < done ? 0.9 : 0.7 })));
     el.append(rings); el.classList.add('punch');

@@ -174,6 +174,7 @@ const hexRGB = (c) => { const m = /^#?([0-9a-f]{6})$/i.exec(c || '') || [0, 'e8e
 const mix3 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
 // ---------- materials ----------
+const hi = (c, t) => new T.Color(c).lerp(new T.Color(0xffffff), t);
 function material(mat, maps, base) {
   const c = new T.Color(base), common = { map: maps.map, normalMap: maps.normalMap, roughnessMap: maps.roughnessMap, normalScale: new T.Vector2(1, 1),
     ...(maps.paintMap ? { transmissionMap: maps.transmissionMap, emissive: new T.Color(0xffffff), emissiveMap: maps.paintMap, emissiveIntensity: 0.6 } : {}) };
@@ -184,8 +185,17 @@ function material(mat, maps, base) {
     case 'glimmering': return new T.MeshPhysicalMaterial({ ...common, color: 0xffffff, transmission: 0.9, thickness: 1.3, ior: 1.46, roughness: 0.32, attenuationColor: c, attenuationDistance: 1.1, sheen: 0.6, sheenColor: c, clearcoat: 0.7, clearcoatRoughness: 0.05 });
     case 'swirling': return new T.MeshPhysicalMaterial({ ...common, color: 0xffffff, transmission: 1, thickness: 1.6, ior: 1.5, roughness: 0.04, attenuationColor: new T.Color(0xf6f0ff), attenuationDistance: 3, clearcoat: 1, clearcoatRoughness: 0.02 });
     case 'diamond': return new T.MeshPhysicalMaterial({ ...common, color: 0xffffff, transmission: 1, thickness: 0.8, ior: 2.42, dispersion: 1.2, roughness: 0, specularIntensity: 1, envMapIntensity: 3, iridescence: 0.25, iridescenceIOR: 1.6 });
-    case 'bone': return new T.MeshPhysicalMaterial({ ...common, color: 0xffffff, roughness: 0.55, sheen: 0.5, sheenColor: new T.Color(0xfff2d6), clearcoat: 0.15, clearcoatRoughness: 0.4 });
-    default: return new T.MeshPhysicalMaterial({ ...common, color: 0xffffff, roughness: 0.36, clearcoat: 0.6, clearcoatRoughness: 0.12, sheen: 0.15, sheenColor: new T.Color(0xffffff) });
+    case 'bone': return new T.MeshPhysicalMaterial({ ...common, color: maps.map ? 0xffffff : c, roughness: 0.55, sheen: 0.5, sheenColor: new T.Color(0xfff2d6), clearcoat: 0.15, clearcoatRoughness: 0.4 });
+    // cloth and hide: the weave or grain is the surface's own relief (maps.normalMap from grainMap), the colour its dye
+    case 'leather': return new T.MeshPhysicalMaterial({ ...common, color: c, roughness: 0.5, clearcoat: 0.3, clearcoatRoughness: 0.35, sheen: 0.25, sheenColor: hi(c, 0.4), normalScale: new T.Vector2(0.9, 0.9) });
+    case 'suede': return new T.MeshPhysicalMaterial({ ...common, color: c, roughness: 1, sheen: 1, sheenRoughness: 0.9, sheenColor: hi(c, 0.5), normalScale: new T.Vector2(0.5, 0.5) });
+    case 'velvet': return new T.MeshPhysicalMaterial({ ...common, color: new T.Color(c).multiplyScalar(0.55), roughness: 1, sheen: 1, sheenRoughness: 0.35, sheenColor: hi(c, 0.55), normalScale: new T.Vector2(0.35, 0.35) });
+    case 'silk': return new T.MeshPhysicalMaterial({ ...common, color: c, roughness: 0.32, sheen: 1, sheenRoughness: 0.25, sheenColor: hi(c, 0.7), anisotropy: 0.9, anisotropyRotation: 0.6, envMapIntensity: 1.5, normalScale: new T.Vector2(0.25, 0.25) });
+    case 'denim': return new T.MeshPhysicalMaterial({ ...common, color: c, roughness: 0.9, sheen: 0.4, sheenColor: hi(c, 0.6), normalScale: new T.Vector2(1.2, 1.2) });
+    case 'canvas': return new T.MeshPhysicalMaterial({ ...common, color: c, roughness: 0.95, sheen: 0.2, sheenColor: hi(c, 0.5), normalScale: new T.Vector2(1.3, 1.3) });
+    case 'wool': return new T.MeshPhysicalMaterial({ ...common, color: c, roughness: 1, sheen: 0.9, sheenRoughness: 0.8, sheenColor: hi(c, 0.45), normalScale: new T.Vector2(0.9, 0.9) });
+    case 'vinyl': return new T.MeshPhysicalMaterial({ ...common, color: c, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.04, envMapIntensity: 1.7, normalScale: new T.Vector2(0.15, 0.15) });
+    default: return new T.MeshPhysicalMaterial({ ...common, color: maps.map ? 0xffffff : c, roughness: 0.36, clearcoat: 0.6, clearcoatRoughness: 0.12, sheen: 0.15, sheenColor: new T.Color(0xffffff) });
   }
 }
 // the swirl inside a swirling die: coloured ribbons wound round each other
@@ -214,6 +224,54 @@ function model(d, labels) {
   grp.add(mesh);
   if (L.mat === 'swirling') { const sw = swirl(s * 0.78, L.tint); grp.add(sw); grp.userData.swirl = sw; }
   grp.matrixAutoUpdate = false; MODELS.set(key, grp); return grp;
+}
+
+// ---------- a material as a flat surface ----------
+// The same materials in the same room and light, as a slab seen face on: what a sign's letters or backing, a card, a
+// wallet, a jacket, a symbol or a crown is made of (ui/finish.js). The cloths and hides are materials here too: their
+// weave or grain is a relief drawn by GRAIN (a height for each point of a tile, turned into a normal map).
+const cell = (x, y, s) => { const n = Math.sin(x * 127.1 * s + y * 311.7 * s) * 43758.5453; return n - Math.floor(n); }; // a steady pseudo-random number for a point
+const GRAIN = {
+  leather: (u, v) => { let h = 1; for (let k = 0; k < 3; k++) { const f = 9 + k * 7, gx = u * f, gy = v * f, ix = Math.floor(gx), iy = Math.floor(gy); let d = 9; // pebbles: the distance to the nearest of scattered points
+      for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const px = ix + a + cell(ix + a, iy + b, 1 + k), py = iy + b + cell(iy + b, ix + a, 2 + k); d = Math.min(d, Math.hypot(gx - px, gy - py)); } h = Math.min(h, d * (1 + k * 0.6)); } return h; },
+  suede: (u, v) => cell(Math.floor(u * 180), Math.floor(v * 180), 1) * 0.5,
+  velvet: (u, v) => cell(Math.floor(u * 220), Math.floor(v * 90), 3) * 0.35,
+  silk: (u, v) => 0.5 + 0.5 * Math.sin((u * 3 + Math.sin(v * 5) * 0.25) * Math.PI * 2) * 0.25,
+  denim: (u, v) => 0.5 + 0.5 * Math.sin((u + v) * Math.PI * 2 * 40) + cell(Math.floor(u * 160), Math.floor(v * 160), 5) * 0.3, // a diagonal twill
+  canvas: (u, v) => Math.max(Math.abs(Math.sin(u * Math.PI * 34)), Math.abs(Math.sin(v * Math.PI * 34))), // a plain weave
+  wool: (u, v) => cell(Math.floor(u * 70 + Math.sin(v * 40) * 2), Math.floor(v * 70), 7) * 0.6 + cell(Math.floor(u * 200), Math.floor(v * 200), 9) * 0.4,
+  vinyl: (u, v) => 0.5 + 0.03 * Math.sin(u * 60) * Math.sin(v * 60),
+  sparkling: (u, v) => cell(Math.floor(u * 256), Math.floor(v * 256), 11) * 0.9, // flakes: every point tips its own way
+  glimmering: (u, v) => cell(Math.floor(u * 256), Math.floor(v * 256), 13) * 0.3,
+};
+const GRAINS = new Map();
+function grainMap(mat) {
+  if (!GRAIN[mat]) return null; if (GRAINS.has(mat)) return GRAINS.get(mat);
+  const N = 256, H = new Float32Array(N * N), f = GRAIN[mat]; for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) H[y * N + x] = f(x / N, y / N);
+  const cv = document.createElement('canvas'); cv.width = cv.height = N; const cx = cv.getContext('2d'), img = cx.createImageData(N, N), at = (x, y) => H[((y + N) % N) * N + ((x + N) % N)];
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const n = nrm([(at(x - 1, y) - at(x + 1, y)) * 2.2, (at(x, y - 1) - at(x, y + 1)) * 2.2, 1]), i = (y * N + x) * 4;
+    img.data[i] = (n[0] * 0.5 + 0.5) * 255; img.data[i + 1] = (n[1] * 0.5 + 0.5) * 255; img.data[i + 2] = (n[2] * 0.5 + 0.5) * 255; img.data[i + 3] = 255; }
+  cx.putImageData(img, 0, 0); const tex = new T.CanvasTexture(cv); tex.wrapS = tex.wrapT = T.RepeatWrapping; tex.repeat.set(1.6, 1.6); GRAINS.set(mat, tex); return tex;
+}
+export const MATERIAL_IDS = [...new Set(['plastic', 'glass', 'metal', 'sparkling', 'glimmering', 'swirling', 'diamond', 'bone', ...Object.keys(GRAIN)])]; // every material the renderer knows
+const SWATCHES = new Map();
+// A picture of the material in a colour, as a URL (a data: image), or null where the renderer is not there (the CSS
+// look stands). The slab is a little pillowed and turned, so the room's lights run across it as they do a die's face.
+export async function swatch(mat, color = '#b9b2c8', px = 192) {
+  const key = `${mat}|${color}|${px}`; if (SWATCHES.has(key)) return SWATCHES.get(key);
+  const job = (async () => { try { await load(); } catch { return null; }
+    const { renderer, scene, camera, canvas } = R3, cut = mat === 'diamond'; let g = new T.PlaneGeometry(3.2, 3.2, cut ? 7 : 40, cut ? 7 : 40); const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) { const x = pos.getX(i), y = pos.getY(i); pos.setZ(i, -0.11 * (x * x + y * y) + (cut ? 0.34 * cell(x * 3.1, y * 2.7, 1) : 0.02 * Math.sin(x * 2.1 + y * 1.3))); }
+    if (cut) g = g.toNonIndexed(); g.computeVertexNormals(); // a cut stone: flat facets, each turned its own way
+    const clear = ['glass', 'diamond', 'glimmering', 'swirling'].includes(mat), grp = new T.Group();
+    const mesh = new T.Mesh(g, material(mat, { map: null, normalMap: grainMap(mat), roughnessMap: null }, color)); mesh.rotation.set(-0.16, 0.2, 0);
+    // what a clear slab is seen against: a bright foil behind it, in its own tint, as a clear die has its far faces
+    if (clear) { const back = new T.Mesh(new T.PlaneGeometry(4, 4, 24, 24), new T.MeshPhysicalMaterial({ color: mat === 'diamond' ? 0xffffff : hi(color, 0.45), metalness: 1, roughness: mat === 'glimmering' ? 0.4 : 0.12, envMapIntensity: mat === 'diamond' ? 3.5 : 2 })); back.position.z = -0.7; back.rotation.set(0.3, -0.35, 0.2); grp.add(back); }
+    grp.add(mesh); if (mat === 'swirling') { const sw = swirl(1.5, color); sw.rotation.z = 1.2; sw.position.z = -0.3; grp.add(sw); }
+    scene.add(grp); if (canvas.width !== px || canvas.height !== px) renderer.setSize(px, px, false);
+    renderer.render(scene, camera); scene.remove(grp); const url = canvas.toDataURL('image/png'); g.dispose(); return url;
+  })();
+  SWATCHES.set(key, job); return job;
 }
 
 // ---------- drawing ----------

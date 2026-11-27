@@ -28,7 +28,7 @@
 // Where a crown or a symbol meets the letters, its tube stops short of them with a rounded end, as a real sign's tube
 // does where it passes behind another, and picks up again on the far side. Every motion is slow and soft (well under
 // three changes a second, never fully dark) and all of them stop for players who ask their system for reduced motion.
-import { finishOn, finishSvg } from './finish.js';
+import { finishOn, finishSvg, paintSvg } from './finish.js';
 import * as D from '../data.js';
 import { SYMBOLS, symbolOf, CROWNS } from './symbols.js';
 
@@ -402,7 +402,7 @@ export function dressSign(el, spec, who) {
   if (FN.mount?.m) { const plate = finishOn(document.createElement('i'), FN.mount); plate.classList.add('sign-mount-fin'); el.prepend(plate); }
   if (deco) finishSvg(deco, FN.symbol); if (crown) finishSvg(crown, FN.crown);
   let last = '';
-  const redraw = () => { const w = el.offsetWidth, h = el.offsetHeight, key = `${w}x${h}`; if (key === last) return; last = key; if (svg) drawFrame(svg, spec, w, h, who); if (deco) drawDeco(deco, el, spec); if (crown) drawCrown(crown, el, spec); };
+  const redraw = () => { const w = el.offsetWidth, h = el.offsetHeight, key = `${w}x${h}`; if (key === last) return; last = key; if (svg) drawFrame(svg, spec, w, h, who); if (deco) { drawDeco(deco, el, spec); paintSvg(deco); } if (crown) { drawCrown(crown, el, spec); paintSvg(crown); } };
   el._signRedraw = () => { last = ''; redraw(); }; // after something inside the sign changes size (its name is fitted)
   if (typeof ResizeObserver !== 'undefined') { el._signObs = new ResizeObserver(redraw); el._signObs.observe(el); }
   requestAnimationFrame?.(redraw);

@@ -2518,7 +2518,7 @@ export default {
   "gear.f.symbolColor": "Emblem colour",
   "help.gear.f.symbolColor": "The emblem's colour.",
   "gear.f.symbolMat": "Emblem material",
-  "help.gear.f.symbolMat": "What the emblem is made of: plain ink, or any finish (it takes the piece's glint and sparkle).",
+  "help.gear.f.symbolMat": "What the emblem is made of: plain ink, or any finish, rendered as the dice are (it takes the piece's glint and sparkle).",
   "neon.finish": "Made of",
   "help.neon.finish": "What each part of the sign is made of. Neon: a lit tube in its colours. Or a finish: any of the dice materials (metal, glass, sparkling, glimmering, swirling, diamond, plastic, bone) or a cloth or hide, in a colour of its own, with a glint that sweeps across it and a sparkle that twinkles on it. The backing takes a finish as a plate behind the sign.",
   "neon.finish.neon": "Neon",
@@ -2546,4 +2546,6 @@ export default {
   "trick.maker.bout": "They last the bout.",
   "parts.plays": "plays a trick effect: {what}",
   "feed.tilt-chips": "{n} laid on the position ({names})",
+  "cards.f.finish.symbol": "Symbols made of",
+  "help.cards.f.finish.symbol": "What the card's symbol and edge symbols are made of: any finish, rendered as the dice are, with a glint and a sparkle. Printed: their ink colours.",
 };

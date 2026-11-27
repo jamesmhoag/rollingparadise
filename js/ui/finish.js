@@ -3,6 +3,7 @@
 // the glint and sparkle as light on the strokes.
 import { finishOf, FINISHES } from '../content/finishes.js';
 import { h } from './core.js';
+import { swatch } from './dice3d.js';
 import { pick, tick, colourIn } from './form.js';
 import { t } from '../text.js';
 
@@ -14,8 +15,29 @@ function dress(el, f, cls) {
   if (F.glint) el.classList.add('fin-glint'); if (F.sparkle) el.classList.add('fin-sparkle');
   return el;
 }
-export const finishOn = (el, f, mode = 'fill') => dress(el, f, (F) => ['fin', `fin-${F.m}`, mode === 'text' ? 'fin-text' : 'fin-fill']);
-export const finishSvg = (el, f) => dress(el, f, (F) => ['fin-svg', `fin-m-${F.m}`]);
+// The material itself is a picture rendered as the dice are (dice3d.js swatch: the same materials, room and light),
+// laid on when it is ready; until then, and where there is no renderer, the CSS look of the same name stands in.
+const FALLBACK = { plastic: '#c9c2d8', glass: '#bfe6ff', metal: '#c9d3e0', sparkling: '#ffd76a', glimmering: '#cfe9ff', swirling: '#c9a6ff', diamond: '#ffffff', bone: '#efe3c2' };
+const pictured = (el, F, then) => { const key = `${F.m}|${F.color}`; el._fin = key; swatch(F.m, F.color || FALLBACK[F.m] || '#b9b2c8').then((url) => { if (url && el._fin === key) then(url); }).catch(() => {}); };
+export const finishOn = (el, f, mode = 'fill') => { el?.style.removeProperty('--fin-tex'); el?.classList.remove('fin-tex'); if (el) el._fin = null;
+  const out = dress(el, f, (F) => ['fin', `fin-${F.m}`, mode === 'text' ? 'fin-text' : 'fin-fill']), F = finishOf(f);
+  if (el && F) pictured(el, F, (url) => { el.style.setProperty('--fin-tex', `url(${url})`); el.classList.add('fin-tex'); });
+  return out; };
+// A symbol or a crown (an SVG of tubes or strokes) is painted with the same picture: a pattern over its box that its
+// strokes and fills take as their paint. paintSvg puts the pattern back after the SVG is redrawn (ui/sign.js).
+let paintN = 0;
+export function paintSvg(svg) {
+  svg.querySelector(':scope > defs.fin-defs')?.remove(); const url = svg._finUrl; if (!url) { svg.classList.remove('fin-tex'); svg.style.removeProperty('--fin-paint'); return; }
+  const NS = 'http://www.w3.org/2000/svg', mk = (tag, a) => { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(a)) e.setAttribute(k, v); return e; };
+  const vb = svg.viewBox?.baseVal, W = (vb && vb.width) || svg.clientWidth || 24, H = (vb && vb.height) || svg.clientHeight || 24, id = `finp${++paintN}`;
+  const defs = mk('defs', { class: 'fin-defs' }), pat = mk('pattern', { id, patternUnits: 'userSpaceOnUse', x: vb?.x || 0, y: vb?.y || 0, width: W, height: H });
+  pat.append(mk('image', { href: url, x: 0, y: 0, width: W, height: H, preserveAspectRatio: 'none' })); defs.append(pat); svg.prepend(defs);
+  svg.style.setProperty('--fin-paint', `url(#${id})`); svg.classList.add('fin-tex');
+}
+export const finishSvg = (el, f) => { if (el) { el._fin = null; el._finUrl = null; paintSvg(el); }
+  const out = dress(el, f, (F) => ['fin-svg', `fin-m-${F.m}`]), F = finishOf(f);
+  if (el && F) pictured(el, F, (url) => { el._finUrl = url; paintSvg(el); });
+  return out; };
 export const finishName = (f) => FINISHES[f?.m]?.name || '';
 
 // The one finish picker (Build mode): a material (or none: `none` is what that is called here), then its colour, glint

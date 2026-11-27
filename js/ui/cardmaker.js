@@ -77,7 +77,7 @@ export function cardMaker(id, redraw, openTable) {
     L.edgeAt && L.edgeAt !== 'none' ? field('edgeColor', colour(LP('edgeColor'), L.edgeColor), LP('edgeColor')) : null,
     field('ink', colour(LP('ink'), L.ink), LP('ink')),
     field('font', select(LP('font'), [['display', t('cards.font.display')], ['script', t('cards.font.script')], ['body', t('cards.font.body')]], L.font || 'display'), LP('font')),
-    ...['bg', 'ink'].map((part) => { const at = ['look', 'finish', part], Fn = L.finish?.[part] || {};
+    ...['bg', 'ink', 'symbol'].map((part) => { const at = ['look', 'finish', part], Fn = L.finish?.[part] || {};
       return field(`finish.${part}`, finishPicker(Fn, (v) => set(at, { ...Fn, ...v }), () => set(at, null), { none: t('cards.finish.print'), colour: false }), at); })];
   const big = cardEl(id, 'big'); big._tip = () => cardTip(id); big.classList.add('has-tip');
   return h('div', { class: 'b-maker' }, h('div', { class: 'b-fields' }, h('span', { class: 'cap', text: t('cards.rule') }), ...rule, ...design),

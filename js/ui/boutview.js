@@ -482,7 +482,9 @@ export function boutScene(root, bout, ctx, onDone) {
     const e = opp.run.find((x) => x.uid === uid); if (!e) return '';
     return trickTip(e.trick, opp.cls, `<p class="live">${e.dice.length ? tx('table.dice-roll-total-2', { join: e.dice.map((d) => d.value).join(' + '), previewTotal: B.previewTotal(opp, e) }) : tx('table.no-dice-on-it')}${e.state === 'bid' ? tx('table.bid-on-it-plays') : e.state === 'play' ? tx('table.in-play-2') : tx('table.shown-not-bid')}</p>`);
   }
-  const place = (el, x, y, extra = '') => { el.style.transform = `translate(${x}px, ${y}px) ${extra}`; };
+  // (--hv: how much the thing grows under the pointer. It is part of this transform, after the move, so the thing grows
+  // where it stands; the `scale` property would scale the move too and throw it across the table.)
+  const place = (el, x, y, extra = '') => { el.classList.add('placed'); el.style.transform = `translate(${x}px, ${y}px) ${extra} scale(var(--hv, 1))`; };
   function spawn(el, x, y, extra, delay = 0) { // put an element at a starting state without animating, then release it
     el.style.transition = 'none'; el.style.opacity = '0'; place(el, x, y, extra); void el.offsetWidth; el.style.transition = ''; el.style.transitionDelay = delay ? tx('table.ms', { delay }) : '';
     if (delay) setTimeout(() => { el.style.transitionDelay = ''; }, delay + 700);
