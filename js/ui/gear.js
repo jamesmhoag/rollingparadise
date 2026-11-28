@@ -58,7 +58,9 @@ export function walletEl(id, cls = '', hold = {}) {
   // a click keeps it open, or shuts it again (a click on something it holds is that thing's own)
   if (!clip) el.addEventListener('click', (ev) => { if (ev.target.closest('.thing') === el) face.classList.toggle('pin'); });
   const notes = clip ? notesFor(hold.cash || 1) : notesFor(hold.cash);
-  embody(el, face, { kind: 'wallet', look: L, notes, name: Wl.name || id, sub: WALLET_TYPES[L.type], pinned: () => face.classList.contains('pin') });
+  // held up close (ui/gear3d.js heldIn): one slit for each card it can hold and each pass, and the very cards and passes in them
+  embody(el, face, { kind: 'wallet', look: L, notes, name: Wl.name || id, sub: WALLET_TYPES[L.type], pinned: () => face.classList.contains('pin'),
+    slots: { cards: Math.max(1, Wl.slots || 1), passes: Math.max(1, Wl.passes || 1) }, held: () => ({ cards: hold.cards || [], passes: hold.passes || [] }) });
   return el;
 }
 

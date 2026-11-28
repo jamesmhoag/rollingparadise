@@ -1065,8 +1065,16 @@ for a close look, to be turned over (`ui/spin.js`, the look a die gets).
   not). The renderer shows nothing clear through a clear body, so a clear vessel is drawn as a sheer film over what
   it holds, and ice and fizz inside a clear drink are solid to the eye.
 - Right click lets go of anything held up close (as Esc does). While something is held up, it is gone from where it
-  was (the one turns into the other) and is back when it is let go. A click on a wallet held up opens it, and shuts
-  it again.
+  was (the one turns into the other) and is back when it is let go.
+- **A wallet held up close** (ui/gear3d.js heldIn) comes up larger than other things. A click opens it (a clip, with
+  no inside, fans out what it holds) or shuts it again, and either way it stays held up until a right click or Esc
+  puts it down. Open, it turns face on and holds still. Inside, one slit for each card it can hold and each pass (the
+  wallet's slots and passes): a billfold has its card slits on one leaf and its pass slits on the other, a clasped
+  pouch a column of each across its back; each slit is a padded pocket with a dark mouth. The very cards and passes
+  you carry stand in them, each a little lower than the last so every top shows; a clip lays them over its wad the
+  same way, cards on one side and passes on the other. Point at one and it is pulled out, larger, over the wallet,
+  which stays where it is; point at another and they change places; a right click puts it back (the next right click
+  puts the wallet down). When the wallet is put down, each goes back where it was.
 - **Fixed sizes, scrolling windows.** At the table the Book, the Run, the Roll and the Pouch keep everything in them
   at its own size: tricks are always the full card width, shelf items the full strip, dice their own size. Each is a
   window a whole number of rows tall; what does not fit is on further rows, reached with the wheel or the window's

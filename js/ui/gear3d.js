@@ -154,7 +154,10 @@ const METAL = '#c9d0dc';
 // → { root, pose(t) (0 shut … 1 open), box: [x0, y0, x1, y1] the px it needs round its face (0, 0 its top left), w, h,
 //     over: the px rectangles of its face that lie over what it holds (pockets, the clip's arm), rest: its turn when
 //     shut, gutter: px between a billfold's leaves when it lies open }
-function walletModel(L, notes) {
+// HOLD: how many it holds { cards, passes }: one slit for each, cards on one side and passes on the other (a billfold: a
+// leaf each; a clasped pouch: a column each across its back). → also slits: { cards, passes }, each [{ x0, x1, top }] (px,
+// y down, about the model's middle): where a card stands in its slit when it is held up open (ui/spin.js)
+function walletModel(L, notes, HOLD = { cards: 3, passes: 1 }) {
   const root = new T.Group(), all = new T.Group(); all.scale.setScalar(U); root.add(all);
   const liningC = L.lining || shade(L.color, 0.3), sew = thread(L.color), r = L.round;
   const skin = (S) => part(S, L.mat, L.color), pocket = (S) => part(S, L.pocket.mat, L.pocket.color), lining = (S) => part(S, 'silk', liningC);
@@ -168,21 +171,32 @@ function walletModel(L, notes) {
   const cash = (x, y, w) => { const g = new T.Group(); for (let i = 0; i < notes; i++) g.add(part(plate(rrect(x + i * 3, y + i * 1.3, w - i * 5, 30, 1.5), 0.55 + i * 0.3, 0.22), 'paper', NOTE_GREENS[i])); return g; };
   // the long pocket behind everything, for the cash: a piece of the lining from just under the top edge down, hemmed along its top
   const sleeve = (x, w, H, cells) => { const g = new T.Group(), P = plate(rrect(x, -H / 2 + 8, w, H - 10, 2), 0.95, 0.3, { cells }); g.add(lining(P), hem(x + 3, x + w - 3, -H / 2 + 10.4, P.zAt, liningC)); return g; };
-  // card slots: pockets one over the next like shingles, each hemmed along its top, from `y` down to the leaf's foot
-  const slots = (x, W, yFoot, y, n) => { const g = new T.Group(); for (let i = 0; i < n; i++) { const top = y + i * 11, S = soft(rrect(x + 3, top, W - 6, yFoot - 2 - top, [1.5, 1.5, 3, 3]), { depth: 0.3, bevel: 0.3, puff: 0.7, z: 1.5 + i * 0.75, round: 9, cells: 26 });
-    g.add(pocket(S), hem(x + 6, x + W - 6, top + 2.2, S.zAt, L.pocket.color)); } return g; };
+  // card slits: pockets one over the next like shingles, each hemmed along its top, from the first slit down to the
+  // leaf's foot. n of them, as many as it holds, spaced so each card's top stands clear of the next (STEP px, less when
+  // many must fit); each slit's mouth a dark line where the pocket opens, so it reads as a place a card goes.
+  const SLIT = { step: 11, low: 20 }, slitTops = (yHigh, yFoot, n) => { const step = Math.min(SLIT.step, (yFoot - SLIT.low - yHigh) / Math.max(1, n - 1)), y0 = yFoot - SLIT.low - step * (n - 1); return Array.from({ length: n }, (_, i) => y0 + i * step); };
+  const slits = { cards: [], passes: [] };
+  const slots = (x, W, yFoot, yHigh, n, into) => { const g = new T.Group(), tops = slitTops(yHigh, yFoot, n);
+    tops.forEach((top, i) => { const P = soft(rrect(x + 3, top, W - 6, yFoot - 2 - top, [1.5, 1.5, 3, 3]), { depth: 0.3, bevel: 0.3, puff: 1.1, z: 1.5 + i * 0.75, round: 9, cells: 26 });
+      g.add(part(plate(rrect(x + 5, top - 1.3, W - 10, 1.8, 0.8), 1.35 + i * 0.75, 0.12), 'silk', '#07060a')); // the mouth: the dark of the slit, just above the hem
+      g.add(pocket(P), hem(x + 6, x + W - 6, top + 2.2, P.zAt, L.pocket.color)); into.push({ x0: x + 6, x1: x + W - 6, top }); });
+    return g; };
   if (L.type === 'clip') { const W = 150, H = 86, arm = H - 12, F = 17, wide = 20, top = -H / 2 + 2; // a strip bent back on itself: one arm under the wad, the bend at the top, the other arm over everything
     for (let i = 0; i < notes; i++) all.add(part(soft(rrect(-W / 2 + 2 + i * 1.5, -H / 2 + 16 + i * 2, W - 4 - i * 3, H - 16 - i * 3.5, 5), { depth: 0.8, puff: 0.9, bevel: 0.5, z: 1.9 + i * 1.5, face: 'both', cells: 24 }), 'paper', NOTE_GREENS[i]));
     all.add(skin(soft(rrect(-wide / 2, top - F - arm, wide, arm * 2 + F, [9, 9, 6, 6]), { depth: 1, bevel: 0.6, z: -1.1, puff: 0.5, face: 'back', round: 6, cells: 90 })));
     folding(all, [{ axis: 'y', from: -top, len: F, sign: 1 }])([Math.PI]);
-    return { root, pose() {}, w: W, h: H, box: [-14, -20, W + 14, H + 14], over: [[W / 2 - wide / 2 + 0.5, -20, wide - 1, arm + 26]], rest: [0, 0], flat: true }; }
+    // held up, what it holds is fanned over the wad, one over the next with its top showing, as slits would hold them
+    const FAN = 16, fan = (n, y0, x) => Array.from({ length: n }, (_, i) => ({ x0: x + i * 3, x1: x + i * 3 + W * 0.36, top: y0 + i * FAN, loose: true }));
+    slits.cards = fan(HOLD.cards, -H / 2 + 20, -W * 0.44); slits.passes = fan(HOLD.passes, -H / 2 + 20, W * 0.06); // cards on the left of the wad, passes on the right, each a step lower than the last
+    return { root, pose() {}, w: W, h: H, box: [-14, -20, W + 14, H + 14], over: [[W / 2 - wide / 2 + 0.5, -20, wide - 1, arm + 26]], rest: [0, 0], flat: true, slits }; }
   if (L.type === 'clasped') { const W = 138, H = 92, wall = 46, Fb = 12, Ft = 23, fl = L.flap * 1.5 + 30, yTop = -H / 2 - Ft - fl, yEnd = H / 2 + Fb + wall, tip = Math.min(fl * 0.7, 34);
     const S = sheet(rrect(-W / 2, yTop, W, yEnd - yTop, [tip, tip, 3, 3]), [['y', H / 2 + Fb / 2, 6], ['y', -H / 2 - Ft / 2, 8]]); all.add(skin(S));
     if (L.stitch) all.add(stitches(rrect(-W / 2 + 2.6, yTop + 2.6, W - 5.2, yEnd - yTop - 5.2, [tip - 2, tip - 2, 2, 2]), S.zBack, sew, { under: true }));
     // inside: lined from the flap's tip to the wall's top, a hemmed pocket across the back for the cash, and slots for cards
     all.add(lining(plate(rrect(-W / 2 + 3, yTop + 3, W - 6, yEnd - yTop - 6, [tip - 2, tip - 2, 2, 2]), 0.15, 0.25, { cells: 70 })), cash(-W / 2 + 9, -H / 2 - 4, W - 18));
     all.add(sleeve(-W / 2 + 4, W - 8, H, 20));
-    all.add(slots(-W / 2, W, H / 2, -H / 2 + 26, 2));
+    // across its back, two columns of slits: the cards on the left, the passes on the right
+    const half = (W - 8) / 2; all.add(slots(-W / 2 + 2, half + 2, H / 2, -H / 2 + 26, HOLD.cards, slits.cards), slots(-W / 2 + 4 + half, half + 2, H / 2, -H / 2 + 26, HOLD.passes, slits.passes));
     const out = (y) => S.zBack(0, y) - 0.6, tipY = yTop + 10, studY = Math.min(yEnd - 12, yEnd - wall + fl - 10);
     if (L.clasp === 'zip') all.add(set(new T.BoxGeometry(W * 0.8, 2.6, 1.4), 'metal', METAL, 0, yTop + 4.5, out(yTop + 5)));
     else if (L.clasp === 'magnet') all.add(set(new T.BoxGeometry(14, 8, 2.4), 'metal', '#6a7386', 0, tipY, out(tipY) - 0.6));
@@ -191,16 +205,16 @@ function walletModel(L, notes) {
     const fold = folding(all, [{ axis: 'y', from: -H / 2, len: Fb, sign: -1 }, { axis: 'y', from: H / 2, len: Ft, sign: 1 }]);
     // the gussets: a pleat of the lining at each side, between the back and the wall folded up in front of it (set after the fold: they do not fold)
     const deep = (2 * Fb) / Math.PI; for (const sx of [1, -1]) for (const half of [0, 1]) { const g = new T.BoxGeometry(0.5, wall - 3, deep * 0.62); g.rotateY(sx * (half ? -0.6 : 0.6)); all.add(set(g, 'silk', liningC, sx * (W / 2 - 3.2), H / 2 - wall / 2 + 1, deep * (half ? 0.74 : 0.26))); }
-    return { root, pose: (t) => fold([Math.PI, Math.PI * (1 - t) + 0.22 * t]), w: W, h: H, box: [-18, -Ft - fl - 16, W + 24, H + 18], over: [[0, H - wall + 1, W, wall]], rest: [10, -14], emblem: [12, 8] }; }
+    return { root, pose: (t) => fold([Math.PI, Math.PI * (1 - t) + 0.22 * t]), w: W, h: H, box: [-18, -Ft - fl - 16, W + 24, H + 18], over: [[0, H - wall + 1, W, wall]], rest: [10, -14], emblem: [12, 8], slits }; }
   // a billfold: the two leaves are one sheet, folded down its middle
   const W = 118, H = 92, F = 14, S = sheet(rrect(-W / 2, -H / 2, W * 2 + F, H, r), [['x', W / 2 + F / 2, 7]]); all.add(skin(S));
   if (L.stitch) all.add(stitches(rrect(-W / 2 + 2.6, -H / 2 + 2.6, W * 2 + F - 5.2, H - 5.2, Math.max(1, r - 2)), S.zBack, sew, { under: true }));
   // inside: lined all over; behind everything the long pocket for the cash, hemmed along its top; on each leaf three card slots
   all.add(lining(plate(rrect(-W / 2 + 3, -H / 2 + 3, W * 2 + F - 6, H - 6, Math.max(1, r - 2)), 0.15, 0.25, { cells: 80 })), cash(-W / 2 + 9, -H / 2 - 4, W - 18));
   all.add(sleeve(-W / 2 + 4, W * 2 + F - 8, H, 80));
-  all.add(slots(-W / 2, W, H / 2, -H / 2 + 46, 3), slots(W / 2 + F, W, H / 2, -H / 2 + 46, 3));
+  all.add(slots(-W / 2, W, H / 2, -H / 2 + 26, HOLD.cards, slits.cards), slots(W / 2 + F, W, H / 2, -H / 2 + 26, HOLD.passes, slits.passes)); // the cards on one leaf, the passes on the other
   const fold = folding(all, [{ axis: 'x', from: W / 2, len: F, sign: 1 }]);
-  return { root, pose: (t) => fold([Math.PI * (1 - t)]), w: W, h: H, box: [-18, -22, W * 2 + F + 18, H + 20], over: [[0, 46, W, 46], [W + F, 46, W, 46]], rest: [10, -14], emblem: [W - 27, H - 27], gutter: F };
+  return { root, pose: (t) => fold([Math.PI * (1 - t)]), w: W, h: H, box: [-18, -22, W * 2 + F + 18, H + 20], over: [[0, 46, W, 46], [W + F, 46, W, 46]], rest: [10, -14], emblem: [W - 27, H - 27], gutter: F, slits };
 }
 
 // ---------- a jacket ----------
@@ -315,7 +329,7 @@ function drinkModel(L, fill) {
 
 // ---------- on the element ----------
 const MODELS = new Map(), queue = []; let busy = false;
-const modelOf = (spec) => { const key = `${spec.kind}|${JSON.stringify(spec.look)}|${spec.notes || 0}`; if (!MODELS.has(key)) MODELS.set(key, spec.kind === 'wallet' ? walletModel(spec.look, spec.notes || 0) : spec.kind === 'drink' ? drinkModel(spec.look, (spec.notes || 0) / 100) : jacketModel(spec.look)); return MODELS.get(key); };
+const modelOf = (spec) => { const key = `${spec.kind}|${JSON.stringify(spec.look)}|${spec.notes || 0}|${JSON.stringify(spec.slots || '')}`; if (!MODELS.has(key)) MODELS.set(key, spec.kind === 'wallet' ? walletModel(spec.look, spec.notes || 0, spec.slots) : spec.kind === 'drink' ? drinkModel(spec.look, (spec.notes || 0) / 100) : jacketModel(spec.look)); return MODELS.get(key); };
 // make these ready ahead of being shown (specs as embody takes): each is built, and drawn once so its shaders are compiled
 // pace(ms, kind): what to wait on between pieces; each thing is made in two, built and then drawn (see dice3d.preload)
 export async function prepare(specs, onProgress = () => {}, pace = () => new Promise((r) => setTimeout(r, 0))) { await load(); T = three(); let done = 0, took;
@@ -363,15 +377,47 @@ function dress(el, face, spec) {
   if (spec.kind !== 'wallet') el.addEventListener('pointermove', (ev) => { const r = el.getBoundingClientRect(); if (!r.width || still()) return; const x = (ev.clientX - r.left) / r.width - 0.5, y = (ev.clientY - r.top) / r.height - 0.5;
     st.lean = [-y * 30, x * 44]; cancelAnimationFrame(st.raf); st.raf = requestAnimationFrame(draw); }, { passive: true });
   // in the hand (ui/spin.js): the body itself, turned freely
-  el._look = (least) => { const size = Math.max(least, 250), px = Math.round(size * Math.min(2, devicePixelRatio || 1)), cv = document.createElement('canvas'); cv.width = cv.height = px; Object.assign(cv.style, { width: `${size}px`, height: `${size}px` });
+  // (a wallet comes up larger: open, what it holds must be read in it)
+  el._look = (least) => { const size = Math.max(least, spec.kind === 'wallet' ? 400 : 250), px = Math.round(size * Math.min(2, devicePixelRatio || 1)), cv = document.createElement('canvas'); cv.width = cv.height = px; Object.assign(cv.style, { width: `${size}px`, height: `${size}px` });
     const cx = cv.getContext('2d'), wrap = document.createElement('div'); wrap.className = 'g3-look'; wrap.append(cv); let R = new DOMMatrix(), t = 0, want = 0, raf = 0;
     // shut, it fills the view; open, the view takes in all of it however it is turned
     const near = (Math.max(M.w, M.h) * 0.62 + 10) * u, far = Math.hypot(Math.max(M.w / 2 - bx0, bx1 - M.w / 2), Math.max(M.h / 2 - by0, by1 - M.h / 2)) * u;
     const paint = () => { const half = near + (far - near) * t; M.pose(t); cx.clearRect(0, 0, px, px); cx.drawImage(renderGroup(M.root, { w: px, h: px, view: [-half, -half, half, half], turn: R }), 0, 0); };
     const look = { el: wrap, size, name: spec.name, sub: spec.sub, start: new DOMMatrix().rotateSelf(-10, 24, 0), get matrix() { return R; }, setRotation(m) { R = m; paint(); } };
-    // a click on a wallet held up opens it, or shuts it again (what it holds stays where the wallet was: only the wallet is in the hand)
-    if (spec.kind === 'wallet' && !M.flat) look.click = () => { want = want ? 0 : 1; cancelAnimationFrame(raf); let last = performance.now();
-      const tick = (now) => { const d = (now - last) / 420; last = now; t = want > t ? Math.min(want, t + d) : Math.max(want, t - d); paint(); if (t !== want && wrap.isConnected) raf = requestAnimationFrame(tick); }; raf = requestAnimationFrame(tick); };
+    if (spec.kind === 'wallet') heldIn(look, M, spec, { wrap, size, u, near, far, at: () => t, open: (w, done) => { want = w; cancelAnimationFrame(raf); let last = performance.now();
+      const tick = (now) => { const d = (now - last) / 420; last = now; t = want > t ? Math.min(want, t + d) : Math.max(want, t - d); paint(); if (t !== want && wrap.isConnected) raf = requestAnimationFrame(tick); else done?.(); }; raf = requestAnimationFrame(tick); } });
     return look; };
   aim(); draw();
+}
+
+// ---------- a wallet held up close (ui/spin.js) ----------
+// A click opens it, or shuts it again (a clip, which has no inside, fans out what it holds), and it stays held up
+// either way until a right click puts it down. Open, it turns face on and holds still, and the very cards and passes
+// you carry stand in its slits (cards on one side, passes on the other, one slit each), each a little lower than the
+// last so every top shows; a clip lays them one over the next on its wad the same way. Point at one and it is pulled
+// out, larger, over the wallet (which stays where it is); point at another and they change places; a right click puts
+// it back. When the wallet is put down, each goes back where it was.
+const STICK = 24, PULLED = 0.4; // px a card stands above its slit · how wide one pulled out is, of the view
+function heldIn(look, M, spec, V) {
+  const held = spec.held?.() || { cards: [], passes: [] }, shelf = document.createElement('div'); shelf.className = 'g3-held'; V.wrap.append(shelf);
+  const items = [...held.cards.map((el, i) => ({ el, at: M.slits?.cards[i] })), ...held.passes.map((el, i) => ({ el, at: M.slits?.passes[i] }))].filter((x) => x.el && x.at);
+  const homes = new Map(); let showing = false, out = null;
+  // model px → px of the view, as it lies face on (an orthographic view: exact)
+  const P = (mx, my) => { const half = V.near + (V.far - V.near) * V.at(), k = V.size / (2 * half); return [(mx * V.u + half) * k, (my * V.u + half) * k]; };
+  const place = () => items.forEach(({ el, at }, i) => {
+    if (el === out) { const w = V.size * PULLED, k = w / (el.offsetWidth || 1); Object.assign(el.style, { left: `${(V.size - w) / 2}px`, top: `${V.size * 0.06}px`, transform: `scale(${k})`, clipPath: 'none', zIndex: 50 }); return; }
+    const [ax, ay] = P(at.x0, at.top - STICK), [bx] = P(at.x1, 0), [, hem] = P(0, at.top + 2.2), k = (bx - ax) / (el.offsetWidth || 1);
+    const shows = (hem - ay) / k; // a card in a slit shows only above the slit's hem; one fanned on a clip lies whole
+    Object.assign(el.style, { left: `${ax}px`, top: `${ay}px`, transform: `scale(${k})`, clipPath: at.loose ? 'none' : `inset(0 0 ${Math.max(0, el.offsetHeight - shows)}px 0)`, zIndex: i + 1 });
+  });
+  const pull = (el) => { if (!showing || out === el) return; out = el; items.forEach((x) => x.el.classList.toggle('pulled', x.el === el)); place(); };
+  const show = (on) => { showing = on; shelf.classList.toggle('on', on);
+    if (on) { for (const { el } of items) { if (!homes.has(el)) homes.set(el, { parent: el.parentNode, next: el.nextSibling, style: el.getAttribute('style') }); el.classList.add('in-slit'); el.addEventListener('pointerenter', el._pull = () => pull(el)); shelf.append(el); } place(); }
+    else { out = null; items.forEach((x) => x.el.classList.remove('pulled')); } };
+  // a clip: face on, and fan what it holds (or gather it again)
+  look.click = () => { if (M.flat) { if (!showing) look.setRotation(new DOMMatrix()); return show(!showing); }
+    if (V.at() > 0.5) { show(false); V.open(0); } else { look.setRotation(new DOMMatrix()); V.open(1, () => show(true)); } }; // open: face on, then what it holds into its slits
+  look.locked = () => showing; // open (or fanned), it holds still: what it holds stands in it
+  look.back = () => { if (!out) return false; out = null; items.forEach((x) => x.el.classList.remove('pulled')); place(); return true; }; // a right click puts a pulled card back
+  look.close = () => { for (const [el, h0] of homes) { el.removeEventListener('pointerenter', el._pull); el.classList.remove('in-slit', 'pulled'); if (h0.style == null) el.removeAttribute('style'); else el.setAttribute('style', h0.style); h0.parent?.insertBefore(el, h0.next?.parentNode === h0.parent ? h0.next : null); } homes.clear(); };
 }
