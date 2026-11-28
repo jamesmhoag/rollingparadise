@@ -34,6 +34,23 @@ const chip = (b, kind, value, extra = {}) => ({ id: b.nextId++, kind, value, ...
   assert(!aims.some((x) => x.side === 1 && x.r === 1), 'but not their stacks you do not top');
 }
 
+// your own stacks: a stack your opponent's chip tops is theirs to lay on top of, not yours; an empty space, or a trick
+// that slips its chip under the stack, still can
+{
+  const run = R.newRun('technician', 'standard', 23), { bout } = R.startIntro(run), s = bout.sides[0], o = bout.sides[1];
+  for (const row of s.grid) for (const cell of row) cell.chips = [];
+  bout.phase = 'aim';
+  s.grid[0][0].chips = [chip(bout, 'std', 3), chip(bout, 'debt', 2, { by: o.idx })]; s.grid[0][1].chips = [chip(bout, 'std', 3)];
+  const on = (id) => B.validTargets(bout, s, entry(id, 9100)).filter((x) => x.side === s.idx).map((x) => `${x.r}:${x.c}`);
+  const over = on('empower');
+  assert(!over.includes('0:0') && over.includes('0:1') && over.includes('0:2'), 'a chip laid on top: not on a stack your opponent tops; yes on your own, and on an empty space');
+  assert(on('stir').includes('0:0'), 'a chip slipped under the stack: your opponent topping it does not stop it');
+  for (const row of o.grid) for (const cell of row) cell.chips = [];
+  o.grid[0][2].chips = [chip(bout, 'std', 2), chip(bout, 'debt', 1, { by: s.idx })];
+  const cush = B.validTargets(bout, s, entry('cushion', 9101));
+  assert(!cush.some((x) => x.side === o.idx), 'an effect chip (Reducer) never goes on their side, even on a stack you top');
+}
+
 // reward chips: a random empty space of the Bet, else the lowest stack with room; Power that will not fit is not counted
 {
   const run = R.newRun('rascal', 'standard', 22), { bout } = R.startIntro(run), s = bout.sides[0], m = s.dims.meterRows;

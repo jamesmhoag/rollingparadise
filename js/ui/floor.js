@@ -3,7 +3,7 @@ import { h, syncList, openPanel, closePanel, toast, btn, tween, pulse, swapText,
 import { app, hud, oppTip, trickTag, diceSummary } from './app.js';
 import { faceList, dieName, canMelt, matOf } from '../dice.js';
 import { meltVolume, castNeed, castFor, mixDyes, mixOpen } from '../forge.js';
-import { dieEl, dieTip, trickTip, trickWords, drinkTip, cardTip, chipEl, chipTip, cardEl, drinkEl, feltStyle, passEl, keyEl, cardRule } from './parts.js';
+import { dieEl, dieTip, trickTip, trickWords, drinkTip, cardTip, chipEl, chipTip, cardEl, drinkEl, feltStyle, passEl, keyEl, cardRule, cursorPicker } from './parts.js';
 import { walletEl, jacketEl } from './gear.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
@@ -327,7 +327,8 @@ function kitPanel() {
         draw(); return h('div', { class: 'col', style: { gap: '6px' } }, list, edit); })(),
       h('span', { class: 'cap', text: tx('floor.position') }), h('p', { class: 'sub', text: tx('floor.bet-rows-and-stake', { meterRows: st.dims.meterRows, barRows: st.dims.barRows, stackMax: st.dims.stackMax, barRows2: st.dims.barRows * 5 * st.dims.stackMax }) }),
       // your starting position, changed here as well as before each bout (it is the one every table starts from)
-      (() => { const P = planner(() => ({}), null, { maxW: 300 }); P.update(); return h('div', { class: 'box' }, P.el); })()))));
+      (() => { const P = planner(() => ({}), null, { maxW: 300 }); P.update(); return h('div', { class: 'box' }, P.el); })(),
+      cursorPicker()))));
 }
 
 // the High Rollers' business cards you have won: pick the one you play by

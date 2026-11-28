@@ -1,10 +1,22 @@
 // The game's own pointer: one drawn set of cursors, larger than the system's and in high contrast (a dark body, a bright
-// neon edge and a white inner line), used everywhere in place of the browser's. Each set is themed: the scene shown
-// picks its theme (a scene can name one with data-cursors; the table is 'table'), and the whole page takes it, so the
-// tooltips, panels and anything carried follow the scene too.
+// neon edge and a white inner line), used everywhere in place of the browser's. The player picks its colour (in the
+// Coat Check, the Suite or the Alley; kept between runs): one of CURSOR_COLORS, or 'scene', where the scene shown
+// picks it (a scene can name a theme with data-cursors; the table is 'table'). The whole page takes it, so the
+// tooltips, panels and anything carried follow too.
 // style.css never names a system cursor directly: every rule says cursor: var(--cur-<kind>, <kind>), and these are
 // the --cur-* values. Kinds: default, pointer, help, grab, grabbing, crosshair, not-allowed.
 export const CURSOR_PX = 32;
+// the colours the player can pick: a neon edge on a dark body of the same hue, with a pale inner line
+export const CURSOR_COLORS = [
+  { id: 'gold', edge: '#ffd76a' }, { id: 'cyan', edge: '#6ef0ff' }, { id: 'magenta', edge: '#ff5fd2' }, { id: 'red', edge: '#ff5a4a' },
+  { id: 'orange', edge: '#ff9a3c' }, { id: 'green', edge: '#5cff8a' }, { id: 'blue', edge: '#5a8cff' }, { id: 'violet', edge: '#b07bff' }, { id: 'white', edge: '#f4f1ff' },
+];
+const tint = (hex, k) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * k).toString(16).padStart(2, '0')).join('');
+const lift = (hex) => '#' + [1, 3, 5].map((i) => Math.round(255 - (255 - parseInt(hex.slice(i, i + 2), 16)) * 0.25).toString(16).padStart(2, '0')).join('');
+const colorTheme = (id) => { const c = CURSOR_COLORS.find((x) => x.id === id); return c && { edge: c.edge, body: tint(c.edge, 0.11), line: lift(c.edge) }; };
+// the player's pick, kept between runs: a colour id, or 'scene'
+const PREF = 'rp.cursor';
+export const cursorPref = () => { try { return globalThis.localStorage?.getItem(PREF) || 'scene'; } catch { return 'scene'; } };
 export const CURSOR_THEMES = {
   default: { edge: '#ffd76a', body: '#160d2e', line: '#fff6d8' }, // gold, as the menus and the floor
   table: { edge: '#6ef0ff', body: '#071a24', line: '#e6fdff' }, // cyan, as the table's tubes
@@ -36,14 +48,16 @@ export const CURSOR_KINDS = ['default', 'pointer', 'help', 'grab', 'grabbing', '
 const sets = new Map();
 // the --cur-* values for a theme (built once per theme)
 export function cursorSet(theme = 'default') {
-  if (!sets.has(theme)) { const T = CURSOR_THEMES[theme] || CURSOR_THEMES.default; sets.set(theme, Object.fromEntries(CURSOR_KINDS.map((k) => [`--cur-${k}`, `${url(k, T)}, ${k}`]))); }
+  if (!sets.has(theme)) { const T = colorTheme(theme) || CURSOR_THEMES[theme] || CURSOR_THEMES.default; sets.set(theme, Object.fromEntries(CURSOR_KINDS.map((k) => [`--cur-${k}`, `${url(k, T)}, ${k}`]))); }
   return sets.get(theme);
 }
-let current = null;
-// Put a theme's cursors on the page (or on one element and what is inside it).
-export function applyCursors(theme = 'default', el = typeof document !== 'undefined' ? document.documentElement : null) {
-  if (!el || (el === document.documentElement && current === theme)) return; if (el === document.documentElement) current = theme;
+let current = null, sceneTheme = 'default';
+// Put the cursors on the page: the player's colour, or (picking 'scene') the theme the scene asks for.
+export function applyCursors(theme = sceneTheme, el = typeof document !== 'undefined' ? document.documentElement : null) {
+  if (!el) return; if (el === document.documentElement) { sceneTheme = theme; const pref = cursorPref(); if (pref !== 'scene') theme = pref; if (current === theme) return; current = theme; }
   for (const [k, v] of Object.entries(cursorSet(theme))) el.style.setProperty(k, v);
 }
 // the theme a scene asks for
 export const themeOf = (sceneEl) => sceneEl?.dataset?.cursors || (sceneEl?.classList?.contains('bout') ? 'table' : 'default');
+// the player picks a colour (or 'scene'): kept, and on the page at once
+export function setCursorPref(id) { try { if (id === 'scene') globalThis.localStorage?.removeItem(PREF); else globalThis.localStorage?.setItem(PREF, id); } catch { /* storage unavailable */ } applyCursors(sceneTheme); }

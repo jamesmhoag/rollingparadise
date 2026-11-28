@@ -1084,10 +1084,13 @@ export function validTargets(b, s, e, payOnly) {
   const def = TRICKS[e.trick.id];
   if (def.side === 'any') return aimSides(b, s, def).flatMap((t) => validOn(b, s, def, t, payOnly));
   const t = targetSide(b, s, def); if (!t || def.approach === 'none') return [];
-  const out = validOn(b, s, def, t, payOnly);
+  let out = validOn(b, s, def, t, payOnly);
+  // a trick that lays its chip on top of your stacks cannot lay it on one your opponent's chip tops (it is theirs now);
+  // an empty space still takes it, and a trick that slips its chip under the stack (place 'under') still can
+  if (t === s && addsChips(def) && def.roll.place !== 'under') out = out.filter((x) => { const cell = s.grid[x.r][x.c]; return !cell.chips.length || ownerOf(s, cell) === s.idx; });
   // a trick that places chips on your stacks can place them on a stack of theirs your chip tops: it is yours now
   // (not effect chips: those work for the side they sit on)
-  if (t === s && addsChips(def) && def.approach !== 'meter' && fxOf(def) !== 'make') { const o = b.sides[1 - s.idx]; for (const { r, c, cell } of allCells(o)) if (yoursThere(s, o, r, c) && capacityLeft(o, cell) > 0) out.push(ref(o, r, c)); }
+  if (t === s && addsChips(def) && def.approach !== 'meter' && !makeOf(def)) { const o = b.sides[1 - s.idx]; for (const { r, c, cell } of allCells(o)) if (yoursThere(s, o, r, c) && capacityLeft(o, cell) > 0) out.push(ref(o, r, c)); }
   return out;
 }
 function validOn(b, s, def, t, payOnly) {

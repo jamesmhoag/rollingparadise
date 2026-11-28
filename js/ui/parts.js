@@ -8,6 +8,7 @@ import * as D from '../data.js';
 import * as CM from '../content/chipmaker.js';
 import { cents, cap, shade } from '../util.js';
 import { multOf, makeOf, fxOf, traitRule, occBonus, occupancy, CCC, TIP } from '../bout.js';
+import { CURSOR_COLORS, cursorSet, cursorPref, setCursorPref } from './cursors.js';
 import { facesOf, faceValue, matOf, dieName, petName } from '../dice.js';
 import { traitsOf, traitsHtml } from '../traits.js';
 import { iconStyle, textureOf } from './icons.js';
@@ -346,4 +347,19 @@ export function focusRowsTip(s, k, o = occupancy(s)) {
   const ob = occBonus(s, o), rows = k === 'bet' ? o.betRows : o.stakeRows, tier = ob.tier[k], zone = tx(k === 'bet' ? 'table.zone-bet' : 'table.zone-stake');
   return tx('table.rows-tip', { zone, n: rows.filter((x) => x.n > 0).length, of: rows.length, rule: focusRule(s.cls), now: tier ? tx('table.rows-now', { tier: focusTierText(tier), list: focusEarned(s, ob) }) : tx('table.rows-now-none') })
     + (tier === 1 ? `<p class="dim">${tx('table.rows-align-hint')}</p>` : '');
+}
+
+// ---------- the pointer's colour (ui/cursors.js) ----------
+// A row of swatches, each the arrow in its colour, and 'Scene' (gold, cyan at the table): the pick is kept between
+// runs. Shown in the Coat Check, the Suite and the Alley.
+const CURSOR_NAME = { gold: 'parts.cursor.gold', cyan: 'parts.cursor.cyan', magenta: 'parts.cursor.magenta', red: 'parts.cursor.red', orange: 'parts.cursor.orange', green: 'parts.cursor.green', blue: 'parts.cursor.blue', violet: 'parts.cursor.violet', white: 'parts.cursor.white' };
+export function cursorPicker() {
+  const el = h('div', { class: 'cursor-pick' });
+  const arrow = (id) => { const v = cursorSet(id)['--cur-default']; return v.slice(v.indexOf('"') + 1, v.indexOf('"', v.indexOf('"') + 1)); };
+  const draw = () => { const now = cursorPref();
+    el.replaceChildren(h('span', { class: 'cap', text: tx('parts.cursor') }), h('div', { class: 'row wrap swatches' },
+      ...['scene', ...CURSOR_COLORS.map((c) => c.id)].map((id) => h('button', { class: `swatch ${now === id ? 'on' : ''}`, style: id === 'scene' ? {} : { '--sw': CURSOR_COLORS.find((c) => c.id === id).edge },
+        tip: tx(id === 'scene' ? 'parts.cursor.scene.tip' : 'parts.cursor.pick', { name: tx(id === 'scene' ? 'parts.cursor.scene' : CURSOR_NAME[id]) }),
+        onclick: () => { setCursorPref(id); draw(); } }, id === 'scene' ? h('span', { text: tx('parts.cursor.scene') }) : h('img', { src: arrow(id), alt: '' }))))); };
+  draw(); return el;
 }

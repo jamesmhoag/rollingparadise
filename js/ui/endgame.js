@@ -1,7 +1,7 @@
 // Suites, the Gift Shop exit, the Paradise Ascent and the end of a run.
 import { h, syncList, toast, btn, tween, pulse, wait, tip } from './core.js';
 import { nameTag, app, hud, oppTip, trickTag } from './app.js';
-import { jacketTip, trickTip, trickWords, cardTip, dieTip, dieEl, passEl } from './parts.js';
+import { jacketTip, trickTip, trickWords, cardTip, dieTip, dieEl, passEl, cursorPicker } from './parts.js';
 import { planner } from './prep.js';
 import * as D from '../data.js';
 import { signOf, dressSign, crownLookOf, crownFit, CROWN_FIT, nameSign } from './sign.js';
@@ -61,7 +61,7 @@ export function suiteScene(root, penthouse) {
   renderCrowns();
   root.append(H.el, h('div', { class: 'page cols3' },
     h('div', { class: 'box col' }, h('h2', { text: t('suite.dresser') }), h('p', { class: 'sub', text: t('suite.dresser.sub') }), dresser),
-    h('div', { class: 'box col scroll' }, h('h2', { text: t('suite.wardrobe') }), h('p', { class: 'sub', text: t('suite.wardrobe.sub') }), J.el, crowns),
+    h('div', { class: 'box col scroll' }, h('h2', { text: t('suite.wardrobe') }), h('p', { class: 'sub', text: t('suite.wardrobe.sub') }), J.el, crowns, cursorPicker()),
     h('div', { class: 'box col' }, h('h2', { text: t(penthouse ? 'suite.bed.nice' : 'suite.bed') }),
       h('p', { class: 'sub', text: t(penthouse ? 'suite.bed.nice.sub' : 'suite.bed.sub', { stat: D.STATS[K.primary].name }) }),
       h('span', { class: 'grow' }), btn(t(penthouse ? 'suite.sleep.ascent' : 'suite.sleep'), () => { R.goToBed(run, penthouse); if (penthouse) { R.buildAscent(run, app.meta); app.nav.ascent(); } else { R.enterFloor(run, run.floor + 1); sfx('floor'); app.nav.hub(); } }, null, 'big go'))));
@@ -109,7 +109,7 @@ export function alleyScene(root) {
     h('h1', { class: 'neon-p', text: t('alley.title') }),
     h('p', { class: 'sub', text: t('alley.sub') }),
     h('div', { class: 'box col', guide: 'wallet', style: { alignItems: 'center', width: '100%' }, tip: () => walletTip(run.wallet) }, h('span', { class: 'cap', text: t(roll.pass ? 'alley.wallet.pass' : 'alley.wallet', { name: Wl.name, n: roll.cards.length, p: roll.passes.length, pass: roll.passes.map((f) => D.PASSES[f].name).join(', '), need: roll.need }) }),
-      h('div', { class: 'row', style: { gap: '18px', margin: '10px 0' } }, dice, h('span', { class: 'dim', text: '=' }), total), verdict, kept), cont)));
+      h('div', { class: 'row', style: { gap: '18px', margin: '10px 0' } }, dice, h('span', { class: 'dim', text: '=' }), total), verdict, kept), cont, cursorPicker())));
   (async () => {
     await wait(900);
     if (!roll.cards.length && !roll.pass) { verdict.textContent = t('alley.empty'); verdict.style.opacity = 1; return cont.classList.remove('off'); }

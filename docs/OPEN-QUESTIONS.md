@@ -390,11 +390,10 @@ Not built yet, or only in part:
 
 - **Reward chips and the Stake.** Unused-action chips go to the Bet only (empty space first, then the lowest stack);
   a full Bet still loses them. Say if they should spill into the Stake.
-- **A stack your chip tops: is it still theirs?** You can now place on it and aim past it. Your opponent can still
-  aim their own tricks at it as before. Say if it should stop being theirs to use.
+- **A stack your chip tops** (settled in round 23): your opponent cannot lay a chip on top of it, but can still use
+  an empty space, or slip a chip under it. Still to play through: the scenarios of advancing your position.
 - **Effect chips on stacks you own.** Tricks that make effect chips (Power, Reducer and the like) still go only on
   your own side, since those chips work for whichever side they sit on.
 - **What a forecast cannot know.** Fee forecasts now match the House in about 92% of cases in AI play. The rest come
   from your opponent's hidden plays (Counter chips bouncing Debt back) and stacks rearranged earlier in the turn.
-- **Cursor themes.** Two themes so far: gold everywhere, cyan at the table. A scene can name another with
-  data-cursors; say which scenes should get their own.
+- **Cursor colours** (settled in round 23): nine colours and 'Scene', picked in the Coat Check, Suite or Alley.

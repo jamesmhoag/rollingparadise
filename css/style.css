@@ -1552,3 +1552,10 @@ body.spinning .thing > .th-body, body.carrying-now .thing > .th-body { transitio
 .die.listed.tapped .die-name { opacity: .55; }
 /* the Bonus line says everything it needs (dice, what they make, the class): set a size down so it fits the card */
 .tcard.open .c-text .bonus { font-size: 9.5px; line-height: 1.2; }
+/* the pointer's colour (parts.js cursorPicker) */
+.cursor-pick { display: grid; gap: 6px; } .cursor-pick .swatches { gap: 6px; }
+.cursor-pick .swatch { all: unset; box-sizing: border-box; height: 34px; min-width: 34px; padding: 0 6px; display: grid; place-items: center; border-radius: 8px; cursor: var(--cur-pointer, pointer);
+  background: rgba(12, 8, 30, .8); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); font-size: 11px; color: var(--cream); }
+.cursor-pick .swatch img { width: 24px; height: 24px; }
+.cursor-pick .swatch:hover { box-shadow: inset 0 0 0 1px var(--sw, var(--gold)); }
+.cursor-pick .swatch.on { box-shadow: inset 0 0 0 2px var(--sw, var(--gold)), 0 0 10px color-mix(in srgb, var(--sw, var(--gold)) 50%, transparent); }

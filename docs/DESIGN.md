@@ -1114,6 +1114,9 @@ for a close look, to be turned over (`ui/spin.js`, the look a die gets).
   your way: you can aim past it to the next stack in the lane. A trick that places chips on your own stacks can also
   place them on a stack of theirs that your chip tops (not effect chips such as Power, which work for the side they
   sit on). `ownerOf` / `yoursThere` in bout.js.
+  The other way round: a trick that lays its chip on top of your own stacks (roll.place 'over') cannot lay it on one
+  your opponent's chip tops, since that stack is theirs now; it can still go on an empty space, and a trick that slips
+  its chip under the stack (roll.place 'under') still can.
 - **Every trick is aimed.** There is no aim tag on a card and no switch for the aim display: every trick that lays
   chips is aimed (yours at the best target when the Bluff opens, the House's the same way) and its aim is drawn over
   the position, showing where its chips will go. A pick made on a view of the table that has since changed falls to
@@ -1136,8 +1139,9 @@ for a close look, to be turned over (`ui/spin.js`, the look a die gets).
 - **Lists show there is more**: in the Book, the Pouch and the Roll, when a list holds more than its window, the last
   place shows the next item cut off; the Run's next row stands just behind the row in front, its foot showing. The
   arrows that scroll a window stand in a gutter of their own, clear of what they scroll.
-- **Cursors**: the game draws its own (ui/cursors.js), larger than the system's and in high contrast, in a theme the
-  scene picks (gold; cyan at the table). Every `cursor:` in style.css goes through `var(--cur-<kind>)`.
+- **Cursors**: the game draws its own (ui/cursors.js), larger than the system's and in high contrast. The player
+  picks its colour (gold, cyan, magenta, red, orange, green, blue, violet, white, or 'Scene': gold, cyan at the
+  table) in the Coat Check, the Suite or the Alley; the pick is kept between runs. Every `cursor:` in style.css goes through `var(--cur-<kind>)`.
 - **One place, one text.** A text that arrives where another stands replaces it until it is over (`overText`,
   ui/core.js: the Roll's box while dice are held over it), and the general rule in core.js (MOMENT / STANDING)
   covers names over spaces too.
