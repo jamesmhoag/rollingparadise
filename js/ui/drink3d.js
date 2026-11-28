@@ -36,7 +36,7 @@ function turned(V, fill) {
   const rIn = (y) => rOut(y) - V.wall, level = V.floor - Math.max(0, Math.min(1, fill)) * (V.floor - lip[1] - 3.2);
   const side = bowl.filter(([, y]) => y > level).map(([r, y]) => [Math.max(0.1, r - V.wall - 0.12), y]).sort((a, b) => b[1] - a[1]);
   const drink = fill > 0.01 ? spun([[0, V.floor - 0.12], ...side, [rIn(level) - 0.12, level], [rIn(level) * 0.82, level + 0.18], [rIn(level) * 0.4, level + 0.28], [0, level + 0.3]]) : null;
-  return { vessel, drink, level, rIn, rOut, lip };
+  return { vessel, outside: spun(out), drink, level, rIn, rOut, lip };
 }
 // a box with its edges and corners rounded (an ice cube)
 function roundedBox(s, r, seg = 4) {
@@ -76,7 +76,7 @@ export function drinkModel(L, fill) {
   // ---- what is in it (seen through the vessel) ----
   if (full) {
     const drink = body(B.drink, L.liquid.mat, L.liquid.color); all.add(drink);
-    drink.traverse((m) => { if (m.material?.emissiveMap) flow = m.material.emissiveMap; });
+    drink.traverse((m) => { if (m.material?.userData?.chromatic) flow = m.material; });
     // the surface: the vertices at the top, kept as made so a tilt can be laid over them
     const P = B.drink.attributes.position, top = -(level + 0.32 - CY), idx = []; for (let i = 0; i < P.count; i++) if (P.getY(i) >= top) idx.push(i);
     surface = { P, idx, base: Float32Array.from(idx.flatMap((i) => [P.getX(i), P.getY(i), P.getZ(i)])) };
@@ -102,7 +102,7 @@ export function drinkModel(L, fill) {
     if (L.toy) all.add(toy(L, V, B, live));
   }
   // ---- the vessel, and what is fixed to it ----
-  all.add(vesselBody(B.vessel, L.mat, L.color, clear));
+  all.add(vesselBody(B.vessel, L.mat, L.color, clear, B.outside));
   if (L.rim) { const g = new T.TorusGeometry(lipR - V.wall * 0.5, V.wall * 0.56, 12, 96); g.rotateX(Math.PI / 2); all.add(at(body(g, L.rim.mat, L.rim.color), 0, lipY + 0.6)); }
   if (L.crust) all.add(crust(L.crust, lipR, lipY, V.wall));
   if (V.handle) all.add(vesselBody(handle(V.handle, B), L.mat, L.color, false));
@@ -120,10 +120,13 @@ export function drinkModel(L, fill) {
     if (L.slosh) { if (dt > 0) for (let k = 0; k < 2; k++) { const want = k ? tz : tx; S.v[k] += ((want - S.s[k]) * 70 - S.v[k] * 3.2) * dt; S.s[k] += S.v[k] * dt; } else if (!S.set) { S.s = [tx, tz]; S.set = true; } } else S.s = [tx, tz];
     const ripple = (x, z) => (L.fizz ? 0.12 : 0.05) * Math.sin(S.t * 2.6 + x * 0.6) * Math.cos(S.t * 2.1 + z * 0.5);
     if (surface) { const { P, idx, base } = surface; idx.forEach((i, n) => { const x = base[n * 3], z = base[n * 3 + 2]; P.setY(i, base[n * 3 + 1] + S.s[0] * x + S.s[1] * z + ripple(x, z)); }); P.needsUpdate = true; B.drink.computeVertexNormals(); }
-    for (const m of live.top) { m.rotation.set(Math.atan(S.s[1]), 0, -Math.atan(S.s[0])); }
+    // (what floats on it tilts with it: a head of foam sits on the surface, not through it)
+    for (const m of live.top) { m.rotation.set(-Math.atan(S.s[1]), 0, Math.atan(S.s[0])); }
     for (const c of live.ice) { const lift = Math.sin(S.t * 1.3 + c.ph) * 0.35; c.m.position.y = c.y + lift + S.s[0] * c.m.position.x + S.s[1] * c.m.position.z; c.m.rotation.y += dt * 0.08; }
     for (const b of live.bob) b(S, dt);
-    if (flow) flow.offset.x = (S.t * 0.07) % 1;
+    // a chromatic drink: white, then a tint rising through it, then white again, the tint a new colour each time round
+    if (flow) { const w = 0.5 - 0.5 * Math.cos(S.t * 1.15), hue = (S.t * 0.05 + (S.hue ??= Math.random())) % 1, tint = new T.Color().setHSL(hue, 0.95, 0.56);
+      flow.color.set(0xffffff).lerp(tint, w * 0.92); flow.emissive.set(0xffffff).lerp(tint, w).multiplyScalar(0.55 + 0.45 * w); flow.sheenColor.set(0xffffff).lerp(tint, 0.5 * w); }
     if (bubbles) { const list = S.bub; while (list.length < 34) list.push(newBubble(list.length === 0 ? 0 : Math.random()));
       list.forEach((q, i) => { q.y -= q.v * dt; q.x += Math.sin(S.t * 3 + q.ph) * dt * 0.6; if (q.y < level + 0.6) Object.assign(q, newBubble(0)); const R = Math.max(0.5, B.rIn(q.y) - 1.2), d = Math.hypot(q.x, q.z); if (d > R) { q.x *= R / d; q.z *= R / d; }
         dummy.position.set(q.x, -(q.y - CY), q.z); dummy.scale.setScalar(q.s); dummy.updateMatrix(); bubbles.setMatrixAt(i, dummy.matrix); }); bubbles.instanceMatrix.needsUpdate = true; }
@@ -197,6 +200,6 @@ function toy(L, V, B, live) {
   if (L.toy === 'duck') { const d = new T.Group(); const bd = new T.SphereGeometry(2.6, 24, 16); bd.scale(1.25, 0.8, 1); d.add(body(bd, 'vinyl', c)); d.add(at(body(new T.SphereGeometry(1.6, 20, 14), 'vinyl', c), 1.8, CY - 2.6));
     const beak = new T.ConeGeometry(0.6, 1.6, 12); beak.rotateZ(-Math.PI / 2); d.add(at(body(beak, 'vinyl', '#ff8a1c'), 3.7, CY - 2.5)); for (const z of [-0.8, 0.8]) d.add(at(body(new T.SphereGeometry(0.26, 8, 6), 'plastic', '#111111'), 2.9, CY - 3.1, z));
     const k = Math.min(1, (B.rIn(level) - 0.6) / 4.2); d.scale.setScalar(Math.max(0.4, k)); at(d, 0, level - 0.2); g.add(d);
-    live.bob.push((S) => { d.position.y = -(level - 0.2 - CY) + Math.sin(S.t * 1.6) * 0.3 + S.s[0] * d.position.x; d.rotation.set(Math.atan(S.s[1]), S.t * 0.15, -Math.atan(S.s[0])); }); }
+    live.bob.push((S) => { d.position.y = -(level - 0.2 - CY) + Math.sin(S.t * 1.6) * 0.3 + S.s[0] * d.position.x; d.rotation.set(-Math.atan(S.s[1]), S.t * 0.15, Math.atan(S.s[0])); }); }
   return g;
 }

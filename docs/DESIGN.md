@@ -1261,3 +1261,10 @@ material. A sign's lettering is set and fitted in the room its edging leaves.
   outside at its far edge closes onto the back leaf's inside at its top.
 - **The Gear maker** sets all of it: type (billfold, clasped, clutch, clip), closure, hardware material, colour and
   size, the chain (on, material, colour, length) and rivets.
+- **Round 27b**: a clear vessel round an opaque drink is made exactly as a die of its material is, its relief and
+  its brilliance (the far side of its outside a mirror from within) included, so the diamond coupe is a diamond
+  die's diamond. The chromatic drink turns white, then a tint rises through it, then white again, a new colour each
+  time round. A drink held up close tilts back much further than other things (to look into it). Foam and a floating
+  duck tilt with the surface (the sign was the wrong way round). Things held up close rise from where they sit,
+  growing from their size there, and go back slowly: an open wallet shuts first, then the thing settles upright and
+  glides home, shrinking as it goes. A drink's three glasses in the Library come up in the same place.

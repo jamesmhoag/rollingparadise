@@ -12,19 +12,32 @@ const GRAB = 5, SIZE = 132, SENS = 0.55; // px of drag before a press becomes a 
 // Anything but a die, held up close, only leans a little off upright as you drag it (a die turns freely: it has faces
 // to read): TILT the most it leans (pitch, yaw, in degrees), and let go it settles back upright. Dragged on past the
 // lean, a card or a pass turns over to its other side (FLIP px of drag beyond the lean).
-const TILT = [10, 16], LEAN = 0.3, FLIP = 70;
+const TILT = [10, 16], LEAN = 0.3, FLIP = 70; // (a look can set its own: `tilt`, [[pitch from, to], [yaw from, to]])
 let view = null; // { el, solid, die, vx, vy, raf, held, leave }
 
 const stage = () => document.getElementById('stage');
 const scaleOf = () => { const s = stage(); return s.getBoundingClientRect().width / s.offsetWidth || 1; };
 
+// Going back is slow and smooth: an open wallet shuts first, then the thing settles upright and glides back down to
+// where it sits, shrinking to its size there as it goes, and only then is it back in its place.
+const BACK = 620, UP = 520, EASE_BACK = 'cubic-bezier(.55, 0, .25, 1)', EASE_UP = 'cubic-bezier(.16, .84, .3, 1)';
+// the move from the view as it is to where (and how big) the node it came from sits
+function homeOf(v) { const b = box(v.anchor), r = v.el.getBoundingClientRect(), k = scaleOf(), st = stage().getBoundingClientRect();
+  const w = r.width / k, hgt = r.height / k, L = (r.left - st.left) / k, T = (r.top - st.top) / k, f = Math.max(0.12, Math.min(1, Math.max(b.w, b.h) / Math.max(w, hgt)));
+  return `translate(${b.x + b.w / 2 - (L + w / 2)}px, ${b.y + b.h / 2 - (T + hgt / 2)}px) scale(${f})`; }
 function close(now) {
-  if (!view) return; const v = view; view = null; cancelAnimationFrame(v.raf); clearTimeout(v.leave); v.solid.close?.(); // what it held goes back where it was
-  document.body.classList.remove('spinning'); v.node.classList.remove('lifted'); // it is back where it was
+  if (!view) return; const v = view; view = null; cancelAnimationFrame(v.raf); clearTimeout(v.leave);
+  const wasOpen = v.el.classList.contains('opened'); v.solid.close?.(); // what it held goes back where it was
+  document.body.classList.remove('spinning');
   if (!v.node.matches(':hover')) v.node.dispatchEvent(new PointerEvent('pointerleave')); // and idle there, if the pointer left it while it was up
-  if (now) return v.el.remove();
-  v.el.classList.add('out'); setTimeout(() => v.el.remove(), 260);
+  const home = () => { v.node.classList.remove('lifted'); v.el.remove(); }; // it is back where it was
+  if (now || still()) return home();
+  v.el.style.pointerEvents = 'none';
+  // (upright first, as it goes)
+  if (v.bound) { const t0 = [...v.tilt], s0 = performance.now(); const f = (n) => { const k = Math.min(1, (n - s0) / BACK); v.tilt = t0.map((a) => a * (1 - k)); lean(v); if (k < 1 && v.el.isConnected) requestAnimationFrame(f); }; requestAnimationFrame(f); }
+  setTimeout(() => { if (!v.el.isConnected) return; v.el.animate([{ transform: 'none', opacity: 1 }, { transform: homeOf(v), opacity: 1, offset: 0.82 }, { transform: homeOf(v), opacity: 0 }], { duration: BACK, easing: EASE_BACK, fill: 'forwards' }).finished.then(home, home); }, wasOpen ? 480 : 60);
 }
+const still = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 // what a node offers for a close look: a die its solid (every face showing its value), anything else its own (`_look`,
 // see ui/thing.js). → { el, setRotation(m), matrix, name, sub, start }
 function lookOf(node) {
@@ -34,7 +47,8 @@ function lookOf(node) {
 }
 function open(node) {
   close(true);
-  const b = box(node), solid = lookOf(node), bound = !node._die;
+  // (it comes up over where it sits: or over what it is shown with, `_anchor`, so things shown together come up in one place)
+  const anchor = node._anchor?.() || node, b = box(anchor), solid = lookOf(node), bound = !node._die;
   const base = bound ? (solid.upright || new DOMMatrix()) : null; solid.setRotation(bound ? new DOMMatrix().rotateSelf(-5, 8, 0).multiplySelf(base) : solid.start); // (a thing comes up leaning a touch, so it reads as solid)
   const el = h('div', { class: 'spin-view' }, solid.el, h('div', { class: 'spin-cap' }, h('b', { text: solid.name }), h('span', { text: solid.sub })));
   const W = stage().offsetWidth, H = stage().offsetHeight, S = solid.size || SIZE; // (a thing comes up larger than a die: it has print to read)
@@ -46,22 +60,24 @@ function open(node) {
   el.addEventListener('pointerenter', () => { if (view) clearTimeout(view.leave); });
   el.addEventListener('pointerleave', () => { if (view && !view.held && !view.pinned) { clearTimeout(view.leave); view.leave = setTimeout(() => close(), 450); } }); // (clicked, it stays held up until a right click)
   stage().append(el); document.body.classList.add('spinning'); node.classList.add('lifted'); // what is held up is no longer where it was: the one turns into the other
-  view = { el, node, solid, vx: 0, vy: 0, raf: 0, held: false, leave: 0, bound, base, tilt: [-5, 8], over: 0, side: 0 };
+  view = { el, node, anchor, solid, vx: 0, vy: 0, raf: 0, held: false, leave: 0, bound, base, tilt: [-5, 8], over: 0, side: 0, range: solid.tilt || [[-TILT[0], TILT[0]], [-TILT[1], TILT[1]]] };
   // a view that grows (a wallet opening, at the size it came up at) is kept on the screen
   solid.reflow = () => { const c = solid.canvas; if (!c || !el.isConnected) return; const st = stage().getBoundingClientRect(), k = scaleOf(); el.style.left = x + 'px'; el.style.top = y + 'px';
     const r = c.getBoundingClientRect(), L = (r.left - st.left) / k, T = (r.top - st.top) / k, Rt = L + r.width / k, B = T + r.height / k;
     el.style.left = x + Math.min(0, W - 8 - Rt) + Math.max(0, 8 - L) + 'px'; el.style.top = y + Math.min(0, H - 8 - B) + Math.max(0, 8 - T) + 'px'; };
   solid.reflow();
+  // (and it rises from there, growing from its size where it sat)
+  if (!still()) { el.style.animation = 'none'; el.animate([{ transform: homeOf(view), opacity: 0.3 }, { transform: 'none', opacity: 1 }], { duration: UP, easing: EASE_UP }); }
 }
 function turn(dx, dy) {
   if (view.solid.locked?.()) return;
   if (!view.bound) { const m = new DOMMatrix().rotateSelf(-dy * SENS, dx * SENS, 0).multiplySelf(view.solid.matrix); view.solid.setRotation(m); return; }
-  const v = view, t = v.tilt, yaw = t[1] + dx * SENS * LEAN; t[0] = Math.max(-TILT[0], Math.min(TILT[0], t[0] - dy * SENS * LEAN)); t[1] = Math.max(-TILT[1], Math.min(TILT[1], yaw));
+  const v = view, t = v.tilt, [P, Y] = v.range, yaw = t[1] + dx * SENS * LEAN; t[0] = Math.max(P[0], Math.min(P[1], t[0] - dy * SENS * LEAN)); t[1] = Math.max(Y[0], Math.min(Y[1], yaw));
   // (pushed on past the lean, a flat thing turns over)
   if (yaw !== t[1] && v.solid.flat !== false && v.node.matches('.thing')) { v.over += Math.abs(dx); if (v.over > FLIP) { v.over = 0; v.side = 1 - v.side; t[1] = -t[1]; } } else v.over = 0;
-  lean();
+  lean(v);
 }
-const lean = () => { const v = view; v.solid.setRotation(new DOMMatrix().rotateSelf(v.tilt[0], v.tilt[1] + v.side * 180, 0).multiplySelf(v.base)); };
+const lean = (v = view) => { v.solid.setRotation(new DOMMatrix().rotateSelf(v.tilt[0], v.tilt[1] + v.side * 180, 0).multiplySelf(v.base)); };
 // after you let go: it keeps turning, slows, and closes unless the pointer is on it
 function coast() {
   if (!view) return; cancelAnimationFrame(view.raf);

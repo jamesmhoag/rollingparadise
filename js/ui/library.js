@@ -168,7 +168,9 @@ function drinksTab(own) {
   const out = [sec('Drinks', tx('library.sip-one-before-a'))];
   for (const d of D.DRINKS) {
     const stat = D.STATS[d.stat] ? D.STATS[d.stat].name : DRINK_STAT[d.stat];
-    out.push(entry([drinkEl(d), d.sips > 1 ? drinkEl(d, Math.ceil(d.sips / 2), d.sips) : null, drinkEl(d, 0, d.sips)], `${d.name} <span class="dim">${d.verb}</span>`,
+    // (the three glasses come up close in one place, over the three of them)
+    const glasses = [drinkEl(d), d.sips > 1 ? drinkEl(d, Math.ceil(d.sips / 2), d.sips) : null, drinkEl(d, 0, d.sips)]; for (const g of glasses) if (g) g._anchor = () => g.parentElement;
+    out.push(entry(glasses, `${d.name} <span class="dim">${d.verb}</span>`,
       [tx('library.per-sip', { amt: d.amt, stat, sips: d.sips }), dim(tx('library.a-fifth-of-that', { cost: cents(d.cost) }))], { own: own.drink(d.id) ? tx('library.in-your-hand-left', { sips: own.run.drink.sips }) : null }));
   }
   out.push(noUpgrades('Drinks'));

@@ -192,9 +192,10 @@ function material(mat, maps, base) {
     // liquids: one you see through (it takes its colour with depth, as a drink does in its glass), and one you do not (milk, cream)
     case 'liquid': return new T.MeshPhysicalMaterial({ ...common, color: 0xffffff, transmission: 1, thickness: 0.8, ior: 1.33, roughness: 0.03, attenuationColor: c, attenuationDistance: 0.35, clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: 1.6 });
     case 'cream': return new T.MeshPhysicalMaterial({ ...common, color: c, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.08, sheen: 0.5, sheenColor: c });
-    // a liquid you cannot see through but that glows with every colour at once (it flows: map.offset turns), and a
+    // a liquid you cannot see through that turns from white to a colour and back, a new colour each time, and a
     // glossy one in its own colour (a syrup, a shot sunk in a drink: drawn so it shows through a clear drink round it)
-    case 'chromatic': { const map = rainbow(); return new T.MeshPhysicalMaterial({ ...common, color: hi(c, 0.6), emissive: 0xffffff, emissiveMap: map, emissiveIntensity: 0.75, map, roughness: 0.08, metalness: 0.25, clearcoat: 1, clearcoatRoughness: 0.02, iridescence: 1, iridescenceIOR: 1.8, iridescenceThicknessRange: [120, 900], envMapIntensity: 2.2 }); }
+    // (its tint: what a drawing of it sets, frame by frame; see ui/drink3d.js)
+    case 'chromatic': { const m = new T.MeshPhysicalMaterial({ ...common, color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.35, roughness: 0.06, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.02, iridescence: 1, iridescenceIOR: 1.6, iridescenceThicknessRange: [200, 800], sheen: 1, sheenColor: new T.Color(0xffffff), envMapIntensity: 2 }); m.userData.chromatic = true; return m; }
     case 'syrup': return new T.MeshPhysicalMaterial({ ...common, color: rich(base), roughness: 0.06, clearcoat: 1, clearcoatRoughness: 0.02, emissive: rich(base).multiplyScalar(0.35), sheen: 0.4, sheenColor: hi(c, 0.5), envMapIntensity: 1.8 });
     // ice: water frozen clear, its inside crazed with fine cracks and caught bubbles (its relief: GRAIN.ice), bright where
     // it meets the light and cool where it does not (it is drawn as solid, so it shows through the clear drink it floats in)
@@ -283,12 +284,6 @@ function refracting(m, tint, ior) {
       #include <opaque_fragment>`); };
   m.customProgramCacheKey = () => 'refracting'; return m;
 }
-// every colour in bands, for a chromatic liquid to glow with (a fresh one each: its flow is its own)
-function rainbow() {
-  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64; const cx = cv.getContext('2d');
-  for (let x = 0; x < 256; x++) { cx.fillStyle = `hsl(${(x / 256) * 360}, 95%, ${58 + 10 * Math.sin(x / 9)}%)`; cx.fillRect(x, 0, 1, 64); }
-  const tex = new T.CanvasTexture(cv); tex.wrapS = tex.wrapT = T.RepeatWrapping; tex.colorSpace = T.SRGBColorSpace; tex.repeat.set(2, 1); return tex;
-}
 // how much a surface turns away from you, in a shader: 0 face on, 1 edge on (what makes glass look thick at its edges)
 const FRESNEL = 'float edgeOn = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 2.6);';
 const atEdges = (m, how) => { m.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <dithering_fragment>', `#include <dithering_fragment>\n${FRESNEL}\n${how}`); }; m.customProgramCacheKey = () => how; return m; };
@@ -297,10 +292,12 @@ const atEdges = (m, how) => { m.onBeforeCompile = (sh) => { sh.fragmentShader = 
 // itself drawn refracting what is in it, and nothing clear shows through anything clear) it is drawn in two films
 // over the drink: its tint, deepening toward its edges as thick glass does, and what it reflects (added, strongest at
 // the edges, faint face on), so the drink shows through as it should and the glass still has its weight and shine.
-export function vesselBody(g, mat, tint, clearInside) {
+export function vesselBody(g, mat, tint, clearInside, shell) {
   const grp = new T.Group();
   if (!SEE_THROUGH.includes(mat) || mat === 'liquid') { grp.add(new T.Mesh(g, material(mat, { map: null, normalMap: grainMap(mat), roughnessMap: null }, tint))); return grp; }
-  if (!clearInside) { const m = material(mat, { map: null, normalMap: null, roughnessMap: null }, tint); m.thickness = mat === 'diamond' ? 0.3 : 0.18; grp.add(new T.Mesh(g, m)); return grp; }
+  // (the very material a die of it is made of, its cut and all)
+  // (and its brilliance: the far side of its outside, shell, a mirror from within, as a die's is)
+  if (!clearInside) { if (shell) grp.add(mirrorShell(shell, mat, tint)); grp.add(new T.Mesh(g, material(mat, { map: null, normalMap: grainMap(mat), roughnessMap: null }, tint))); return grp; }
   const pale = new T.Color(tint).lerp(new T.Color(0xffffff), 0.6), film = atEdges(new T.MeshPhysicalMaterial({ color: mat === 'diamond' ? 0xffffff : pale, emissive: pale.clone().multiplyScalar(0.5), transparent: true, opacity: 0.06, roughness: 0.02, depthWrite: false, iridescence: mat === 'diamond' ? 0.7 : 0, iridescenceIOR: 1.6 }), 'gl_FragColor.a = clamp(gl_FragColor.a + edgeOn * 0.34, 0.0, 0.5);');
   // (added light: its alpha is its brightness, so over nothing it is a reflection and not a dark pane)
   const shine = atEdges(new T.MeshStandardMaterial({ color: 0xffffff, metalness: 1, roughness: mat === 'glimmering' ? 0.2 : 0.02, envMapIntensity: mat === 'diamond' ? 1.6 : 1.1, transparent: true, depthWrite: false,
@@ -308,15 +305,14 @@ export function vesselBody(g, mat, tint, clearInside) {
   for (const [m, o] of [[film, 2], [shine, 3]]) { const mesh = new T.Mesh(g, m); mesh.renderOrder = o; grp.add(mesh); }
   return grp;
 }
+// what makes a clear solid brilliant: its far side, from within, a mirror (drawn under its clear front)
+function mirrorShell(g, mat, tint, normalMap = grainMap(mat)) { const inner = new T.Mesh(g, new T.MeshPhysicalMaterial({ side: T.BackSide, color: mat === 'diamond' ? 0xffffff : new T.Color(tint).lerp(new T.Color(0xffffff), 0.5), metalness: 1, roughness: mat === 'glimmering' ? 0.16 : 0.03, envMapIntensity: mat === 'diamond' ? 4 : 2.2, emissive: mat === 'glimmering' ? rich(tint).multiplyScalar(0.3) : new T.Color(mat === 'diamond' ? 0x3a3550 : 0x20283a), normalMap })); inner.renderOrder = -1; return inner; }
 function bodyOf(g, mat, tint, maps, vessel) {
   const grp = new T.Group();
   if (vessel && SEE_THROUGH.includes(mat)) { const m = new T.Mesh(g, vesselOf(mat, tint)); m.renderOrder = 2; grp.add(m); return grp; }
   if (mat === 'liquid') { // a drink's depth: its own colour within, lit a little from inside, under the clear surface
     const deep = new T.Mesh(g, new T.MeshPhysicalMaterial({ side: T.BackSide, color: rich(tint).lerp(new T.Color(tint), 0.5), roughness: 0.55, metalness: 0, envMapIntensity: 0.5, emissive: rich(tint).multiplyScalar(0.3) })); deep.renderOrder = -1; grp.add(deep);
-  } else if (SEE_THROUGH.includes(mat)) {
-    const inner = new T.Mesh(g, new T.MeshPhysicalMaterial({ side: T.BackSide, color: mat === 'diamond' ? 0xffffff : new T.Color(tint).lerp(new T.Color(0xffffff), 0.5), metalness: 1, roughness: mat === 'glimmering' ? 0.16 : 0.03, envMapIntensity: mat === 'diamond' ? 4 : 2.2, emissive: mat === 'glimmering' ? rich(tint).multiplyScalar(0.3) : new T.Color(mat === 'diamond' ? 0x3a3550 : 0x20283a), normalMap: maps.normalMap }));
-    inner.renderOrder = -1; grp.add(inner);
-  }
+  } else if (SEE_THROUGH.includes(mat)) grp.add(mirrorShell(g, mat, tint, maps.normalMap));
   grp.add(new T.Mesh(g, material(mat, maps, tint))); return grp;
 }
 const MODELS = new Map();
