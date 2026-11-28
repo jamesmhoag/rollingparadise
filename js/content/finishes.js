@@ -81,27 +81,42 @@ export const NEW_WALLET = { name: 'New Wallet', color: '#7a4b2a', slots: 2, keep
 export const NEW_JACKET = { name: 'New Jacket', color: '#5b6378', effect: 'New · Untested', mods: {}, price: 200, level: 0, look: { style: 'blazer', mat: 'wool' } };
 
 // ---------- drinks ----------
-// A drink is a vessel and what is in it. vessel: its shape (DRINK_VESSELS) · mat, color: what the vessel is made of
-// (any material) · rim: a band round its lip · liquid: { mat: 'liquid' (you see through it) or 'cream' (you do not),
-// color, top: a second colour floating on it } · foam: a head on it (0 to 1) · bubbles: it fizzes · ice: cubes in it ·
-// straw: a straw's colour · garnish: 'cherry', 'slice', 'umbrella' · glow: a light in it
-export const DRINK_VESSELS = { tumbler: 'Tumbler', tall: 'Tall glass', mug: 'Mug', cup: 'Cup and saucer', goblet: 'Goblet', coupe: 'Coupe' };
-export const DRINK_GARNISHES = { cherry: 'A cherry', slice: 'A slice of fruit', umbrella: 'A paper umbrella' };
+// A drink is a vessel and what is in it, and everything made in Build mode's Gear maker (Drinks):
+//   vessel: its shape (DRINK_VESSELS) · mat, color: what the vessel is made of (any finish) · rim: { mat, color } a band
+//   round its lip · crust: salt, sugar or chili round the lip
+//   liquid: { mat (DRINK_LIQUIDS), color, top: a second colour floating on it (layer: on or off) } (rim, inner: on or
+//   off as well, and strawOn) · foam: a head on it (0 to 1)
+//   ice: cubes in it (0 to 4) · inner: { color } a shot glass sunk in it, of another drink · glow: a light in it
+//   fizz: bubbles rise through it · sparkle: points of every colour drift in it · steam: it is hot · slosh: it moves
+//   with the glass (on unless turned off) · straw: its colour · garnish (DRINK_GARNISHES) and garnishColor (an
+//   umbrella's paper) · toy (DRINK_TOYS) and toyColor: something in it
+export const DRINK_VESSELS = { tumbler: 'Tumbler', tall: 'Tall glass', mug: 'Mug', cup: 'Teacup and saucer', goblet: 'Goblet', coupe: 'Coupe', martini: 'Martini glass', shot: 'Shot glass' };
+export const DRINK_LIQUIDS = { liquid: 'Clear (see through it)', cream: 'Creamy', syrup: 'Glossy and deep', chromatic: 'Every colour at once' };
+export const DRINK_GARNISHES = { cherry: 'A cherry', umbrella: 'A paper umbrella', lemon: 'A slice of lemon', lime: 'A slice of lime', orange: 'A slice of orange', olive: 'An olive on a pick', mint: 'A sprig of mint' };
+export const DRINK_CRUSTS = { salt: 'Salt', sugar: 'Sugar', chili: 'Chili' };
+export const DRINK_TOYS = { starfish: 'A starfish', diver: 'A scuba diver', duck: 'A rubber duck' };
 const DRINK_LOOKS = {
-  soda: { vessel: 'tall', bubbles: true, foam: 0.35, straw: '#ff5b6e' },
-  water: { vessel: 'tumbler', ice: 3 },
+  soda: { vessel: 'tall', fizz: true, foam: 0.35, straw: '#ff5b6e', ice: 2 },
+  water: { vessel: 'tumbler', ice: 3, garnish: 'lemon' },
   coffee: { vessel: 'tall', ice: 2, liquid: { top: '#e8d9c2' }, straw: '#2b2b33' },
-  milk: { vessel: 'mug', mat: 'plastic', color: '#f3ead8', liquid: { mat: 'cream' }, foam: 0.2 },
-  tea: { vessel: 'cup', mat: 'plastic', color: '#f6f1e6', rim: { mat: 'metal', color: '#d9b45a' }, garnish: 'slice' },
-  juice: { vessel: 'goblet', garnish: 'slice', straw: '#3fb86b' },
-  special: { vessel: 'coupe', garnish: 'umbrella', bubbles: true },
-  royal: { vessel: 'goblet', rim: { mat: 'metal', color: '#e8c35a' }, bubbles: true, garnish: 'cherry' },
-  diamond: { vessel: 'coupe', mat: 'diamond', glow: true },
+  milk: { vessel: 'mug', mat: 'plastic', color: '#f3ead8', liquid: { mat: 'cream' }, foam: 0.2, steam: true },
+  tea: { vessel: 'cup', mat: 'plastic', color: '#f6f1e6', rim: { mat: 'metal', color: '#d9b45a' }, garnish: 'lemon', steam: true },
+  juice: { vessel: 'goblet', garnish: 'orange', straw: '#3fb86b', crust: 'sugar' },
+  special: { vessel: 'coupe', garnish: 'umbrella', fizz: true, toy: 'starfish' },
+  royal: { vessel: 'goblet', rim: { mat: 'metal', color: '#e8c35a' }, fizz: true, garnish: 'cherry' },
+  diamond: { vessel: 'coupe', mat: 'diamond', liquid: { mat: 'chromatic' }, sparkle: true, fizz: true, glow: true },
 };
+const hex = (c, d) => (/^#[0-9a-f]{6}$/i.test(c || '') ? c : d);
 export function drinkLook(d = {}) {
   const K = { ...(DRINK_LOOKS[d.id] || {}), ...(d.look || {}) }, color = d.color || '#ff86ea';
-  return { vessel: DRINK_VESSELS[K.vessel] ? K.vessel : 'tumbler', mat: FINISHES[K.mat] || ['glass', 'diamond'].includes(K.mat) ? K.mat : 'glass', color: K.color || '#dff2ff', rim: K.rim || null,
-    liquid: { mat: K.liquid?.mat === 'cream' ? 'cream' : 'liquid', color: K.liquid?.color || color, top: K.liquid?.top || null }, foam: +K.foam || 0, bubbles: !!K.bubbles, ice: K.ice | 0, straw: K.straw || null, garnish: DRINK_GARNISHES[K.garnish] ? K.garnish : null, glow: !!K.glow };
+  const pick = (o, k) => (o[k] ? k : null), seeThrough = ['glass', 'diamond', 'glimmering', 'swirling'];
+  return { vessel: DRINK_VESSELS[K.vessel] ? K.vessel : 'tumbler', mat: FINISHES[K.mat] || seeThrough.includes(K.mat) ? K.mat : 'glass', color: hex(K.color, '#dff2ff'),
+    rim: K.rim && K.rim.on !== false && (K.rim.on || K.rim.mat || K.rim.color) ? { mat: FINISHES[K.rim.mat] || ['glass', 'diamond'].includes(K.rim.mat) ? K.rim.mat : 'metal', color: hex(K.rim.color, '#e8c35a') } : null, crust: pick(DRINK_CRUSTS, K.crust),
+    liquid: { mat: DRINK_LIQUIDS[K.liquid?.mat] ? K.liquid.mat : 'liquid', color: hex(K.liquid?.color, color), top: K.liquid?.layer !== false && (K.liquid?.top || K.liquid?.layer) ? hex(K.liquid.top, '#ffffff') : null },
+    foam: Math.max(0, Math.min(1, +K.foam || 0)), ice: Math.max(0, Math.min(4, K.ice | 0)), inner: K.inner && K.inner.on !== false && (K.inner.on || K.inner.color) ? { color: hex(K.inner.color, '#ff3b6b') } : null, glow: !!K.glow,
+    fizz: !!(K.fizz ?? K.bubbles), sparkle: !!K.sparkle, steam: !!K.steam, slosh: K.slosh !== false,
+    straw: K.strawOn !== false && (K.strawOn || K.straw) ? hex(K.straw, '#ff5b6e') : null, garnish: pick(DRINK_GARNISHES, K.garnish), garnishColor: hex(K.garnishColor, '#ff5fa8'),
+    toy: pick(DRINK_TOYS, K.toy), toyColor: hex(K.toyColor, K.toy === 'diver' ? '#ffd23d' : K.toy === 'duck' ? '#ffd23d' : '#ff7a45') };
 }
 
 // ---------- foil packs ----------

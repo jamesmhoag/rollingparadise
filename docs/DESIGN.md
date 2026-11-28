@@ -1219,3 +1219,27 @@ material. A sign's lettering is set and fitted in the room its edging leaves.
   wallet a key takes the slot of that floor's pass (even the last one), and the Bouncer lets a key holder through.
 - **The Gear maker** can copy a wallet or a jacket (Organise · Copy) as well as start a new one, to make wallets with
   enough pass slots for keys and Coat Check passes.
+
+## Round 26: drinks
+
+- **Drinks are their own module** (ui/drink3d.js). Vessels are turned at higher fidelity (96 sides, eased profiles,
+  a rolled round lip); glasses have thick bases, ceramics a foot ring with the hollow underneath, the saucer a shallow
+  well the teacup sits in, and the teacup's handle loops down and curls back to meet the cup near its base.
+- **Glass** round a clear drink is drawn as two films over it (nothing clear shows through anything clear): its tint,
+  thickening toward its edges, and its reflections added on top (their alpha is their brightness, so over nothing a
+  glass is a reflection, not a dark pane). Round anything you cannot see through (a creamy or chromatic drink, an
+  empty glass), a clear vessel is its real material: the Diamond Drop's coupe is diamond, refracting and splitting
+  its drink, which is a new chromatic liquid (every colour flowing through it) with sparks of every colour drifting in it.
+- **Ice** is rounded cubes, crazed with cracks and caught bubbles; it is a solid that looks clear (it shows the room
+  through itself, bent and tinted by the drink round it), so it still shows through the clear drink it floats in.
+- **Life**: fizz rises; the surface keeps level in the room as the glass leans, and sloshes when it moves; ice bobs;
+  steam rises from hot drinks and drifts in the room, so it lingers where it rose when the cup moves on. Living
+  drinks are drawn again a few times a second while on screen (the one held or pointed at first, six others in turn).
+- **The paper umbrella** has its underside and ribs, and its pick goes down through the lip into the drink.
+- **The Drink maker** (Gear maker · Drinks, and New drink): vessel (tumbler, tall glass, mug, teacup and saucer,
+  goblet, coupe, martini glass, shot glass), its material and colour, a rim band, a salt, sugar or chili crust; the
+  drink (clear, creamy, glossy, chromatic), its colour, a layer on top, a head, ice, a shot of another drink sunk in
+  it, a light in it; fizz, sparks, steam, slosh; a straw, a garnish (cherry, umbrella in any colour, lemon, lime,
+  orange, olive, mint), a toy (starfish, scuba diver, rubber duck).
+- **Held up close**, anything but a die only leans a little off upright as you drag it (and settles back upright);
+  dragged on past the lean, a card or pass turns over. Dice still turn freely.

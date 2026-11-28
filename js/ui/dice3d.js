@@ -192,6 +192,13 @@ function material(mat, maps, base) {
     // liquids: one you see through (it takes its colour with depth, as a drink does in its glass), and one you do not (milk, cream)
     case 'liquid': return new T.MeshPhysicalMaterial({ ...common, color: 0xffffff, transmission: 1, thickness: 0.8, ior: 1.33, roughness: 0.03, attenuationColor: c, attenuationDistance: 0.35, clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: 1.6 });
     case 'cream': return new T.MeshPhysicalMaterial({ ...common, color: c, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.08, sheen: 0.5, sheenColor: c });
+    // a liquid you cannot see through but that glows with every colour at once (it flows: map.offset turns), and a
+    // glossy one in its own colour (a syrup, a shot sunk in a drink: drawn so it shows through a clear drink round it)
+    case 'chromatic': { const map = rainbow(); return new T.MeshPhysicalMaterial({ ...common, color: hi(c, 0.6), emissive: 0xffffff, emissiveMap: map, emissiveIntensity: 0.75, map, roughness: 0.08, metalness: 0.25, clearcoat: 1, clearcoatRoughness: 0.02, iridescence: 1, iridescenceIOR: 1.8, iridescenceThicknessRange: [120, 900], envMapIntensity: 2.2 }); }
+    case 'syrup': return new T.MeshPhysicalMaterial({ ...common, color: rich(base), roughness: 0.06, clearcoat: 1, clearcoatRoughness: 0.02, emissive: rich(base).multiplyScalar(0.35), sheen: 0.4, sheenColor: hi(c, 0.5), envMapIntensity: 1.8 });
+    // ice: water frozen clear, its inside crazed with fine cracks and caught bubbles (its relief: GRAIN.ice), bright where
+    // it meets the light and cool where it does not (it is drawn as solid, so it shows through the clear drink it floats in)
+    case 'ice': return refracting(new T.MeshPhysicalMaterial({ ...common, color: new T.Color(c).multiplyScalar(0.3), metalness: 0, roughness: 0.03, clearcoat: 0.6, clearcoatRoughness: 0.01, envMapIntensity: 1.3, iridescence: 0.15, iridescenceIOR: 1.31, normalScale: new T.Vector2(0.55, 0.55) }), c, 1.31);
     case 'glass': return new T.MeshPhysicalMaterial({ ...common, color: 0xffffff, transmission: 1, thickness: 0.9, ior: 1.52, roughness: 0.04, attenuationColor: c, attenuationDistance: 2.2, specularIntensity: 1, clearcoat: 0.4, envMapIntensity: 1.8 });
     case 'metal': return new T.MeshPhysicalMaterial({ ...common, color: new T.Color(c).lerp(new T.Color(0xffffff), 0.35), metalness: 1, roughness: 0.22, envMapIntensity: 2.1, clearcoat: 0.25 });
     case 'sparkling': return new T.MeshPhysicalMaterial({ ...common, color: c, metalness: 0.9, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 1.6 });
@@ -262,6 +269,45 @@ const SEE_THROUGH = ['glass', 'diamond', 'glimmering', 'swirling', 'liquid'];
 // shows nothing clear through a clear body, so a vessel's wall is drawn as a sheer film over what it holds: the
 // material's colour and shine, laid on after its contents.
 const vesselOf = (mat, tint) => new T.MeshPhysicalMaterial({ color: mat === 'diamond' ? 0xffffff : new T.Color(tint).lerp(new T.Color(0xffffff), 0.7), transparent: true, opacity: mat === 'diamond' ? 0.34 : 0.2, roughness: mat === 'glimmering' ? 0.25 : 0.02, clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: mat === 'diamond' ? 4 : 2.4, iridescence: mat === 'diamond' || mat === 'glimmering' ? 1 : 0, iridescenceIOR: 1.8, side: T.DoubleSide, depthWrite: false });
+// A solid that looks clear (ice): what is drawn through it is the room seen through it, bent by its index (looked up in
+// the room's reflections along the refracted ray, tinted), with its own reflections over that. It stays a solid, so it
+// shows through a clear drink it floats in, which a body that is really clear would not.
+function refracting(m, tint, ior) {
+  const k = new T.Color(tint);
+  m.onBeforeCompile = (sh) => { sh.uniforms.seeTint = { value: k };
+    sh.fragmentShader = 'uniform vec3 seeTint;\n' + sh.fragmentShader.replace('#include <opaque_fragment>', `#ifdef ENVMAP_TYPE_CUBE_UV
+      vec3 seeDir = normalize(vViewPosition); vec3 bent = inverseTransformDirection(refract(-seeDir, normal, ${(1 / ior).toFixed(3)}), viewMatrix);
+      vec3 through = textureCubeUV(envMap, envMapRotation * bent, 0.12).rgb * seeTint;
+      float face = pow(abs(dot(seeDir, normal)), 0.5); outgoingLight = mix(outgoingLight, through * 0.7 + outgoingLight * 0.3, 0.9 * face) + seeTint * pow(1.0 - face, 3.0) * 0.6;
+      #endif
+      #include <opaque_fragment>`); };
+  m.customProgramCacheKey = () => 'refracting'; return m;
+}
+// every colour in bands, for a chromatic liquid to glow with (a fresh one each: its flow is its own)
+function rainbow() {
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64; const cx = cv.getContext('2d');
+  for (let x = 0; x < 256; x++) { cx.fillStyle = `hsl(${(x / 256) * 360}, 95%, ${58 + 10 * Math.sin(x / 9)}%)`; cx.fillRect(x, 0, 1, 64); }
+  const tex = new T.CanvasTexture(cv); tex.wrapS = tex.wrapT = T.RepeatWrapping; tex.colorSpace = T.SRGBColorSpace; tex.repeat.set(2, 1); return tex;
+}
+// how much a surface turns away from you, in a shader: 0 face on, 1 edge on (what makes glass look thick at its edges)
+const FRESNEL = 'float edgeOn = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 2.6);';
+const atEdges = (m, how) => { m.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <dithering_fragment>', `#include <dithering_fragment>\n${FRESNEL}\n${how}`); }; m.customProgramCacheKey = () => how; return m; };
+// A vessel. Round something you cannot see through (a creamy drink, an opaque one, nothing at all) a clear vessel is
+// its real material, refracting what it holds (a diamond splitting it into colour). Round a clear drink (which is
+// itself drawn refracting what is in it, and nothing clear shows through anything clear) it is drawn in two films
+// over the drink: its tint, deepening toward its edges as thick glass does, and what it reflects (added, strongest at
+// the edges, faint face on), so the drink shows through as it should and the glass still has its weight and shine.
+export function vesselBody(g, mat, tint, clearInside) {
+  const grp = new T.Group();
+  if (!SEE_THROUGH.includes(mat) || mat === 'liquid') { grp.add(new T.Mesh(g, material(mat, { map: null, normalMap: grainMap(mat), roughnessMap: null }, tint))); return grp; }
+  if (!clearInside) { const m = material(mat, { map: null, normalMap: null, roughnessMap: null }, tint); m.thickness = mat === 'diamond' ? 0.3 : 0.18; grp.add(new T.Mesh(g, m)); return grp; }
+  const pale = new T.Color(tint).lerp(new T.Color(0xffffff), 0.6), film = atEdges(new T.MeshPhysicalMaterial({ color: mat === 'diamond' ? 0xffffff : pale, emissive: pale.clone().multiplyScalar(0.5), transparent: true, opacity: 0.06, roughness: 0.02, depthWrite: false, iridescence: mat === 'diamond' ? 0.7 : 0, iridescenceIOR: 1.6 }), 'gl_FragColor.a = clamp(gl_FragColor.a + edgeOn * 0.34, 0.0, 0.5);');
+  // (added light: its alpha is its brightness, so over nothing it is a reflection and not a dark pane)
+  const shine = atEdges(new T.MeshStandardMaterial({ color: 0xffffff, metalness: 1, roughness: mat === 'glimmering' ? 0.2 : 0.02, envMapIntensity: mat === 'diamond' ? 1.6 : 1.1, transparent: true, depthWrite: false,
+    blending: T.CustomBlending, blendSrc: T.OneFactor, blendDst: T.OneFactor, blendSrcAlpha: T.OneFactor, blendDstAlpha: T.OneMinusSrcAlphaFactor }), 'gl_FragColor.rgb *= mix(0.07, 0.95, edgeOn); gl_FragColor.a = clamp(max(gl_FragColor.r, max(gl_FragColor.g, gl_FragColor.b)), 0.0, 1.0);');
+  for (const [m, o] of [[film, 2], [shine, 3]]) { const mesh = new T.Mesh(g, m); mesh.renderOrder = o; grp.add(mesh); }
+  return grp;
+}
 function bodyOf(g, mat, tint, maps, vessel) {
   const grp = new T.Group();
   if (vessel && SEE_THROUGH.includes(mat)) { const m = new T.Mesh(g, vesselOf(mat, tint)); m.renderOrder = 2; grp.add(m); return grp; }
@@ -287,9 +333,13 @@ function model(d, labels) {
 // wallet, a jacket, a symbol or a crown is made of (ui/finish.js). The cloths and hides are materials here too: their
 // weave or grain is a relief drawn by GRAIN (a height for each point of a tile, turned into a normal map).
 const cell = (x, y, s) => { const n = Math.sin(x * 127.1 * s + y * 311.7 * s) * 43758.5453; return n - Math.floor(n); }; // a steady pseudo-random number for a point
+// scattered points (f to a tile, seeded by s1, s2): the distances from (u, v) to the nearest and the next nearest
+function near(u, v, f, s1, s2) { const gx = u * f, gy = v * f, ix = Math.floor(gx), iy = Math.floor(gy); let d1 = 9, d2 = 9;
+  for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const d = Math.hypot(gx - (ix + a + cell(ix + a, iy + b, s1)), gy - (iy + b + cell(iy + b, ix + a, s2))); if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d; }
+  return [d1, d2]; }
 const GRAIN = {
-  leather: (u, v) => { let h = 1; for (let k = 0; k < 3; k++) { const f = 9 + k * 7, gx = u * f, gy = v * f, ix = Math.floor(gx), iy = Math.floor(gy); let d = 9; // pebbles: the distance to the nearest of scattered points
-      for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const px = ix + a + cell(ix + a, iy + b, 1 + k), py = iy + b + cell(iy + b, ix + a, 2 + k); d = Math.min(d, Math.hypot(gx - px, gy - py)); } h = Math.min(h, d * (1 + k * 0.6)); } return h; },
+  // pebbles: the distance to the nearest of scattered points
+  leather: (u, v) => { let h = 1; for (let k = 0; k < 3; k++) h = Math.min(h, near(u, v, 9 + k * 7, 1 + k, 2 + k)[0] * (1 + k * 0.6)); return h; },
   suede: (u, v) => cell(Math.floor(u * 180), Math.floor(v * 180), 1) * 0.5,
   velvet: (u, v) => cell(Math.floor(u * 220), Math.floor(v * 90), 3) * 0.35,
   silk: (u, v) => 0.5 + 0.5 * Math.sin((u * 3 + Math.sin(v * 5) * 0.25) * Math.PI * 2) * 0.25,
@@ -303,6 +353,9 @@ const GRAIN = {
   fur: (u, v) => cell(Math.floor(u * 150 + v * 22), Math.floor(v * 14), 19) * 0.8 + 0.2 * Math.sin(u * 300), // long hair lying one way
   sparkling: (u, v) => cell(Math.floor(u * 256), Math.floor(v * 256), 11) * 0.9, // flakes: every point tips its own way
   glimmering: (u, v) => cell(Math.floor(u * 256), Math.floor(v * 256), 13) * 0.3,
+  // ice: the edges of frozen cells (cracks), and small round pits where bubbles were caught
+  ice: (u, v) => { const [d1, d2] = near(u, v, 5, 21, 23);
+    const crack = Math.min(1, (d2 - d1) * 6), pit = cell(Math.floor(u * 40), Math.floor(v * 40), 29) > 0.93 ? 0.4 : 0; return crack * 0.7 + 0.3 - pit; },
 };
 const GRAINS = new Map();
 function grainMap(mat) {
@@ -313,7 +366,7 @@ function grainMap(mat) {
     img.data[i] = (n[0] * 0.5 + 0.5) * 255; img.data[i + 1] = (n[1] * 0.5 + 0.5) * 255; img.data[i + 2] = (n[2] * 0.5 + 0.5) * 255; img.data[i + 3] = 255; }
   cx.putImageData(img, 0, 0); const tex = new T.CanvasTexture(cv); tex.wrapS = tex.wrapT = T.RepeatWrapping; tex.repeat.set(1.6, 1.6); GRAINS.set(mat, tex); return tex;
 }
-export const MATERIAL_IDS = [...new Set(['plastic', 'glass', 'metal', 'sparkling', 'glimmering', 'swirling', 'diamond', 'bone', 'liquid', 'cream', ...Object.keys(GRAIN)])]; // every material the renderer knows
+export const MATERIAL_IDS = [...new Set(['plastic', 'glass', 'metal', 'sparkling', 'glimmering', 'swirling', 'diamond', 'bone', 'liquid', 'cream', 'chromatic', 'syrup', ...Object.keys(GRAIN)])]; // every material the renderer knows
 const SWATCHES = new Map();
 // A picture of the material in a colour, as a URL (a data: image), or null where the renderer is not there (the CSS
 // look stands). The slab is a little pillowed and turned, so the room's lights run across it as they do a die's face.

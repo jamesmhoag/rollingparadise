@@ -8,25 +8,31 @@ import { draftForm, numIn, askId, makerPage, previewCol } from './form.js';
 import * as D from '../data.js';
 import * as B from '../build/draft.js';
 import { t } from '../text.js';
-import { cardEl, passEl } from './parts.js';
+import { cardEl, passEl, drinkEl } from './parts.js';
 import { walletEl, jacketEl } from './gear.js';
 import { finishOn } from './finish.js';
-import { FINISHES, JACKET_CLOSURES, JACKET_COLLARS, JACKET_STYLES, LOOK_BOUNDS, NEW_JACKET, NEW_WALLET, WALLET_CLASPS, WALLET_TYPES, jacketLook, walletLook, packLook, PACK_PATTERNS } from '../content/finishes.js';
+import { FINISHES, JACKET_CLOSURES, JACKET_COLLARS, JACKET_STYLES, LOOK_BOUNDS, NEW_JACKET, NEW_WALLET, WALLET_CLASPS, WALLET_TYPES, jacketLook, walletLook, packLook, PACK_PATTERNS, drinkLook, DRINK_VESSELS, DRINK_LIQUIDS, DRINK_GARNISHES, DRINK_CRUSTS, DRINK_TOYS } from '../content/finishes.js';
 import { packStage } from './gear3d.js';
 import { SYMBOLS } from './symbols.js';
 
 const STATS = ['trickery', 'ingenuity', 'proficiency', 'charisma', 'cunning', 'conviction', 'balance', 'versatility', 'depth'];
-export const gearKeys = () => [...Object.keys(D.WALLETS).map((k) => `w:${k}`), ...Object.keys(D.JACKETS).map((k) => `j:${k}`), ...packQs().map((q) => `p:${q}`)];
+export const gearKeys = () => [...Object.keys(D.WALLETS).map((k) => `w:${k}`), ...Object.keys(D.JACKETS).map((k) => `j:${k}`), ...packQs().map((q) => `p:${q}`), ...D.DRINKS.map((d, i) => `d:${i}`)];
 const packQs = () => D.PACKS.map((P, q) => (P ? q : 0)).filter(Boolean);
-// the table and id a gear key names (w: a wallet, j: a jacket, p: a foil pack, by its quality)
-export const gearTable = (key) => ({ w: 'WALLETS', j: 'JACKETS', p: 'PACKS' })[key?.[0]] || 'WALLETS';
+// the table and id a gear key names (w: a wallet, j: a jacket, p: a foil pack, by its quality, d: a drink, by its place on the menu)
+export const gearTable = (key) => ({ w: 'WALLETS', j: 'JACKETS', p: 'PACKS', d: 'DRINKS' })[key?.[0]] || 'WALLETS';
 export function gearList(sel, pick, filter = '') {
   const hit = (k, n) => !filter || `${k} ${n}`.toLowerCase().includes(filter);
   const item = (key, name, sub) => h('button', { class: `b-item ${sel === key ? 'on' : ''} ${B.changed(D.subPath(gearTable(key), key.slice(2))) ? 'ch' : ''}`, onclick: () => pick(key) }, h('b', { text: name }), h('small', { text: sub }));
-  return [h('div', { class: 'row' }, btn(t('gear.new.wallet'), () => { const id = newGear('WALLETS'); if (id) pick(`w:${id}`); }, null, 'small go'), btn(t('gear.new.jacket'), () => { const id = newGear('JACKETS'); if (id) pick(`j:${id}`); }, null, 'small go')),
+  return [h('div', { class: 'row' }, btn(t('gear.new.wallet'), () => { const id = newGear('WALLETS'); if (id) pick(`w:${id}`); }, null, 'small go'), btn(t('gear.new.jacket'), () => { const id = newGear('JACKETS'); if (id) pick(`j:${id}`); }, null, 'small go'), btn(t('gear.new.drink'), () => { const i = newDrink(); if (i != null) pick(`d:${i}`); }, null, 'small go')),
     h('span', { class: 'cap', text: t('gear.wallets') }), ...Object.entries(D.WALLETS).filter(([k, W]) => hit(k, W.name)).map(([k, W]) => item(`w:${k}`, W.name, t('gear.wallet.sub', { slots: W.slots, passes: W.passes ?? 1, keep: W.keep }))),
     h('span', { class: 'cap', text: t('gear.jackets') }), ...Object.entries(D.JACKETS).filter(([k, J]) => hit(k, J.name)).map(([k, J]) => item(`j:${k}`, J.name, J.effect || '')),
+    h('span', { class: 'cap', text: t('gear.drinks') }), ...D.DRINKS.map((d, i) => [d, i]).filter(([d]) => hit(d.id, d.name)).map(([d, i]) => item(`d:${i}`, d.name, DRINK_VESSELS[drinkLook(d).vessel])),
     h('span', { class: 'cap', text: t('gear.packs') }), ...packQs().filter((q) => hit(String(q), D.PACKS[q].name)).map((q) => item(`p:${q}`, D.PACKS[q].name, t('gear.pack.sub', { floor: D.PACKS[q].floor })))];
+}
+// a new drink on the menu: the first one's numbers, a plain glass of something, under an id of its own
+function newDrink() {
+  const ids = D.DRINKS.map((d) => d.id), id = askId(t('gear.newId'), 'new_drink', (x) => ids.includes(x)); if (!id) return null;
+  const n = D.DRINKS.length; B.setValue(D.subPath('DRINKS', String(n)), { ...JSON.parse(JSON.stringify(D.DRINKS[0])), id, name: t('gear.drink.new'), look: { vessel: 'tumbler', ice: 2 } }); return n;
 }
 export function newGear(table) {
   const id = askId(t('gear.newId'), table === 'WALLETS' ? 'new_wallet' : 'new_jacket', D.TABLES[table]); if (!id) return null;
@@ -50,6 +56,7 @@ function pieceForm(F) {
 }
 export function gearMaker(key, redraw) {
   if (key?.[0] === 'p') return packMaker(+key.slice(2), redraw);
+  if (key?.[0] === 'd') return drinkMaker(+key.slice(2), redraw);
   const wallet = key?.[0] === 'w', table = wallet ? 'WALLETS' : 'JACKETS', id = key?.slice(2), X = D.TABLES[table]?.[id]; if (!X) return h('p', { class: 'sub', text: t('maker.none') });
   const F = draftForm(D.subPath(table, id), redraw), { set, text, select, check } = F, L = wallet ? walletLook(id, X) : jacketLook(id, X);
   const { field, colour, made, preview: shown, emblem } = pieceForm(F);
@@ -116,4 +123,36 @@ function packMaker(q, redraw) {
       if (hold) { S.tear((x - 0.12) / 0.76); S.crinkle(0.5, x * 6); } else S.draw(new DOMMatrix().rotateSelf(-8 - (y - 0.5) * 20, 16 + (x - 0.5) * 30, 0)); }; });
   return h('div', { class: 'b-maker' }, h('div', { class: 'b-fields' }, ...fields.filter(Boolean)),
     shown(preview, 'gear.preview.pack'));
+}
+
+// A drink's look: the vessel (its shape, what it is made of, a band round its lip, a crust on it), the drink (what it
+// is like, its colour, a layer floating on it, a head, ice, another drink sunk in it, a light in it), how it lives
+// (fizz, sparks, steam, slosh), and what goes on it and in it (a straw, a garnish, a toy). The preview is the drink as
+// it is everywhere, alive: hold it up to see it close.
+function drinkMaker(i, redraw) {
+  const d = D.DRINKS[i]; if (!d) return h('p', { class: 'sub', text: t('maker.none') });
+  const F = draftForm(D.subPath('DRINKS', String(i)), redraw), { text, select, check } = F, L = drinkLook(d);
+  const { field, colour, mats, preview: shown } = pieceForm(F);
+  const range = (ks, v, hi, step = 1) => F.range(ks, v, { min: 0, max: hi, step });
+  const opt = (o) => [[null, t('gear.drink.none')], ...Object.entries(o)];
+  const fields = [
+    h('span', { class: 'cap', text: t('gear.part.rules') }), field('name', text(['name'], d.name), ['name']), field('color', colour(['color'], d.color || '#ff86ea'), ['color']),
+    h('span', { class: 'cap', text: t('gear.drink.vessel') }), field('vessel', select(['look', 'vessel'], Object.entries(DRINK_VESSELS), L.vessel), ['look', 'vessel']),
+    field('mat', mats(['look', 'mat'], L.mat, L.color), ['look', 'mat']), field('vesselColor', colour(['look', 'color'], L.color), ['look', 'color']),
+    field('rim', h('span', { class: 'row wrap' }, check(['look', 'rim', 'on'], !!L.rim), ...(L.rim ? [select(['look', 'rim', 'mat'], Object.entries(FINISHES).map(([k, Fi]) => [k, Fi.name]), L.rim.mat), colour(['look', 'rim', 'color'], L.rim.color)] : [])), ['look', 'rim']),
+    field('crust', select(['look', 'crust'], opt(DRINK_CRUSTS), L.crust), ['look', 'crust']),
+    h('span', { class: 'cap', text: t('gear.drink.drink') }), field('liquid', select(['look', 'liquid', 'mat'], Object.entries(DRINK_LIQUIDS), L.liquid.mat), ['look', 'liquid', 'mat']),
+    field('liquidColor', colour(['look', 'liquid', 'color'], L.liquid.color), ['look', 'liquid', 'color']),
+    field('layer', h('span', { class: 'row wrap' }, check(['look', 'liquid', 'layer'], !!L.liquid.top), ...(L.liquid.top ? [colour(['look', 'liquid', 'top'], L.liquid.top)] : [])), ['look', 'liquid', 'top']),
+    field('foam', range(['look', 'foam'], L.foam, 1, 0.05), ['look', 'foam']), field('ice', range(['look', 'ice'], L.ice, 4), ['look', 'ice']),
+    field('inner', h('span', { class: 'row wrap' }, check(['look', 'inner', 'on'], !!L.inner), ...(L.inner ? [colour(['look', 'inner', 'color'], L.inner.color)] : [])), ['look', 'inner']),
+    field('glow', check(['look', 'glow'], L.glow), ['look', 'glow']),
+    h('span', { class: 'cap', text: t('gear.drink.life') }), field('fizz', check(['look', 'fizz'], L.fizz), ['look', 'fizz']), field('sparkle', check(['look', 'sparkle'], L.sparkle), ['look', 'sparkle']),
+    field('steam', check(['look', 'steam'], L.steam), ['look', 'steam']), field('slosh', check(['look', 'slosh'], L.slosh), ['look', 'slosh']),
+    h('span', { class: 'cap', text: t('gear.drink.extras') }),
+    field('straw', h('span', { class: 'row wrap' }, check(['look', 'strawOn'], !!L.straw), ...(L.straw ? [colour(['look', 'straw'], L.straw)] : [])), ['look', 'straw']),
+    field('garnish', h('span', { class: 'row wrap' }, select(['look', 'garnish'], opt(DRINK_GARNISHES), L.garnish), ...(L.garnish === 'umbrella' ? [colour(['look', 'garnishColor'], L.garnishColor)] : [])), ['look', 'garnish']),
+    field('toy', h('span', { class: 'row wrap' }, select(['look', 'toy'], opt(DRINK_TOYS), L.toy), ...(L.toy ? [colour(['look', 'toyColor'], L.toyColor)] : [])), ['look', 'toy'])];
+  const glass = h('div', { class: 'gear-preview drink-preview' }, drinkEl(d, Math.ceil((d.sips || 3) * 0.75), d.sips || 3));
+  return h('div', { class: 'b-maker' }, h('div', { class: 'b-fields' }, ...fields), shown(glass, 'gear.preview.drink'));
 }

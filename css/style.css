@@ -1678,3 +1678,4 @@ body.spinning .thing > .th-body, body.carrying-now .thing > .th-body { transitio
 .book-bar.on-table .bb-type i { width: 7px; height: 7px; }
 .book-bar.on-table .bb-sort svg { width: 10px; height: 10px; }
 .book-bar.on-table .bb-gap { width: 2px; }
+.drink-preview { display: grid; place-items: center; min-height: 300px; } .drink-preview .gdrink { zoom: 5; }

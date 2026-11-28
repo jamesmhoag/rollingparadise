@@ -6,7 +6,6 @@
 //   sewn()    the one way a part gets its form: outlines (in the px of the piece's own drawing) made into one padded
 //             surface, each panel swelling toward its middle and meeting the next in a seam (one panel: a pillow)
 //   folding() a sheet folded along lines: a wallet is one sheet, and opening it unfolds it
-//   turned()  a profile spun round its middle: a glass, a mug, a cup, and the drink that fills it
 //   models    walletModel, jacketModel and drinkModel: the parts, and a pose (how far a wallet is unfolded)
 //   embody()  puts a model on its element: a picture at rest, drawn live while it opens or turns under the pointer or
 //             in the hand. What a wallet holds stays the real cards and passes, lying in the pockets of the picture.
@@ -15,6 +14,7 @@ import { load, three, body, renderGroup, inTwo } from './dice3d.js';
 import { shade } from '../util.js';
 import { unfold } from './thing.js';
 import { SYMBOLS } from './symbols.js';
+import { drinkModel } from './drink3d.js';
 
 let T = null;
 const U = 1 / 40; // scene units per px of a piece's own drawing: a wallet sits in the room about as large as a die
@@ -294,52 +294,7 @@ function jacketModel(L) {
 }
 
 // ---------- a drink ----------
-// The third way a part gets its form: turned. A profile ([radius, y] in the px of the piece's drawing, y down, from
-// the foot up the outside) is spun round its middle: a glass, a mug, a cup, a saucer. turned() gives the vessel (its
-// wall `wall` thick, hollow down to `floor`) and what fills it (to `fill` of its depth, 0 to 1), as two geometries.
-const VESSELS = { // each: the outside from the foot to the lip · floor: where the hollow ends · wall: how thick it is
-  tumbler: { out: [[0, 44], [9.4, 44], [10, 42.5], [12.6, 9]], floor: 40.5, wall: 0.9 },
-  tall: { out: [[0, 44], [7.4, 44], [8, 42.5], [8.8, 28], [11.4, 5]], floor: 40.5, wall: 0.9 },
-  mug: { out: [[0, 44], [10.4, 44], [11.2, 42.6], [11.4, 30], [11.2, 15]], floor: 41, wall: 1.5, handle: [12.6, 29, 6.2, 1.5] },
-  cup: { out: [[0, 39.5], [5, 39.5], [6.4, 38.4], [11.6, 31], [13.6, 23.5]], floor: 37.4, wall: 1.2, handle: [13.4, 30.5, 3.6, 1], saucer: [[0, 43.4], [14.6, 42.6], [16.6, 40.6], [15.6, 40.2], [8, 41.4], [0, 41.4]] },
-  goblet: { out: [[0, 44], [7.8, 44], [8.4, 43.2], [1.7, 41.6], [1.4, 31.5], [5.4, 27.6], [10.8, 19], [10.2, 6.5]], floor: 28.6, wall: 0.8 },
-  coupe: { out: [[0, 44], [8.4, 44], [9, 43.2], [1.5, 41.6], [1.3, 26.5], [4.4, 23.4], [14.6, 13], [15.4, 10.6]], floor: 24.6, wall: 0.8 },
-};
-// a polyline with its corners eased (twice cut), ends kept
-const eased = (pts, times = 2) => { let P = pts; for (let k = 0; k < times; k++) { const Q = [P[0]]; for (let i = 0; i + 1 < P.length; i++) { const [ax, ay] = P[i], [bx, by] = P[i + 1]; Q.push([ax * 0.75 + bx * 0.25, ay * 0.75 + by * 0.25], [ax * 0.25 + bx * 0.75, ay * 0.25 + by * 0.75]); } Q.push(P[P.length - 1]); P = Q; } return P; };
-const spun = (pts, CY, around = 48) => { const g = new T.LatheGeometry(pts.map(([r, y]) => new T.Vector2(Math.max(0, r), -(y - CY))), around); g.computeVertexNormals(); return g; };
-function turned(V, fill, CY) {
-  const out = eased(V.out), lip = out[out.length - 1], bowl = out.filter(([, y]) => y < V.floor - 0.4), rAt = (y) => { for (let i = 0; i + 1 < out.length; i++) { const [r0, y0] = out[i], [r1, y1] = out[i + 1]; if ((y - y0) * (y - y1) <= 0 && y0 !== y1) return r0 + ((r1 - r0) * (y - y0)) / (y1 - y0); } return lip[0]; };
-  const inner = [...bowl.map(([r, y]) => [r - V.wall, y]).reverse(), [0, V.floor]], vessel = spun([...out, [lip[0] - V.wall * 0.5, lip[1] - V.wall * 0.5], ...inner], CY);
-  const level = V.floor - Math.max(0, Math.min(1, fill)) * (V.floor - lip[1] - 3.2), body = bowl.filter(([, y]) => y > level).map(([r, y]) => [r - V.wall - 0.12, y]);
-  const drink = fill > 0.01 ? spun([[0, V.floor - 0.12], ...body.reverse().map((p) => p).reverse().sort((a, b) => b[1] - a[1]), [rAt(level) - V.wall - 0.12, level], [(rAt(level) - V.wall) * 0.6, level + 0.25], [0, level + 0.3]], CY) : null;
-  return { vessel, drink, level, rAt: (y) => rAt(y) - V.wall, lip };
-}
-// → the same shape of thing as a wallet or jacket model (see walletModel); it has no pose
-function drinkModel(L, fill) {
-  const W = 34, H = 46, CY = H / 2, UNIT = 1 / 18, root = new T.Group(), all = new T.Group(); all.scale.setScalar(UNIT); root.add(all);
-  const V = VESSELS[L.vessel] || VESSELS.tumbler, B = turned(V, fill, CY), at = (m, x, y, z = 0) => { m.position.set(x, -(y - CY), z); return m; };
-  // what is in it first (it is seen through the vessel): the drink, a second colour floating on it, its head, ice, fizz, a light
-  if (B.drink) { all.add(body(B.drink, L.liquid.mat, L.liquid.color));
-    const r = B.rAt(B.level) - 0.3;
-    if (L.liquid.top) { const g = new T.CylinderGeometry(r, B.rAt(B.level + 5) - 0.3, 5, 40); all.add(at(body(g, 'cream', L.liquid.top), 0, B.level + 2.6)); }
-    if (L.foam) { const g = new T.SphereGeometry(r, 32, 12, 0, Math.PI * 2, 0, Math.PI / 2); g.scale(1, 0.3 + L.foam * 0.5, 1); all.add(at(body(g, 'cream', '#fffaf0'), 0, B.level + 0.2));
-      for (let i = 0; i < 9; i++) { const a = i * 2.4, q = r * (0.25 + 0.6 * ((i * 37) % 10) / 10); all.add(at(body(new T.SphereGeometry(1 + (i % 3) * 0.5, 12, 8), 'cream', '#ffffff'), Math.cos(a) * q, B.level - 0.5 - L.foam * 1.5, Math.sin(a) * q)); } }
-    for (let i = 0; i < L.ice; i++) { const g = new T.BoxGeometry(5, 5, 5, 2, 2, 2), a = i * 2.2 + 0.4, q = Math.min(r - 3.6, 3.4); g.rotateX(0.5 + i); g.rotateY(0.7 * i + 0.3); all.add(at(body(g, 'plastic', '#eef8ff'), Math.cos(a) * q, B.level + 0.6 + (i % 2) * 2.4, Math.sin(a) * q)); } // (ice is solid to the eye: nothing clear shows inside a clear drink)
-    if (L.bubbles) { const m = new T.MeshBasicMaterial({ color: 0xffffff }); for (let i = 0; i < 26; i++) { const y = B.level + 1 + ((i * 53) % 100) / 100 * (V.floor - B.level - 2), a = i * 1.9, q = (B.rAt(y) - 1) * (0.2 + 0.75 * ((i * 29) % 10) / 10), b = new T.Mesh(new T.SphereGeometry(0.24 + (i % 3) * 0.12, 8, 6), m); all.add(at(b, Math.cos(a) * q, y, Math.sin(a) * q)); } }
-    if (L.glow) { const m = (op, k) => new T.MeshBasicMaterial({ color: new T.Color(L.liquid.color).lerp(new T.Color(0xffffff), k), opacity: op, alphaHash: op < 1 }); for (const [rad, op, k] of [[1.6, 1, 0.9], [2.8, 0.45, 0.5], [4.2, 0.2, 0.3]]) all.add(at(new T.Mesh(new T.SphereGeometry(rad, 16, 12), m(op, k)), 0, (B.level + V.floor) / 2 + 1)); } }
-  // then the vessel round it, and what is fixed to the vessel
-  all.add(body(B.vessel, L.mat, L.color, true));
-  if (L.rim) { const g = new T.TorusGeometry(B.lip[0] - V.wall * 0.25, V.wall * 0.62, 10, 48); g.rotateX(Math.PI / 2); all.add(at(body(g, L.rim.mat, L.rim.color), 0, B.lip[1])); }
-  if (V.handle) { const [x, y, rad, thick] = V.handle, g = new T.TorusGeometry(rad, thick, 10, 28, Math.PI * 1.15); g.rotateZ(-Math.PI * 0.575); all.add(at(body(g, L.mat, L.color, true), x - 1.2, y)); }
-  if (V.saucer) all.add(body(spun(eased(V.saucer, 1), CY), L.mat, L.color, true));
-  if (L.straw) { const len = H - 10, g = new T.CylinderGeometry(0.85, 0.85, len, 14); g.rotateZ(-0.22); all.add(at(body(g, 'plastic', L.straw), 2.6, V.floor - 2 - len * 0.5 * Math.cos(0.22), -1)); }
-  const rimX = B.lip[0] - 1, rimY = B.lip[1];
-  if (L.garnish === 'cherry') all.add(at(body(new T.SphereGeometry(2.5, 20, 14), 'plastic', '#d21f3c'), rimX - 1.2, rimY - 1.2, 1), at(body(new T.CylinderGeometry(0.18, 0.18, 6, 6).rotateZ(0.5), 'plastic', '#5a3a1e'), rimX - 2.6, rimY - 5, 1));
-  if (L.garnish === 'slice') { const g = new T.CylinderGeometry(4.6, 4.6, 0.9, 28), rind = new T.TorusGeometry(4.6, 0.5, 8, 28); g.rotateX(Math.PI / 2); g.rotateY(0.5); rind.rotateY(0.5); all.add(at(body(g, 'plastic', lighter(/^#[0-9a-f]{6}$/i.test(L.liquid.color) ? L.liquid.color : '#ffb347', 0.35)), rimX, rimY - 1), at(body(rind, 'plastic', '#f08a1c'), rimX, rimY - 1)); }
-  if (L.garnish === 'umbrella') { const cone = new T.ConeGeometry(7.5, 3.4, 10, 1, true), pick = new T.CylinderGeometry(0.25, 0.25, 15, 6); for (const g of [cone, pick]) g.rotateZ(-0.45); all.add(at(body(cone, 'paper', '#ff5fa8'), rimX - 1.5, rimY - 9.5), at(body(pick, 'bone', '#e8d9b0'), rimX - 4.6, rimY - 3.2)); }
-  return { root, pose() {}, w: W, h: H, unit: UNIT, box: [-10, -14, W + 10, H + 6], over: [], rest: [-15, -18] };
-}
+// (ui/drink3d.js: the vessel, what is in it and on it, and its life)
 
 // ---------- a foil pack ----------
 // A pillow of foil (its look's material: metal is foil), crimped shut top and bottom, a label printed across its front.
@@ -448,7 +403,7 @@ function dress(el, face, spec) {
   const st = { t: 0, want: 0, raf: 0, lean: null, hover: false };
   // one picture: the model as it is at t (how far open), turned as it rests (less so the further open: open, it lies flat)
   const draw = () => { const [rx, ry] = st.lean || M.rest, e = 1 - st.t, turn = new DOMMatrix().rotateSelf(e * rx, e * ry, 0);
-    M.pose(st.t); ux.clearRect(0, 0, under.width, under.height); ux.drawImage(renderGroup(M.root, { w: under.width, h: under.height, view, turn }), 0, 0);
+    M.pose(st.t); if (M.frame) { const now = performance.now(); M.frame(st.life ||= M.state(), st.at ? (now - st.at) / 1000 : 0, turn); st.at = now; } /* a drink's life (its slosh, fizz, steam) */ ux.clearRect(0, 0, under.width, under.height); ux.drawImage(renderGroup(M.root, { w: under.width, h: under.height, view, turn }), 0, 0);
     const shown = st.t >= 1 || !!M.flat; ox.clearRect(0, 0, over.width, over.height);
     if (shown) for (const [x, y, w, h] of M.over) { const a = [(x - bx0) * k, (y - by0) * k, w * k, h * k]; ox.drawImage(under, ...a, ...a); } // what lies over the things it holds
     face.classList.toggle('shown', shown); face.classList.toggle('shut', st.t <= 0 && !M.flat); };
@@ -465,18 +420,36 @@ function dress(el, face, spec) {
   el.addEventListener('click', () => requestAnimationFrame(aim));
   // a jacket or a drink turns toward the pointer on it, as a card leans
   if (spec.kind !== 'wallet') el.addEventListener('pointermove', (ev) => { const r = el.getBoundingClientRect(); if (!r.width || still()) return; const x = (ev.clientX - r.left) / r.width - 0.5, y = (ev.clientY - r.top) / r.height - 0.5;
-    st.lean = [-y * 30, x * 44]; cancelAnimationFrame(st.raf); st.raf = requestAnimationFrame(draw); }, { passive: true });
+    st.lean = [-y * 16, x * 24]; cancelAnimationFrame(st.raf); st.raf = requestAnimationFrame(draw); }, { passive: true });
   // in the hand (ui/spin.js): the body itself, turned freely
   // (a wallet comes up larger: open, what it holds must be read in it)
   el._look = (least) => { const size = Math.max(least, spec.kind === 'wallet' ? 400 : 250), px = Math.round(size * Math.min(2, devicePixelRatio || 1)), cv = document.createElement('canvas'); cv.width = cv.height = px; Object.assign(cv.style, { width: `${size}px`, height: `${size}px` });
-    const cx = cv.getContext('2d'), wrap = document.createElement('div'); wrap.className = 'g3-look'; wrap.append(cv); let R = new DOMMatrix(), t = 0, want = 0, raf = 0;
+    const cx = cv.getContext('2d'), wrap = document.createElement('div'); wrap.className = 'g3-look'; wrap.append(cv); let R = new DOMMatrix(), t = 0, want = 0, raf = 0, lifeUp = null, lastUp = 0;
     // shut, it fills the view; open, the view takes in all of it however it is turned
-    const near = (Math.max(M.w, M.h) * 0.62 + 10) * u, far = Math.hypot(Math.max(M.w / 2 - bx0, bx1 - M.w / 2), Math.max(M.h / 2 - by0, by1 - M.h / 2)) * u;
-    const paint = () => { const half = near + (far - near) * t; M.pose(t); cx.clearRect(0, 0, px, px); cx.drawImage(renderGroup(M.root, { w: px, h: px, view: [-half, -half, half, half], turn: R }), 0, 0); };
-    const look = { el: wrap, size, name: spec.name, sub: spec.sub, start: new DOMMatrix().rotateSelf(-10, 24, 0), get matrix() { return R; }, setRotation(m) { R = m; paint(); } };
+    // (a drink's view takes in its steam and its umbrella, over it)
+    const near = (spec.kind === 'drink' ? Math.max(M.w / 2 - bx0, bx1 - M.w / 2, M.h / 2 - by0, by1 - M.h / 2) * 0.85 : Math.max(M.w, M.h) * 0.62 + 10) * u, far = Math.hypot(Math.max(M.w / 2 - bx0, bx1 - M.w / 2), Math.max(M.h / 2 - by0, by1 - M.h / 2)) * u;
+    const paint = () => { const half = near + (far - near) * t; M.pose(t); if (M.frame) M.frame(lifeUp ||= M.state(), 0, R); cx.clearRect(0, 0, px, px); cx.drawImage(renderGroup(M.root, { w: px, h: px, view: [-half, -half, half, half], turn: R }), 0, 0); };
+    const look = { el: wrap, size, name: spec.name, sub: spec.sub, start: new DOMMatrix().rotateSelf(-10, 24, 0), upright: spec.kind === 'drink' ? new DOMMatrix().rotateSelf(-12, 0, 0) : null, get matrix() { return R; }, setRotation(m) { R = m; paint(); } };
     if (spec.kind === 'wallet') return walletLook3d(look, M, spec, { wrap, cv, cx, size, u, near, bx0, by0, bx1, by1 });
+    if (M.live) alive(wrap, () => { if (M.frame) { const now = performance.now(); M.frame(lifeUp ||= M.state(), lastUp ? (now - lastUp) / 1000 : 0, R); lastUp = now; } paint(); });
     return look; };
   aim(); draw();
+  if (M.live) alive(el, draw);
+}
+// Things that live (a drink fizzing, steaming, sloshing) are drawn again a few times a second while they are on the
+// screen; a few at a time, the ones you are pointing at or holding first.
+const LIVE = new Set(); let liveRaf = 0, liveAt = 0, liveTurn = 0;
+const seen = typeof IntersectionObserver === 'function' ? new IntersectionObserver((es) => { for (const e of es) e.target._onScreen = e.isIntersecting; }) : null;
+function alive(el, draw) {
+  const job = { el, draw }; LIVE.add(job); if (seen) seen.observe(el); else el._onScreen = true;
+  if (!liveRaf && !still()) liveRaf = requestAnimationFrame(tickLive);
+}
+function tickLive(now) {
+  liveRaf = 0; if (!LIVE.size) return; liveRaf = requestAnimationFrame(tickLive); if (now - liveAt < 40) return; liveAt = now;
+  const on = [...LIVE].filter((j) => { if (!j.el.isConnected) { LIVE.delete(j); seen?.unobserve(j.el); return false; } return j.el._onScreen; });
+  const first = on.filter((j) => j.el.closest('.spin-view') || j.el.matches(':hover')), rest = on.filter((j) => !first.includes(j)), n = Math.min(rest.length, 6);
+  for (const j of first) j.draw();
+  for (let i = 0; i < n; i++) rest[(liveTurn + i) % rest.length].draw(); liveTurn += n;
 }
 
 // ---------- a wallet held up close (ui/spin.js) ----------
