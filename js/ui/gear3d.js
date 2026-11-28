@@ -350,7 +350,7 @@ function packModel(L) {
   const { w: W, h: H, seal: S } = PACK_PX, root = new T.Group(), all = new T.Group(); all.scale.setScalar(U); root.add(all);
   // the creases a foil pack has from being made and handled (how many: its look's wrinkle)
   const crease = (x, y) => L.wrinkle * (0.55 * Math.sin(x * 0.61 + y * 0.23) * Math.sin(y * 0.37 - x * 0.11) + 0.35 * Math.sin(x * 1.7 - y * 1.1) * Math.cos(y * 0.9));
-  const pillow = soft(rrect(-W / 2, -H / 2 + S - 1, W, H - 2 * S + 2, 2), { depth: 0.4, bevel: 0.4, puff: 5.2, face: 'both', under: 4.2, round: 15, cells: 56, smooth: 2, ripple: crease });
+  const pillow = soft(rrect(-W / 2, -H / 2 + S - 1, W, H - 2 * S + 2, 2), { depth: 0.3, bevel: 0.3, puff: 2.3, face: 'both', under: 1.7, round: 13, cells: 56, smooth: 2, ripple: crease });
   const bag = part(pillow, L.mat, L.color); all.add(bag);
   // the crimps: flat seals pressed in ridges, their outer edge cut in a zigzag
   const zig = (y0, y1, outerTop, x0 = -W / 2, x1 = W / 2) => { const pts = [], n = Math.max(2, Math.round((x1 - x0) / 3)), dy = outerTop ? -1.2 : 1.2, oy = outerTop ? y0 : y1, iy = outerTop ? y1 : y0;
@@ -365,17 +365,33 @@ function packModel(L) {
     g.position.y = -line; hinge.position.y = line; hinge.add(g); all.add(hinge); strips.push({ hinge, mid: (x0 + x1) / 2 }); }
   // the notch to tear it from, at the left of the tear line
   const notch = new T.Mesh(new T.CircleGeometry(1.4, 3), new T.MeshBasicMaterial({ color: L.tear })); notch.position.set(-W / 2 + 0.6, line - 0.6, pillow.zAt(-W / 2 + 3, -line + 1) + 0.1); notch.rotation.z = Math.PI; all.add(notch);
-  // the label: a band across the front, bent to the pillow, and its print (the set's name, its emblem) over it
-  const LW = W * 0.84, LH = H * 0.34, ly = -H * 0.06, bent = (z) => { const g = new T.PlaneGeometry(LW, LH, 24, 10), P = g.attributes.position;
-    for (let k = 0; k < P.count; k++) P.setZ(k, pillow.zAt(P.getX(k), -(P.getY(k) + ly)) + z); g.translate(0, ly, 0); g.computeVertexNormals(); return g; };
-  all.add(body(bent(0.55), L.label.mat, L.label.color));
-  const cv = document.createElement('canvas'); cv.width = 512; cv.height = Math.round(512 * LH / LW); const c = cv.getContext('2d');
-  const sym = SYMBOLS[L.symbol?.id]; if (sym) { c.save(); c.translate(cv.width / 2 - cv.height * 0.32, cv.height * 0.06); c.scale(cv.height * 0.64 / 24, cv.height * 0.64 / 24); c.lineWidth = 2.2; c.lineJoin = c.lineCap = 'round'; c.strokeStyle = L.symbol.color; c.stroke(new Path2D(sym.d)); for (const [x, y] of sym.dots || []) { c.beginPath(); c.arc(x, y, 1.8, 0, 7); c.fillStyle = L.symbol.color; c.fill(); } c.restore(); }
-  c.fillStyle = L.ink; c.textAlign = 'center'; c.font = `700 ${Math.round(cv.height * 0.2)}px "Fredoka", "Trebuchet MS", sans-serif`; c.fillText((L.name || '').toUpperCase(), cv.width / 2, cv.height * 0.92, cv.width * 0.92);
+  // the print: over the whole front, bent to the pillow. Its pattern in two inks (the second lets the foil show through
+  // as much as the look's `clear` says), and across it the label band with the set's name and its emblem.
+  const PW = W, PH = H - 2 * S + 2, print = (() => { const g = new T.PlaneGeometry(PW, PH, 36, 50), P = g.attributes.position;
+    for (let k = 0; k < P.count; k++) P.setZ(k, pillow.zAt(P.getX(k), -P.getY(k)) + 0.12); g.computeVertexNormals(); return g; })();
+  const cv = document.createElement('canvas'); cv.width = 512; cv.height = Math.round(512 * PH / PW); const c = cv.getContext('2d'), cw = cv.width, chh = cv.height;
+  const [ia, ib] = L.print.colors, mix = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+  const bandY = chh * 0.56, bandH = chh * 0.3;
+  c.fillStyle = mix(ia, 1); c.fillRect(0, 0, cw, chh);
+  const pat = L.print.pattern;
+  // the pattern: cut out of the ground, then inked in the second colour (as clear as the look says: the foil shows there)
+  const shapes = () => { if (pat === 'burst') { const cx = cw / 2, cy = bandY + bandH / 2, R = Math.hypot(cw, chh); for (let i = 0; i < 28; i += 2) { const a0 = (i / 28) * Math.PI * 2, a1 = ((i + 1) / 28) * Math.PI * 2; c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a0) * R, cy + Math.sin(a0) * R); c.lineTo(cx + Math.cos(a1) * R, cy + Math.sin(a1) * R); c.fill(); } }
+  else if (pat === 'stripes') { c.save(); c.translate(cw / 2, chh / 2); c.rotate(-0.6); for (let x = -chh * 1.5; x < chh * 1.5; x += 56) c.fillRect(x, -chh * 1.5, 26, chh * 3); c.restore(); }
+  else if (pat === 'dots') { for (let y = 10, r = 0; y < chh; y += 26, r++) for (let x = (r % 2) * 13 + 10; x < cw; x += 26) { const k = 3 + 8 * (1 - Math.abs(y - bandY) / chh); c.beginPath(); c.arc(x, y, k, 0, 7); c.fill(); } }
+  else if (pat === 'waves') { for (let y = -20; y < chh + 40; y += 44) { c.beginPath(); c.moveTo(0, y); for (let x = 0; x <= cw; x += 8) c.lineTo(x, y + Math.sin(x / 40) * 12); c.lineTo(cw, y + 20); for (let x = cw; x >= 0; x -= 8) c.lineTo(x, y + 20 + Math.sin(x / 40) * 12); c.fill(); } }
+  else if (pat === 'diamonds') { for (let y = 0, r = 0; y < chh + 40; y += 40, r++) for (let x = (r % 2) * 30; x < cw + 40; x += 60) { c.beginPath(); c.moveTo(x, y - 18); c.lineTo(x + 14, y); c.lineTo(x, y + 18); c.lineTo(x - 14, y); c.fill(); } } };
+  c.globalCompositeOperation = 'destination-out'; c.fillStyle = '#000'; shapes(); c.globalCompositeOperation = 'source-over'; c.fillStyle = mix(ib, 1 - L.print.clear * 0.85); shapes();
+  // a glow behind the band, then the band, its emblem and the name
+  const glow = c.createRadialGradient(cw / 2, bandY + bandH / 2, 4, cw / 2, bandY + bandH / 2, cw * 0.6); glow.addColorStop(0, 'rgba(255,255,255,.35)'); glow.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = glow; c.fillRect(0, 0, cw, chh);
+  c.fillStyle = L.label.color; c.fillRect(0, bandY, cw, bandH); c.fillStyle = mix(ia, 0.9); c.fillRect(0, bandY - 5, cw, 5); c.fillRect(0, bandY + bandH, cw, 5);
+  const sym = SYMBOLS[L.symbol?.id], sz = chh * 0.24;
+  if (sym) { c.save(); c.translate(cw / 2 - sz / 2, bandY - sz * 1.15); c.scale(sz / 24, sz / 24); c.lineWidth = 2.4; c.lineJoin = c.lineCap = 'round'; c.shadowColor = 'rgba(0,0,0,.45)'; c.shadowBlur = 6; c.strokeStyle = L.symbol.color; c.stroke(new Path2D(sym.d)); for (const [x, y] of sym.dots || []) { c.beginPath(); c.arc(x, y, 1.8, 0, 7); c.fillStyle = L.symbol.color; c.fill(); } c.restore(); }
+  c.fillStyle = L.ink; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `700 ${Math.round(bandH * 0.42)}px "Fredoka", "Trebuchet MS", sans-serif`; c.fillText((L.name || '').toUpperCase(), cw / 2, bandY + bandH / 2, cw * 0.9);
   const tex = new T.CanvasTexture(cv); tex.colorSpace = T.SRGBColorSpace; tex.anisotropy = 4;
-  all.add(new T.Mesh(bent(0.7), new T.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.5, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2 })));
+  const printed = new T.Mesh(print, new T.MeshPhysicalMaterial({ map: tex, transparent: true, alphaTest: 0.02, roughness: 0.3, metalness: L.print.shine, clearcoat: 1, clearcoatRoughness: 0.15, polygonOffset: true, polygonOffsetFactor: -2 }));
+  all.add(printed);
   // the foil as made, kept so a crinkle can be laid over it and taken off again
-  const flat = []; bag.traverse((m) => { if (m.isMesh) flat.push({ g: m.geometry, p: m.geometry.attributes.position.array.slice() }); });
+  const flat = []; for (const o of [bag, printed]) o.traverse((m) => { if (m.isMesh) flat.push({ g: m.geometry, p: m.geometry.attributes.position.array.slice() }); });
   const st = { tear: 0, fly: 0 };
   const place = () => strips.forEach(({ hinge }, i) => { const a = Math.max(0, Math.min(1, st.tear * N - i)), f = st.fly;
     hinge.rotation.set(-a * 2.4 - f * 1.4, f * 0.6, a * 0.25 + f * 0.9); hinge.position.set(f * 26, line + a * 1.5 + f * 40, a * 3 + f * 14); });

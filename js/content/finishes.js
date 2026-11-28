@@ -107,14 +107,21 @@ export function drinkLook(d = {}) {
 // ---------- foil packs ----------
 // A foil pack is a sealed pillow of foil, crimped shut at the top and the bottom, with a printed label across its
 // front (the set's name and an emblem). Any finish can be the foil, the label and the crimps. A pack's look:
-//   mat, color: the wrapper (metal is foil) · label: { mat, color } · ink: the label's lettering · crimp: { mat, color }
+//   mat, color: the wrapper (metal is foil) · print: { pattern (PACK_PATTERNS), colors: [ink, second ink], clear: how
+//   much foil shows through the second ink (0 to 1), shine: how metallic the print is (0 to 1) }: printed over the whole
+//   front · label: { color }: the band across it · ink: the band's lettering · crimp: { mat, color }
 //   (the seals; else as the wrapper) · symbol: { id, color } (id null: none) · wrinkle: how crumpled the foil is
 //   (0 to 1) · tear: the colour of the notch you tear it from
 const PACK_COLORS = ['#c9d0dc', '#5fa2ff', '#c46cff', '#ffcf5a'];
 const PACK_SYMBOLS = ['star4', 'star5', 'star8', 'crown'];
+export const PACK_PATTERNS = { burst: 'Sunburst', stripes: 'Stripes', dots: 'Halftone dots', waves: 'Waves', diamonds: 'Diamonds', plain: 'Plain' };
+const PACK_PRINTS = [['#2b6cff', '#7fe3ff'], ['#ff3d8b', '#ffd23d'], ['#7b2cff', '#22e0c8'], ['#ff8a00', '#ff2e63']];
+const unit = (v, d) => (Number.isFinite(+v) && v !== '' && v != null ? Math.max(0, Math.min(1, +v)) : d);
 export function packLook(q, P = {}) {
   const L = P.look || {}, i = Math.max(0, Math.min(3, (q || 1) - 1)), mat = FINISHES[L.mat] ? L.mat : 'metal', color = L.color || P.color || PACK_COLORS[i];
-  return { mat, color, label: part(L.label, 'paper', '#160f2a'), ink: L.ink || '#ffffff', crimp: part(L.crimp, mat, color),
+  const pr = L.print || {}, inks = PACK_PRINTS[i];
+  const print = { pattern: PACK_PATTERNS[pr.pattern] ? pr.pattern : 'burst', colors: [pr.colors?.[0] || inks[0], pr.colors?.[1] || inks[1]], clear: unit(pr.clear, 0.45), shine: unit(pr.shine, 0.55) };
+  return { mat, color, print, label: part(L.label, 'paper', '#160f2a'), ink: L.ink || '#ffffff', crimp: part(L.crimp, mat, color),
     symbol: L.symbol && 'id' in L.symbol && !L.symbol.id ? null : emblem(L) || { id: PACK_SYMBOLS[i], color: L.ink || color, mat: '' },
     wrinkle: Math.max(0, Math.min(1, Number.isFinite(+L.wrinkle) ? +L.wrinkle : 0.4)), tear: L.tear || '#ff5f6a', name: P.name || '' };
 }

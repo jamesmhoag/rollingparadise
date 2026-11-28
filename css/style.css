@@ -1656,3 +1656,25 @@ body.spinning .thing > .th-body, body.carrying-now .thing > .th-body { transitio
 .pack-open.fanned { justify-content: center; padding-top: 0; }
 .pack-open.fanned .pack-fan { height: min(520px, 66vh); margin-top: 24px; }
 .pack-open.fanned .pack-fan .fan-card { bottom: 90px; }
+/* the Book's filters (a lit dot for each phase a trick resolves in) and sorts (small icons), wherever the Book is */
+.book-bar { display: flex; align-items: center; gap: 3px; flex-wrap: nowrap; }
+.book-bar button { all: unset; box-sizing: border-box; display: inline-grid; place-items: center; width: 17px; height: 17px; border-radius: 5px; cursor: var(--cur-pointer, pointer);
+  border: 1px solid rgba(255, 255, 255, .14); background: rgba(10, 6, 26, .7); color: #b9b0d8; transition: border-color .15s, background .15s, color .15s; }
+.book-bar button:hover { border-color: rgba(110, 240, 255, .7); color: #fff; }
+.book-bar .bb-type i { width: 8px; height: 8px; border-radius: 50%; background: var(--tc); box-shadow: 0 0 6px var(--tc); transition: opacity .15s, transform .15s; }
+.book-bar .bb-type.off i { background: transparent; box-shadow: inset 0 0 0 1.5px var(--tc); opacity: .55; transform: scale(.85); }
+.book-bar .bb-gap { width: 4px; flex: none; }
+.book-bar .bb-sort svg { width: 12px; height: 12px; fill: currentColor; }
+.book-bar .bb-sort.on { color: #6ef0ff; border-color: rgba(110, 240, 255, .8); background: rgba(40, 90, 120, .35); position: relative; }
+.book-bar .bb-sort.on::after { content: ''; position: absolute; right: -1px; bottom: -1px; border: 3.5px solid transparent; }
+.book-bar .bb-sort.on.up::after { border-bottom-color: #6ef0ff; border-top-width: 0; }
+.book-bar .bb-sort.on.down::after { border-top-color: #6ef0ff; border-bottom-width: 0; }
+.book-bar.on-table { position: absolute; z-index: 975; justify-content: space-between; }
+.book-head { align-items: center; gap: 8px; }
+.book-head .cap { white-space: nowrap; }
+.book-head { flex-wrap: wrap; row-gap: 4px; }
+.book-bar.on-table { gap: 2px; }
+.book-bar.on-table button { width: 14px; height: 14px; border-radius: 4px; }
+.book-bar.on-table .bb-type i { width: 7px; height: 7px; }
+.book-bar.on-table .bb-sort svg { width: 10px; height: 10px; }
+.book-bar.on-table .bb-gap { width: 2px; }

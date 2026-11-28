@@ -17,6 +17,7 @@ import { chaser, cue } from './cue.js';
 import { signOf, dressSign, dressFelt, nameSign, crownLookOf, killSign, celebrateSign } from './sign.js';
 import { diceHtml, trickItem, bonusNeed, needCond } from './trickcard.js';
 import { sfx } from './sfx.js';
+import { bookBar, bookView, onBook } from './bookbar.js';
 import { t as tx } from '../text.js';
 
 // the table: the House's phase track runs along the top edge (y 100-124), the positions below it, and between them
@@ -64,7 +65,7 @@ export function boutScene(root, bout, ctx, onDone) {
   const bookOpen = () => opened() === 'book', pouchOpen = () => opened() === 'pouch';
   // The Book and the Pouch are spines side by side at the edge of your half. The one you open grows where it stands into
   // a list (MENU_W wide), pushing the other spine along: the Book lists its tricks, the Pouch its dice with their names.
-  const MENU_W = 144, MENU_TOP = 462, MENU_H = 246, LIST_Y = MENU_TOP + 26, LIST_H = MENU_H - 32;
+  const MENU_W = 144, MENU_TOP = 462, MENU_H = 246, LIST_Y = MENU_TOP + 26, LIST_H = MENU_H - 32, BAR_H = 20; // BAR_H: the open Book's filters and sorts, over its list
   const spineGeo = () => { const l = HALF[0].l, bw = bookOpen() ? MENU_W : SPINE, pw = pouchOpen() ? MENU_W : SPINE; return { book: l, bookW: bw, pouch: l + bw + SPINE_GAP, pouchW: pw, right: l + bw + SPINE_GAP + pw }; };
   const setOpen = (k) => { ui.open = k; ui.openAt = stepKey(); };
   const ckey = (si, uid) => (si ? 'o' + uid : uid), dkey = (si, id) => (si ? 'o' + id : id); // their ids are counted apart from yours
@@ -94,9 +95,12 @@ export function boutScene(root, bout, ctx, onDone) {
       // when the Run holds more than a row, the next row stands just behind, its foot showing under the row in front
       sideOf(si).run.forEach((e, i) => { const row = Math.floor(i / R.per), behind = row === at + 1;
         out.set(ckey(si, e.uid), { si, x: R.l + (i % R.per) * (R.cw + 6), y: RUN_Y + (behind ? 12 : 0), w: R.cw, h: CARD_H, open: true, e, folded: row !== at && !behind, behind }); }); });
-    const open = bookOpen(), g = spineGeo(), tapT = B.tappedInOrder(me).tricks.map((x) => x.trick), shelf = [...me.book, ...tapT], step = SHELF_STEP, px = g.book + 6, iw = MENU_W - 28;
-    const at = open ? listWin('book', { x: px, y: LIST_Y, w: iw, h: LIST_H, sx: g.book + MENU_W - 19 }, shelf.length, Math.floor(LIST_H / step)) : null; if (!open) windows.delete('book');
-    shelf.forEach((t, i) => { const w = at && at(i); out.set(t.uid, open ? { si: 0, x: px, y: LIST_Y + w.rel * step, w: iw, h: step - 4, open: false, t, panel: true, folded: w.folded, peek: w.peek && !w.folded }
+    // (the Book's own filters and sorts: what they hide folds into the spine, the rest is listed in their order)
+    const open = bookOpen(), g = spineGeo(), tapT = B.tappedInOrder(me).tricks.map((x) => x.trick), all = [...me.book, ...tapT], shelf = bookView(all), step = SHELF_STEP, px = g.book + 6, iw = MENU_W - 28;
+    const LY = LIST_Y + BAR_H, LH = LIST_H - BAR_H;
+    const at = open ? listWin('book', { x: px, y: LY, w: iw, h: LH, sx: g.book + MENU_W - 19 }, shelf.length, Math.floor(LH / step)) : null; if (!open) windows.delete('book');
+    all.filter((t) => !shelf.includes(t)).forEach((t, i) => out.set(t.uid, { si: 0, x: g.book + 1, y: RUN_Y + 12 + i * 3, w: 26, h: 24, open: false, t, folded: true }));
+    shelf.forEach((t, i) => { const w = at && at(i); out.set(t.uid, open ? { si: 0, x: px, y: LY + w.rel * step, w: iw, h: step - 4, open: false, t, panel: true, folded: w.folded, peek: w.peek && !w.folded }
       : { si: 0, x: g.book + 1, y: RUN_Y + 12 + i * 3, w: 26, h: 24, open: false, t, folded: true }); });
     return out;
   }
@@ -317,6 +321,7 @@ export function boutScene(root, bout, ctx, onDone) {
   const trayBox = h('div', { class: 'tray-box', text: tx('table.draw-then-press-roll') }), trayCap = h('div', { class: 'tray-cap' });
   // the spines the Book and the Pouch fold into, side by side, and the panel the open one stands on over the Run
   const toggleOpen = (k) => { setOpen(opened() === k ? null : k); sfx('pick'); sync(); };
+  const bookBarEl = bookBar('on-table'); onBook(bookBarEl, () => sync());
   const spines = {
     book: h('button', { class: 'spine book', onclick: () => toggleOpen('book'), tip: () => tx('table.spine-book', { n: me.book.length, list: me.book.map((t) => `<span class="tag-t" style="--tc:${D.TYPES[D.defOf(t).type].color}">${D.defOf(t).name}</span>`).join(' ') || tx('table.spine-empty') }) },
       h('span', { class: 'sp-t' }), h('span', { class: 'sp-marks' })),
@@ -335,7 +340,7 @@ export function boutScene(root, bout, ctx, onDone) {
   const frameEls = [header, ...seats, stageBox, phasesEl, feedEl, runEmpty, oppEmpty,
         (ztRun = h('div', { class: 'zone-title', style: { top: TITLE_Y + 'px' }, tip: tx('table.run-tricks-you-have'), text: tx('table.your-run') })),
     (ztRoll = h('div', { class: 'zone-title zt-dice', style: { top: DICE_Y - 14 + 'px' }, tip: tx('table.the-roll-everything-you'), text: tx('table.the-roll') })), trayBox, trayCap,
-    spines.book, spines.dice, ...Object.values(them),
+    spines.book, spines.dice, bookBarEl, ...Object.values(them),
     (controls = h('div', { class: 'controls' }, commitBtn, h('div', { class: 'ctrl-row' }, undoBtn, speedBtn))), ...coasters];
   feedEl.firstChild.prepend(btn(tx('title.library'), () => openLibrary(), tx('table.library-every-chip-trick'), 'small lib-btn'));
   const banner = h('div', { class: 'banner' });
@@ -578,6 +583,7 @@ export function boutScene(root, bout, ctx, onDone) {
     const ob = bookOpen(), op = pouchOpen();
     root.classList.toggle('open-book', ob); root.classList.toggle('open-pouch', op);
     spines.book.classList.toggle('peeking', ob); spines.dice.classList.toggle('peeking', op);
+    { const g = spineGeo(); Object.assign(bookBarEl.style, { display: ob ? '' : 'none', left: g.book + 8 + 'px', top: LIST_Y - 2 + 'px', width: MENU_W - 30 + 'px' }); }
     const tapN = (n) => (n ? ` · ${tx('table.tapped-n', { n })}` : '');
     swapText(spines.book.children[0], `${tx('table.book')} ${me.book.length}${tapN(me.tapped.tricks.length)}`); swapText(spines.dice.children[0], `${tx('table.pouch')} ${me.pouch.length}${tapN(me.tapped.dice.length)}`);
     syncList(spines.book.children[1], me.book, (t) => t.uid, (t) => h('i', { style: { '--tc': D.TYPES[D.defOf(t).type].color } }), () => {});

@@ -35,7 +35,8 @@ assert(R.walletCards(run).length === 1 && run.cards[0] === 'debit', 'a 1-slot wa
 assert(!R.addCard(run, 'punch') && run.pendingCard === 'punch' && !run.cards.includes('punch'), 'a punch card is a card: it needs a slot like any other (there is no lanyard)');
 R.resolvePending(run, null);
 R.addPass(run, 1);
-assert(!R.addCard(run, 'suite_1') && !run.pendingCard && R.addKey(run, 1) === null && !R.hasKey(run, 1), 'a Suite Key is a pass: a wallet with one pass slot, taken by the floor\'s pass, has nowhere to put it');
+assert(!R.addCard(run, 'suite_1') && !run.pendingCard && R.addKey(run, 1) && R.hasKey(run, 1) && run.pass === 0 && R.passFloor(run) === 1 && !R.needsBouncer({ ...run, phase: 'floor', floor: 1 }), 'a Suite Key is a pass, and stands in for its floor\'s: in a one slot wallet it takes the floor pass\'s slot');
+run.keys = []; R.addPass(run, 1);
 { const r2 = R.newRun('rascal', 'standard', 5, { wallet: 'duct_tape' }); r2.passes = [2, 1]; r2.pass = 2; r2.floor = 2; D.WALLETS.duct_tape.passes = 2;
   const k = R.addKey(r2, 2); assert(k && /^2\d\d$/.test(k.room) && R.hasKey(r2, 2) && R.passesOf(r2).join() === '2' && R.passSlotsUsed(r2) === 2, 'with no slot free a key takes the slot of a pass for a floor below; it is cut for a room, the floor then two digits');
   assert(R.keyName(k) === `Suite ${k.room}` && R.nextAfterBoss(r2) === 'suite', 'the key is named for its room, and opens its floor\'s Suite');

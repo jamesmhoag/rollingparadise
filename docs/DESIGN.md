@@ -1207,3 +1207,15 @@ material. A sign's lettering is set and fitted in the room its edging leaves.
   torn all the way the strip flies off and the tricks come up into your hand, fanned. Point at one and it comes
   forward. The rare one is always the last in the pack and sits at the back of the fan. "Just tear it" opens it in one
   go; without WebGL the tricks come straight out.
+- **Foil packs, round 25**: thinner, and printed over the whole front: a pattern (sunburst, stripes, halftone dots,
+  waves, diamonds or plain) in two inks, the foil showing through the second as much as the look says, the print as
+  metallic as it says, and the label band with the set's name and emblem across it. All in the Gear maker.
+- **The Book's filters and sorts** (ui/bookbar.js), wherever the Book is (the table, the floor, the Coat Check, the
+  Trick Trader): a lit dot for each phase a trick resolves in (its type: Investment, Insurance, Expense, Correction;
+  click to hide or show), then three sorts (by phase, by the sides of the Bonus dice, by how many Bonus dice; click
+  again to turn the order round, a third time to stop). Icons only, each with a hover. The choice is kept per viewer
+  and every Book on screen follows it; at the table, hidden tricks fold into the spine.
+- **Suite Keys stand in for their floor's pass**: holding the key for floor 2 you need no floor 2 pass, so in a full
+  wallet a key takes the slot of that floor's pass (even the last one), and the Bouncer lets a key holder through.
+- **The Gear maker** can copy a wallet or a jacket (Organise · Copy) as well as start a new one, to make wallets with
+  enough pass slots for keys and Coat Check passes.

@@ -610,7 +610,8 @@ const committed = (bout) => sum(bout.sides[0].grid.flat().flatMap((c) => c.chips
 
 // ---------- passes ----------
 // the floor a pass in the wallet takes you to; coming back to a saved run without one, the Bouncer stops you
-export const passFloor = (run) => run.pass || 0;
+// (a Suite Key stands in for its floor's pass: holding the key for floor 2, you need no floor 2 pass)
+export const passFloor = (run) => Math.max(run.pass || 0, ...keysOf(run).map((k) => k.floor));
 // A wallet holds up to its `passes` (WALLETS, tuned in Build mode's tables), each in a pass slot that cards never use.
 // Reaching a floor adds its pass; a full wallet gives up its lowest pass for it. run.pass is the highest one held.
 export const passCap = (id) => Math.max(1, Math.round(D.WALLETS[id]?.passes ?? 1));
@@ -623,7 +624,9 @@ export const hasKey = (run, floor) => keysOf(run).some((k) => k.floor === floor)
 export const claimsOf = (run) => (run.claims || []).filter((c) => c && c.no);
 export const passSlotsUsed = (run) => passesOf(run).length + keysOf(run).length + claimsOf(run).length;
 export function addPass(run, f) {
-  if (!(f > 0)) return; const list = passesOf(run); if (!list.includes(f)) list.push(f);
+  // (a Suite Key for this floor, or above, is pass enough)
+  if (!(f > 0) || keysOf(run).some((k) => k.floor >= f)) return;
+  const list = passesOf(run); if (!list.includes(f)) list.push(f);
   list.sort((a, b) => b - a); const cap = passCap(run.wallet);
   // the newest floor's pass always has a slot: lower passes give theirs up first, then the oldest keys
   // and last the oldest Coat Check passes: lost (run.lostClaims, into the world's lost pile when the run ends)
@@ -638,7 +641,8 @@ export function addPass(run, f) {
 export function addKey(run, floor = run.floor) {
   if (hasKey(run, floor)) return keysOf(run).find((k) => k.floor === floor);
   const cap = passCap(run.wallet), list = passesOf(run); run.keys = keysOf(run);
-  if (list.length + run.keys.length + claimsOf(run).length >= cap) { if (list.length > 1) { list.pop(); run.passes = list; } else return null; }
+  // a full wallet: the key takes the slot of the lowest floor pass, even the last one when it is for this floor or below
+  if (list.length + run.keys.length + claimsOf(run).length >= cap) { if (list.length > 1 || (list.length && list[0] <= floor)) { list.pop(); run.passes = list; run.pass = list[0] || 0; } else return null; }
   const key = { floor, room: `${floor}${String(run.rng.int(100)).padStart(2, '0')}` }; run.keys.push(key); return key;
 }
 // ---------- the Coat Check ----------

@@ -3,6 +3,7 @@ import { h, syncList, openPanel, closePanel, toast, btn, tween, pulse, swapText,
 import { holdUp } from './spin.js';
 import { sfx } from './sfx.js';
 import { openPack } from './foilpack.js';
+import { bookBar, bookView, onBook } from './bookbar.js';
 import { app, hud, oppTip, trickTag, diceSummary, nameTag } from './app.js';
 import { faceList, dieName, canMelt, matOf, rollDie, boutCopy } from '../dice.js';
 import { meltVolume, castNeed, castFor, mixDyes, mixOpen } from '../forge.js';
@@ -78,7 +79,7 @@ export function hubScene(root) {
   root.classList.add('on-floor');
   root.append(H.el, h('div', { class: 'page' }, h('div', { class: 'hub' },
     h('div', { class: 'side hub-me' }, nameTag('big'),
-      h('div', { class: 'box scroll', style: { flex: '1' } }, h('span', { class: 'cap', text: t('floor.yourBook') }), book, h('span', { class: 'cap', text: tx('floor.your-pouch') }), pouch, hint)),
+      h('div', { class: 'box scroll', style: { flex: '1' } }, h('div', { class: 'row between book-head' }, h('span', { class: 'cap', text: t('floor.yourBook') }), bookBar()), book, h('span', { class: 'cap', text: tx('floor.your-pouch') }), pouch, hint)),
     h('div', { class: 'plan-fit' }, plan),
     h('div', { class: 'side' }, h('div', { class: 'box scroll', style: { flex: '1' } }, h('span', { class: 'cap', text: t('floor.news') }), news)))));
 
@@ -125,13 +126,13 @@ export function hubScene(root) {
       if (t.felt) for (const [p, v] of Object.entries(feltStyle(t.felt))) el.style.setProperty(p, v);
       el.classList.toggle('unseen', !!t.unseen); el.onclick = () => visit(t.k, t.on); el._tip = t.tip; el.classList.add('has-tip'); }
     syncList(news, run.news.slice(-7).map((text, i) => ({ text, k: run.news.length - Math.min(7, run.news.length) + i })).reverse(), (n) => n.k, (n) => h('li', { text: n.text }));
-    syncList(book, run.tricks, (t) => t.uid + ':' + t.q + ':' + D.condOf(t), (t) => trickTag(t, run.cls));
+    syncList(book, bookView(run.tricks), (t) => t.uid + ':' + t.q + ':' + D.condOf(t), (t) => trickTag(t, run.cls));
     // your dice: point at one for what it is, click it to hold it up close
     syncList(pouch, run.dice, (d) => d.id + ':' + faceList(d).join(), (d) => { const el = dieEl(d); el._tip = () => dieTip(d); el.classList.add('has-tip'); el.addEventListener('click', () => holdUp(el)); return el; });
     swapText(hint, R.brokeHint(run) || t('floor.pouchHint', { dice: diceSummary(run.dice) }));
     R.saveRun(run);
   }
-  rerender = render; render();
+  rerender = render; render(); onBook(book, () => render());
   const onDev = () => { if (!root.isConnected) return document.removeEventListener('rp:dev', onDev); render(); }; document.addEventListener('rp:dev', onDev); // developer mode changed the run
   // no game left here that the purse covers: the House shows you the door (sell something first if you can)
   if (R.stranded(run)) setTimeout(() => { if (app.run === run && R.stranded(run)) doorPanel(); }, 900);
@@ -235,7 +236,7 @@ function traderPanel() {
   function render() {
     syncList(shelf, fs.shop, (it) => it.key, (it) => { const el = trickItem(run, (e) => e._t); el.append(btn(tx('shop.buy'), () => { tryDo(R.buyTrick(run, it.key), el); done(); }, null, 'small')); return el; },
       (el, it) => { const [n, s] = showTrick(el, it.trick); setItem(el, `${n} ${leftTag(it.left ?? 1)}`, s, cents(R.price(run, 'trader', it.cost))); el.lastChild.classList.toggle('off', run.purse < R.price(run, 'trader', it.cost)); });
-    syncList(mine, run.tricks, (t) => t.uid, (t) => { const el = trickItem(run, (e) => e._t);
+    syncList(mine, bookView(run.tricks), (t) => t.uid, (t) => { const el = trickItem(run, (e) => e._t);
       el.append(btn(tx('floor.sell'), () => { const poor = !R.canSell(el._t); tryDo(poor ? R.trashTrick(run, t.uid) : R.sellTrick(run, t.uid), el, tx('floor.keep-at-least-one-2')); done(); },
         () => (R.canSell(el._t) ? `<b>Sell</b><p>${cents(R.trickValue(run, el._t))}: ${D.CONDITIONS[D.condOf(el._t)].name} sells at ${Math.round(D.CONDITIONS[D.condOf(el._t)].sell * 100)}% of its price.</p>` : tx('floor.trash-poor-tricks-cannot')), 'small danger')); return el; },
       (el, t) => { const [n, s] = showTrick(el, t), sells = R.canSell(t);
@@ -253,9 +254,9 @@ function traderPanel() {
       (el, it) => { if (it.die) setItem(el, `1${it.die}`, 'A rare die.', cents(it.cost)); else { const [n, s] = trickLine(it.trick); setItem(el, n, s, cents(it.cost)); } el.lastChild.classList.toggle('off', run.purse < it.cost); });
     swapText(restockBtn, tx('floor.restock', { restockCost: cents(R.restockCost(run)) })); restockBtn.classList.toggle('off', run.purse < R.restockCost(run));
   }
-  render();
+  render(); onBook(mine, render);
   openPanel(h('div', {}, head(tx('tuner.rooms.trader'), tx('floor.tricks-that-match-your')),
-    h('div', { class: 'cols2' }, h('div', { class: 'col' }, h('div', { class: 'row between' }, h('span', { class: 'cap', text: tx('floor.on-the-shelf-5', { bought: fs.bought }) }), restockBtn), shelf, h('span', { class: 'cap', text: tx('floor.foil-packs-better-sets') }), packs, pulledWrap, secretWrap), h('div', { class: 'col' }, h('span', { class: 'cap', text: tx('floor.your-book') }), mine))), { wide: true });
+    h('div', { class: 'cols2' }, h('div', { class: 'col' }, h('div', { class: 'row between' }, h('span', { class: 'cap', text: tx('floor.on-the-shelf-5', { bought: fs.bought }) }), restockBtn), shelf, h('span', { class: 'cap', text: tx('floor.foil-packs-better-sets') }), packs, pulledWrap, secretWrap), h('div', { class: 'col' }, h('div', { class: 'row between book-head' }, h('span', { class: 'cap', text: tx('floor.your-book') }), bookBar()), mine))), { wide: true });
 }
 
 function exchangePanel() {

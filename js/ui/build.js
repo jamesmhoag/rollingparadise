@@ -200,11 +200,13 @@ export function buildScene(root, opts = {}) {
   }
   function openTable(tb) { ui.tool = 'tables'; ui.table = tb; ui.key = null; draw(); } // a maker's way to the table behind it
   const revertBtn = (path) => revert(path, draw);
-  function duplicate() {
-    const id = askId(t('build.duplicate.ask'), `${ui.key}_copy`, D.TABLES[ui.table]); if (!id) return;
-    const copy = JSON.parse(JSON.stringify(D.TABLES[ui.table][ui.key])); if (typeof copy.name === 'string') copy.name += ' (copy)';
-    B.setValue(D.subPath(ui.table, id), copy); ui.key = id; draw(); toast(t('build.duplicate.done', { id }));
+  // a copy of an entry under a new id (asked for), named '(copy)' to be renamed; key(id): what the editor opens next
+  function copyEntry(table, from, key = (id) => id) {
+    const id = askId(t('build.duplicate.ask'), `${from}_copy`, D.TABLES[table]); if (!id) return;
+    const copy = JSON.parse(JSON.stringify(D.TABLES[table][from])); if (typeof copy.name === 'string') copy.name += ' (copy)';
+    B.setValue(D.subPath(table, id), copy); ui.key = key(id); draw(); toast(t('build.duplicate.done', { id }));
   }
+  const duplicate = () => copyEntry(ui.table, ui.key);
   function exportFile() {
     const text = B.overridesFile(), a = h('a', { href: URL.createObjectURL(new Blob([text], { type: 'text/javascript' })), download: 'overrides.js' });
     document.body.append(a); a.click(); a.remove();
@@ -223,7 +225,7 @@ export function buildScene(root, opts = {}) {
   // (the deletion is exported like any other change). Something still using it is named, and it stays.
   function organise() {
     const gear = ui.tool === 'gear' && ui.key;
-    const table = gear ? (ui.key[0] === 'w' ? 'WALLETS' : 'JACKETS') : { classes: 'CLASSES', rollers: 'ROLLERS', roster: 'ROSTER', tricks: 'TRICKS', chips: 'MADE_CHIPS', cards: 'CARDS', tables: ui.table }[ui.tool], id = gear ? ui.key.slice(2) : ui.key;
+    const table = gear ? gearTable(ui.key) : { classes: 'CLASSES', rollers: 'ROLLERS', roster: 'ROSTER', tricks: 'TRICKS', chips: 'MADE_CHIPS', cards: 'CARDS', tables: ui.table }[ui.tool], id = gear ? ui.key.slice(2) : ui.key;
     if (!table || !D.DELETABLE.includes(table) || !id || !D.TABLES[table]?.[id]) return;
     const keys = Object.keys(D.TABLES[table]), i = keys.indexOf(id), name = D.TABLES[table][id].name || id;
     const move = (dir) => { if (B.moveEntry(table, id, dir)) draw(); };
@@ -232,8 +234,10 @@ export function buildScene(root, opts = {}) {
         if (used.length) return toast(t('build.delete.used', { name, list: used.slice(0, 4).join(', '), more: used.length > 4 ? t('build.delete.more', { n: used.length - 4 }) : '' }), 'warn');
         ui.key = null; toast(t('build.delete.done', { name })); draw(); }, null, 'danger'))));
     const up = btn('▲', () => move(-1), t('build.move.up'), `small ${i <= 0 ? 'off' : ''}`), down = btn('▼', () => move(1), t('build.move.down'), `small ${i >= keys.length - 1 ? 'off' : ''}`), del = btn(t('build.delete'), ask, t('build.delete.tip'), 'small danger');
-    for (const b of [up, down, del]) guided(b, 'build-option');
-    const bar = h('div', { class: 'row b-organise' }, h('span', { class: 'cap', text: t('build.organise') }), up, down, del);
+    // a wallet or a jacket can be copied, to start a new one from it (then rename it)
+    const copy = gear ? btn(t('build.duplicate'), () => copyEntry(table, id, (nid) => `${ui.key[0]}:${nid}`), t('build.duplicate.tip'), 'small') : null;
+    for (const b of [up, down, del, copy]) if (b) guided(b, 'build-option');
+    const bar = h('div', { class: 'row b-organise' }, h('span', { class: 'cap', text: t('build.organise') }), up, down, copy, del);
     editor.prepend(bar);
   }
   function draw() { drawStatus(); drawTables(); drawEntries(); drawEditor(); organise(); }

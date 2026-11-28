@@ -11,7 +11,7 @@ import { t } from '../text.js';
 import { cardEl, passEl } from './parts.js';
 import { walletEl, jacketEl } from './gear.js';
 import { finishOn } from './finish.js';
-import { FINISHES, JACKET_CLOSURES, JACKET_COLLARS, JACKET_STYLES, LOOK_BOUNDS, NEW_JACKET, NEW_WALLET, WALLET_CLASPS, WALLET_TYPES, jacketLook, walletLook, packLook } from '../content/finishes.js';
+import { FINISHES, JACKET_CLOSURES, JACKET_COLLARS, JACKET_STYLES, LOOK_BOUNDS, NEW_JACKET, NEW_WALLET, WALLET_CLASPS, WALLET_TYPES, jacketLook, walletLook, packLook, PACK_PATTERNS } from '../content/finishes.js';
 import { packStage } from './gear3d.js';
 import { SYMBOLS } from './symbols.js';
 
@@ -101,7 +101,11 @@ function packMaker(q, redraw) {
   const fields = [
     h('span', { class: 'cap', text: t('gear.part.rules') }), field('name', text(['name'], P.name), ['name']), ...made(L, false),
     field('wrinkle', F.range(['look', 'wrinkle'], L.wrinkle, { min: 0, max: 1, step: 0.1 }), ['look', 'wrinkle']),
-    h('span', { class: 'cap', text: t('gear.part.cut') }), part('label', L.label), field('ink', colour(['look', 'ink'], L.ink), ['look', 'ink']), part('crimp', L.crimp),
+    h('span', { class: 'cap', text: t('gear.part.print') }), field('pattern', select(['look', 'print', 'pattern'], Object.entries(PACK_PATTERNS), L.print.pattern), ['look', 'print', 'pattern']),
+    field('inks', h('span', { class: 'row wrap' }, colour(['look', 'print', 'colors', 0], L.print.colors[0]), colour(['look', 'print', 'colors', 1], L.print.colors[1])), ['look', 'print', 'colors']),
+    field('clear', F.range(['look', 'print', 'clear'], L.print.clear, { min: 0, max: 1, step: 0.05 }), ['look', 'print', 'clear']),
+    field('shine', F.range(['look', 'print', 'shine'], L.print.shine, { min: 0, max: 1, step: 0.05 }), ['look', 'print', 'shine']),
+    h('span', { class: 'cap', text: t('gear.part.cut') }), field('label', colour(['look', 'label', 'color'], L.label.color), ['look', 'label']), field('ink', colour(['look', 'ink'], L.ink), ['look', 'ink']), part('crimp', L.crimp),
     field('tear', colour(['look', 'tear'], L.tear), ['look', 'tear']),
     ...emblem(L, false)];
   const preview = h('div', { class: 'gear-preview pack-preview' });
