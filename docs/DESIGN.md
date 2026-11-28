@@ -1108,12 +1108,36 @@ for a close look, to be turned over (`ui/spin.js`, the look a die gets).
   the rest are faint (a ring where each chip goes, the name dimmer). The ◎ button by the turn's buttons turns the
   whole display off and on, and is remembered. The engine answers all of it from `landing` (bout.js): each space
   with `ch`, `lvl`, `foot` and `reach`.
+- **Your chips are your position.** A chip records who laid it (a Debt chip its attacker, a made chip the Roller it
+  works for; a chip with no maker belongs to the side it sits on), and a stack is whoever laid its top chip. Aiming
+  down a lane of your opponent's (front, rear, body), a stack topped by your chip is a target and does not stand in
+  your way: you can aim past it to the next stack in the lane. A trick that places chips on your own stacks can also
+  place them on a stack of theirs that your chip tops (not effect chips such as Power, which work for the side they
+  sit on). `ownerOf` / `yoursThere` in bout.js.
+- **Every trick is aimed.** There is no aim tag on a card and no switch for the aim display: every trick that lays
+  chips is aimed (yours at the best target when the Bluff opens, the House's the same way) and its aim is drawn over
+  the position, showing where its chips will go. A pick made on a view of the table that has since changed falls to
+  the nearest valid space, the same lane first.
+- **Reward chips** (unused draws, rolls and bids, and Power) go onto the Bet at a random empty space, or, with none
+  empty, onto the lowest stack with room; when the Bet is full they are lost. The preview counts held rolls as Power
+  only as far as the Bet has room for them.
+- **Forecasts count what will happen**: a trick with only a bid on it still plays its bid as a fee, and a fee's
+  forecast lays your other fee tricks first, so a stack two of them reach shows what it will owe with both.
+- **The Bonus line says what it takes**: how many dice of which size and what they must make, joined with "and"
+  (2 d6 and a pair; 1 d6 and a total of 5+; a class Bonus names the class). A Bonus slot with a die in it shows the
+  die's value; only a met Bonus lights the line.
 - **The turn's buttons stand under the Roll** in every step: the step's button across the Roll's column, then Undo,
   the speed and the aim display in a row under it. The Roll is always open by the middle of the table.
-- **The Book and the Pouch** are spines side by side at the outer edge of each half. One at a time opens as a panel
-  over the Run (the Book by itself in the Draw step, the Pouch in the Roll step until you throw; click a spine, or
-  press B or D, to open or close one, and opening one closes the other). The Run keeps its whole width in every step:
-  three tricks a row.
+- **The Book and the Pouch** are spines side by side at the outer edge of each half. The one you open grows where it
+  stands into a list, pushing the other spine along: the Book lists its tricks, the Pouch its dice a line each with
+  their names (the one you gave a die, or what it is made of). Only one is open at a time. The Book opens by itself
+  in the Draw step and the Pouch in the Roll step until you throw; both start the Bid and the Bluff closed. Click a
+  spine, or press B or D, to open or close one; a click anywhere else closes it.
+- **Lists show there is more**: in the Book, the Pouch and the Roll, when a list holds more than its window, the last
+  place shows the next item cut off; the Run's next row stands just behind the row in front, its foot showing. The
+  arrows that scroll a window stand in a gutter of their own, clear of what they scroll.
+- **Cursors**: the game draws its own (ui/cursors.js), larger than the system's and in high contrast, in a theme the
+  scene picks (gold; cyan at the table). Every `cursor:` in style.css goes through `var(--cur-<kind>)`.
 - **One place, one text.** A text that arrives where another stands replaces it until it is over (`overText`,
   ui/core.js: the Roll's box while dice are held over it), and the general rule in core.js (MOMENT / STANDING)
   covers names over spaces too.

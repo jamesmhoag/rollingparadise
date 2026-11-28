@@ -35,6 +35,15 @@ export function diceHtml(t, def = D.defOf(t), cls = '') {
   return `<span class="tk-dice al-${P.align} ${off ? 'off' : ''} ${cls}">${P.rows.map((n) => `<span class="tk-row">${Array.from({ length: n }, slot).join('')}</span>`).join('')}${off && base.count !== def.count ? `<s class="tk-was">${base.count}</s>` : ''}</span>`;
 }
 
+// What a trick's Bonus asks for, in full: how many dice of which size, and what they must make (and, for a Bonus only
+// one class plays, that class). The one wording for the card at the table and the full card.
+const NEED = { match: 'tk.need.match', evens: 'tk.need.evens', odds: 'tk.need.odds', run: 'tk.need.run' };
+export function needCond(def) { const c = def.bonus.cond; return NEED[c] ? tx(NEED[c]) : c.startsWith('over:') ? tx('tk.need.over', { n: c.slice(5) }) : tx('tk.need.under', { n: c.slice(6) }); }
+export function bonusNeed(def) {
+  const need = tx('tk.need', { count: def.count, die: def.die, cond: needCond(def) });
+  return def.cls ? tx('tk.need.cls', { need, name: D.CLASSES[def.cls]?.name || def.cls }) : need;
+}
+
 // ---------- 1. the list item ----------
 export function trickItem(t, tipFn) {
   const def = D.defOf(t), T = D.TYPES[def.type], ch = trickChip(def);
@@ -60,7 +69,7 @@ export function trickCardHtml(t, viewerCls, live = '') {
     <div class="tk-art-row">${chipHtml}${flavorP('TRICKS', t.id) || `<p class="flavor dim">${esc(T.text)}</p>`}</div>
     <div class="tk-sec"><em>✧ ${tx('tk.trick')} ✧</em><span>${aimText(def)}</span></div>
     <div class="tk-sec ${misRoll ? 'off' : ''}"><em>⚄ ${tx('tk.roll')}</em><span>${esc(def.roll.text)}${t.mis?.trait ? ` <b class="tk-mis">${t.mis.trait > 0 ? '+' : ''}${t.mis.trait}</b>` : ''}</span></div>
-    <div class="tk-sec tk-bonus"><em>✪ ${tx('tk.bonus')}${bonusFor}</em><span>${esc(D.condText(def.bonus.cond))}: ${esc(def.bonus.text)} ${diceHtml(t, def)}</span></div>
+    <div class="tk-sec tk-bonus"><em>✪ ${tx('tk.bonus')}${bonusFor}</em><span><b class="tk-need">${esc(bonusNeed(def))}</b>: ${esc(def.bonus.text)} ${diceHtml(t, def)}</span></div>
     </div>${live || ''}</div>`;
 }
 // Every trick is the same size in each of its states (what is said live under a card at the table, its dice and

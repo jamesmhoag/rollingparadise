@@ -1,5 +1,6 @@
 // DOM helpers shared by every screen: element builder, tooltips, scene and panel
 // transitions, keyed list syncing with enter/leave/move animation, number tweens.
+import { applyCursors, themeOf } from './cursors.js';
 import { STATS } from '../data.js';
 import { GUIDE, GUIDE_BY_CLASS } from '../content/guidance.js';
 import { t as tx, hasText } from '../text.js';
@@ -227,7 +228,7 @@ let scene = null, busy = false;
 export async function go(build) {
   if (busy) return; busy = true; closePanel(true);
   const old = scene, el = h('div', { class: 'scene' });
-  build(el); $('scene-layer').append(el); scene = el;
+  build(el); $('scene-layer').append(el); scene = el; applyCursors(themeOf(el)); // the page takes the scene's cursors
   if (old) old.classList.add('out');
   await frame(); el.classList.add('in');
   await wait(old ? 520 : 420); old?.remove(); busy = false;
@@ -314,3 +315,4 @@ export function lab(key, vars) {
   const help = `help.${key}`, has = hasText(help);
   return h('span', { class: `b-lab ${has ? 'has-help' : ''}`, text: tx(key, vars), ...(has ? { tip: tx(`help.${key}`) } : {}) });
 }
+applyCursors(); // the game's own cursors from the first frame

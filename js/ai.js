@@ -60,7 +60,14 @@ export function planPhase(b, s) {
 }
 // The Bluff: the bids are out; put the rolled dice on tricks (bid ones first), then aim each bid trick at the best
 // target as the table stands now.
-function planAim(b, s) { placeDice(b, s); const v = seen(b, s); for (const e of s.run) if (e.state === 'bid' && B.needsTarget(e)) { const t = bestTarget(v, s, e); if (t) B.setTarget(b, s, e, t); } }
+// Every trick is aimed: if the space picked on what this Roller can see is no longer a valid target on the real table
+// (chips bid away since the step opened), it takes the nearest valid one, the same lane first, as the House would.
+function planAim(b, s) { placeDice(b, s); const v = seen(b, s); for (const e of s.run) if (e.state === 'bid' && B.needsTarget(e)) { const t = bestTarget(v, s, e); if (t) aimNear(b, s, e, t); } }
+export function aimNear(b, s, e, t) {
+  if (B.setTarget(b, s, e, t)) return true;
+  const far = (x) => (x.side !== t.side ? 1000 : 0) + Math.abs(x.c - t.c) * 10 + Math.abs(x.r - t.r), near = B.validTargets(b, s, e).sort((x, y) => far(x) - far(y))[0];
+  return !!near && B.setTarget(b, s, e, near);
+}
 // Both Rollers play one phase, then it closes. Returns the new phase.
 export function autoPhase(b) {
   for (const s of b.sides) planPhase(b, s);

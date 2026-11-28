@@ -249,8 +249,6 @@ export const GUIDE = {
     how: ['Pick a chip from the rack and a tool, then click a space: Add puts the chip on top, Insert slips it in below the chip you point at, Change turns that chip into it, Remove takes that chip out.', 'Hold to keep going, sweep to cover more spaces; the right button always removes.'] },
   'btn:bet': { name: 'Runner', def: 'A runner you can bet on at the Sports Book.',
     how: ['Pick a runner; longer odds pay more but win less often.'] },
-  'btn:aimfx': { name: 'Aim display', def: 'Shows what every aimed trick will do, drawn over the position: the space it is aimed at, the spaces it covers, each chip it lays and what that chip reaches.',
-    how: ['Point at a trick or at a space to see that trick in full.', 'Turn it off for a plain table. Spaces you can choose are still lit.'] },
   'btn:speed': { name: 'Speed', def: 'How fast the bout plays out.',
     how: ['Speed it up once you know what each phase does.'] },
   restore: { name: 'Restore', def: 'Tricks and dice tap after they play. This shows what the end of the turn brings back, as the board stands now.',
