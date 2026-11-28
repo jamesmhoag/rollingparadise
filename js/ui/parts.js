@@ -315,6 +315,11 @@ export function passEl(f, cls = '') {
   const el = printed(passSpec(f), `gpass ${cls}`);
   el._tip = () => passTip(f); el.classList.add('has-tip'); return el;
 }
+// a Coat Check pass: a ticket with its number and nothing else on it (what was checked is a surprise when it comes back)
+export const CLAIM_LOOK = { bg: ['#e8502e', '#9c2a18'], pattern: 'plain', border: 'dashed', borderColor: '#fff1dc', symbol: '№', symColor: '#fff1dc', edgeAt: 'none', ink: '#fff1dc', font: 'display' };
+const claimSpec = (c) => ({ pass: true, id: 'claim', kind: tx('parts.coat-check'), name: tx('parts.claim-no', { no: c.no }), look: CLAIM_LOOK, wide: true, rule: tx('parts.claim-rule') });
+export const claimTip = (c) => tx('parts.claim-tip', { no: c.no });
+export function claimEl(c, cls = '') { const el = printed(claimSpec(c), `gpass gclaim ${cls}`); el._tip = () => claimTip(c); el.classList.add('has-tip'); el.dataset.claim = c.no; return el; }
 // a sign symbol as a small drawing in one colour (for a wallet's or a jacket's emblem)
 export function symEl(id, color = '#fff', cls = '') {
   const S = SYM[symbolOf(id)]; if (!S) return h('span', { class: cls, text: id || '' });

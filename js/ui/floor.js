@@ -1,10 +1,11 @@
 // The floor: a map of places to visit between bouts, each opening as a panel.
 import { h, syncList, openPanel, closePanel, toast, btn, tween, pulse, swapText, guided } from './core.js';
 import { holdUp } from './spin.js';
+import { sfx } from './sfx.js';
 import { app, hud, oppTip, trickTag, diceSummary, nameTag } from './app.js';
 import { faceList, dieName, canMelt, matOf, rollDie, boutCopy } from '../dice.js';
 import { meltVolume, castNeed, castFor, mixDyes, mixOpen } from '../forge.js';
-import { dieEl, dieTip, trickTip, trickWords, drinkTip, cardTip, chipEl, chipTip, cardEl, drinkEl, feltStyle, passEl, keyEl, cardRule, cursorPicker } from './parts.js';
+import { dieEl, dieTip, trickTip, trickWords, drinkTip, cardTip, chipEl, chipTip, cardEl, drinkEl, feltStyle, passEl, keyEl, claimEl, cardRule, cursorPicker } from './parts.js';
 import { walletEl, jacketEl } from './gear.js';
 import * as D from '../data.js';
 import * as R from '../run.js';
@@ -101,7 +102,7 @@ export function hubScene(root) {
     const open = fs.book.events.filter((e) => e.bet && !e.done).length;
     out.push({ k: 'book', ico: '🏇', name: t('floor.book.name'), sub: open ? t('floor.book.riding', { n: open }) : t('floor.book.sub'), tip: t('floor.book.tip'), on: () => bookPanel() });
     out.push({ k: 'search', cls: fs.searched ? 'done' : '', ico: '🔎', name: t('floor.search.name'), sub: t(fs.searched ? 'floor.search.done' : 'floor.search.sub'), tip: t('floor.search.tip'),
-      on: () => { const id = R.searchFloor(run); if (!id) return toast(t('floor.search.again')); if (id === 'none') { render(); return toast(t('floor.search.nothing')); } if (id === 'bone') { render(); return foundBonePanel(); } if (run.pendingCard) { render(); return walletFullPanel(); } toast(t('floor.search.found', { card: D.CARDS[id].name })); render(); } });
+      on: () => { const id = R.searchFloor(run, app.meta); if (!id) return toast(t('floor.search.again')); if (id === 'none') { render(); return toast(t('floor.search.nothing')); } if (id === 'bone') { render(); return foundBonePanel(); } if (id === 'claim') { render(); const got = run.fs.foundClaim; run.fs.foundClaim = null; return foundClaimPanel(got); } if (run.pendingCard) { render(); return walletFullPanel(); } toast(t('floor.search.found', { card: D.CARDS[id].name })); render(); } });
     out.push({ k: 'kit', ico: '🎒', name: t('floor.kit.name'), sub: t('floor.kit.sub', { dice: run.dice.length, tricks: run.tricks.length, cards: run.cards.length }), tip: t('floor.kit.tip'), on: () => kitPanel() });
     out.push({ k: 'exit', cls: 'exit', ico: '🚪', name: t('floor.exit.name'), sub: t('floor.exit.sub'), tip: t('floor.exit.tip'), on: () => exitPanel() });
     const up = t(run.floor < 4 ? 'floor.stairs.up' : 'floor.stairs.lift');
@@ -324,10 +325,11 @@ function kitPanel() {
   openPanel(h('div', {}, head(tx('floor.coat-check'), tx('floor.coat-check.sub')),
     h('div', { class: 'row', style: { alignItems: 'flex-start', gap: '18px' } }, rollerCard({ rid: run.roller || D.rollerOf(run.cls), v: st.v, dice: run.dice, tricks: run.tricks, crown: R.crownWorn(run) }),
     h('div', { class: 'col', style: { minWidth: 0, flex: 1 } },
+      coatCounter(),
       h('span', { class: 'cap', text: tx('floor.wallet-slots-plus-one', { name: R.walletOf(run).name, walletCardN: R.walletCards(run).length, slots: R.walletOf(run).slots, used: R.passSlotsUsed(run), passes: R.passCap(run.wallet) }) }),
       // your jacket, then under it your wallet: click the wallet to hold it up, click again to open it on the cards and passes you carry
       // (point at one to raise it, click to pull it out; click a pulled card twice to drop it); its cash slot shows your purse
-      h('div', { class: 'coat-gear' }, jacketEl(run.jacket, 'coat-jacket'), walletEl(run.wallet, 'coat-wallet', { cash: run.purse, passes: [...R.passesOf(run).map((f) => passEl(f)), ...R.keysOf(run).map((k) => keyEl(k))],
+      h('div', { class: 'coat-gear' }, jacketEl(run.jacket, 'coat-jacket'), walletEl(run.wallet, 'coat-wallet', { cash: run.purse, passes: [...R.passesOf(run).map((f) => passEl(f)), ...R.keysOf(run).map((k) => keyEl(k)), ...R.claimsOf(run).map((c) => claimEl(c))],
         cards: R.walletCards(run).map((c) => { const el = cardEl(c, '', { punched: R.punchesOf(run, c) }); el._tip = () => cardTip(c, R.rollerStats(run).v) + tx('floor.takes-a-wallet-slot'); el.classList.add('has-tip');
           el.onclick = () => { if (!el._armed) { el._armed = true; el.classList.add('armed'); return toast(tx('floor.click-again-to-drop', { name: D.CARDS[c].name }), 'warn'); } if (!R.dropCard(run, c)) return toast(tx('floor.you-need-that-one'), 'warn'); closePanel(); rerender(); toast(tx('floor.dropped', { name: D.CARDS[c].name })); }; return el; }) }),
         run.drink ? drinkEl(run.drink, run.drink.sips, run.drink.max) : null),
@@ -342,6 +344,82 @@ function kitPanel() {
       cursorPicker()))));
 }
 
+// The Coat Check counter: check anything you carry under one pass, or show a pass to have its lot back. Each pass
+// you hold is listed by its number only; throwing one away takes two clicks (and the lot is lost to you).
+function coatCounter() {
+  const run = app.run, claims = R.claimsOf(run), cost = R.checkCost(run), gives = R.claimCosts(run);
+  const list = claims.map((c) => { const el = claimEl(c, 'small'); let armed = false;
+    return h('div', { class: 'row claim-row' }, el, btn(tx('floor.claim.show'), () => { const got = R.redeemClaim(run, c.no, app.meta); if (!got) return; sfx('earn'); claimBackPanel(got); }, null, 'small go'),
+      btn(tx('floor.claim.toss'), (ev) => { if (!armed) { armed = true; ev.currentTarget.classList.add('armed'); return toast(tx('floor.claim.toss.sure', { no: c.no }), 'warn'); } R.loseClaim(run, c.no, app.meta); toast(tx('floor.claim.tossed', { no: c.no }), 'warn'); kitPanel(); }, null, 'small danger')); });
+  return h('div', { class: 'box col coat-counter' }, h('span', { class: 'cap', text: tx('floor.claim.counter') }),
+    h('p', { class: 'sub', text: tx(gives ? 'floor.claim.sub.full' : 'floor.claim.sub', { cost: cents(cost), pass: gives ? D.PASSES[gives].name : '' }) }),
+    ...list, R.climbLosesClaim(run) ? h('p', { class: 'warn-t', text: tx('floor.claim.climb', { no: claims[0].no }) }) : null,
+    h('div', { class: 'row' }, btn(tx('floor.claim.check', { cost: cents(cost) }), () => checkPanel(), null, `small ${R.claimRoom(run) ? 'go' : 'off'}`)));
+}
+// back to the Coat Check, or done
+const backToCoat = () => h('div', { class: 'row' }, btn(tx('floor.claim.back-to-coat'), () => kitPanel(), null, 'go'), btn(tx('floor.done'), () => closePanel(), null, ''));
+// what to check: any mix of cash, dice, tricks, cards and chips (keeping a die and a trick to play with)
+function checkPanel() {
+  const run = app.run, cost = R.checkCost(run);
+  if (!R.claimRoom(run)) return toast(tx('floor.claim.no-room'), 'warn');
+  const pick = { cash: 0, dice: new Set(), tricks: new Set(), cards: new Set(), chips: {} };
+  const toggle = (set, k, el) => { if (set.has(k)) set.delete(k); else set.add(k); el.classList.toggle('picked', set.has(k)); sum(); };
+  const total = h('p', { class: 'sub' });
+  const sum = () => { const n = pick.dice.size + pick.tricks.size + pick.cards.size + Object.values(pick.chips).reduce((a, b) => a + b, 0); total.textContent = tx('floor.claim.picked', { cash: cents(pick.cash), n }); };
+  const maxCash = Math.max(0, run.purse - cost), cashOut = h('b', { class: 'num', text: cents(0) });
+  const cash = h('input', { type: 'range', min: 0, max: maxCash, step: Math.max(1, Math.round(maxCash / 100)), value: 0, oninput: (e) => { pick.cash = Number(e.target.value); cashOut.textContent = cents(pick.cash); sum(); } });
+  const dice = run.dice.map((d) => { const el = dieEl(d); el._tip = () => dieTip(d); el.classList.add('has-tip', 'pickable'); el.onclick = () => toggle(pick.dice, d.id, el); return el; });
+  const tricks = run.tricks.map((tr) => { const el = trickTag(tr, run.cls); el.classList.add('pickable'); el.onclick = () => toggle(pick.tricks, tr.uid, el); return el; });
+  const cards = R.walletCards(run).map((c) => { const el = cardEl(c, 'small', { punched: R.punchesOf(run, c) }); el._tip = () => cardTip(c); el.classList.add('has-tip', 'pickable'); el.onclick = () => toggle(pick.cards, c, el); return el; });
+  const chips = Object.entries(run.chips || {}).filter(([id, n]) => n > 0 && D.SHOP_CHIPS[id]).map(([id, n]) => { const out = h('b', { class: 'num', text: '0' });
+    const step = (k) => { pick.chips[id] = Math.max(0, Math.min(n, (pick.chips[id] || 0) + k)); out.textContent = pick.chips[id]; sum(); };
+    return h('div', { class: 'row claim-chip', tip: () => chipTip({ kind: 'std', value: 1, resist: id }) }, chipEl({ kind: 'std', value: 1, resist: id }), h('span', { text: `${D.SHOP_CHIPS[id].name} ×${n}` }), btn('−', () => step(-1), null, 'small'), out, btn('+', () => step(1), null, 'small')); });
+  const go = () => {
+    const got = R.checkItems(run, { cash: pick.cash, dice: [...pick.dice], tricks: [...pick.tricks], cards: [...pick.cards], chips: pick.chips });
+    if (got.why) return toast(tx(`floor.claim.why.${got.why}`), 'warn');
+    sfx('earn'); rerender();
+    const el = claimEl(got, 'big');
+    openPanel(h('div', { class: 'col claim-got' }, h('h2', { text: tx('floor.claim.yours', { no: got.no }) }), h('p', { class: 'sub', text: tx('floor.claim.careful') }),
+      h('div', { class: 'row', style: { justifyContent: 'center', margin: '10px 0' } }, el), backToCoat()));
+    holdUp(el);
+  };
+  const part = (cap, kids, none) => [h('span', { class: 'cap', text: cap }), kids.length ? h('div', { class: 'row wrap claim-pick' }, kids) : h('p', { class: 'dim', text: none })];
+  sum();
+  openPanel(h('div', { class: 'col check-panel' }, head(tx('floor.claim.title'), tx('floor.claim.title.sub', { cost: cents(cost) })),
+    h('span', { class: 'cap', text: tx('floor.claim.cash') }), h('div', { class: 'row' }, cash, cashOut),
+    ...part(tx('floor.claim.dice'), dice, ''), ...part(tx('floor.claim.tricks'), tricks, ''), ...part(tx('floor.claim.cards'), cards, tx('floor.claim.none')), ...part(tx('floor.claim.chips'), chips, tx('floor.claim.none')),
+    total, h('div', { class: 'row' }, btn(tx('floor.claim.check.go', { cost: cents(cost) }), go, null, 'go'), btn(tx('floor.claim.back-to-coat'), () => kitPanel(), null, ''))));
+}
+// what a shown pass gave back
+export function lotKids(got) {
+  const out = [];
+  if (got.cash) out.push(h('span', { class: 'tag-t claim-cash', text: cents(got.cash) }));
+  for (const d of got.dice || []) { const el = dieEl(d); el._tip = () => dieTip(d); el.classList.add('has-tip'); out.push(el); }
+  for (const tr of got.tricks || []) out.push(trickTag(tr, app.run?.cls));
+  // cards: click one to hold it up (a note opens to read); any that would not fit are shown too, still checked
+  const card = (c, left) => { const el = cardEl(c, `small ${left ? 'left-behind' : ''}`); el._tip = () => cardTip(c); el.classList.add('has-tip', 'hold-up'); el.onclick = () => holdUp(el); return el; };
+  for (const c of got.cards || []) out.push(card(c));
+  for (const c of got.left || []) out.push(card(c, true));
+  for (const [id, n] of Object.entries(got.chips || {})) out.push(h('span', { class: 'row claim-chip', tip: () => chipTip({ kind: 'std', value: 1, resist: id }) }, chipEl({ kind: 'std', value: 1, resist: id }), h('span', { text: `${D.SHOP_CHIPS[id]?.name || id} ×${n}` })));
+  if (got.jacket) out.push(h('span', { class: 'tag-t', text: tx('floor.claim.jacket', { name: D.JACKETS[got.jacket].name }) }));
+  if (got.wallet) out.push(h('span', { class: 'tag-t', text: tx('floor.claim.wallet', { name: D.WALLETS[got.wallet].name }) }));
+  return out;
+}
+function claimBackPanel(got) {
+  rerender();
+  openPanel(h('div', { class: 'col claim-back' }, h('h2', { text: tx('floor.claim.back', { no: got.no }) }), h('p', { class: 'sub', text: tx('floor.claim.back.sub') }),
+    h('div', { class: 'row wrap claim-lot' }, lotKids(got)),
+    got.left?.length ? h('p', { class: 'dim', text: tx('floor.claim.left', { n: got.left.length }) }) : null,
+    backToCoat()));
+}
+// a Coat Check pass found lying about (the Dodgy Corner, the Suite's drawer): just its number
+export function foundClaimPanel(found, where = 'corner') {
+  const c = found.claim || found.full, el = claimEl(c, 'big');
+  openPanel(h('div', { class: 'col claim-found' }, h('h2', { text: tx('floor.claim.found', { no: c.no }) }),
+    h('p', { class: 'sub', text: tx(found.full ? 'floor.claim.found.full' : where === 'drawer' ? 'floor.claim.found.drawer' : 'floor.claim.found.corner') }),
+    h('div', { class: 'row', style: { justifyContent: 'center', margin: '10px 0' } }, el), h('div', { class: 'row' }, btn(tx('floor.done'), () => closePanel(), null, 'go'))));
+  if (!found.full) holdUp(el);
+}
 // the High Rollers' business cards you have won: pick the one you play by
 // what you give up by dropping a card, in plain words
 function dropText(run, c) {

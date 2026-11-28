@@ -397,3 +397,18 @@ Not built yet, or only in part:
 - **What a forecast cannot know.** Fee forecasts now match the House in about 92% of cases in AI play. The rest come
   from your opponent's hidden plays (Counter chips bouncing Debt back) and stacks rearranged earlier in the turn.
 - **Cursor colours** (settled in round 23): nine colours and 'Scene', picked in the Coat Check, Suite or Alley.
+
+## Round 24
+
+- **Picking up a found Bone die** "rolls" it as a toss in the hand: the value it lands on is shown, its faces (and the
+  face its trait is on) stay as found. Say if picking it up should re-set its trait instead.
+- **The floor view**: the name plate, Book and Pouch on the left, the log on the right. The Pouch is also in the Coat
+  Check (dice by name). Say if the Pouch should only be there.
+- **Coat Check passes and pass slots.** A Coat Check pass takes a pass slot, and starting wallets have one: checking
+  something there gives up your floor pass, and climbing then pushes the Coat Check pass out (lost) unless you show it
+  first. That makes carrying across floors a reason to buy a bigger wallet. Say if Coat Check passes should have
+  slots of their own instead.
+- **What can be checked**: cash, dice, tricks, cards and shop chips; not your jacket, wallet or drink. You keep one
+  die and one trick. Price per floor in SHOPS.coat.price (20, 40, 80, 160).
+- **High Rollers' lots** (content/claims.js) are first drafts: cash, tricks and a note per Roller. Jackets and wallets
+  in them unlock for good when shown.

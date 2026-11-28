@@ -197,7 +197,12 @@ export const FLAVOR = {
     debit: 'An old bank card, found between the cushions.',
     punch: 'Five holes and the next one is on the house.', note: 'A napkin with handwriting on it.', note_dice: 'Scribbled on the back of a betting slip.',
     note_debt: 'Torn from somebody\'s ledger.', note_house: 'Folded small and passed under the table.', note_hold: 'Written in a careful, patient hand.',
-    note_flip: 'Coffee-stained and hard to read.', trading: 'Holographic, mint condition, completely useless here.',
+    note_flip: 'Coffee-stained and hard to read.', note_atm_machine: 'Printed on receipt paper, still warm.', note_pile_of_cash: 'Written on the band off a stack of hundreds.',
+    note_exotic_animal: 'Chewed at one corner.', note_antique_clock: 'In copperplate, dated a week from now.', note_gold_bar: 'Heavy paper, gilt edged, stamped 999.9.',
+    note_uncut_gem: 'Folded around a little grit that glitters.', note_luxury_vehicle: 'On the back of a valet ticket.', note_lucrative_deal: 'Page three of a contract. Pages one and two are missing.',
+    note_sunken_treasure: 'Salt-stiff, the ink run blue.', note_endangered_species: 'Recycled paper, of course.', note_vested_401k: 'A quarterly statement, with one line circled.',
+    note_project_funding: 'On a slide printout, the third bullet point.', note_trust_fund: 'Monogrammed stationery from a house with a name.', note_the_vault: 'Typed. Every letter in its own little box.',
+    note_priceless_painting: 'On the back of a gallery card, in charcoal.', note_ancient_artifact: 'On something that is not quite paper.', trading: 'Holographic, mint condition, completely useless here.',
   },
   PASSES: { 1: 'A heavy brass token stamped with the casino crown.', 2: 'A blue card for the Haven, smelling of cigars.', 3: 'A pink card for the Suite, edged in neon.', 4: 'A gold card for the top floor. Few ever hold one.' },
   MATERIALS: {

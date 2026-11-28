@@ -32,6 +32,8 @@ export const SHOPS = {
   },
   // the Diesmith: a cast
   smith: { priceMult: [1, 1, 1, 1] }, // × the cast's price
+  // the Coat Check: a pass for whatever you check (any mix, under one number), taken back at any floor's Coat Check
+  coat: { price: [20, 40, 80, 160] },
   // the Casino door: the bout you walk in with, and what the door pays
   door: {
     chips: 30, // 1¢ chips you play the door bout with (as many as your Stake holds)

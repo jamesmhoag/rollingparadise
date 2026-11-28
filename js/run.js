@@ -113,6 +113,8 @@ export function newRun(who, jacketReq = 'standard', seed = (Date.now() ^ (Math.r
     drink: null, cards: [], punch: {}, rest: null, suiteKey: false, phase: 'intro', fs: null, bets: [], news: [], ledger: [], ascent: null,
     plan: { spacing: 'row', stacking: 'maxed', counts: null, resist: {}, layout: Rl.layout?.length ? JSON.parse(JSON.stringify(Rl.layout)) : null }, // your Roller's own position, to change before each bout
     stats: { bouts: 0, wins: 0, losses: 0, spent: 0, won: 0, turns: 0, dd: 0 } };
+  // Coat Check passes kept in the wallet from the last run (as many as its pass slots hold, before the floor passes)
+  run.claims = (gear.claims || []).filter((c) => c && c.no && c.lot).slice(0, passCap(run.wallet)).map((c) => ({ no: c.no, lot: c.lot }));
   for (const f of kept) addPass(run, f);
   for (const [type, n] of Object.entries(Rl.dice || {})) for (let i = 0; i < n; i++) run.dice.push(mkDie(run, type));
   run.tricks = (Rl.tricks || []).filter((id) => D.TRICKS[id]).map((id) => mkTrick(run, id));
@@ -483,13 +485,15 @@ export function resolveBets(run) {
   }
   return out;
 }
-export function searchFloor(run) {
+export function searchFloor(run, meta) {
   if (run.fs.searched) return null; run.fs.searched = true;
   // the Dodgy Corner: each card's chance weight against finding nothing (content/cards.js)
   // (or a Bone die someone left behind, already rolled: its trait is set where it came up, D.SHADY.bone its weight)
   const pool = D.FIND_CARDS.filter((id) => !hasCard(run, id)), none = D.SHADY.nothing || 0;
-  const id = run.rng.weighted([...pool, '__none', '__bone'], (x) => (x === '__none' ? none : x === '__bone' ? D.SHADY.bone || 0 : D.CARDS[x].corner || 0));
+  // (or a Coat Check pass: one you lost, or a High Roller's; D.SHADY.claim its weight)
+  const id = run.rng.weighted([...pool, '__none', '__bone', '__claim'], (x) => (x === '__none' ? none : x === '__bone' ? D.SHADY.bone || 0 : x === '__claim' ? D.SHADY.claim || 0 : D.CARDS[x].corner || 0));
   if (!id || id === '__none') return 'none';
+  if (id === '__claim') { const got = findClaim(run, meta); if (!got) return 'none'; run.fs.foundClaim = got; return 'claim'; }
   if (id === '__bone') { const types = D.COMPLEXITY.filter((t) => (D.DICE_SHOP.from[t] || 1) <= run.floor), b = setBone(run, { type: run.rng.pick(types), mat: 'bone', bone: run.rng.pick(Object.keys(D.BONE)), up: [] }).die;
     const die = { ...b, id: run.nextId++ }; run.dice.push(die); run.fs.foundDie = die.id; return 'bone'; }
   addCard(run, id); return id;
@@ -616,13 +620,17 @@ export const passesOf = (run) => { const top = run.pass || 0, list = (run.passes
 // (floor 2: 200 to 299), drawn when you win it, and that is its name.
 export const keysOf = (run) => (run.keys || []).filter((k) => k && k.floor > 0);
 export const hasKey = (run, floor) => keysOf(run).some((k) => k.floor === floor);
-export const passSlotsUsed = (run) => passesOf(run).length + keysOf(run).length;
+export const claimsOf = (run) => (run.claims || []).filter((c) => c && c.no);
+export const passSlotsUsed = (run) => passesOf(run).length + keysOf(run).length + claimsOf(run).length;
 export function addPass(run, f) {
   if (!(f > 0)) return; const list = passesOf(run); if (!list.includes(f)) list.push(f);
   list.sort((a, b) => b - a); const cap = passCap(run.wallet);
   // the newest floor's pass always has a slot: lower passes give theirs up first, then the oldest keys
-  while (list.length + keysOf(run).length > cap && list.length > 1) list.pop();
-  run.keys = keysOf(run); while (list.length + run.keys.length > cap && run.keys.length) run.keys.shift();
+  // and last the oldest Coat Check passes: lost (run.lostClaims, into the world's lost pile when the run ends)
+  const held = () => claimsOf(run).length;
+  while (list.length + keysOf(run).length + held() > cap && list.length > 1) list.pop();
+  run.keys = keysOf(run); while (list.length + run.keys.length + held() > cap && run.keys.length) run.keys.shift();
+  while (list.length + run.keys.length + held() > cap && held()) { const [gone, ...rest] = claimsOf(run); run.claims = rest; run.lostClaims = [...(run.lostClaims || []), gone]; }
   run.passes = list.slice(0, cap); run.pass = run.passes[0] || 0;
 }
 // A Suite Key for this floor, into a pass slot: a free one, or the slot of a pass for a floor below this one (you are
@@ -630,8 +638,110 @@ export function addPass(run, f) {
 export function addKey(run, floor = run.floor) {
   if (hasKey(run, floor)) return keysOf(run).find((k) => k.floor === floor);
   const cap = passCap(run.wallet), list = passesOf(run); run.keys = keysOf(run);
-  if (list.length + run.keys.length >= cap) { if (list.length > 1) { list.pop(); run.passes = list; } else return null; }
+  if (list.length + run.keys.length + claimsOf(run).length >= cap) { if (list.length > 1) { list.pop(); run.passes = list; } else return null; }
   const key = { floor, room: `${floor}${String(run.rng.int(100)).padStart(2, '0')}` }; run.keys.push(key); return key;
+}
+// ---------- the Coat Check ----------
+// Check anything you carry (cash, dice, tricks, cards, chips: any amount and mix) under one Coat Check pass, a pass
+// in a pass slot with a number on it and nothing else. Show it at any floor's Coat Check and they hand the lot back
+// (and keep the pass). Lose the pass and the lot is gone for you, though not from the world: a lost pass may turn up
+// again in a Dodgy Corner (meta.lost). The High Rollers check their coats too, and their passes turn up the same way.
+// run.claims: [{ no, lot: { cash, dice, tricks, cards, chips, jacket, wallet } }]
+export const checkCost = (run) => D.perFloor(D.SHOPS.coat?.price, run.floor, 20);
+const claimNo = (run) => 1000 + run.rng.int(9000);
+const LOST_MAX = 12;
+// a slot for a Coat Check pass: a free one, or a floor pass's (the lowest; with your last one gone the Bouncer checks you if
+// you come back to this run later). Keys and other Coat Check passes are never given up for one. Returns false with no room.
+export const claimRoom = (run) => passSlotsUsed(run) < passCap(run.wallet) || passesOf(run).length > 0;
+function makeRoom(run) {
+  if (passSlotsUsed(run) < passCap(run.wallet)) return true;
+  const list = passesOf(run); if (!list.length) return false;
+  list.pop(); run.passes = list; run.pass = list[0] || 0; return true;
+}
+// what checking would give up for its slot (a floor's pass), or 0
+// climbing with a full wallet: the next floor's pass pushes out the oldest Coat Check pass (when no lower pass or key goes first)
+export const climbLosesClaim = (run) => claimsOf(run).length >= passCap(run.wallet);
+export const claimCosts = (run) => (passSlotsUsed(run) < passCap(run.wallet) ? 0 : passesOf(run).slice(-1)[0] || 0);
+const emptyLot = () => ({ cash: 0, dice: [], tricks: [], cards: [], chips: {} });
+export const lotEmpty = (L) => !L || !(L.cash > 0 || L.dice?.length || L.tricks?.length || L.cards?.length || Object.values(L.chips || {}).some((n) => n > 0) || L.jacket || L.wallet);
+// pick: { cash, dice: [die ids], tricks: [trick uids], cards: [card ids], chips: { id: n } }. You keep one die and one
+// trick at least (you cannot sit at a table without them). Pays the check; returns the claim, or { why }.
+export function checkItems(run, pick = {}) {
+  const cost = checkCost(run), dice = new Set(pick.dice || []), tricks = new Set(pick.tricks || []), cards = (pick.cards || []).filter((c) => walletCards(run).includes(c));
+  const chips = Object.fromEntries(Object.entries(pick.chips || {}).map(([id, n]) => [id, clamp(Math.floor(n) || 0, 0, run.chips[id] || 0)]).filter(([, n]) => n > 0));
+  const cash = clamp(Math.floor(pick.cash) || 0, 0, Math.max(0, run.purse - cost));
+  const lot = { cash, dice: run.dice.filter((d) => dice.has(d.id)), tricks: run.tricks.filter((t) => tricks.has(t.uid)), cards, chips };
+  if (lotEmpty(lot)) return { why: 'empty' };
+  if (lot.dice.length >= run.dice.length) return { why: 'dice' };
+  if (lot.tricks.length >= run.tricks.length) return { why: 'tricks' };
+  if (run.purse < cost) return { why: 'cost' };
+  if (!makeRoom(run)) return { why: 'room' };
+  spend(run, cost, tx('run.coat-check')); run.purse -= cash;
+  run.dice = run.dice.filter((d) => !dice.has(d.id)); run.tricks = run.tricks.filter((t) => !tricks.has(t.uid)); run.cards = run.cards.filter((c) => !cards.includes(c));
+  for (const [id, n] of Object.entries(chips)) { run.chips[id] -= n; if (run.chips[id] <= 0) delete run.chips[id]; }
+  const claim = { no: claimNo(run), lot }; run.claims = [...claimsOf(run), claim]; return claim;
+}
+// Show the pass at this floor's Coat Check: the lot comes back (new ids on its dice and tricks; a jacket or a wallet you
+// do not own is yours, kept between runs). Cards with no room in your wallet stay checked under the same number.
+// Returns what came back, or null.
+export function redeemClaim(run, no, meta) {
+  const claim = claimsOf(run).find((c) => c.no === no); if (!claim) return null;
+  const L = claim.lot, got = { ...emptyLot(), no };
+  if (L.cash > 0) { run.purse += L.cash; ledger(run, tx('run.coat-check-back'), L.cash); got.cash = L.cash; }
+  for (const d of L.dice || []) { const die = { ...d, id: run.nextId++ }; run.dice.push(die); got.dice.push(die); }
+  for (const t of L.tricks || []) { const tr = { ...t, uid: run.nextId++ }; run.tricks.push(tr); got.tricks.push(tr); }
+  for (const [id, n] of Object.entries(L.chips || {})) if (n > 0) { run.chips[id] = (run.chips[id] || 0) + n; got.chips[id] = n; }
+  const left = [];
+  for (const c of L.cards || []) { if (!D.CARDS[c]) continue; if (hasCard(run, c)) continue; if (walletFull(run)) left.push(c); else { run.cards.push(c); got.cards.push(c); } }
+  if (meta) {
+    if (L.jacket && D.JACKETS[L.jacket]) { if (!meta.jackets.includes(L.jacket)) { meta.jackets.push(L.jacket); got.jacket = L.jacket; } }
+    if (L.wallet && D.WALLETS[L.wallet]) { if (!meta.wallets.includes(L.wallet)) { meta.wallets.push(L.wallet); got.wallet = L.wallet; } }
+    saveMeta(meta);
+  }
+  if (left.length) { claim.lot = { ...emptyLot(), cards: left }; got.left = left; }
+  else run.claims = claimsOf(run).filter((c) => c !== claim);
+  return got;
+}
+// a pass thrown away (or left behind when the run ends): lost to you, into the world's lost pile
+export function loseClaim(run, no, meta) {
+  const claim = claimsOf(run).find((c) => c.no === no); if (!claim) return false;
+  run.claims = claimsOf(run).filter((c) => c !== claim); if (meta) { lostPile(meta, claim); saveMeta(meta); } return true;
+}
+function lostPile(meta, claim) { meta.lost = [...(meta.lost || []).filter((c) => c.no !== claim.no), { no: claim.no, lot: claim.lot }].slice(-LOST_MAX); }
+// a High Roller's coat (content/claims.js), as the floor it plays on would leave it
+export function bossLot(run, rid) {
+  const L = D.BOSS_LOTS[rid], X = D.ROSTER[rid]; if (!L || !X) return null;
+  const f = clamp(Math.min(...(X.floors || [run.floor || 1])), 1, 4), rng = run.rng, lot = emptyLot();
+  if (L.cash) lot.cash = Math.round(L.cash * f * (0.75 + rng.next() * 0.5));
+  const tr = rng.shuffle((L.tricks || []).filter((id) => D.TRICKS[id] && !D.TRICKS[id].retired)).slice(0, 1 + rng.int(2));
+  lot.tricks = tr.map((id) => mkTrick(run, id, f, rng.chance(L.foil ?? 0.25) ? { foil: 1 } : {}));
+  if (L.bone && D.BONE[L.bone]) { const types = D.COMPLEXITY.filter((t) => (D.DICE_SHOP.from[t] || 1) <= f); lot.dice.push({ ...setBone(run, { type: rng.pick(types), mat: 'bone', bone: L.bone, up: [] }).die, id: run.nextId++ }); }
+  lot.chips = Object.fromEntries(Object.entries(L.chips || {}).filter(([id, n]) => D.SHOP_CHIPS[id] && n > 0));
+  lot.cards = [D.bossNoteId(rid), ...(L.cards || []), ...(rng.chance(L.biz ?? 0) ? [D.bizCardId(rid)] : [])].filter((c) => D.CARDS[c]);
+  if (L.jacket && D.JACKETS[L.jacket] && rng.chance(0.6)) lot.jacket = L.jacket;
+  if (L.wallet && D.WALLETS[L.wallet] && rng.chance(0.4)) lot.wallet = L.wallet;
+  return { no: claimNo(run), lot, boss: rid };
+}
+// a found pass: one you lost (mine: the chance, when you have lost any), else a High Roller's (one of `floor`'s, when
+// given). Into your wallet if it has room; else it stays where it lay (yours, back in the lost pile). Returns
+// { claim } or { full: claim }.
+export function findClaim(run, meta, floor) {
+  const lost = meta?.lost || [], rng = run.rng;
+  let claim = null;
+  if (lost.length && rng.chance(D.SHADY.mine ?? 0.5)) { claim = rng.pick(lost); meta.lost = lost.filter((c) => c !== claim); }
+  else {
+    const ids = Object.keys(D.BOSS_LOTS).filter((rid) => D.ROSTER[rid]?.boss), here = floor ? ids.filter((rid) => (D.ROSTER[rid].floors || []).includes(floor)) : [];
+    claim = bossLot(run, rng.pick(here.length ? here : ids));
+  }
+  if (!claim) return null;
+  if (!makeRoom(run)) { if (meta && !claim.boss) lostPile(meta, claim); if (meta) saveMeta(meta); return { full: claim }; }
+  run.claims = [...claimsOf(run), { no: claim.no, lot: claim.lot }]; if (meta) saveMeta(meta); return { claim };
+}
+// the Suite's drawer: opened once a stay; a pass (D.SHADY.drawer the chance), or nothing
+export function searchDrawer(run, meta) {
+  if (run.drawer === run.floor) return null; run.drawer = run.floor;
+  if (!run.rng.chance(D.SHADY.drawer ?? 0.5)) return 'none';
+  return findClaim(run, meta, run.floor) || 'none';
 }
 export const keyName = (k) => tx('run.suite-key-name', { room: k.room });
 export const needsBouncer = (run) => run.phase === 'floor' && run.floor >= 1 && passFloor(run) < run.floor;
@@ -870,11 +980,15 @@ export function buyWallet(run, meta, id) {
 export function alleyRoll(run) {
   const dice = run.dice.slice().sort((a, b) => D.DICE[b.type].faces - D.DICE[a.type].faces).slice(0, 2).map((d) => ({ type: d.type, up: d.up, faces: d.faces, value: rollDie(run.rng, boutCopy(d)) }));
   const total = dice.reduce((n, d) => n + d.value, 0), need = walletOf(run).keep, cards = walletCards(run);
-  const passes = passesOf(run), pass = passes[0] || 0; return { dice, total, need, kept: total >= need && (cards.length > 0 || pass > 0), cards, pass, passes };
+  const passes = passesOf(run), pass = passes[0] || 0, claims = claimsOf(run);
+  return { dice, total, need, kept: total >= need && (cards.length > 0 || pass > 0 || claims.length > 0), cards, pass, passes, claims };
 }
 // leaving through the alley ends the run
-export function endRun(run, meta, name = 'You', kept = [], keptPass = 0) {
+export function endRun(run, meta, name = 'You', kept = [], keptPass = 0, keptClaims = []) {
   meta.kept = kept; meta.keptPass = keptPass; // a wallet held on to in the alley keeps its passes (a floor, or a list of them)
+  // and its Coat Check passes; any not held on to are lost (and may turn up again in a Dodgy Corner)
+  const still = new Set((keptClaims || []).map((c) => c.no)); meta.keptClaims = claimsOf(run).filter((c) => still.has(c.no));
+  for (const c of [...(run.lostClaims || []), ...claimsOf(run)]) if (!still.has(c.no)) lostPile(meta, c);
   if (hasCard(run, 'debit')) meta.debit = true;
   meta.runs++; meta.best = Math.max(meta.best, run.floor);
   const reached = run.phase === 'paradise' || run.phase === 'fallen' || run.phase === 'ascent';

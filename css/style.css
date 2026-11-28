@@ -1613,3 +1613,19 @@ body.spinning .thing > .th-body, body.carrying-now .thing > .th-body { transitio
   background: linear-gradient(#efe6cf, #f7f2e5 20%); box-shadow: inset 0 6px 8px -6px rgba(0, 0, 0, .4); }
 .fold-msg { margin: 0; font: 400 6.4px/1.25 var(--hand, cursive); color: #2c2214; text-align: center; transform: rotate(-1.5deg); }
 .th-body.unfolded > .fold-cover { transform: rotateX(178deg); }
+/* the Coat Check counter: passes by number, checking a mix, what comes back */
+.coat-counter { gap: 8px; margin-bottom: 12px; }
+.coat-counter .claim-row { gap: 10px; align-items: center; }
+.warn-t { color: #ff9a7a; font-size: 13px; }
+.check-panel { gap: 8px; max-width: 760px; }
+.check-panel input[type=range] { flex: 1; }
+.claim-pick { gap: 8px; }
+.claim-pick .pickable { cursor: var(--cur-pointer, pointer); opacity: .72; transition: transform .15s, opacity .15s, box-shadow .15s; border-radius: 8px; }
+.claim-pick .pickable:hover { opacity: 1; transform: translateY(-2px); }
+.claim-pick .pickable.picked { opacity: 1; box-shadow: 0 0 0 2px #ff8a5a, 0 0 14px rgba(255, 120, 70, .55); transform: translateY(-3px); }
+.claim-chip { gap: 6px; align-items: center; }
+.claim-lot { gap: 10px; align-items: center; margin: 10px 0; }
+.claim-cash { font-size: 18px; color: #ffd76a; }
+.gcard.gclaim .g-name { letter-spacing: .08em; }
+.suite-drawer { margin-top: 14px; gap: 6px; }
+.claim-lot .left-behind { opacity: .55; filter: grayscale(.4); }

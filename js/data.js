@@ -774,6 +774,8 @@ export const JACKETS = {
 };
 import { CARDS, SHADY, CARD_SHOPS, CARD_KINDS, BUSINESS_LOOK, bizCardId } from './content/cards.js';
 export { CARDS, SHADY, CARD_SHOPS, CARD_KINDS, bizCardId };
+import { BOSS_LOTS, bossNoteId } from './content/claims.js';
+export { BOSS_LOTS, bossNoteId };
 // Wallets hold the cards that grant benefits. `slots`: cards it holds. `passes`: passes it holds, each in its own pass
 // slot (cards never use them). `keep` is the total two of your dice must reach in the alley to retain them.
 export const WALLETS = {
@@ -881,6 +883,8 @@ export function deletePath(path) { const ks = splitPath(path), last = ks.pop(); 
 export function refreshDerived() {
   for (const [tb, ids] of Object.entries(ORDER)) if (Array.isArray(ids)) orderTable(tb, ids); // Build mode's own order
   TRICK_IDS.splice(0, TRICK_IDS.length, ...Object.keys(TRICKS).filter((id) => !TRICKS[id]?.retired)); // retired tricks are dealt nowhere
+  // the note in each High Roller's coat (content/claims.js): a note card of its own, found only in that coat
+  for (const [rid, L] of Object.entries(BOSS_LOTS)) if (L?.note && !CARDS[bossNoteId(rid)]) CARDS[bossNoteId(rid)] = { kind: 'note', name: 'Note: left in a coat', text: L.note, corner: 0, boss: rid, look: { ...(CARDS.note?.look || {}) } };
   const C0 = Object.entries(CARDS).filter(([, c]) => c && c.kind !== 'key'); // a Suite Key is a pass: never dealt or found as a card
   LANYARD_CARDS.splice(0, LANYARD_CARDS.length); // there is no lanyard: every card takes a wallet slot, every pass a pass slot
   STARTER_CARDS.splice(0, STARTER_CARDS.length, ...C0.filter(([, c]) => c.starter).map(([k]) => k));

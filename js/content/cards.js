@@ -53,7 +53,10 @@ export const CARDS = {
   trading: { kind: 'trading', name: "Trading Card: Children of Ae'a", text: 'From a super popular card game. Does not seem to do anything here.', corner: 0.1, look: look(['#7dffb5', '#2d8a6a'], 'sparkle', { pattern: 'rays', border: 'double', edge: 'star5', edgeAt: 'corners' }) },
 };
 // the Dodgy Corner: each card's `corner` weight against this weight of finding nothing
-export const SHADY = { nothing: 0, bone: 0.08 }; // bone: the weight of finding a Bone die someone left, already rolled
+// bone: the weight of finding a Bone die someone left, already rolled. claim: the weight of finding a Coat Check pass;
+// mine: the chance a found pass is one you lost (when you have lost any), else a High Roller's. drawer: the chance the
+// Suite's drawer has a pass in it (the floor's High Rollers' coats, or one you lost)
+export const SHADY = { nothing: 0, bone: 0.08, claim: 0.07, mine: 0.5, drawer: 0.6 };
 // a new card from the Cards section starts as this, for its kind
 export const NEW_CARD = {
   discount: { kind: 'discount', shop: 'trader', pct: 10, name: 'New Discount Card', look: look(['#2aa7c4', '#16607a'], '%', { pattern: 'stripes' }) },

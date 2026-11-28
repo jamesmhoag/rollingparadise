@@ -1172,3 +1172,30 @@ for a close look, to be turned over (`ui/spin.js`, the look a die gets).
 itself, the top copy off a stack, a chip onto a trick, a die onto a trick, a trick onto its target. A die grows
 where it stands (it used to leap across the table under the pointer). A defeated sign fails a part at a time, by
 material. A sign's lettering is set and fitted in the room its edging leaves.
+
+## Round 24: bone dice, the floor view, tickets, notes, the Coat Check
+
+- **Bone dice** are one of a kind in the Dice Shop (a stock of 1). On the counter one is still a standard die; buying
+  it rolls it, and the face it lands on takes the Bone trait. The Dodgy Corner can turn up a Bone die someone left,
+  already rolled (SHADY.bone): picking it up gives it a toss in your hand, its faces unchanged.
+- **The floor view** puts you on the left: your name tag large, your Book under it, then your Pouch (click a die to
+  hold it up). The word on the floor is on the right.
+- **The Sports Book** settles each bet as its own ticket after a bout, stamped WINNER or LOSER, its payout counted up.
+- **Notes** are cards folded in half: open one (in the hand, or pulled out of a wallet) to read the message inside.
+- **The Coat Check** (round 24):
+  - At any floor's Coat Check you can check anything you carry, any amount and mix (cash, dice, tricks, cards,
+    shop chips), under one pass for SHOPS.coat.price. You keep a die and a trick to play with.
+  - The pass is a ticket with a four-digit number and nothing else on it: no reminder of what is under it.
+  - It rides in a pass slot. With none free it takes the slot of your lowest floor pass (with your last one gone,
+    the Bouncer checks you if you come back to the run later). Keys and other Coat Check passes are never given up.
+  - Show it at any floor's Coat Check (they take the pass) and the lot comes back; cards with no room stay checked
+    under the same number. A jacket or wallet in a lot is yours to keep between runs.
+  - Lose it and the lot is gone for you: thrown away (two clicks), pushed out of a full wallet when you climb (the
+    next floor's pass takes a slot from lower passes, then keys, then the oldest Coat Check pass; the Coat Check
+    warns you), or left behind when the run ends without the wallet. Kept in the alley, they go into the next run.
+  - Lost passes are not gone from the world: they go to a lost pile (meta.lost, the last 12) and can turn up in a
+    Dodgy Corner (SHADY.claim the weight, SHADY.mine the chance a find is one of yours). They may never turn up.
+  - The High Rollers check their coats too (content/claims.js, BOSS_LOTS): cash scaled by their floor, a trick or
+    two, a Bone die, chips, sometimes a jacket or a wallet, sometimes their business card, and always a note in their
+    voice. These are found in the Dodgy Corner and in the Suite's new drawer (opened once a stay; SHADY.drawer the
+    chance, a pass from that floor's High Rollers or one you lost).

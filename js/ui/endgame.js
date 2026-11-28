@@ -1,7 +1,8 @@
 // Suites, the Gift Shop exit, the Paradise Ascent and the end of a run.
 import { h, syncList, toast, btn, tween, pulse, wait, tip } from './core.js';
 import { nameTag, app, hud, oppTip, trickTag } from './app.js';
-import { jacketTip, trickTip, trickWords, cardTip, dieTip, dieEl, passEl, cursorPicker } from './parts.js';
+import { jacketTip, trickTip, trickWords, cardTip, dieTip, dieEl, passEl, claimEl, cursorPicker } from './parts.js';
+import { foundClaimPanel } from './floor.js';
 import { planner } from './prep.js';
 import * as D from '../data.js';
 import { signOf, dressSign, crownLookOf, crownFit, CROWN_FIT, nameSign } from './sign.js';
@@ -59,8 +60,16 @@ export function suiteScene(root, penthouse) {
         return h('div', { class: 'col' }, h('div', { class: 'row' }, prev, btn(t(run.wearing === i ? 'suite.crown.off' : 'suite.crown.wear'), () => { R.wearCrown(run, run.wearing === i ? null : i); renderCrowns(); }, null, `small ${run.wearing === i ? 'on' : 'go'}`)), fit); }));
   }
   renderCrowns();
+  // the drawer: opened once a stay. Now and then a Coat Check pass in it (a High Roller's from this floor, or one you lost)
+  const drawer = h('div', { class: 'col suite-drawer' }, h('h2', { text: t('suite.drawer') }), h('p', { class: 'sub', text: t('suite.drawer.sub') }));
+  const pull = btn(t(run.drawer === run.floor ? 'suite.drawer.done' : 'suite.drawer.open'), () => {
+    const got = R.searchDrawer(run, app.meta); pull.classList.add('off'); pull.textContent = t('suite.drawer.done');
+    if (!got || got === 'none') return toast(t('suite.drawer.nothing'));
+    sfx('earn'); foundClaimPanel(got, 'drawer');
+  }, null, `go ${run.drawer === run.floor ? 'off' : ''}`);
+  drawer.append(pull);
   root.append(H.el, h('div', { class: 'page cols3' },
-    h('div', { class: 'box col' }, h('h2', { text: t('suite.dresser') }), h('p', { class: 'sub', text: t('suite.dresser.sub') }), dresser),
+    h('div', { class: 'box col' }, h('h2', { text: t('suite.dresser') }), h('p', { class: 'sub', text: t('suite.dresser.sub') }), dresser, drawer),
     h('div', { class: 'box col scroll' }, h('h2', { text: t('suite.wardrobe') }), h('p', { class: 'sub', text: t('suite.wardrobe.sub') }), J.el, crowns, cursorPicker()),
     h('div', { class: 'box col' }, h('h2', { text: t(penthouse ? 'suite.bed.nice' : 'suite.bed') }),
       h('p', { class: 'sub', text: t(penthouse ? 'suite.bed.nice.sub' : 'suite.bed.sub', { stat: D.STATS[K.primary].name }) }),
@@ -102,7 +111,7 @@ export function alleyScene(root) {
   const run = app.run, roll = R.alleyRoll(run), Wl = R.walletOf(run);
   const dice = roll.dice.map((d) => tip(dieEl(d, '?', 'big'), () => dieTip(d)));
   const total = h('span', { class: 'total num', text: '—' }), verdict = h('h2', { class: 'fade-t', style: { opacity: 0 } }), kept = h('div', { class: 'inv list' });
-  const cont = btn(t('title.continue'), () => { app.kept = roll.kept ? roll.cards : []; app.keptPass = roll.kept ? roll.passes : []; app.nav.summary(); }, null, 'big go off');
+  const cont = btn(t('title.continue'), () => { app.kept = roll.kept ? roll.cards : []; app.keptPass = roll.kept ? roll.passes : []; app.keptClaims = roll.kept ? roll.claims : []; app.nav.summary(); }, null, 'big go off');
   import('./dev.js').then((M) => { const b = M.devButton(() => app.nav.alley()); if (b) { b.classList.add('dev-float'); root.append(b); } }).catch(() => {}); // developer mode: set your purse and roll the alley again
   root.append(nameTag('floating')); // out on the street, still wearing your name
   root.append(centred(h('div', { class: 'col', style: { width: '620px', textAlign: 'center', alignItems: 'center', gap: '14px' } },
@@ -112,17 +121,17 @@ export function alleyScene(root) {
       h('div', { class: 'row', style: { gap: '18px', margin: '10px 0' } }, dice, h('span', { class: 'dim', text: '=' }), total), verdict, kept), cont, cursorPicker())));
   (async () => {
     await wait(900);
-    if (!roll.cards.length && !roll.pass) { verdict.textContent = t('alley.empty'); verdict.style.opacity = 1; return cont.classList.remove('off'); }
+    if (!roll.cards.length && !roll.pass && !roll.claims.length) { verdict.textContent = t('alley.empty'); verdict.style.opacity = 1; return cont.classList.remove('off'); }
     for (let i = 0; i < dice.length; i++) { const el = dice[i], d = roll.dice[i], f = D.DICE[d.type].faces; el.classList.add('rolling'); for (let n = 0; n < 12; n++) { el.firstChild.textContent = 1 + Math.floor(Math.random() * f); await wait(70); } el.classList.remove('rolling'); el.firstChild.textContent = d.value; pulse(el); await wait(420); }
     total._v = 0; tween(total, roll.total, undefined, 700); await wait(900);
     verdict.textContent = t(roll.kept ? 'alley.kept' : 'alley.lost'); verdict.className = `fade-t ${roll.kept ? 'neon-c' : 'neon-p'}`; verdict.style.opacity = 1;
-    if (roll.kept) syncList(kept, [...roll.passes.map((f) => 'pass:' + f), ...roll.cards], (c) => c, (c) => (c.startsWith('pass:') ? passEl(+c.slice(5)) : h('span', { class: 'tag-t', tip: () => cardTip(c), text: D.CARDS[c].name })));
+    if (roll.kept) syncList(kept, [...roll.passes.map((f) => 'pass:' + f), ...roll.claims.map((c) => 'claim:' + c.no), ...roll.cards], (c) => c, (c) => (c.startsWith('pass:') ? passEl(+c.slice(5)) : c.startsWith('claim:') ? claimEl(roll.claims.find((x) => 'claim:' + x.no === c)) : h('span', { class: 'tag-t', tip: () => cardTip(c), text: D.CARDS[c].name })));
     await wait(500); cont.classList.remove('off');
   })();
 }
 
 export function summaryScene(root) {
-  const run = app.run, phase = run.phase, sum = R.endRun(run, app.meta, t('end.you'), app.kept || [], app.keptPass || 0); app.run = null; app.kept = null; app.keptPass = null;
+  const run = app.run, phase = run.phase, sum = R.endRun(run, app.meta, t('end.you'), app.kept || [], app.keptPass || 0, app.keptClaims || []); app.run = null; app.kept = null; app.keptPass = null; app.keptClaims = null;
   const end = ['ripped', 'paradise', 'fallen'].includes(phase) ? phase : 'alley', head = [t(`end.head.${end}`), t(`end.head.${end}.sub`)];
   sfx('runend', 350, { end });
   const worth = h('span', { class: 'total num' });
