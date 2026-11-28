@@ -1,7 +1,8 @@
 // The floor: a map of places to visit between bouts, each opening as a panel.
 import { h, syncList, openPanel, closePanel, toast, btn, tween, pulse, swapText, guided } from './core.js';
-import { app, hud, oppTip, trickTag, diceSummary } from './app.js';
-import { faceList, dieName, canMelt, matOf } from '../dice.js';
+import { holdUp } from './spin.js';
+import { app, hud, oppTip, trickTag, diceSummary, nameTag } from './app.js';
+import { faceList, dieName, canMelt, matOf, rollDie, boutCopy } from '../dice.js';
 import { meltVolume, castNeed, castFor, mixDyes, mixOpen } from '../forge.js';
 import { dieEl, dieTip, trickTip, trickWords, drinkTip, cardTip, chipEl, chipTip, cardEl, drinkEl, feltStyle, passEl, keyEl, cardRule, cursorPicker } from './parts.js';
 import { walletEl, jacketEl } from './gear.js';
@@ -57,7 +58,7 @@ export function hubScene(root) {
   delete run.hold; // no bout is being set up here: the whole purse is yours to spend
   const H = hud(F.name, tx('floor.floor-of-4', { floor: run.floor }));
   if (at.floor !== run.floor) { at.floor = run.floor; at.k = 'entry'; }
-  const news = h('ul', { class: 'news list' }), book = h('div', { class: 'inv list' }), hint = h('p', { class: 'sub fade-t' });
+  const news = h('ul', { class: 'news list' }), book = h('div', { class: 'inv list' }), pouch = h('div', { class: 'row wrap hub-pouch' }), hint = h('p', { class: 'sub fade-t' });
   const plan = h('div', { class: 'plan', style: { '--fc': FLOOR_HUE[run.floor] } }, h('div', { class: 'carpet' }));
   const rooms = {}, me = h('div', { class: 'pawn', style: { '--cc': D.CLASSES[run.cls].color }, tip: () => tx('floor.you-click-anywhere-on', { heroName: D.heroName(run.cls, run.roller) }) }, h('i', {}), h('b', { text: tx('floor.you') }));
   const spot = (k) => { const [x, y, w, hh] = P[k]; return { x: x + w / 2 - 15, y: y + hh - 34 }; };
@@ -70,10 +71,14 @@ export function hubScene(root) {
     rooms[k] = el; plan.append(el);
   }
   plan.append(me); stand(at.k);
-  root.append(H.el, h('div', { class: 'page' }, h('div', { class: 'hub' }, plan,
-    h('div', { class: 'side' },
-      h('div', { class: 'box scroll', style: { flex: '1' } }, h('span', { class: 'cap', text: t('floor.news') }), news),
-      h('div', { class: 'box' }, h('span', { class: 'cap', text: t('floor.yourBook') }), book, hint)))));
+  // the floor: you on the left (your name plate, large, then your Book and your Pouch), the plan in the middle, the
+  // word on the floor on the right
+  root.classList.add('on-floor');
+  root.append(H.el, h('div', { class: 'page' }, h('div', { class: 'hub' },
+    h('div', { class: 'side hub-me' }, nameTag('big'),
+      h('div', { class: 'box scroll', style: { flex: '1' } }, h('span', { class: 'cap', text: t('floor.yourBook') }), book, h('span', { class: 'cap', text: tx('floor.your-pouch') }), pouch, hint)),
+    h('div', { class: 'plan-fit' }, plan),
+    h('div', { class: 'side' }, h('div', { class: 'box scroll', style: { flex: '1' } }, h('span', { class: 'cap', text: t('floor.news') }), news)))));
 
   function tiles() {
     const out = [], buyin = (min) => toast(t('floor.buyin', { min: cents(min) }), 'warn');
@@ -96,7 +101,7 @@ export function hubScene(root) {
     const open = fs.book.events.filter((e) => e.bet && !e.done).length;
     out.push({ k: 'book', ico: '🏇', name: t('floor.book.name'), sub: open ? t('floor.book.riding', { n: open }) : t('floor.book.sub'), tip: t('floor.book.tip'), on: () => bookPanel() });
     out.push({ k: 'search', cls: fs.searched ? 'done' : '', ico: '🔎', name: t('floor.search.name'), sub: t(fs.searched ? 'floor.search.done' : 'floor.search.sub'), tip: t('floor.search.tip'),
-      on: () => { const id = R.searchFloor(run); if (!id) return toast(t('floor.search.again')); if (id === 'none') { render(); return toast(t('floor.search.nothing')); } if (run.pendingCard) { render(); return walletFullPanel(); } toast(t('floor.search.found', { card: D.CARDS[id].name })); render(); } });
+      on: () => { const id = R.searchFloor(run); if (!id) return toast(t('floor.search.again')); if (id === 'none') { render(); return toast(t('floor.search.nothing')); } if (id === 'bone') { render(); return foundBonePanel(); } if (run.pendingCard) { render(); return walletFullPanel(); } toast(t('floor.search.found', { card: D.CARDS[id].name })); render(); } });
     out.push({ k: 'kit', ico: '🎒', name: t('floor.kit.name'), sub: t('floor.kit.sub', { dice: run.dice.length, tricks: run.tricks.length, cards: run.cards.length }), tip: t('floor.kit.tip'), on: () => kitPanel() });
     out.push({ k: 'exit', cls: 'exit', ico: '🚪', name: t('floor.exit.name'), sub: t('floor.exit.sub'), tip: t('floor.exit.tip'), on: () => exitPanel() });
     const up = t(run.floor < 4 ? 'floor.stairs.up' : 'floor.stairs.lift');
@@ -119,6 +124,8 @@ export function hubScene(root) {
       el.classList.toggle('unseen', !!t.unseen); el.onclick = () => visit(t.k, t.on); el._tip = t.tip; el.classList.add('has-tip'); }
     syncList(news, run.news.slice(-7).map((text, i) => ({ text, k: run.news.length - Math.min(7, run.news.length) + i })).reverse(), (n) => n.k, (n) => h('li', { text: n.text }));
     syncList(book, run.tricks, (t) => t.uid + ':' + t.q + ':' + D.condOf(t), (t) => trickTag(t, run.cls));
+    // your dice: point at one for what it is, click it to hold it up close
+    syncList(pouch, run.dice, (d) => d.id + ':' + faceList(d).join(), (d) => { const el = dieEl(d); el._tip = () => dieTip(d); el.classList.add('has-tip'); el.addEventListener('click', () => holdUp(el)); return el; });
     swapText(hint, R.brokeHint(run) || t('floor.pouchHint', { dice: diceSummary(run.dice) }));
     R.saveRun(run);
   }
@@ -194,13 +201,16 @@ function smithPanel() {
       h('div', {}, h('span', { class: 'cap', text: t('smith.dyes', { n: D.MELT.maxDyes }) }), dyeBox, chosen, rollLine, go, result))), { wide: true });
 }
 
+// a Bone die bought: it was rolled there and then, its trait set on the face it came up; it is held up to see
+function boneSet(got) { toast(tx('floor.bone-rolled', { name: dieName(got.die), n: got.rolled }), 'good');
+  requestAnimationFrame(() => { const el = [...document.querySelectorAll('.die')].find((x) => x._die?.id === got.die.id); if (el) holdUp(el); }); }
 function diceShopPanel() {
   const run = app.run, shelf = h('div', { class: 'items list' }), done = after(render);
   function render() {
     syncList(shelf, R.diceShop(run), (it) => it.key, (it) => { const el = item(it.die.mat === 'bone' ? 'bone' : '');
-      el.append(btn(tx('shop.buy'), () => { tryDo(R.buyShopDie(run, it.key), el); done(); }, null, 'small')); el.prepend(dieEl(it.die)); el._tip = () => dieTip(it.die); el.classList.add('has-tip'); return el; },
+      el.append(btn(tx('shop.buy'), () => { const got = R.buyShopDie(run, it.key); tryDo(got, el); if (got?.rolled != null) boneSet(got); done(); }, null, 'small')); el.prepend(dieEl(it.die)); el._tip = () => dieTip(it.die); el.classList.add('has-tip'); return el; },
     (el, it) => { const B = it.die.bone && D.BONE[it.die.bone];
-      setItem(el, `${dieName(it.die)} ${`<span class="left dim">${tx('shop.left', { n: it.left ?? 1 })}</span>`}`, B ? tx('floor.cannot-be-melted-or', { join: faceList(it.die).join(' '), upgradeText: D.upgradeText(B.up) }) : `${faceList(it.die).join(' ')} <span class="dim">${D.MATERIALS[it.die.mat].text}</span>`, cents(R.dieCost(run, it)));
+      setItem(el, `${dieName(it.die)} ${`<span class="left dim">${tx('shop.left', { n: it.left ?? 1 })}</span>`}`, B ? tx(it.die.unset ? 'floor.bone-unset' : 'floor.cannot-be-melted-or', { join: faceList(it.die).join(' '), upgradeText: D.upgradeText(B.up) }) : `${faceList(it.die).join(' ')} <span class="dim">${D.MATERIALS[it.die.mat].text}</span>`, cents(R.dieCost(run, it)));
       el.lastChild.classList.toggle('off', run.purse < R.dieCost(run, it)); });
     if (!R.diceShop(run).length) syncList(shelf, [{ k: 0 }], (x) => x.k, () => h('p', { class: 'sub', text: tx('floor.sold-out-until-the') }));
   }
@@ -340,6 +350,16 @@ function dropText(run, c) {
   return Object.entries(card.mods).map(([k, n]) => tx('floor.drop-it-and-goes', { name: D.STATS[k].name, v: v[k], v2: v[k] - n, replace: D.STATS[k].per(n).replace(/\bmore\b/, 'fewer') })).join(' ');
 }
 // a found card with no free slot: drop one or leave it
+// A Bone die found in the Shady Corner, already rolled (its trait set where it came up). Pick it up and you give it
+// a toss in your hand: it lands where it lands, and its faces stay as they are.
+function foundBonePanel() {
+  const run = app.run, die = run.dice.find((d) => d.id === run.fs.foundDie); if (!die) return;
+  const el = dieEl(die); el._tip = () => dieTip(die); el.classList.add('has-tip', 'found-die');
+  openPanel(h('div', { class: 'col found-bone' }, h('h2', { text: tx('floor.found', { name: dieName(die) }) }), h('p', { class: 'sub', text: tx('floor.found-bone', { up: D.upgradeText(D.BONE[die.bone].up) }) }),
+    h('div', { class: 'row', style: { justifyContent: 'center', margin: '10px 0' } }, el),
+    h('div', { class: 'row' }, btn(tx('floor.pick-it-up'), (ev) => { const v = rollDie(run.rng, boutCopy(die)); toast(tx('floor.tossed', { name: dieName(die), n: v }), 'good'); holdUp(el); ev.currentTarget.remove(); }, null, 'go'),
+      btn(tx('floor.done'), () => closePanel(), null, ''))));
+}
 function walletFullPanel() {
   const run = app.run, id = run.pendingCard, Wl = R.walletOf(run);
   const done = (drop) => { R.resolvePending(run, drop); closePanel(); rerender(); toast(drop ? tx('floor.goes-in-your-wallet', { name: D.CARDS[id].name }) : tx('floor.you-leave-it-where')); };

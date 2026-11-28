@@ -3,7 +3,7 @@
 import { RNG, sum, clamp } from './util.js';
 import * as D from './data.js';
 import { createBout, summary, barCapacity } from './bout.js';
-import { rollDie, boutCopy, matOf, dieName, boneDie } from './dice.js';
+import { rollDie, boutCopy, matOf, dieName, boneDie, facesOf, upgrade } from './dice.js';
 import { forgePlan, castOut, castFaces, dyePrice } from './forge.js';
 import { t as tx } from './text.js';
 
@@ -392,16 +392,24 @@ export function genDiceShop(run, floor = run.floor) {
   const rng = run.rng, S = D.DICE_SHOP, Z = D.SHOPS.dice, types = D.COMPLEXITY.filter((t) => (S.from[t] || 1) <= floor + earlyAt(run, 'dice')), left = D.perFloor(Z.stock, floor, 1);
   const basic = Array.from({ length: D.perFloor(Z.plain, floor, 6) }, (_, i) => { const mat = D.BASIC_MATS[i % D.BASIC_MATS.length], type = rng.pick(types);
     return { key: run.nextId++, die: { type, mat, up: [] }, cost: diePrice(floor, type, mat), left }; });
+  // a Bone die is one of a kind (stock 1), carved but not yet set: its trait goes on the face it rolls when bought
   const bone = Array.from({ length: D.perFloor(Z.bone, floor, 2) }, () => { const type = rng.pick(types), id = rng.pick(Object.keys(D.BONE));
-    return { key: run.nextId++, die: boneDie({}, type, id, rng), cost: diePrice(floor, type, 'bone'), left }; });
+    return { key: run.nextId++, die: { type, mat: 'bone', bone: id, up: [], unset: true }, cost: diePrice(floor, type, 'bone'), left: 1 }; });
   return basic.concat(bone).sort((a, b) => D.DICE[a.die.type].faces - D.DICE[b.die.type].faces || (a.die.mat === 'bone') - (b.die.mat === 'bone'));
 }
 export const diceShop = (run) => { if (!run.fs.dice) run.fs.dice = genDiceShop(run); return run.fs.dice; }; // stocked on the first visit to each floor's Dice Shop
 export const dieCost = (run, it) => price(run, 'dice', it.cost, it.die.type);
+// Buying sets an unset Bone die there and then: it is rolled as a standard die of its size, and its trait goes on the
+// face that came up. → the die bought, and (a Bone die) the face it rolled: { die, rolled }
+export function setBone(run, die) {
+  const fs = facesOf({ type: die.type, up: [] }), i = run.rng.int(fs.length), { unset, ...rest } = die; // a standard die: every face as likely
+  return { die: upgrade({ ...rest, up: [] }, D.BONE[die.bone].up, i, run.rng), rolled: fs[i].v };
+}
 export function buyShopDie(run, key) {
   const it = diceShop(run).find((x) => x.key === key), cost = it && dieCost(run, it); if (!it || !spend(run, cost, tx('run.bought-a', { dieName: dieName(it.die) }))) return false; bought(run, 'dice', it.die.type, cost);
-  run.dice.push({ ...it.die, id: run.nextId++, up: [...it.die.up], tgt: it.die.tgt && [...it.die.tgt], faces: it.die.faces?.map((f) => ({ ...f })) });
-  it.left = (it.left ?? 1) - 1; if (it.left <= 0) run.fs.dice = run.fs.dice.filter((x) => x !== it); return true;
+  const set = it.die.unset ? setBone(run, it.die) : { die: it.die }, die = { ...set.die, id: run.nextId++, up: [...set.die.up], tgt: set.die.tgt && [...set.die.tgt], faces: set.die.faces?.map((f) => ({ ...f })) };
+  run.dice.push(die); it.left = (it.left ?? 1) - 1; if (it.left <= 0) run.fs.dice = run.fs.dice.filter((x) => x !== it);
+  return { die, rolled: set.rolled };
 }
 
 // Chip Exchange: shop chips are priced by their tier (D.CHIP_TIERS) and unlocked by the tier's floor
@@ -475,9 +483,12 @@ export function resolveBets(run) {
 export function searchFloor(run) {
   if (run.fs.searched) return null; run.fs.searched = true;
   // the Dodgy Corner: each card's chance weight against finding nothing (content/cards.js)
+  // (or a Bone die someone left behind, already rolled: its trait is set where it came up, D.SHADY.bone its weight)
   const pool = D.FIND_CARDS.filter((id) => !hasCard(run, id)), none = D.SHADY.nothing || 0;
-  const id = run.rng.weighted([...pool, '__none'], (x) => (x === '__none' ? none : D.CARDS[x].corner || 0));
+  const id = run.rng.weighted([...pool, '__none', '__bone'], (x) => (x === '__none' ? none : x === '__bone' ? D.SHADY.bone || 0 : D.CARDS[x].corner || 0));
   if (!id || id === '__none') return 'none';
+  if (id === '__bone') { const types = D.COMPLEXITY.filter((t) => (D.DICE_SHOP.from[t] || 1) <= run.floor), b = setBone(run, { type: run.rng.pick(types), mat: 'bone', bone: run.rng.pick(Object.keys(D.BONE)), up: [] }).die;
+    const die = { ...b, id: run.nextId++ }; run.dice.push(die); run.fs.foundDie = die.id; return 'bone'; }
   addCard(run, id); return id;
 }
 

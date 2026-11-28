@@ -1577,3 +1577,11 @@ body.spinning .thing > .th-body, body.carrying-now .thing > .th-body { transitio
 .coat-gear > .coat-wallet { grid-column: 1; zoom: .85; }
 .coat-gear > :not(.coat-jacket):not(.coat-wallet) { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
 .spin-view.opened .spin-cap { opacity: 0; } /* an opened wallet: its name gives way to what it holds */
+/* the floor: you on the left (name plate large, Book, Pouch), the plan in the middle (scaled to fit), the word on the
+   floor on the right; the top bar's small plate gives way to the large one */
+.scene.on-floor .hub { grid-template-columns: 232px 1fr 250px; }
+.scene.on-floor .hud .name-tag { display: none; }
+.hub-me .name-tag.big { zoom: 1; width: 100%; height: 108px; margin: 0; flex: none; }
+.plan-fit { display: grid; place-items: start center; min-width: 0; }
+.scene.on-floor .plan { zoom: .8; }
+.hub-pouch { gap: 4px; } .hub-pouch .die { cursor: var(--cur-pointer, pointer); }
