@@ -18,6 +18,7 @@ export function thing(face, o = {}) {
   face.classList.add('th-face');
   for (let i = 1; i <= n; i++) { const e = o.edge ? o.edge() : h('i'); e.classList.add('th-edge'); e.style.transform = `translateZ(${(-depth * i / (n + 1)).toFixed(2)}px)`; body.append(e); }
   const back = h('span', { class: 'th-back' }, o.back ? o.back() : (o.edge ? o.edge() : null)); body.append(back, face);
+  if (o.fold) folded(body, face, o.fold); // (a note: folded in half, its message inside)
   if (o.mat) materialVar(el, { m: o.mat, color: o.color }, '--th-tex');
   el._thing = { face, o };
   el._look = (size) => closeLook(el, size);
@@ -30,8 +31,18 @@ function closeLook(src, least) {
   const big = thing(o.make ? o.make() : face.cloneNode(true), { ...o, lift: false }), body = big.firstChild;
   const el = h('div', { class: 'th-look', style: { width: `${size}px`, height: `${size}px` } }, h('div', { class: 'th-zoom', style: { transform: `scale(${k.toFixed(3)})` } }, big));
   let M = new DOMMatrix();
-  return { el, size, name: o.name || '', sub: o.sub || '', start: new DOMMatrix().rotateSelf(-10, 22, 0), get matrix() { return M; }, setRotation(m) { M = m; body.style.transform = m.toString(); } };
+  const look = { el, size, name: o.name || '', sub: o.sub || '', start: new DOMMatrix().rotateSelf(-10, 22, 0), get matrix() { return M; }, setRotation(m) { M = m; body.style.transform = m.toString(); } };
+  if (o.fold) { look.click = () => { const on = !body.classList.contains('unfolded'); if (on) look.setRotation(new DOMMatrix()); unfold(body, on); }; look.locked = () => body.classList.contains('unfolded'); }
+  return look;
 }
+// A thing folded in half (a note): its face is the cover, folded down over the inside on a crease along its top.
+// Opened (a click, held up close or pulled out of a wallet), the cover swings up over the crease and the message is
+// there inside; a click folds it shut again. Open, a thing held up close holds still.
+function folded(body, face, F) {
+  const cover = h('span', { class: 'fold-cover' }), inside = h('span', { class: 'fold-inside' }, h('p', { class: 'fold-msg', text: F.text }));
+  face.replaceWith(cover); cover.append(face, h('span', { class: 'fold-cover-in' })); body.insertBefore(inside, cover);
+}
+export const unfold = (body, on) => body.classList.toggle('unfolded', on);
 // Under the pointer a thing leans toward where the pointer is on it (so each edge can be looked along)
 export function initThings() {
   document.addEventListener('pointermove', (ev) => { const el = ev.target.closest?.('.thing:not(.th-still)'); if (!el) return; const r = el.getBoundingClientRect(); if (!r.width) return;

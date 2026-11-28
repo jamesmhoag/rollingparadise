@@ -13,6 +13,7 @@
 // Without WebGL the drawn pieces (ui/gear.js) stand as they are.
 import { load, three, body, renderGroup, inTwo } from './dice3d.js';
 import { shade } from '../util.js';
+import { unfold } from './thing.js';
 
 let T = null;
 const U = 1 / 40; // scene units per px of a piece's own drawing: a wallet sits in the room about as large as a die
@@ -449,12 +450,13 @@ function walletLook3d(look, M, spec, V) {
       x.hold.addEventListener('pointerenter', () => { if (out) return; up = x; place(); });
       x.hold.addEventListener('pointerleave', () => { if (up === x) { up = null; place(); } });
       // a click on one in its slit pulls it out to look at; once out, a click is its own (a card's, say)
-      x.hold.addEventListener('click', (ev) => { if (out === el) return; ev.stopPropagation(); ev.preventDefault(); out = el; up = null; el.classList.add('pulled'); place(); }, true); }
+      x.hold.addEventListener('click', (ev) => { if (out === el) { if (el._thing?.o.fold) { ev.stopPropagation(); unfold(el.firstChild, !el.firstChild.classList.contains('unfolded')); } return; } // (a note pulled out: a click opens it, or folds it)
+        ev.stopPropagation(); ev.preventDefault(); out = el; up = null; el.classList.add('pulled'); place(); }, true); }
     place(); };
   look.click = () => { if (M.flat) { if (!showing) look.setRotation(new DOMMatrix()); return show(!showing); } // a clip: face on, and lay out what it holds (or gather it again)
     if (t > 0.5) { show(false); run(0); } else { look.setRotation(new DOMMatrix()); run(1, () => show(true)); } }; // open: face on, then what it holds into its slits
   look.locked = () => showing; // open (or laid out), it holds still
-  look.back = () => { if (!out) return false; out.classList.remove('pulled'); out = null; place(); return true; }; // a right click puts a pulled card back in its slit
+  look.back = () => { if (!out) return false; out.classList.remove('pulled'); if (out._thing?.o.fold) unfold(out.firstChild, false); out = null; place(); return true; }; // a right click puts a pulled card back in its slit (a note folded again)
   look.close = () => { for (const [el, h0] of homes) { el.classList.remove('in-slit', 'pulled'); if (h0.style == null) el.removeAttribute('style'); else el.setAttribute('style', h0.style); h0.parent?.insertBefore(el, h0.next?.parentNode === h0.parent ? h0.next : null); }
     homes.clear(); shelf.replaceChildren(); };
   paint(); return look;

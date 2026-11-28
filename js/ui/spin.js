@@ -98,8 +98,9 @@ export function initSpin() {
 // it does is done at once (a wallet comes up open, what it holds to hand). The one already held goes back first.
 export function holdUp(node, o = {}) { if (!(node._look || node._die) || view?.node === node) return; open(node); view.pinned = true; if (o.open) view.solid.click?.(); }
 // Is a press on what is drawn of the held thing (not the clear round it: a view grows round an opened wallet)?
+// (only a view drawn on a canvas that grows, a wallet's, has clear round it; a card, a die, a drink is all itself)
 function onIt(ev) {
-  const t = ev.target; if (t.closest('.g3-held')) return true; if (t.tagName !== 'CANVAS') return false;
+  const t = ev.target; if (t.closest('.g3-held')) return true; if (!view.solid.canvas) return true; if (t.tagName !== 'CANVAS') return false;
   const cx = t.getContext('2d'); if (!cx) return true; const r = t.getBoundingClientRect();
   try { return cx.getImageData(Math.floor((ev.clientX - r.left) * t.width / r.width), Math.floor((ev.clientY - r.top) * t.height / r.height), 1, 1).data[3] > 16; } catch { return true; }
 }

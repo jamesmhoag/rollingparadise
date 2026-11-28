@@ -291,13 +291,14 @@ function printBack(spec, cls = '') {
 }
 // → the thing: its printed face on its body, its back behind, ready to be leaned and looked at
 function printed(spec, cls = '') {
-  return thing(printFace(spec, cls), { ...bodyOf(spec.look || {}), radius: spec.wide ? 4 : 6, back: () => printBack(spec, cls), make: () => printFace(spec, cls), name: spec.name, sub: spec.kind, cls: `${spec.wide ? 'th-wide' : ''} ${spec.pass ? 'th-pass' : ''}` });
+  return thing(printFace(spec, cls), { ...bodyOf(spec.look || {}), radius: spec.wide ? 4 : 6, back: () => printBack(spec, cls), make: () => printFace(spec, cls), name: spec.name, sub: spec.kind, fold: spec.fold, cls: `${spec.wide ? 'th-wide' : ''} ${spec.pass ? 'th-pass' : ''}` });
 }
 // a card's spec from the table. o: { name (in place of its own), punched }
 export function cardSpec(id, o = {}) {
   const c = D.CARDS[id] || {}, biz = c.kind === 'business' ? D.ROSTER[c.roller] : null, T = biz ? D.BOSS_TRAITS[biz.trait] : null;
   return { id, kind: tx(`card.kind.${c.kind || 'other'}`), name: o.name || (c.name || id).replace(/^.*?: /, ''), look: { ...(c.look || {}), symbol: c.look?.symbol ?? (KIND_GLYPH[c.kind] || '?') }, wide: c.kind === 'business',
-    punches: c.kind === 'punch' ? c.punches : 0, punched: o.punched, rule: cardRule(id), flavor: T ? T.flavor : D.flavorOf('CARDS', id),
+    // a note is folded in half: its outside shows only what it is; the message is inside (opened in the hand: ui/thing.js)
+    punches: c.kind === 'punch' ? c.punches : 0, punched: o.punched, rule: c.kind === 'note' ? '' : cardRule(id), flavor: T ? T.flavor : D.flavorOf('CARDS', id), fold: c.kind === 'note' ? { text: c.text || '' } : null,
     plate: biz ? () => nameSign('them', biz.name, T?.title || D.CLASSES[biz.cls]?.name || '', signOf('them', biz.sign), 'card-sign') : null };
 }
 export const cardBackEl = (id, cls = '') => printBack(cardSpec(id), cls); // (for the maker, which shows both sides at once)

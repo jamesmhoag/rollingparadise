@@ -1604,3 +1604,12 @@ body.spinning .thing > .th-body, body.carrying-now .thing > .th-body { transitio
 .ticket.lost .tk-stamp { color: #ff5a5a; } .ticket.lost.stamped { filter: saturate(.55) brightness(.85); animation: tk-shake .4s ease-out 1; }
 @keyframes tk-glow { 0% { background: linear-gradient(135deg, #6b5420, #2a1d0c); } 100% { background: linear-gradient(135deg, #22183f, #120c26); } }
 @keyframes tk-shake { 0%, 100% { translate: 0 0; } 25% { translate: -6px 0; } 50% { translate: 5px 0; } 75% { translate: -3px 0; } }
+/* a note folded in half (ui/thing.js foldOpen): the printed face is the cover; opened, it swings up over its crease
+   and shows the inside of the cover above, the message below */
+.fold-cover { position: relative; display: inline-block; transform-style: preserve-3d; transform-origin: 50% 0; transition: transform .6s cubic-bezier(.3, 1.2, .4, 1); z-index: 1; }
+.fold-cover-in { position: absolute; inset: 0; border-radius: var(--th-r); transform: rotateX(180deg); backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  background: linear-gradient(#f6f1e3, #ece3cc); box-shadow: inset 0 -6px 10px -6px rgba(0, 0, 0, .35); }
+.fold-inside { position: absolute; inset: 0; border-radius: var(--th-r); transform: translateZ(-.4px); display: grid; place-items: center; padding: 5px 4px; box-sizing: border-box;
+  background: linear-gradient(#efe6cf, #f7f2e5 20%); box-shadow: inset 0 6px 8px -6px rgba(0, 0, 0, .4); }
+.fold-msg { margin: 0; font: 400 6.4px/1.25 var(--hand, cursive); color: #2c2214; text-align: center; transform: rotate(-1.5deg); }
+.th-body.unfolded > .fold-cover { transform: rotateX(178deg); }
