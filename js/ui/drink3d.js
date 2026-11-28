@@ -204,8 +204,9 @@ function dropped(L, V, B, live, clear) {
   for (let i = 0; i < L.gems; i++) { const r = clear ? Math.min(3.2, B.rIn(V.floor - 2) * 0.55) : Math.min(4.4, B.rIn(level) * 0.4), m = body(gemGeo(r), 'gem', L.gemColor), [x, y, z] = spot(i, 7, clear ? r * 0.5 : r * 2.2);
     m.rotation.set(clear ? 0.5 + rnd(i, 3) : 0.2 * rnd(i, 3), rnd(i, 4) * 6, 0.4 * rnd(i, 5)); at(m, x, y, z); g.add(m); if (!clear) { const y0 = m.position.y; live.bob.push((S) => { m.position.y = y0 + Math.sin(S.t * 1.4 + i) * 0.3 + S.s[0] * x + S.s[1] * z; }); } }
   for (let i = 0; i < L.coins; i++) { const r = Math.min(3.1, B.rIn(V.floor - 1) * 0.5), coin = new T.Group(), [x, y, z] = spot(i + 3, 11, 0.4 + (i % 2) * 0.5);
+    // (lying askew on one another, faces showing)
     coin.add(body(new T.CylinderGeometry(r, r, 0.55, 40), 'metal', L.coinColor), body(new T.TorusGeometry(r - 0.25, 0.22, 8, 40).rotateX(Math.PI / 2).translate(0, 0.28, 0), 'metal', L.coinColor), body(new T.CylinderGeometry(r * 0.45, r * 0.45, 0.7, 6), 'metal', L.coinColor));
-    coin.rotation.set(0.5 + rnd(i, 1) * 0.6, rnd(i, 2) * 6, (rnd(i, 6) - 0.5) * 0.8); // (lying askew on one another, faces showing) at(coin, x, y, z); g.add(coin);
+    coin.rotation.set(0.5 + rnd(i, 1) * 0.6, rnd(i, 2) * 6, (rnd(i, 6) - 0.5) * 0.8); at(coin, x, y, z); g.add(coin);
     if (!clear) { const y0 = coin.position.y; live.bob.push((S) => { coin.position.y = y0 + Math.sin(S.t * 1.1 + i * 2) * 0.25 + S.s[0] * x + S.s[1] * z; }); } }
   return g;
 }
