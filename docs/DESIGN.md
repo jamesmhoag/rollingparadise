@@ -1066,10 +1066,11 @@ for a close look, to be turned over (`ui/spin.js`, the look a die gets).
   it holds, and ice and fizz inside a clear drink are solid to the eye.
 - Right click lets go of anything held up close (as Esc does). While something is held up, it is gone from where it
   was (the one turns into the other) and is back when it is let go.
-- **A wallet held up close** (ui/gear3d.js walletLook3d). Where a wallet carries things (the Coat Check, the Gear
-  maker's preview) it is looked into in the hand: pointed at, it stands out (it does not open where it lies); a click
-  holds it up close; a click there opens it (a clip, with no inside, lays out what it holds) or shuts it again, and
-  it stays held up until a right click or Esc. It stays at the size it came up at: opening does not shrink it, the
+- **A wallet held up close** (ui/gear3d.js walletLook3d, ui/spin.js holdUp). Everywhere a wallet is shown: pointed
+  at, it opens where it lies; a click holds it up close, open, what it holds to hand (a clip lays it out); a click
+  there shuts it, or opens it again; it stays held up until a right click (which first puts back a pulled card) or
+  Esc. A press beside it (where it is not drawn, even inside its view) lets it go, and a wallet under that press comes
+  up in its place, open; the one let go goes back to how it lies. It stays at the size it came up at: opening does not shrink it, the
   view grows round it and is kept on the screen. Open, it turns face on and holds still. Inside, one slit for each
   card it can hold and each pass: a billfold has its card slits on one leaf and its pass slits on the other; a
   clasped pouch, which opens up and down, has them the full width of its back, the passes nearest the seam it folds

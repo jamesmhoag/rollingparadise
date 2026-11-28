@@ -1568,9 +1568,9 @@ body.spinning .thing > .th-body, body.carrying-now .thing > .th-body { transitio
 .slit-hold { position: absolute; pointer-events: auto; cursor: var(--cur-pointer, pointer); transition: top .22s var(--ease), height .22s var(--ease), left .28s var(--ease), width .28s var(--ease); }
 .slit-hold > .in-slit { position: absolute; left: 0; top: 0; margin: 0 !important; transform-origin: 0 0; transition: transform .28s var(--ease); }
 .slit-hold > .in-slit.pulled { filter: drop-shadow(0 10px 18px rgba(0, 0, 0, .7)); }
-/* a wallet you hold up with a click (the Coat Check): pointed at, it stands out; it opens only in the hand */
-.th-wallet.hold-up { cursor: var(--cur-pointer, pointer); transition: filter .2s, scale .2s var(--ease); }
-.th-wallet.hold-up:hover { scale: 1.05; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--gold) 55%, transparent)); }
+/* a wallet: pointed at, it opens where it lies and stands out; a click holds it up close, open */
+.th-wallet.hold-up { cursor: var(--cur-pointer, pointer); transition: filter .2s; }
+.th-wallet.hold-up:hover { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--gold) 55%, transparent)); }
 /* the Coat Check: your jacket over your wallet, one above the other; the jacket shown larger, the wallet a little smaller */
 .coat-gear { display: grid; justify-items: start; align-items: end; grid-template-columns: auto auto; gap: 14px 22px; }
 .coat-gear > .coat-jacket { grid-column: 1; zoom: 1.9; }

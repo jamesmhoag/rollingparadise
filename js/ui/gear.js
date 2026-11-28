@@ -56,15 +56,13 @@ export function walletEl(id, cls = '', hold = {}) {
   const el = thing(face, { mat: L.mat, color: L.color, radius: L.round, depth: clip ? 3 : 7, name: Wl.name || id, sub: WALLET_TYPES[L.type], cls: `th-wallet th-${L.type} ${cls}`, ...(clip ? { edge: () => h('span', { class: 'gw gw-clip' }, finishOn(h('i', { class: 'gw-band' }), lookFinish(L))) } : {}),
     back: () => { if (clip) return h('span', { class: 'gw gw-clip' }, finishOn(h('i', { class: 'gw-band' }), lookFinish(L))); const b = finishOn(h('span', { class: `gw-back gw-${L.type}`, style: { '--w-round': `${L.round}px` } }, h('i', { class: 'gw-pad' })), lookFinish(L)); const em = emblemEl(L, 'wsym big'); if (em) b.append(em); return b; },
     make: () => { const f = walletFace(id, cls, { cards: copy(hold.cards), passes: copy(hold.passes), cash: hold.cash }); f.classList.toggle('pin', face.classList.contains('pin')); return f; } });
-  // A wallet carrying things is looked into in the hand: pointed at it stands out, a click holds it up close, and a
-  // click there opens it (ui/gear3d.js). Any other wallet: a click keeps it open, or shuts it again (a click on
-  // something it holds is that thing's own).
-  const carries = !!((hold.cards || []).length || (hold.passes || []).length);
-  if (carries) { el.classList.add('hold-up'); el.addEventListener('click', (ev) => { ev.stopPropagation(); holdUp(el); }); }
-  else if (!clip) el.addEventListener('click', (ev) => { if (ev.target.closest('.thing') === el) face.classList.toggle('pin'); });
+  // Pointed at, a wallet opens where it lies. A click on it holds it up close, open, what it holds to hand (ui/gear3d.js
+  // walletLook3d); a click there shuts it or opens it again; a right click puts a pulled card back, then puts the
+  // wallet down; a click on another wallet brings that one up instead. (A click on something it holds is that thing's own.)
+  el.classList.add('hold-up'); el.addEventListener('click', (ev) => { const t0 = ev.target.closest('.thing'); if (t0 && t0 !== el) return; ev.stopPropagation(); holdUp(el, { open: true }); });
   const notes = clip ? notesFor(hold.cash || 1) : notesFor(hold.cash);
   // held up close (ui/gear3d.js heldIn): one slit for each card it can hold and each pass, and the very cards and passes in them
-  embody(el, face, { kind: 'wallet', look: L, notes, name: Wl.name || id, sub: WALLET_TYPES[L.type], pinned: () => face.classList.contains('pin'), still: carries,
+  embody(el, face, { kind: 'wallet', look: L, notes, name: Wl.name || id, sub: WALLET_TYPES[L.type], pinned: () => face.classList.contains('pin'),
     slots: { cards: Math.max(1, Wl.slots || 1), passes: Math.max(1, Wl.passes || 1) }, held: () => ({ cards: hold.cards || [], passes: hold.passes || [] }) });
   return el;
 }

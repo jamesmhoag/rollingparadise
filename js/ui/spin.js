@@ -17,6 +17,7 @@ const scaleOf = () => { const s = stage(); return s.getBoundingClientRect().widt
 function close(now) {
   if (!view) return; const v = view; view = null; cancelAnimationFrame(v.raf); clearTimeout(v.leave); v.solid.close?.(); // what it held goes back where it was
   document.body.classList.remove('spinning'); v.node.classList.remove('lifted'); // it is back where it was
+  if (!v.node.matches(':hover')) v.node.dispatchEvent(new PointerEvent('pointerleave')); // and idle there, if the pointer left it while it was up
   if (now) return v.el.remove();
   v.el.classList.add('out'); setTimeout(() => v.el.remove(), 260);
 }
@@ -34,7 +35,9 @@ function open(node) {
   const W = stage().offsetWidth, H = stage().offsetHeight, S = solid.size || SIZE; // (a thing comes up larger than a die: it has print to read)
   const x = Math.max(8, Math.min(W - S - 8, b.x + b.w / 2 - S / 2)), y = Math.max(8, Math.min(H - S - 40, b.y + b.h / 2 - S / 2));
   Object.assign(el.style, { left: x + 'px', top: y + 'px' });
-  el.addEventListener('pointerdown', (ev) => { if (ev.button !== 0 || !view) return; ev.stopPropagation(); if (ev.target.closest('.g3-held .thing')) return; ev.preventDefault(); grab(ev, el); }); // (a card in its slit is that card's own)
+  el.addEventListener('pointerdown', (ev) => { if (ev.button !== 0 || !view) return; ev.stopPropagation(); if (ev.target.closest('.g3-held .thing')) return; // (a card in its slit is that card's own)
+    if (!onIt(ev)) return passThrough(ev); // a press where the held thing is not drawn is a press on what is under it
+    ev.preventDefault(); grab(ev, el); });
   el.addEventListener('pointerenter', () => { if (view) clearTimeout(view.leave); });
   el.addEventListener('pointerleave', () => { if (view && !view.held && !view.pinned) { clearTimeout(view.leave); view.leave = setTimeout(() => close(), 450); } }); // (clicked, it stays held up until a right click)
   stage().append(el); document.body.classList.add('spinning'); node.classList.add('lifted'); // what is held up is no longer where it was: the one turns into the other
@@ -91,5 +94,17 @@ export function initSpin() {
   // a die that leaves the screen (a new scene, a closed panel) takes its spin with it
   new MutationObserver(() => { if (view && !view.held && !document.body.contains(view.node)) close(true); }).observe(stage(), { childList: true, subtree: true });
 }
-// hold a thing up close with a click (a wallet in the Coat Check): it stays held up until a right click or Esc
-export function holdUp(node) { if (!(node._look || node._die)) return; open(node); view.pinned = true; }
+// Hold a thing up close with a click (a wallet): it stays held up until a right click or Esc; open: what a click on
+// it does is done at once (a wallet comes up open, what it holds to hand). The one already held goes back first.
+export function holdUp(node, o = {}) { if (!(node._look || node._die) || view?.node === node) return; open(node); view.pinned = true; if (o.open) view.solid.click?.(); }
+// Is a press on what is drawn of the held thing (not the clear round it: a view grows round an opened wallet)?
+function onIt(ev) {
+  const t = ev.target; if (t.closest('.g3-held')) return true; if (t.tagName !== 'CANVAS') return false;
+  const cx = t.getContext('2d'); if (!cx) return true; const r = t.getBoundingClientRect();
+  try { return cx.getImageData(Math.floor((ev.clientX - r.left) * t.width / r.width), Math.floor((ev.clientY - r.top) * t.height / r.height), 1, 1).data[3] > 16; } catch { return true; }
+}
+// a press beside the held thing lets it go; a wallet under the press comes up in its place, open
+function passThrough(ev) {
+  const under = document.elementsFromPoint(ev.clientX, ev.clientY).find((e) => !view.el.contains(e) && e !== view.el), node = under?.closest?.('.th-wallet');
+  close(); if (node && node._look) { ev.preventDefault(); swallowClick(); holdUp(node, { open: true }); }
+}
