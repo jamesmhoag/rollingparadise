@@ -96,12 +96,16 @@ export const NEW_JACKET = { name: 'New Jacket', color: '#5b6378', effect: 'New �
 //   ice: cubes in it (0 to 4) · inner: { color } a shot glass sunk in it, of another drink · glow: a light in it
 //   fizz: bubbles rise through it · sparkle: points of every colour drift in it · steam: it is hot · slosh: it moves
 //   with the glass (on unless turned off) · straw: its colour · garnish (DRINK_GARNISHES) and garnishColor (an
-//   umbrella's paper) · toy (DRINK_TOYS) and toyColor: something in it
+//   umbrella's paper, a cherry, an olive, the fruit, the mint) · toy (DRINK_TOYS) and toyColor: something in it ·
+//   crustColor, fizzColor, foamColor
 export const DRINK_VESSELS = { tumbler: 'Tumbler', tall: 'Tall glass', mug: 'Mug', cup: 'Teacup and saucer', goblet: 'Goblet', coupe: 'Coupe', martini: 'Martini glass', shot: 'Shot glass' };
 export const DRINK_LIQUIDS = { liquid: 'Clear (see through it)', cream: 'Creamy', syrup: 'Glossy and deep', chromatic: 'Every colour at once' };
 export const DRINK_GARNISHES = { cherry: 'A cherry', umbrella: 'A paper umbrella', lemon: 'A slice of lemon', lime: 'A slice of lime', orange: 'A slice of orange', olive: 'An olive on a pick', mint: 'A sprig of mint' };
 export const DRINK_CRUSTS = { salt: 'Salt', sugar: 'Sugar', chili: 'Chili' };
 export const DRINK_TOYS = { starfish: 'A starfish', diver: 'A scuba diver', duck: 'A rubber duck' };
+// each garnish's and crust's own colour, until one is chosen
+const GARNISH_COLORS = { cherry: '#d21f3c', umbrella: '#ff5fa8', lemon: '#ffe45c', lime: '#a7e26a', orange: '#ffad45', olive: '#6f8f2e', mint: '#3fae4a' };
+const CRUST_COLORS = { salt: '#ffffff', sugar: '#fffdf5', chili: '#d8341f' };
 const DRINK_LOOKS = {
   soda: { vessel: 'tall', fizz: true, foam: 0.35, straw: '#ff5b6e', ice: 2 },
   water: { vessel: 'tumbler', ice: 3, garnish: 'lemon' },
@@ -122,7 +126,8 @@ export function drinkLook(d = {}) {
     liquid: { mat: DRINK_LIQUIDS[K.liquid?.mat] ? K.liquid.mat : 'liquid', color: hex(K.liquid?.color, color), top: K.liquid?.layer !== false && (K.liquid?.top || K.liquid?.layer) ? hex(K.liquid.top, '#ffffff') : null },
     foam: Math.max(0, Math.min(1, +K.foam || 0)), ice: Math.max(0, Math.min(4, K.ice | 0)), inner: K.inner && K.inner.on !== false && (K.inner.on || K.inner.color) ? { color: hex(K.inner.color, '#ff3b6b') } : null, glow: !!K.glow,
     fizz: !!(K.fizz ?? K.bubbles), sparkle: !!K.sparkle, steam: !!K.steam, slosh: K.slosh !== false,
-    straw: K.strawOn !== false && (K.strawOn || K.straw) ? hex(K.straw, '#ff5b6e') : null, garnish: pick(DRINK_GARNISHES, K.garnish), garnishColor: hex(K.garnishColor, '#ff5fa8'),
+    straw: K.strawOn !== false && (K.strawOn || K.straw) ? hex(K.straw, '#ff5b6e') : null, garnish: pick(DRINK_GARNISHES, K.garnish), garnishColor: hex(K.garnishColor, GARNISH_COLORS[K.garnish] || '#ff5fa8'),
+    crustColor: hex(K.crustColor, CRUST_COLORS[K.crust] || '#ffffff'), fizzColor: hex(K.fizzColor, '#f6fcff'), foamColor: hex(K.foamColor, '#fffaf0'),
     toy: pick(DRINK_TOYS, K.toy), toyColor: hex(K.toyColor, K.toy === 'diver' ? '#ffd23d' : K.toy === 'duck' ? '#ffd23d' : '#ff7a45') };
 }
 

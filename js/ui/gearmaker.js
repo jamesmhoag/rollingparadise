@@ -148,18 +148,18 @@ function drinkMaker(i, redraw) {
     h('span', { class: 'cap', text: t('gear.drink.vessel') }), field('vessel', select(['look', 'vessel'], Object.entries(DRINK_VESSELS), L.vessel), ['look', 'vessel']),
     field('mat', mats(['look', 'mat'], L.mat, L.color), ['look', 'mat']), field('vesselColor', colour(['look', 'color'], L.color), ['look', 'color']),
     field('rim', h('span', { class: 'row wrap' }, check(['look', 'rim', 'on'], !!L.rim), ...(L.rim ? [select(['look', 'rim', 'mat'], Object.entries(FINISHES).map(([k, Fi]) => [k, Fi.name]), L.rim.mat), colour(['look', 'rim', 'color'], L.rim.color)] : [])), ['look', 'rim']),
-    field('crust', select(['look', 'crust'], opt(DRINK_CRUSTS), L.crust), ['look', 'crust']),
+    field('crust', h('span', { class: 'row wrap' }, select(['look', 'crust'], opt(DRINK_CRUSTS), L.crust), ...(L.crust ? [colour(['look', 'crustColor'], L.crustColor)] : [])), ['look', 'crust']),
     h('span', { class: 'cap', text: t('gear.drink.drink') }), field('liquid', select(['look', 'liquid', 'mat'], Object.entries(DRINK_LIQUIDS), L.liquid.mat), ['look', 'liquid', 'mat']),
     field('liquidColor', colour(['look', 'liquid', 'color'], L.liquid.color), ['look', 'liquid', 'color']),
     field('layer', h('span', { class: 'row wrap' }, check(['look', 'liquid', 'layer'], !!L.liquid.top), ...(L.liquid.top ? [colour(['look', 'liquid', 'top'], L.liquid.top)] : [])), ['look', 'liquid', 'top']),
-    field('foam', range(['look', 'foam'], L.foam, 1, 0.05), ['look', 'foam']), field('ice', range(['look', 'ice'], L.ice, 4), ['look', 'ice']),
+    field('foam', h('span', { class: 'row wrap' }, range(['look', 'foam'], L.foam, 1, 0.05), ...(L.foam ? [colour(['look', 'foamColor'], L.foamColor)] : [])), ['look', 'foam']), field('ice', range(['look', 'ice'], L.ice, 4), ['look', 'ice']),
     field('inner', h('span', { class: 'row wrap' }, check(['look', 'inner', 'on'], !!L.inner), ...(L.inner ? [colour(['look', 'inner', 'color'], L.inner.color)] : [])), ['look', 'inner']),
     field('glow', check(['look', 'glow'], L.glow), ['look', 'glow']),
-    h('span', { class: 'cap', text: t('gear.drink.life') }), field('fizz', check(['look', 'fizz'], L.fizz), ['look', 'fizz']), field('sparkle', check(['look', 'sparkle'], L.sparkle), ['look', 'sparkle']),
+    h('span', { class: 'cap', text: t('gear.drink.life') }), field('fizz', h('span', { class: 'row wrap' }, check(['look', 'fizz'], L.fizz), ...(L.fizz ? [colour(['look', 'fizzColor'], L.fizzColor)] : [])), ['look', 'fizz']), field('sparkle', check(['look', 'sparkle'], L.sparkle), ['look', 'sparkle']),
     field('steam', check(['look', 'steam'], L.steam), ['look', 'steam']), field('slosh', check(['look', 'slosh'], L.slosh), ['look', 'slosh']),
     h('span', { class: 'cap', text: t('gear.drink.extras') }),
     field('straw', h('span', { class: 'row wrap' }, check(['look', 'strawOn'], !!L.straw), ...(L.straw ? [colour(['look', 'straw'], L.straw)] : [])), ['look', 'straw']),
-    field('garnish', h('span', { class: 'row wrap' }, select(['look', 'garnish'], opt(DRINK_GARNISHES), L.garnish), ...(L.garnish === 'umbrella' ? [colour(['look', 'garnishColor'], L.garnishColor)] : [])), ['look', 'garnish']),
+    field('garnish', h('span', { class: 'row wrap' }, select(['look', 'garnish'], opt(DRINK_GARNISHES), L.garnish), ...(L.garnish ? [colour(['look', 'garnishColor'], L.garnishColor)] : [])), ['look', 'garnish']),
     field('toy', h('span', { class: 'row wrap' }, select(['look', 'toy'], opt(DRINK_TOYS), L.toy), ...(L.toy ? [colour(['look', 'toyColor'], L.toyColor)] : [])), ['look', 'toy'])];
   const glass = h('div', { class: 'gear-preview drink-preview' }, drinkEl(d, Math.ceil((d.sips || 3) * 0.75), d.sips || 3));
   return h('div', { class: 'b-maker' }, h('div', { class: 'b-fields' }, ...fields), shown(glass, 'gear.preview.drink'));

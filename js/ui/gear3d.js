@@ -534,7 +534,7 @@ function dress(el, face, spec) {
     // (a drink's view takes in its steam and its umbrella, over it)
     const near = (spec.kind === 'drink' ? Math.max(M.w / 2 - bx0, bx1 - M.w / 2, M.h / 2 - by0, by1 - M.h / 2) * 0.85 : Math.max(M.w, M.h) * 0.62 + 10) * u, far = Math.hypot(Math.max(M.w / 2 - bx0, bx1 - M.w / 2), Math.max(M.h / 2 - by0, by1 - M.h / 2)) * u;
     const paint = () => { const half = near + (far - near) * t; M.pose(t); if (M.frame) M.frame(lifeUp ||= M.state(), 0, R); cx.clearRect(0, 0, px, px); cx.drawImage(renderGroup(M.root, { w: px, h: px, view: [-half, -half, half, half], turn: R }), 0, 0); };
-    const look = { el: wrap, size, name: spec.name, sub: spec.sub, start: new DOMMatrix().rotateSelf(-10, 24, 0), upright: spec.kind === 'drink' ? new DOMMatrix().rotateSelf(-12, 0, 0) : null, tilt: spec.kind === 'drink' ? [[-34, 10], [-18, 18]] : null, get matrix() { return R; }, setRotation(m) { R = m; paint(); } };
+    const look = { el: wrap, size, name: spec.name, sub: spec.sub, start: new DOMMatrix().rotateSelf(-10, 24, 0), upright: spec.kind === 'drink' ? new DOMMatrix().rotateSelf(-12, 0, 0) : null, tilt: spec.kind === 'drink' ? [[-24, 42], [-18, 18]] : null, get matrix() { return R; }, setRotation(m) { R = m; paint(); } };
     if (spec.kind === 'wallet') return walletLook3d(look, M, spec, { wrap, cv, cx, size, u, near, bx0, by0, bx1, by1 });
     if (M.live) alive(wrap, () => { if (M.frame) { const now = performance.now(); M.frame(lifeUp ||= M.state(), lastUp ? (now - lastUp) / 1000 : 0, R); lastUp = now; } paint(); });
     return look; };

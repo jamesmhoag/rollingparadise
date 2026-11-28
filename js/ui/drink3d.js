@@ -72,18 +72,22 @@ export function drinkModel(L, fill) {
   T = three(); const root = new T.Group(), all = new T.Group(); all.scale.setScalar(UNIT); root.add(all);
   const V = VESSELS[L.vessel] || VESSELS.tumbler, B = turned(V, fill), full = !!B.drink, lipR = B.lip[0], lipY = B.lip[1], level = B.level;
   const clear = full && L.liquid.mat === 'liquid';
+  const brim = -(lipY + 1 - CY); // (the highest a tilted drink's surface goes: under the lip)
   const live = { ice: [], bob: [], top: [] }; let flow = null, bubbles = null, sparks = null, surface = null;
   // ---- what is in it (seen through the vessel) ----
   if (full) {
     const drink = body(B.drink, L.liquid.mat, L.liquid.color); all.add(drink);
     drink.traverse((m) => { if (m.material?.userData?.chromatic) flow = m.material; });
-    // the surface: the vertices at the top, kept as made so a tilt can be laid over them
-    const P = B.drink.attributes.position, top = -(level + 0.32 - CY), idx = []; for (let i = 0; i < P.count; i++) if (P.getY(i) >= top) idx.push(i);
-    surface = { P, idx, base: Float32Array.from(idx.flatMap((i) => [P.getX(i), P.getY(i), P.getZ(i)])) };
+    // the drink as made, kept so a tilt can be laid over it: its top (cap) rides the tilted surface, and its sides
+    // never stand above it (tilted, the drink is lower on one side of the glass, not painted up its wall)
+    const P = B.drink.attributes.position, top = -(level + 0.32 - CY), cap = Uint8Array.from({ length: P.count }, (_, i) => (P.getY(i) >= top ? 1 : 0));
+    surface = { P, cap, base: P.array.slice(), at: -(level - CY) };
     const r = B.rIn(level) - 0.4;
     if (L.liquid.top) { const g = new T.CylinderGeometry(r, B.rIn(level + 4) - 0.4, 4, 64); const m = at(body(g, 'cream', L.liquid.top), 0, level + 2.1); all.add(m); live.top.push(m); }
-    if (L.foam) { const g = new T.SphereGeometry(r, 48, 12, 0, Math.PI * 2, 0, Math.PI / 2); g.scale(1, 0.25 + L.foam * 0.45, 1); const m = at(body(g, 'cream', '#fffaf0'), 0, level + 0.2); all.add(m); live.top.push(m);
-      for (let i = 0; i < 11; i++) { const a = i * 2.4, q = r * (0.2 + 0.65 * ((i * 37) % 10) / 10), b = at(body(new T.SphereGeometry(0.9 + (i % 3) * 0.45, 14, 10), 'cream', '#ffffff'), Math.cos(a) * q, level - 0.4 - L.foam * 1.4, Math.sin(a) * q); all.add(b); live.top.push(b); } }
+    // a head of foam: a low dome, its bubbles sitting in its surface, all of it one piece that rides the drink
+    if (L.foam) { const hgt = r * (0.25 + L.foam * 0.45), g = new T.SphereGeometry(r, 48, 12, 0, Math.PI * 2, 0, Math.PI / 2); g.scale(1, hgt / r, 1); const head = at(new T.Group(), 0, level + 0.2); head.add(body(g, 'cream', L.foamColor));
+      for (let i = 0; i < 11; i++) { const a = i * 2.4, q = r * (0.15 + 0.6 * ((i * 37) % 10) / 10), rad = 0.9 + (i % 3) * 0.45, b = body(new T.SphereGeometry(rad, 14, 10), 'cream', '#ffffff'); b.position.set(Math.cos(a) * q, hgt * Math.sqrt(Math.max(0, 1 - (q / r) ** 2)) - rad * 0.45, Math.sin(a) * q); head.add(b); }
+      all.add(head); live.top.push(head); }
     // ice: rounded cubes, clear and crazed (seen through, the drink round them),
     const iceTint = '#' + new T.Color(L.liquid.mat === 'liquid' ? L.liquid.color : '#bfe6ff').lerp(new T.Color('#dff4ff'), 0.45).getHexString(); // (floating, their tops just out of the drink)
     for (let i = 0; i < L.ice; i++) { const s = Math.min(5.4, r * 0.75), g = roundedBox(s, s * 0.22); g.rotateX(0.35 + i * 0.9); g.rotateY(0.6 * i + 0.3);
@@ -92,7 +96,7 @@ export function drinkModel(L, fill) {
     if (L.inner && V.floor - lipY > 14) { const k = Math.min(0.5, (B.rIn(V.floor - 3) - 0.6) / 8.6), S = VESSELS.shot, I = turned(S, 0.85), g = new T.Group();
       const lipRing = new T.TorusGeometry(I.lip[0] - S.wall / 2, S.wall * 0.55, 10, 48); lipRing.rotateX(Math.PI / 2); g.add(body(I.drink, 'syrup', L.inner.color), at(body(lipRing, 'ice', '#e6f6ff'), 0, I.lip[1])); g.scale.setScalar(k); g.position.set(0, -(V.floor - CY) + (44 - CY) * k, 0); all.add(g); }
     // fizz: bubbles rising from the floor (each drawn where its state puts it)
-    if (L.fizz) { bubbles = new T.InstancedMesh(new T.SphereGeometry(1, 10, 8), new T.MeshStandardMaterial({ color: 0xf6fcff, roughness: 0.05, metalness: 0.4, emissive: 0x6c7c8c }), 34); bubbles.frustumCulled = false; all.add(bubbles); }
+    if (L.fizz) { bubbles = new T.InstancedMesh(new T.SphereGeometry(1, 10, 8), new T.MeshStandardMaterial({ color: L.fizzColor, roughness: 0.05, metalness: 0.4, emissive: new T.Color(L.fizzColor).multiplyScalar(0.42) }), 34); bubbles.frustumCulled = false; all.add(bubbles); }
     // sparks of every colour, drifting round in it
     if (L.sparkle) { sparks = new T.InstancedMesh(new T.OctahedronGeometry(1.05), new T.MeshBasicMaterial({ color: 0xffffff }), 46); sparks.frustumCulled = false;
       for (let i = 0; i < 46; i++) sparks.setColorAt(i, new T.Color().setHSL((i * 0.137) % 1, 1, 0.68)); all.add(sparks); }
@@ -104,7 +108,7 @@ export function drinkModel(L, fill) {
   // ---- the vessel, and what is fixed to it ----
   all.add(vesselBody(B.vessel, L.mat, L.color, clear, B.outside));
   if (L.rim) { const g = new T.TorusGeometry(lipR - V.wall * 0.5, V.wall * 0.56, 12, 96); g.rotateX(Math.PI / 2); all.add(at(body(g, L.rim.mat, L.rim.color), 0, lipY + 0.6)); }
-  if (L.crust) all.add(crust(L.crust, lipR, lipY, V.wall));
+  if (L.crust) all.add(crust(L.crust, L.crustColor, lipR, lipY, V.wall));
   if (V.handle) all.add(vesselBody(handle(V.handle, B), L.mat, L.color, false));
   if (V.saucer) all.add(vesselBody(spun(eased(V.saucer, 2)), L.mat, L.color, false));
   if (L.straw) { const len = H - 8, g = new T.CylinderGeometry(0.85, 0.85, len, 20); g.rotateZ(-0.24); all.add(at(body(g, 'plastic', L.straw), lipR * 0.3, V.floor - 2 - len * 0.5 * Math.cos(0.24), -1.2)); }
@@ -116,10 +120,13 @@ export function drinkModel(L, fill) {
   function frame(S, dt, turn) {
     dt = Math.min(0.1, dt); S.t += dt; const M = turnOf(turn); inv.copy(M).invert();
     // the surface keeps level in the room: the glass's turn tilts it against the glass, and a change of turn sets it rocking
-    up.set(0, 1, 0).transformDirection(inv); const tx = Math.max(-0.4, Math.min(0.4, -up.x / Math.max(0.3, up.y))), tz = Math.max(-0.4, Math.min(0.4, -up.z / Math.max(0.3, up.y)));
+    up.set(0, 1, 0).transformDirection(inv); const tx = Math.max(-0.95, Math.min(0.95, -up.x / Math.max(0.3, up.y))), tz = Math.max(-0.95, Math.min(0.95, -up.z / Math.max(0.3, up.y)));
     if (L.slosh) { if (dt > 0) for (let k = 0; k < 2; k++) { const want = k ? tz : tx; S.v[k] += ((want - S.s[k]) * 70 - S.v[k] * 3.2) * dt; S.s[k] += S.v[k] * dt; } else if (!S.set) { S.s = [tx, tz]; S.set = true; } } else S.s = [tx, tz];
     const ripple = (x, z) => (L.fizz ? 0.12 : 0.05) * Math.sin(S.t * 2.6 + x * 0.6) * Math.cos(S.t * 2.1 + z * 0.5);
-    if (surface) { const { P, idx, base } = surface; idx.forEach((i, n) => { const x = base[n * 3], z = base[n * 3 + 2]; P.setY(i, base[n * 3 + 1] + S.s[0] * x + S.s[1] * z + ripple(x, z)); }); P.needsUpdate = true; B.drink.computeVertexNormals(); }
+    if (surface) { const { P, cap, base, at: L0 } = surface;
+      for (let i = 0; i < P.count; i++) { const x = base[i * 3], y = base[i * 3 + 1], z = base[i * 3 + 2], lv = L0 + S.s[0] * x + S.s[1] * z;
+        P.setY(i, cap[i] ? Math.min(brim, y - L0 + lv + ripple(x, z)) : Math.min(y, lv - 0.05)); }
+      P.needsUpdate = true; B.drink.computeVertexNormals(); }
     // (what floats on it tilts with it: a head of foam sits on the surface, not through it)
     for (const m of live.top) { m.rotation.set(-Math.atan(S.s[1]), 0, Math.atan(S.s[0])); }
     for (const c of live.ice) { const lift = Math.sin(S.t * 1.3 + c.ph) * 0.35; c.m.position.y = c.y + lift + S.s[0] * c.m.position.x + S.s[1] * c.m.position.z; c.m.rotation.y += dt * 0.08; }
@@ -156,9 +163,10 @@ function handle(kind, B) {
   return tube([[r(a) - 0.6, a], [r(a) + 2.8, a - 1.5], [r(a) + 5.6, a + 1.2], [r(a) + 5, a + 5.2], [r(b) + 3.4, b - 2.2], [r(b) - 0.2, b - 0.8], [r(b) + 1.1, b + 1.1], [r(b) + 2.5, b + 0.2], [r(b) + 1.8, b - 0.9]], 0.95, 96);
 }
 // salt, sugar or chili crusted round the lip, inside and out
-function crust(kind, R, y, wall) {
+function crust(kind, color, R, y, wall) {
   const n = 760, g = new T.InstancedMesh(new T.BoxGeometry(0.4, 0.4, 0.4), new T.MeshStandardMaterial({ roughness: kind === 'sugar' ? 0.1 : 0.55, metalness: kind === 'sugar' ? 0.3 : 0 }), n), d = new T.Object3D();
-  const col = { salt: ['#ffffff', '#eef2f6'], sugar: ['#fffdf5', '#fff3c4'], chili: ['#d8341f', '#ff7a2e'] }[kind];
+  // (its grains in its colour, every other one a shade lighter)
+  const col = [color, '#' + new T.Color(color).lerp(new T.Color(0xffffff), 0.3).getHexString()];
   for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, out = (Math.random() - 0.35) * wall * 2.4, down = Math.random() ** 1.6 * 2.6;
     d.position.set(Math.cos(a) * (R - wall / 2 + out), -(y + down - 0.2 - CY), Math.sin(a) * (R - wall / 2 + out)); d.rotation.set(Math.random() * 3, Math.random() * 3, 0); d.scale.setScalar(0.5 + Math.random() * 0.9); d.updateMatrix();
     g.setMatrixAt(i, d.matrix); g.setColorAt(i, new T.Color(col[i % 2])); }
@@ -168,7 +176,7 @@ function crust(kind, R, y, wall) {
 function garnish(L, V, B, fill) {
   const g = new T.Group(), R = B.lip[0], y = B.lip[1], dip = B.drink ? B.level + 4 : V.floor - 3;
   const pointTo = (m, from, to) => { const d = new T.Vector3(to[0] - from[0], -(to[1] - from[1]), (to[2] || 0) - (from[2] || 0)).normalize(); m.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), d); m.position.set(from[0], -(from[1] - CY), from[2] || 0); return m; };
-  if (L.garnish === 'cherry') g.add(at(body(new T.SphereGeometry(2.4, 28, 20), 'plastic', '#d21f3c'), R - 1.6, y - 1.4, 1.2), at(body(tube([[R - 1.6, y - 3.4], [R - 2.4, y - 6], [R - 4.4, y - 7.6]], 0.2, 24), 'plastic', '#5a3a1e'), 0, CY));
+  if (L.garnish === 'cherry') g.add(at(body(new T.SphereGeometry(2.4, 28, 20), 'plastic', L.garnishColor), R - 1.6, y - 1.4, 1.2), at(body(tube([[R - 1.6, y - 3.4], [R - 2.4, y - 6], [R - 4.4, y - 7.6]], 0.2, 24), 'plastic', '#5a3a1e'), 0, CY));
   if (L.garnish === 'umbrella') {
     // the canopy, a cone of paper with its ribs underneath, on a pick that goes down through the lip into the drink
     const u = new T.Group(), cone = new T.ConeGeometry(7.2, 3, 24, 1, true); cone.translate(0, -1.5, 0);
@@ -177,12 +185,12 @@ function garnish(L, V, B, fill) {
     const apex = [R * 0.62, y - 8, 0.8], foot = [R * 0.18, dip, 0], len = Math.hypot(apex[0] - foot[0], apex[1] - foot[1]) + 1, pick = new T.CylinderGeometry(0.24, 0.24, len, 10); pick.translate(0, -len / 2, 0); u.add(body(pick, 'bone', '#e8d9b0'), body(new T.SphereGeometry(0.45, 10, 8), 'bone', '#e8d9b0'));
     pointTo(u, apex, [2 * apex[0] - foot[0], 2 * apex[1] - foot[1], 2 * apex[2] - foot[2]]); g.add(u);
   }
-  if (FRUIT[L.garnish]) { const [flesh, rindC] = FRUIT[L.garnish], tex = fruitFace(flesh, rindC), disc = new T.CylinderGeometry(4.6, 4.6, 0.8, 48);
+  if (FRUIT[L.garnish]) { const flesh = L.garnishColor, rindC = '#' + new T.Color(flesh).lerp(new T.Color(FRUIT[L.garnish][1]), 0.5).multiplyScalar(0.85).getHexString(), tex = fruitFace(flesh, rindC), disc = new T.CylinderGeometry(4.6, 4.6, 0.8, 48);
     const faceM = new T.MeshPhysicalMaterial({ map: tex, roughness: 0.35, clearcoat: 0.6, sheen: 0.3 }), rindM = new T.MeshPhysicalMaterial({ color: rindC, roughness: 0.45, clearcoat: 0.4 });
     const m = new T.Mesh(disc, [rindM, faceM, faceM]); m.rotation.set(Math.PI / 2, 0, 0.5); m.rotateX(0); at(m, R - 0.5, y - 1.2, 0); m.rotation.y = 0.5; g.add(m); }
-  if (L.garnish === 'olive') { const o = new T.Group(), ol = new T.SphereGeometry(2, 24, 18); ol.scale(1, 1.3, 1); o.add(body(ol, 'plastic', '#6f8f2e')); const pim = at(body(new T.SphereGeometry(0.8, 14, 10), 'plastic', '#d8341f'), 0, CY - 2.45); o.add(pim);
+  if (L.garnish === 'olive') { const o = new T.Group(), ol = new T.SphereGeometry(2, 24, 18); ol.scale(1, 1.3, 1); o.add(body(ol, 'plastic', L.garnishColor)); const pim = at(body(new T.SphereGeometry(0.8, 14, 10), 'plastic', '#d8341f'), 0, CY - 2.45); o.add(pim);
     const len = dip - y + 12, pick = new T.CylinderGeometry(0.2, 0.2, len, 8); pick.translate(0, len * 0.35, 0); o.add(body(pick, 'metal', '#d9d4c8')); pointTo(o, [R * 0.3, (dip + y) / 2 + 2, 0], [R * 0.9, y - 9, 0]); g.add(o); }
-  if (L.garnish === 'mint') for (let i = 0; i < 6; i++) { const leaf = new T.SphereGeometry(2, 16, 10); leaf.scale(1, 0.25, 0.55); const m = at(body(leaf, 'velvet', i % 2 ? '#3fae4a' : '#58c95f'), R * 0.35 + Math.cos(i * 1.7) * 2, y - 1.5 - (i % 3) * 1.2, Math.sin(i * 1.7) * 2); m.rotation.set(i, i * 0.7, 0.6 + i * 0.3); g.add(m); }
+  if (L.garnish === 'mint') for (let i = 0; i < 6; i++) { const leaf = new T.SphereGeometry(2, 16, 10); leaf.scale(1, 0.25, 0.55); const m = at(body(leaf, 'velvet', i % 2 ? L.garnishColor : '#' + new T.Color(L.garnishColor).lerp(new T.Color(0xffffff), 0.2).getHexString()), R * 0.35 + Math.cos(i * 1.7) * 2, y - 1.5 - (i % 3) * 1.2, Math.sin(i * 1.7) * 2); m.rotation.set(i, i * 0.7, 0.6 + i * 0.3); g.add(m); }
   void fill; return g;
 }
 // a toy in the drink: a starfish lying on the floor, a scuba diver hanging in the middle, a rubber duck afloat
