@@ -1629,3 +1629,30 @@ body.spinning .thing > .th-body, body.carrying-now .thing > .th-body { transitio
 .gcard.gclaim .g-name { letter-spacing: .08em; }
 .suite-drawer { margin-top: 14px; gap: 6px; }
 .claim-lot .left-behind { opacity: .55; filter: grayscale(.4); }
+/* opening a foil pack: the pack before you, torn across the top; then the tricks fanned in your hand */
+.pack-open { position: fixed; inset: 0; z-index: 900; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 10px; padding-top: 4vh;
+  background: radial-gradient(ellipse at 50% 35%, rgba(40, 24, 70, .92), rgba(6, 4, 14, .96)); animation: pack-in .25s ease-out; }
+.pack-open.leaving { opacity: 0; transition: opacity .25s; }
+@keyframes pack-in { from { opacity: 0; } }
+.pack-title { margin: 0; color: #ffd76a; letter-spacing: .06em; }
+.pack-stage { position: relative; transition: transform .5s cubic-bezier(.5, 0, .7, .4), opacity .5s; }
+.pack-stage canvas { display: block; cursor: var(--cur-grab, grab); touch-action: none; filter: drop-shadow(0 18px 30px rgba(0, 0, 0, .55)); }
+.pack-stage canvas:active { cursor: var(--cur-grabbing, grabbing); }
+.pack-stage.opened { transform: translateY(42vh) scale(.7); opacity: 0; }
+.pack-hint { color: #d8cff2; margin: 0; min-height: 1.4em; }
+.pack-buttons { gap: 12px; }
+.pack-fan { position: absolute; left: 50%; bottom: 7vh; width: 0; height: 0; }
+.pack-fan .fan-card { position: absolute; left: 0; bottom: 0; transform-origin: 50% 120%; transition: transform .55s cubic-bezier(.2, .9, .3, 1.15), opacity .3s, filter .2s;
+  transform: translate(-50%, 30vh) translateX(0) rotate(0) scale(.5); opacity: 0; }
+.pack-fan.out .fan-card { opacity: 1; transform: translate(-50%, 0) translate(var(--x), var(--y)) rotate(var(--r)); }
+.pack-fan.out .fan-card:hover { transform: translate(-50%, 0) translate(var(--x), calc(var(--y) - 44px)) rotate(0deg) scale(1.14); z-index: 60 !important; transition-delay: 0s !important; filter: drop-shadow(0 14px 24px rgba(0, 0, 0, .6)); }
+.pack-fan .fan-card.rare { filter: drop-shadow(0 0 14px rgba(255, 215, 106, .7)); }
+.pack-fan .fan-card.rare::after { content: ''; position: absolute; inset: 0; border-radius: 10px; pointer-events: none; background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, .35) 45%, transparent 60%); background-size: 260% 100%; animation: rare-sheen 2.6s linear infinite; }
+@keyframes rare-sheen { from { background-position: 130% 0; } to { background-position: -130% 0; } }
+.pack-open.fanned .pack-stage { display: none; }
+.pack-open.fanned .pack-fan { position: relative; left: auto; bottom: auto; width: 100%; height: min(430px, 58vh); order: 1; zoom: .88; }
+.pack-open.fanned .pack-fan .fan-card { left: 50%; }
+.pack-open.fanned .pack-hint { order: 2; } .pack-open.fanned .pack-buttons { order: 3; }
+.pack-open.fanned { justify-content: center; padding-top: 0; }
+.pack-open.fanned .pack-fan { height: min(520px, 66vh); margin-top: 24px; }
+.pack-open.fanned .pack-fan .fan-card { bottom: 90px; }

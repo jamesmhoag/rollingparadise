@@ -10,7 +10,7 @@ import { trickMaker, newTrick } from './trickmaker.js';
 import { chipMaker, newChip } from './chipmaker.js';
 import { classicChips } from '../chipmodel.js';
 import { tuner, TUNER_SECTIONS } from './tuner.js';
-import { gearMaker, gearList, gearKeys } from './gearmaker.js';
+import { gearMaker, gearList, gearKeys, gearTable } from './gearmaker.js';
 import { shopMaker, SHOP_PAGES } from './shopmaker.js';
 import { cardMaker, cardList, CORNER } from './cardmaker.js';
 import { testTable } from './testtable.js';
@@ -136,7 +136,7 @@ export function buildScene(root, opts = {}) {
     if (ui.tool === 'cards') { const nm = ui.key === CORNER ? t('cards.corner') : ui.key.startsWith('biz:') ? D.BOSS_TRAITS[ui.key.slice(4)].name : ui.key.startsWith('pass:') ? D.PASSES[ui.key.slice(5)]?.name || '' : D.CARDS[ui.key]?.name || '';
       editor.replaceChildren(h('h2', { text: nm }), h('p', { class: 'sub mono', text: ui.key === CORNER ? 'SHADY · CARDS.*.corner' : ui.key.startsWith('biz:') ? D.subPath('BOSS_TRAITS', ui.key.slice(4)) : D.subPath('CARDS', ui.key) }),
         cardMaker(ui.key, draw, openTable)); return; }
-    if (ui.tool === 'gear') { const tb = ui.key[0] === 'w' ? 'WALLETS' : 'JACKETS', gid = ui.key.slice(2); editor.replaceChildren(h('h2', { text: D[tb][gid]?.name || '' }), h('p', { class: 'sub mono', text: D.subPath(tb, gid) }), gearMaker(ui.key, draw)); return; }
+    if (ui.tool === 'gear') { const tb = gearTable(ui.key), gid = ui.key.slice(2); editor.replaceChildren(h('h2', { text: D[tb][gid]?.name || '' }), h('p', { class: 'sub mono', text: D.subPath(tb, gid) }), gearMaker(ui.key, draw)); return; }
     if (ui.tool === 'shops') { editor.replaceChildren(h('h2', { text: t(`shops.${ui.key}`) }), h('p', { class: 'sub mono', text: D.subPath('SHOPS', ui.key) }), shopMaker(ui.key, draw, openTable)); return; }
     if (ui.tool === 'tuner') { editor.replaceChildren(h('h2', { text: t(`tuner.${ui.key}`) }), h('p', { class: 'sub mono', text: ui.key === 'gear' ? '' : D.subPath('TUNING', ui.key) }), tuner(ui.key, draw, openTable)); return; }
     if ((ui.tool === 'rollers' || ui.tool === 'roster') && SHARED_SIGNS[ui.key]) { editor.replaceChildren(h('h2', { text: t(`neon.list.${SHARED_SIGNS[ui.key]}`) }), h('p', { class: 'sub mono', text: `NEON.${SHARED_SIGNS[ui.key]}` }), sharedSign(ui.key, draw)); return; }

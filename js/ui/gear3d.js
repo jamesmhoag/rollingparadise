@@ -14,6 +14,7 @@
 import { load, three, body, renderGroup, inTwo } from './dice3d.js';
 import { shade } from '../util.js';
 import { unfold } from './thing.js';
+import { SYMBOLS } from './symbols.js';
 
 let T = null;
 const U = 1 / 40; // scene units per px of a piece's own drawing: a wallet sits in the room about as large as a die
@@ -338,6 +339,65 @@ function drinkModel(L, fill) {
   if (L.garnish === 'slice') { const g = new T.CylinderGeometry(4.6, 4.6, 0.9, 28), rind = new T.TorusGeometry(4.6, 0.5, 8, 28); g.rotateX(Math.PI / 2); g.rotateY(0.5); rind.rotateY(0.5); all.add(at(body(g, 'plastic', lighter(/^#[0-9a-f]{6}$/i.test(L.liquid.color) ? L.liquid.color : '#ffb347', 0.35)), rimX, rimY - 1), at(body(rind, 'plastic', '#f08a1c'), rimX, rimY - 1)); }
   if (L.garnish === 'umbrella') { const cone = new T.ConeGeometry(7.5, 3.4, 10, 1, true), pick = new T.CylinderGeometry(0.25, 0.25, 15, 6); for (const g of [cone, pick]) g.rotateZ(-0.45); all.add(at(body(cone, 'paper', '#ff5fa8'), rimX - 1.5, rimY - 9.5), at(body(pick, 'bone', '#e8d9b0'), rimX - 4.6, rimY - 3.2)); }
   return { root, pose() {}, w: W, h: H, unit: UNIT, box: [-10, -14, W + 10, H + 6], over: [], rest: [-15, -18] };
+}
+
+// ---------- a foil pack ----------
+// A pillow of foil (its look's material: metal is foil), crimped shut top and bottom, a label printed across its front.
+// The top crimp is torn off along a line, a strip at a time from the left: tear(p) (0 … 1) peels it back as far as
+// the pull has gone; crinkle(c, phase) crumples the foil for a moment (the hand on it); fly(t) throws the torn strip away.
+export const PACK_PX = { w: 62, h: 88, seal: 9 };
+function packModel(L) {
+  const { w: W, h: H, seal: S } = PACK_PX, root = new T.Group(), all = new T.Group(); all.scale.setScalar(U); root.add(all);
+  // the creases a foil pack has from being made and handled (how many: its look's wrinkle)
+  const crease = (x, y) => L.wrinkle * (0.55 * Math.sin(x * 0.61 + y * 0.23) * Math.sin(y * 0.37 - x * 0.11) + 0.35 * Math.sin(x * 1.7 - y * 1.1) * Math.cos(y * 0.9));
+  const pillow = soft(rrect(-W / 2, -H / 2 + S - 1, W, H - 2 * S + 2, 2), { depth: 0.4, bevel: 0.4, puff: 5.2, face: 'both', under: 4.2, round: 15, cells: 56, smooth: 2, ripple: crease });
+  const bag = part(pillow, L.mat, L.color); all.add(bag);
+  // the crimps: flat seals pressed in ridges, their outer edge cut in a zigzag
+  const zig = (y0, y1, outerTop, x0 = -W / 2, x1 = W / 2) => { const pts = [], n = Math.max(2, Math.round((x1 - x0) / 3)), dy = outerTop ? -1.2 : 1.2, oy = outerTop ? y0 : y1, iy = outerTop ? y1 : y0;
+    for (let k = 0; k <= n; k++) pts.push([x0 + ((x1 - x0) * k) / n, oy + (k % 2 ? dy : 0)]); return outerTop ? [...pts, [x1, iy], [x0, iy]] : [[x0, iy], [x1, iy], ...pts.reverse()]; };
+  const ridges = (x0, x1, y0, y1) => Array.from({ length: Math.floor((x1 - x0) / 2.2) }, (_, k) => ({ pts: [[x0 + 1.1 + k * 2.2, y0 + 0.5], [x0 + 1.1 + k * 2.2, y1 - 0.5]], depth: 0.35, width: 0.5 }));
+  const crimp = (pts, x0, x1, y0, y1) => part(soft(pts, { depth: 0.5, bevel: 0.2, puff: 0.15, face: 'both', under: 0.15, cells: 30, smooth: 0, grooves: ridges(x0, x1, y0, y1) }), L.crimp.mat, L.crimp.color);
+  all.add(crimp(zig(H / 2 - S, H / 2, false), -W / 2, W / 2, H / 2 - S, H / 2));
+  // the top crimp in strips, each hinged on the tear line (y up: the line is at the top of the pillow)
+  const N = 9, line = H / 2 - S, strips = [];
+  for (let i = 0; i < N; i++) { const x0 = -W / 2 + (W * i) / N, x1 = -W / 2 + (W * (i + 1)) / N;
+    const g = crimp(zig(-H / 2, -H / 2 + S, true, x0, x1), x0, x1, -H / 2, -H / 2 + S), hinge = new T.Group();
+    g.position.y = -line; hinge.position.y = line; hinge.add(g); all.add(hinge); strips.push({ hinge, mid: (x0 + x1) / 2 }); }
+  // the notch to tear it from, at the left of the tear line
+  const notch = new T.Mesh(new T.CircleGeometry(1.4, 3), new T.MeshBasicMaterial({ color: L.tear })); notch.position.set(-W / 2 + 0.6, line - 0.6, pillow.zAt(-W / 2 + 3, -line + 1) + 0.1); notch.rotation.z = Math.PI; all.add(notch);
+  // the label: a band across the front, bent to the pillow, and its print (the set's name, its emblem) over it
+  const LW = W * 0.84, LH = H * 0.34, ly = -H * 0.06, bent = (z) => { const g = new T.PlaneGeometry(LW, LH, 24, 10), P = g.attributes.position;
+    for (let k = 0; k < P.count; k++) P.setZ(k, pillow.zAt(P.getX(k), -(P.getY(k) + ly)) + z); g.translate(0, ly, 0); g.computeVertexNormals(); return g; };
+  all.add(body(bent(0.55), L.label.mat, L.label.color));
+  const cv = document.createElement('canvas'); cv.width = 512; cv.height = Math.round(512 * LH / LW); const c = cv.getContext('2d');
+  const sym = SYMBOLS[L.symbol?.id]; if (sym) { c.save(); c.translate(cv.width / 2 - cv.height * 0.32, cv.height * 0.06); c.scale(cv.height * 0.64 / 24, cv.height * 0.64 / 24); c.lineWidth = 2.2; c.lineJoin = c.lineCap = 'round'; c.strokeStyle = L.symbol.color; c.stroke(new Path2D(sym.d)); for (const [x, y] of sym.dots || []) { c.beginPath(); c.arc(x, y, 1.8, 0, 7); c.fillStyle = L.symbol.color; c.fill(); } c.restore(); }
+  c.fillStyle = L.ink; c.textAlign = 'center'; c.font = `700 ${Math.round(cv.height * 0.2)}px "Fredoka", "Trebuchet MS", sans-serif`; c.fillText((L.name || '').toUpperCase(), cv.width / 2, cv.height * 0.92, cv.width * 0.92);
+  const tex = new T.CanvasTexture(cv); tex.colorSpace = T.SRGBColorSpace; tex.anisotropy = 4;
+  all.add(new T.Mesh(bent(0.7), new T.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.5, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2 })));
+  // the foil as made, kept so a crinkle can be laid over it and taken off again
+  const flat = []; bag.traverse((m) => { if (m.isMesh) flat.push({ g: m.geometry, p: m.geometry.attributes.position.array.slice() }); });
+  const st = { tear: 0, fly: 0 };
+  const place = () => strips.forEach(({ hinge }, i) => { const a = Math.max(0, Math.min(1, st.tear * N - i)), f = st.fly;
+    hinge.rotation.set(-a * 2.4 - f * 1.4, f * 0.6, a * 0.25 + f * 0.9); hinge.position.set(f * 26, line + a * 1.5 + f * 40, a * 3 + f * 14); });
+  return { root, w: W, h: H, unit: U, box: [-12, -18, W + 12, H + 8], rest: [-8, 16],
+    tear(p) { st.tear = Math.max(st.tear, Math.min(1, p)); place(); },
+    fly(t) { st.fly = t; place(); },
+    crinkle(k, phase = 0) { for (const { g, p } of flat) { const P = g.attributes.position.array;
+      for (let i = 0; i < p.length; i += 3) { const x = p[i], y = p[i + 1], z = p[i + 2], d = k * (Math.sin(x * 0.9 + phase * 3.1) * Math.sin(y * 0.8 - phase * 2.3) + 0.6 * Math.sin((x + y) * 1.9 + phase * 5)) * 0.9;
+        P[i] = x; P[i + 1] = y; P[i + 2] = z + d * Math.sign(z || 1); }
+      g.attributes.position.needsUpdate = true; g.computeVertexNormals(); } } };
+}
+// A pack on a canvas of its own, to be torn open: → { canvas, draw(turn), tear(p), crinkle(k, phase), fly(t) }, or null
+// with no WebGL (ui/foilpack.js opens it without the body then).
+export async function packStage(L, size) {
+  try { await load(); T = three(); } catch { return null; }
+  const M = packModel(L), dpr = Math.min(2, devicePixelRatio || 1), cv = document.createElement('canvas'), ar = 1.45; cv.width = Math.round(size * dpr); cv.height = Math.round(size * ar * dpr);
+  Object.assign(cv.style, { width: `${size}px`, height: `${Math.round(size * ar)}px` }); const cx = cv.getContext('2d');
+  const half = (M.h / 2 + 14) * U, view = [-half / ar, -half, half / ar, half];
+  let turn = new DOMMatrix().rotateSelf(...M.rest, 0);
+  const draw = (m) => { if (m) turn = m; cx.clearRect(0, 0, cv.width, cv.height); cx.drawImage(renderGroup(M.root, { w: cv.width, h: cv.height, view, turn }), 0, 0); };
+  draw();
+  return { canvas: cv, draw, tear: (p) => { M.tear(p); draw(); }, crinkle: (k, ph) => { M.crinkle(k, ph); draw(); }, fly: (t) => { M.fly(t); draw(); } };
 }
 
 // ---------- on the element ----------

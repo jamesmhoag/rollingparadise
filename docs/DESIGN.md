@@ -1199,3 +1199,11 @@ material. A sign's lettering is set and fitted in the room its edging leaves.
     two, a Bone die, chips, sometimes a jacket or a wallet, sometimes their business card, and always a note in their
     voice. These are found in the Dodgy Corner and in the Suite's new drawer (opened once a stay; SHADY.drawer the
     chance, a pass from that floor's High Rollers or one you lost).
+- **Foil packs** (round 24) are bodies of foil (ui/gear3d.js packModel), crimped shut top and bottom with a label
+  printed across the front. Each set's look is made in Build mode's Gear maker (Foil packs): the foil's material and
+  colour (any finish; metal is foil), how crumpled it is, the label, its lettering, the crimps, the tear notch and an
+  emblem (content/finishes.js packLook). Opening one (ui/foilpack.js): take hold of the top and drag across it; the
+  crimp tears off a strip at a time as far as you have pulled, the foil crinkles under the hand (with its sound), and
+  torn all the way the strip flies off and the tricks come up into your hand, fanned. Point at one and it comes
+  forward. The rare one is always the last in the pack and sits at the back of the fan. "Just tear it" opens it in one
+  go; without WebGL the tricks come straight out.

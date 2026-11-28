@@ -412,3 +412,5 @@ Not built yet, or only in part:
   die and one trick. Price per floor in SHOPS.coat.price (20, 40, 80, 160).
 - **High Rollers' lots** (content/claims.js) are first drafts: cash, tricks and a note per Roller. Jackets and wallets
   in them unlock for good when shown.
+- **The rare trick at the back** of a fanned foil pack: the first trick is in front and each after it a little behind,
+  so the rare one shows last, peeking out at the right with a sheen. Say if it should instead be dealt out last, on top.

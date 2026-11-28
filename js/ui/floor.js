@@ -2,6 +2,7 @@
 import { h, syncList, openPanel, closePanel, toast, btn, tween, pulse, swapText, guided } from './core.js';
 import { holdUp } from './spin.js';
 import { sfx } from './sfx.js';
+import { openPack } from './foilpack.js';
 import { app, hud, oppTip, trickTag, diceSummary, nameTag } from './app.js';
 import { faceList, dieName, canMelt, matOf, rollDie, boutCopy } from '../dice.js';
 import { meltVolume, castNeed, castFor, mixDyes, mixOpen } from '../forge.js';
@@ -239,7 +240,7 @@ function traderPanel() {
         () => (R.canSell(el._t) ? `<b>Sell</b><p>${cents(R.trickValue(run, el._t))}: ${D.CONDITIONS[D.condOf(el._t)].name} sells at ${Math.round(D.CONDITIONS[D.condOf(el._t)].sell * 100)}% of its price.</p>` : tx('floor.trash-poor-tricks-cannot')), 'small danger')); return el; },
       (el, t) => { const [n, s] = showTrick(el, t), sells = R.canSell(t);
         setItem(el, n, s, sells ? `sells ${cents(R.trickValue(run, t))}` : 'Poor'); swapText(el.lastChild, sells ? 'Sell' : 'Trash'); el.lastChild.classList.toggle('off', run.tricks.length <= 1); });
-    syncList(packs, D.PACKS.slice(1), (P) => P.q, (P) => { const el = item(); el.append(btn(tx('floor.open'), () => { tryDo(R.buyPack(run, P.q), el, !R.packOpen(run, P.q) ? tx('floor.sold-from-floor', { floor: P.floor }) : null); done(); }, null, 'small'));
+    syncList(packs, D.PACKS.slice(1), (P) => P.q, (P) => { const el = item(); el.append(btn(tx('floor.open'), () => { const got = R.buyPack(run, P.q); tryDo(got, el, !R.packOpen(run, P.q) ? tx('floor.sold-from-floor', { floor: P.floor }) : null); done(); if (got) openPack(P.q, got, run.cls).then(() => rerender()); }, null, 'small'));
       el._tip = () => tx('floor.foil-pack-five-tricks', { name: P.name, QNAME: D.QNAME[P.q], qdieText: D.qdieText(P.q) }); el.classList.add('has-tip'); return el; },
       (el, P) => { const open = R.packOpen(run, P.q), n = R.packLeft(run, P.q); setItem(el, `${P.name} <span class="dim">· foil pack</span>${open ? ` ${leftTag(n)}` : ''}`, `Five ${D.QNAME[P.q]} tricks, Mint, one rarer`, !open ? `floor ${P.floor}` : n > 0 ? cents(R.packCost(run, P.q)) : tx('shop.soldOut'));
         stocked(el, open, n, R.packCost(run, P.q)); });

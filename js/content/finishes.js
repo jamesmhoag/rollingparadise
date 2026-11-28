@@ -103,3 +103,18 @@ export function drinkLook(d = {}) {
   return { vessel: DRINK_VESSELS[K.vessel] ? K.vessel : 'tumbler', mat: FINISHES[K.mat] || ['glass', 'diamond'].includes(K.mat) ? K.mat : 'glass', color: K.color || '#dff2ff', rim: K.rim || null,
     liquid: { mat: K.liquid?.mat === 'cream' ? 'cream' : 'liquid', color: K.liquid?.color || color, top: K.liquid?.top || null }, foam: +K.foam || 0, bubbles: !!K.bubbles, ice: K.ice | 0, straw: K.straw || null, garnish: DRINK_GARNISHES[K.garnish] ? K.garnish : null, glow: !!K.glow };
 }
+
+// ---------- foil packs ----------
+// A foil pack is a sealed pillow of foil, crimped shut at the top and the bottom, with a printed label across its
+// front (the set's name and an emblem). Any finish can be the foil, the label and the crimps. A pack's look:
+//   mat, color: the wrapper (metal is foil) · label: { mat, color } · ink: the label's lettering · crimp: { mat, color }
+//   (the seals; else as the wrapper) · symbol: { id, color } (id null: none) · wrinkle: how crumpled the foil is
+//   (0 to 1) · tear: the colour of the notch you tear it from
+const PACK_COLORS = ['#c9d0dc', '#5fa2ff', '#c46cff', '#ffcf5a'];
+const PACK_SYMBOLS = ['star4', 'star5', 'star8', 'crown'];
+export function packLook(q, P = {}) {
+  const L = P.look || {}, i = Math.max(0, Math.min(3, (q || 1) - 1)), mat = FINISHES[L.mat] ? L.mat : 'metal', color = L.color || P.color || PACK_COLORS[i];
+  return { mat, color, label: part(L.label, 'paper', '#160f2a'), ink: L.ink || '#ffffff', crimp: part(L.crimp, mat, color),
+    symbol: L.symbol && 'id' in L.symbol && !L.symbol.id ? null : emblem(L) || { id: PACK_SYMBOLS[i], color: L.ink || color, mat: '' },
+    wrinkle: Math.max(0, Math.min(1, Number.isFinite(+L.wrinkle) ? +L.wrinkle : 0.4)), tear: L.tear || '#ff5f6a', name: P.name || '' };
+}

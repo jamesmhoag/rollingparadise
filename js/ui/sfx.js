@@ -100,6 +100,9 @@ const size = (o, a, b) => ((o.n || 1) >= b ? 2 : (o.n || 1) >= a ? 1 : 0);
 export const SOUNDS = {
   // the table's physical sounds: clay chips, wooden dice, cards on felt
   card: (o) => { noise(0.16, { ...o, freq: 2400, to: 700, q: 0.8, gain: 0.2 }); hit('brush', { ...o, gain: 0.18, at: 0.08 }); },
+  // foil in the hand: a crumple of bright noise; a strip of it torn: a short rip
+  crinkle: (o) => { for (let i = 0; i < 3; i++) noise(0.05 + Math.random() * 0.05, { ...o, at: i * 0.03 + Math.random() * 0.02, freq: 5200 + Math.random() * 2600, q: 2.5, gain: 0.08 }); },
+  tear: (o) => { noise(0.12, { ...o, freq: 1800, to: 4200, q: 1.4, gain: 0.22 }); noise(0.05, { ...o, at: 0.06, freq: 6000, q: 3, gain: 0.1 }); },
   stack: (o) => { SOUNDS.card(o); hit('block_lo', { ...o, gain: 0.18, at: 0.15, rate: 1.3 }); },
   chip: (o) => { hit('castanet', { ...o, gain: 0.45, rate: rnd(1, 1.2) }); },
   die: (o) => { hit('block_lo', { ...o, gain: 0.4, rate: rnd(0.85, 1) }); },
