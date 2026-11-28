@@ -17,6 +17,7 @@ import { walletLook, jacketLook, WALLET_TYPES, JACKET_STYLES, FINISHES } from '.
 import { symEl } from './parts.js';
 import { shade } from '../util.js';
 import { embody, JACKET_CUT } from './gear3d.js';
+import { holdUp } from './spin.js';
 
 const lookFinish = (L, over = {}) => ({ m: L.mat, color: L.color, glint: L.glint, sparkle: L.sparkle, ...over });
 // the emblem of a look, in its own material (lit as the piece is)
@@ -41,7 +42,7 @@ function walletFace(id, cls, hold) {
   const outside = (c, ...more) => h('span', { class: `gw-out ${c}` }, made('gw-skin'), h('i', { class: 'gw-pad' }), stitch(), ...more);
   const well = (list, room) => [h('i', { class: 'gw-inside' }), tuck(list, room), pocket('gw-front'), L.stitch ? h('i', { class: 'gw-stitch low' }) : null];
   let kids;
-  if (L.type === 'clip') kids = [h('span', { class: 'gw-wad' }, cashEl(hold.cash || 1, 'folded')), tuck([...cards, ...passes], 138, 'all'), made('gw-band'), h('i', { class: 'gw-band-shine' })];
+  if (L.type === 'clip') kids = [L.wad ? h('span', { class: 'gw-wad' }, cashEl(hold.cash || 1, 'folded')) : null, tuck([...cards, ...passes], 138, 'all'), made('gw-band'), h('i', { class: 'gw-band-shine' })];
   else if (L.type === 'clasped') kids = [h('span', { class: 'gw-base' }, made('gw-skin'), cashEl(hold.cash), ...well([...cards, ...passes], 124), L.clasp === 'chain' ? h('i', { class: 'gw-clasp chain' }) : h('i', { class: `gw-stud ${L.clasp}` })),
     h('span', { class: 'gw-flap' }, outside('', L.clasp === 'chain' ? null : h('i', { class: `gw-clasp ${L.clasp}` }), emblemEl(L, 'wsym')), h('span', { class: 'gw-in' }, h('i', { class: 'gw-lining' })))];
   else kids = [h('span', { class: 'gw-base' }, made('gw-skin'), cashEl(hold.cash), ...well(passes, 100)),
@@ -55,11 +56,15 @@ export function walletEl(id, cls = '', hold = {}) {
   const el = thing(face, { mat: L.mat, color: L.color, radius: L.round, depth: clip ? 3 : 7, name: Wl.name || id, sub: WALLET_TYPES[L.type], cls: `th-wallet th-${L.type} ${cls}`, ...(clip ? { edge: () => h('span', { class: 'gw gw-clip' }, finishOn(h('i', { class: 'gw-band' }), lookFinish(L))) } : {}),
     back: () => { if (clip) return h('span', { class: 'gw gw-clip' }, finishOn(h('i', { class: 'gw-band' }), lookFinish(L))); const b = finishOn(h('span', { class: `gw-back gw-${L.type}`, style: { '--w-round': `${L.round}px` } }, h('i', { class: 'gw-pad' })), lookFinish(L)); const em = emblemEl(L, 'wsym big'); if (em) b.append(em); return b; },
     make: () => { const f = walletFace(id, cls, { cards: copy(hold.cards), passes: copy(hold.passes), cash: hold.cash }); f.classList.toggle('pin', face.classList.contains('pin')); return f; } });
-  // a click keeps it open, or shuts it again (a click on something it holds is that thing's own)
-  if (!clip) el.addEventListener('click', (ev) => { if (ev.target.closest('.thing') === el) face.classList.toggle('pin'); });
+  // A wallet carrying things is looked into in the hand: pointed at it stands out, a click holds it up close, and a
+  // click there opens it (ui/gear3d.js). Any other wallet: a click keeps it open, or shuts it again (a click on
+  // something it holds is that thing's own).
+  const carries = !!((hold.cards || []).length || (hold.passes || []).length);
+  if (carries) { el.classList.add('hold-up'); el.addEventListener('click', (ev) => { ev.stopPropagation(); holdUp(el); }); }
+  else if (!clip) el.addEventListener('click', (ev) => { if (ev.target.closest('.thing') === el) face.classList.toggle('pin'); });
   const notes = clip ? notesFor(hold.cash || 1) : notesFor(hold.cash);
   // held up close (ui/gear3d.js heldIn): one slit for each card it can hold and each pass, and the very cards and passes in them
-  embody(el, face, { kind: 'wallet', look: L, notes, name: Wl.name || id, sub: WALLET_TYPES[L.type], pinned: () => face.classList.contains('pin'),
+  embody(el, face, { kind: 'wallet', look: L, notes, name: Wl.name || id, sub: WALLET_TYPES[L.type], pinned: () => face.classList.contains('pin'), still: carries,
     slots: { cards: Math.max(1, Wl.slots || 1), passes: Math.max(1, Wl.passes || 1) }, held: () => ({ cards: hold.cards || [], passes: hold.passes || [] }) });
   return el;
 }

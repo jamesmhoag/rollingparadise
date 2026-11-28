@@ -174,20 +174,26 @@ function walletModel(L, notes, HOLD = { cards: 3, passes: 1 }) {
   // card slits: pockets one over the next like shingles, each hemmed along its top, from the first slit down to the
   // leaf's foot. n of them, as many as it holds, spaced so each card's top stands clear of the next (STEP px, less when
   // many must fit); each slit's mouth a dark line where the pocket opens, so it reads as a place a card goes.
-  const SLIT = { step: 11, low: 20 }, slitTops = (yHigh, yFoot, n) => { const step = Math.min(SLIT.step, (yFoot - SLIT.low - yHigh) / Math.max(1, n - 1)), y0 = yFoot - SLIT.low - step * (n - 1); return Array.from({ length: n }, (_, i) => y0 + i * step); };
+  // A card lies on its side in its slit, long way across; `stick` is how much of it stands above the slit's hem. The
+  // top slit is set so its card's top edge comes just below the fold (yHigh); the rest step down from it, closer
+  // together when many must fit above the foot.
+  const SLIT = { step: 13, low: 18, aspect: 0.72, stand: 0.34 }, stickOf = (W) => (W - 12) * SLIT.aspect * SLIT.stand;
+  const slitTops = (yHigh, yFoot, n, stick) => { const y0 = yHigh + 3 + stick, step = n > 1 ? Math.min(SLIT.step, (yFoot - SLIT.low - y0) / (n - 1)) : 0; return Array.from({ length: n }, (_, i) => y0 + i * step); };
   const slits = { cards: [], passes: [] };
-  const slots = (x, W, yFoot, yHigh, n, into) => { const g = new T.Group(), tops = slitTops(yHigh, yFoot, n);
+  const slots = (x, W, yFoot, yHigh, n, into) => { const g = new T.Group(), stick = stickOf(W), tops = slitTops(yHigh, yFoot, n, stick);
     tops.forEach((top, i) => { const P = soft(rrect(x + 3, top, W - 6, yFoot - 2 - top, [1.5, 1.5, 3, 3]), { depth: 0.3, bevel: 0.3, puff: 1.1, z: 1.5 + i * 0.75, round: 9, cells: 26 });
       g.add(part(plate(rrect(x + 5, top - 1.3, W - 10, 1.8, 0.8), 1.35 + i * 0.75, 0.12), 'silk', '#07060a')); // the mouth: the dark of the slit, just above the hem
-      g.add(pocket(P), hem(x + 6, x + W - 6, top + 2.2, P.zAt, L.pocket.color)); into.push({ x0: x + 6, x1: x + W - 6, top }); });
+      g.add(pocket(P), hem(x + 6, x + W - 6, top + 2.2, P.zAt, L.pocket.color)); into.push({ x0: x + 6, x1: x + W - 6, top, stick }); });
     return g; };
   if (L.type === 'clip') { const W = 150, H = 86, arm = H - 12, F = 17, wide = 20, top = -H / 2 + 2; // a strip bent back on itself: one arm under the wad, the bend at the top, the other arm over everything
-    for (let i = 0; i < notes; i++) all.add(part(soft(rrect(-W / 2 + 2 + i * 1.5, -H / 2 + 16 + i * 2, W - 4 - i * 3, H - 16 - i * 3.5, 5), { depth: 0.8, puff: 0.9, bevel: 0.5, z: 1.9 + i * 1.5, face: 'both', cells: 24 }), 'paper', NOTE_GREENS[i]));
+    // the wad under the arm: only when the look has one (look.wad), made of whatever it says
+    if (L.wad) for (let i = 0; i < Math.max(1, notes); i++) all.add(part(soft(rrect(-W / 2 + 2 + i * 1.5, -H / 2 + 16 + i * 2, W - 4 - i * 3, H - 16 - i * 3.5, 5), { depth: 0.8, puff: 0.9, bevel: 0.5, z: 1.9 + i * 1.5, face: 'both', cells: 24 }), L.wad.mat, shade(L.wad.color, 1 - i * 0.08)));
     all.add(skin(soft(rrect(-wide / 2, top - F - arm, wide, arm * 2 + F, [9, 9, 6, 6]), { depth: 1, bevel: 0.6, z: -1.1, puff: 0.5, face: 'back', round: 6, cells: 90 })));
     folding(all, [{ axis: 'y', from: -top, len: F, sign: 1 }])([Math.PI]);
     // held up, what it holds is fanned over the wad, one over the next with its top showing, as slits would hold them
-    const FAN = 16, fan = (n, y0, x) => Array.from({ length: n }, (_, i) => ({ x0: x + i * 3, x1: x + i * 3 + W * 0.36, top: y0 + i * FAN, loose: true }));
-    slits.cards = fan(HOLD.cards, -H / 2 + 20, -W * 0.44); slits.passes = fan(HOLD.passes, -H / 2 + 20, W * 0.06); // cards on the left of the wad, passes on the right, each a step lower than the last
+    // held up, what it holds lies on its side under the arm, one over the next a step lower, its top showing as in a slit
+    const FAN = 13, fan = (n, y0) => Array.from({ length: n }, (_, i) => ({ x0: -W * 0.34, x1: W * 0.34, top: y0 + i * FAN, stick: 0, loose: true }));
+    slits.cards = fan(HOLD.cards, -H / 2 + 6); slits.passes = fan(HOLD.passes, -H / 2 + 6 + HOLD.cards * FAN); // the cards, then the passes
     return { root, pose() {}, w: W, h: H, box: [-14, -20, W + 14, H + 14], over: [[W / 2 - wide / 2 + 0.5, -20, wide - 1, arm + 26]], rest: [0, 0], flat: true, slits }; }
   if (L.type === 'clasped') { const W = 138, H = 92, wall = 46, Fb = 12, Ft = 23, fl = L.flap * 1.5 + 30, yTop = -H / 2 - Ft - fl, yEnd = H / 2 + Fb + wall, tip = Math.min(fl * 0.7, 34);
     const S = sheet(rrect(-W / 2, yTop, W, yEnd - yTop, [tip, tip, 3, 3]), [['y', H / 2 + Fb / 2, 6], ['y', -H / 2 - Ft / 2, 8]]); all.add(skin(S));
@@ -196,7 +202,7 @@ function walletModel(L, notes, HOLD = { cards: 3, passes: 1 }) {
     all.add(lining(plate(rrect(-W / 2 + 3, yTop + 3, W - 6, yEnd - yTop - 6, [tip - 2, tip - 2, 2, 2]), 0.15, 0.25, { cells: 70 })), cash(-W / 2 + 9, -H / 2 - 4, W - 18));
     all.add(sleeve(-W / 2 + 4, W - 8, H, 20));
     // across its back, two columns of slits: the cards on the left, the passes on the right
-    const half = (W - 8) / 2; all.add(slots(-W / 2 + 2, half + 2, H / 2, -H / 2 + 26, HOLD.cards, slits.cards), slots(-W / 2 + 4 + half, half + 2, H / 2, -H / 2 + 26, HOLD.passes, slits.passes));
+    const half = (W - 8) / 2; all.add(slots(-W / 2 + 2, half + 2, H / 2, -H / 2, HOLD.cards, slits.cards), slots(-W / 2 + 4 + half, half + 2, H / 2, -H / 2, HOLD.passes, slits.passes));
     const out = (y) => S.zBack(0, y) - 0.6, tipY = yTop + 10, studY = Math.min(yEnd - 12, yEnd - wall + fl - 10);
     if (L.clasp === 'zip') all.add(set(new T.BoxGeometry(W * 0.8, 2.6, 1.4), 'metal', METAL, 0, yTop + 4.5, out(yTop + 5)));
     else if (L.clasp === 'magnet') all.add(set(new T.BoxGeometry(14, 8, 2.4), 'metal', '#6a7386', 0, tipY, out(tipY) - 0.6));
@@ -212,7 +218,7 @@ function walletModel(L, notes, HOLD = { cards: 3, passes: 1 }) {
   // inside: lined all over; behind everything the long pocket for the cash, hemmed along its top; on each leaf three card slots
   all.add(lining(plate(rrect(-W / 2 + 3, -H / 2 + 3, W * 2 + F - 6, H - 6, Math.max(1, r - 2)), 0.15, 0.25, { cells: 80 })), cash(-W / 2 + 9, -H / 2 - 4, W - 18));
   all.add(sleeve(-W / 2 + 4, W * 2 + F - 8, H, 80));
-  all.add(slots(-W / 2, W, H / 2, -H / 2 + 26, HOLD.cards, slits.cards), slots(W / 2 + F, W, H / 2, -H / 2 + 26, HOLD.passes, slits.passes)); // the cards on one leaf, the passes on the other
+  all.add(slots(-W / 2, W, H / 2, -H / 2, HOLD.cards, slits.cards), slots(W / 2 + F, W, H / 2, -H / 2, HOLD.passes, slits.passes)); // the cards on one leaf, the passes on the other
   const fold = folding(all, [{ axis: 'x', from: W / 2, len: F, sign: 1 }]);
   return { root, pose: (t) => fold([Math.PI * (1 - t)]), w: W, h: H, box: [-18, -22, W * 2 + F + 18, H + 20], over: [[0, 46, W, 46], [W + F, 46, W, 46]], rest: [10, -14], emblem: [W - 27, H - 27], gutter: F, slits };
 }
@@ -366,7 +372,8 @@ function dress(el, face, spec) {
   const run = () => { cancelAnimationFrame(st.raf); let last = performance.now();
     const tick = (now) => { const d = (now - last) / 420; last = now; st.t = st.want > st.t ? Math.min(st.want, st.t + d) : Math.max(st.want, st.t - d); draw(); if (st.t !== st.want && el.isConnected) st.raf = requestAnimationFrame(tick); };
     if (still()) { st.t = st.want; draw(); } else st.raf = requestAnimationFrame(tick); };
-  const aim = () => { const want = !M.flat && spec.kind === 'wallet' && (st.hover || spec.pinned?.()) ? 1 : 0; if (want !== st.want) { st.want = want; run(); } };
+  // (a wallet looked into in the hand stays shut where it lies)
+  const aim = () => { const want = !M.flat && spec.kind === 'wallet' && ((st.hover && !spec.still) || spec.pinned?.()) ? 1 : 0; if (want !== st.want) { st.want = want; run(); } };
   face.querySelector(':scope > .g3-under')?.remove(); face.querySelector(':scope > .g3-over')?.remove(); face.prepend(under); face.append(over);
   face.classList.add('g3d'); el.classList.add('g3d', 'th-still');
   if (M.emblem) face.style.setProperty('--g3-ex', `${M.emblem[0]}px`), face.style.setProperty('--g3-ey', `${M.emblem[1]}px`);
@@ -384,40 +391,65 @@ function dress(el, face, spec) {
     const near = (Math.max(M.w, M.h) * 0.62 + 10) * u, far = Math.hypot(Math.max(M.w / 2 - bx0, bx1 - M.w / 2), Math.max(M.h / 2 - by0, by1 - M.h / 2)) * u;
     const paint = () => { const half = near + (far - near) * t; M.pose(t); cx.clearRect(0, 0, px, px); cx.drawImage(renderGroup(M.root, { w: px, h: px, view: [-half, -half, half, half], turn: R }), 0, 0); };
     const look = { el: wrap, size, name: spec.name, sub: spec.sub, start: new DOMMatrix().rotateSelf(-10, 24, 0), get matrix() { return R; }, setRotation(m) { R = m; paint(); } };
-    if (spec.kind === 'wallet') heldIn(look, M, spec, { wrap, size, u, near, far, at: () => t, open: (w, done) => { want = w; cancelAnimationFrame(raf); let last = performance.now();
-      const tick = (now) => { const d = (now - last) / 420; last = now; t = want > t ? Math.min(want, t + d) : Math.max(want, t - d); paint(); if (t !== want && wrap.isConnected) raf = requestAnimationFrame(tick); else done?.(); }; raf = requestAnimationFrame(tick); } });
+    if (spec.kind === 'wallet') return walletLook3d(look, M, spec, { wrap, cv, cx, size, u, near, bx0, by0, bx1, by1 });
     return look; };
   aim(); draw();
 }
 
 // ---------- a wallet held up close (ui/spin.js) ----------
-// A click opens it, or shuts it again (a clip, which has no inside, fans out what it holds), and it stays held up
-// either way until a right click puts it down. Open, it turns face on and holds still, and the very cards and passes
-// you carry stand in its slits (cards on one side, passes on the other, one slit each), each a little lower than the
-// last so every top shows; a clip lays them one over the next on its wad the same way. Point at one and it is pulled
-// out, larger, over the wallet (which stays where it is); point at another and they change places; a right click puts
-// it back. When the wallet is put down, each goes back where it was.
-const STICK = 24, PULLED = 0.4; // px a card stands above its slit · how wide one pulled out is, of the view
-function heldIn(look, M, spec, V) {
-  const held = spec.held?.() || { cards: [], passes: [] }, shelf = document.createElement('div'); shelf.className = 'g3-held'; V.wrap.append(shelf);
+// It comes up at a size to read, and stays at that size: opening it does not shrink it to fit, the view grows round it
+// instead (spin.js keeps it on the screen). A click opens it, or shuts it again (a clip, which has no inside, lays out
+// what it holds), and it stays held up either way until a right click puts it down. Open, it turns face on and holds
+// still, and the very cards and passes you carry lie on their sides in its slits, one each (cards on one side,
+// passes on the other), each slit lower than the last so every top shows; a clip lays them one over the next under
+// its arm the same way. Point at one and it rises a little out of its slit, still on its side; click it and it comes
+// out, upright and larger, over the wallet (which stays where it is); a right click puts it back. When the wallet is
+// put down, each goes back where it was.
+const NUDGE = 0.32, PULLED = 0.4; // how far a card pointed at rises, of its height · how wide one pulled out is, of the view
+function walletLook3d(look, M, spec, V) {
+  const { wrap, cv, cx, size, u, near } = V, k = size / (2 * near), dpr = Math.min(2, devicePixelRatio || 1);
+  // the view: a square round it shut; open (face on), all of the opened wallet as well, at the same scale
+  const open = [(V.bx0 - M.w / 2) * u, -(V.by1 - M.h / 2) * u, (V.bx1 - M.w / 2) * u, -(V.by0 - M.h / 2) * u];
+  const full = [Math.min(-near, open[0]), Math.min(-near, open[1]), Math.max(near, open[2]), Math.max(near, open[3])];
+  let t = 0, want = 0, raf = 0;
+  const viewAt = (q) => [-near, -near, near, near].map((v, i) => v + (full[i] - v) * q);
+  const paint = () => { const [x0, y0, x1, y1] = viewAt(t), w = (x1 - x0) * k, hgt = (y1 - y0) * k, pw = Math.round(w * dpr), ph = Math.round(hgt * dpr);
+    if (cv.width !== pw || cv.height !== ph) { cv.width = pw; cv.height = ph; }
+    Object.assign(cv.style, { position: 'absolute', left: `${(x0 + near) * k}px`, top: `${(near - y1) * k}px`, width: `${w}px`, height: `${hgt}px` });
+    M.pose(t); cx.clearRect(0, 0, pw, ph); cx.drawImage(renderGroup(M.root, { w: pw, h: ph, view: [x0, y0, x1, y1], turn: R }), 0, 0); look.reflow?.(); };
+  Object.assign(wrap.style, { width: `${size}px`, height: `${size}px` });
+  let R = new DOMMatrix(); Object.defineProperty(look, 'matrix', { get: () => R }); look.setRotation = (m) => { R = m; paint(); };
+  const run = (w, done) => { want = w; wrap.closest('.spin-view')?.classList.toggle('opened', w === 1); cancelAnimationFrame(raf); let last = performance.now();
+    const tick = (now) => { const d = (now - last) / 420; last = now; t = want > t ? Math.min(want, t + d) : Math.max(want, t - d); paint(); if (t !== want && wrap.isConnected) raf = requestAnimationFrame(tick); else done?.(); }; raf = requestAnimationFrame(tick); };
+  look.canvas = cv;
+
+  // what it holds, each in a holder that shows only what stands above its slit's hem
+  const P = (mx, my) => [(mx * u + near) * k, (my * u + near) * k]; // model px → px of the view (fixed scale: exact face on)
+  const held = spec.held?.() || { cards: [], passes: [] }, shelf = document.createElement('div'); shelf.className = 'g3-held'; wrap.append(shelf);
   const items = [...held.cards.map((el, i) => ({ el, at: M.slits?.cards[i] })), ...held.passes.map((el, i) => ({ el, at: M.slits?.passes[i] }))].filter((x) => x.el && x.at);
-  const homes = new Map(); let showing = false, out = null;
-  // model px → px of the view, as it lies face on (an orthographic view: exact)
-  const P = (mx, my) => { const half = V.near + (V.far - V.near) * V.at(), k = V.size / (2 * half); return [(mx * V.u + half) * k, (my * V.u + half) * k]; };
-  const place = () => items.forEach(({ el, at }, i) => {
-    if (el === out) { const w = V.size * PULLED, k = w / (el.offsetWidth || 1); Object.assign(el.style, { left: `${(V.size - w) / 2}px`, top: `${V.size * 0.06}px`, transform: `scale(${k})`, clipPath: 'none', zIndex: 50 }); return; }
-    const [ax, ay] = P(at.x0, at.top - STICK), [bx] = P(at.x1, 0), [, hem] = P(0, at.top + 2.2), k = (bx - ax) / (el.offsetWidth || 1);
-    const shows = (hem - ay) / k; // a card in a slit shows only above the slit's hem; one fanned on a clip lies whole
-    Object.assign(el.style, { left: `${ax}px`, top: `${ay}px`, transform: `scale(${k})`, clipPath: at.loose ? 'none' : `inset(0 0 ${Math.max(0, el.offsetHeight - shows)}px 0)`, zIndex: i + 1 });
-  });
-  const pull = (el) => { if (!showing || out === el) return; out = el; items.forEach((x) => x.el.classList.toggle('pulled', x.el === el)); place(); };
-  const show = (on) => { showing = on; shelf.classList.toggle('on', on);
-    if (on) { for (const { el } of items) { if (!homes.has(el)) homes.set(el, { parent: el.parentNode, next: el.nextSibling, style: el.getAttribute('style') }); el.classList.add('in-slit'); el.addEventListener('pointerenter', el._pull = () => pull(el)); shelf.append(el); } place(); }
-    else { out = null; items.forEach((x) => x.el.classList.remove('pulled')); } };
-  // a clip: face on, and fan what it holds (or gather it again)
-  look.click = () => { if (M.flat) { if (!showing) look.setRotation(new DOMMatrix()); return show(!showing); }
-    if (V.at() > 0.5) { show(false); V.open(0); } else { look.setRotation(new DOMMatrix()); V.open(1, () => show(true)); } }; // open: face on, then what it holds into its slits
-  look.locked = () => showing; // open (or fanned), it holds still: what it holds stands in it
-  look.back = () => { if (!out) return false; out = null; items.forEach((x) => x.el.classList.remove('pulled')); place(); return true; }; // a right click puts a pulled card back
-  look.close = () => { for (const [el, h0] of homes) { el.removeEventListener('pointerenter', el._pull); el.classList.remove('in-slit', 'pulled'); if (h0.style == null) el.removeAttribute('style'); else el.setAttribute('style', h0.style); h0.parent?.insertBefore(el, h0.next?.parentNode === h0.parent ? h0.next : null); } homes.clear(); };
+  const homes = new Map(); let showing = false, out = null, up = null;
+  const lay = (x, i) => { const { el, at } = x, ew = el.offsetWidth || 1, eh = el.offsetHeight || 1, side = eh > ew, long = side ? eh : ew, short = side ? ew : eh;
+    if (el === out) { const w = size * PULLED, s2 = w / ew; Object.assign(x.hold.style, { left: `${(size - w) / 2}px`, top: `${size * 0.04}px`, width: `${w}px`, height: `${eh * s2}px`, overflow: 'visible', zIndex: 60 });
+      el.style.transform = `scale(${s2})`; return; } // out of its slit: upright, larger, over the wallet
+    const [ax] = P(at.x0, 0), [bx] = P(at.x1, 0), cw = bx - ax, s1 = cw / long, ch = short * s1, rise = x === up ? ch * NUDGE : 0;
+    const [, top] = P(0, at.top - at.stick), [, hem] = P(0, at.top + 2.2), y = top - rise;
+    Object.assign(x.hold.style, { left: `${ax}px`, top: `${y}px`, width: `${cw}px`, height: `${at.loose ? ch : Math.max(2, hem - y)}px`, overflow: at.loose ? 'visible' : 'hidden', zIndex: x === up ? 40 : i + 1 });
+    el.style.transform = side ? `translate(0px, ${ew * s1}px) rotate(-90deg) scale(${s1})` : `scale(${s1})`; }; // on its side, the long way across the slit
+  const place = () => items.forEach(lay);
+  const show = (on) => { showing = on; shelf.classList.toggle('on', on); if (!on) { out = up = null; return; }
+    for (const x of items) { const { el } = x; if (homes.has(el)) continue;
+      homes.set(el, { parent: el.parentNode, next: el.nextSibling, style: el.getAttribute('style') });
+      x.hold = document.createElement('div'); x.hold.className = 'slit-hold'; el.classList.add('in-slit'); x.hold.append(el); shelf.append(x.hold);
+      x.hold.addEventListener('pointerenter', () => { if (out) return; up = x; place(); });
+      x.hold.addEventListener('pointerleave', () => { if (up === x) { up = null; place(); } });
+      // a click on one in its slit pulls it out to look at; once out, a click is its own (a card's, say)
+      x.hold.addEventListener('click', (ev) => { if (out === el) return; ev.stopPropagation(); ev.preventDefault(); out = el; up = null; el.classList.add('pulled'); place(); }, true); }
+    place(); };
+  look.click = () => { if (M.flat) { if (!showing) look.setRotation(new DOMMatrix()); return show(!showing); } // a clip: face on, and lay out what it holds (or gather it again)
+    if (t > 0.5) { show(false); run(0); } else { look.setRotation(new DOMMatrix()); run(1, () => show(true)); } }; // open: face on, then what it holds into its slits
+  look.locked = () => showing; // open (or laid out), it holds still
+  look.back = () => { if (!out) return false; out.classList.remove('pulled'); out = null; place(); return true; }; // a right click puts a pulled card back in its slit
+  look.close = () => { for (const [el, h0] of homes) { el.classList.remove('in-slit', 'pulled'); if (h0.style == null) el.removeAttribute('style'); else el.setAttribute('style', h0.style); h0.parent?.insertBefore(el, h0.next?.parentNode === h0.parent ? h0.next : null); }
+    homes.clear(); shelf.replaceChildren(); };
+  paint(); return look;
 }

@@ -39,6 +39,11 @@ function open(node) {
   el.addEventListener('pointerleave', () => { if (view && !view.held && !view.pinned) { clearTimeout(view.leave); view.leave = setTimeout(() => close(), 450); } }); // (clicked, it stays held up until a right click)
   stage().append(el); document.body.classList.add('spinning'); node.classList.add('lifted'); // what is held up is no longer where it was: the one turns into the other
   view = { el, node, solid, vx: 0, vy: 0, raf: 0, held: false, leave: 0 };
+  // a view that grows (a wallet opening, at the size it came up at) is kept on the screen
+  solid.reflow = () => { const c = solid.canvas; if (!c || !el.isConnected) return; const st = stage().getBoundingClientRect(), k = scaleOf(); el.style.left = x + 'px'; el.style.top = y + 'px';
+    const r = c.getBoundingClientRect(), L = (r.left - st.left) / k, T = (r.top - st.top) / k, Rt = L + r.width / k, B = T + r.height / k;
+    el.style.left = x + Math.min(0, W - 8 - Rt) + Math.max(0, 8 - L) + 'px'; el.style.top = y + Math.min(0, H - 8 - B) + Math.max(0, 8 - T) + 'px'; };
+  solid.reflow();
 }
 function turn(dx, dy) { if (view.solid.locked?.()) return; const m = new DOMMatrix().rotateSelf(-dy * SENS, dx * SENS, 0).multiplySelf(view.solid.matrix); view.solid.setRotation(m); }
 // after you let go: it keeps turning, slows, and closes unless the pointer is on it
@@ -86,3 +91,5 @@ export function initSpin() {
   // a die that leaves the screen (a new scene, a closed panel) takes its spin with it
   new MutationObserver(() => { if (view && !view.held && !document.body.contains(view.node)) close(true); }).observe(stage(), { childList: true, subtree: true });
 }
+// hold a thing up close with a click (a wallet in the Coat Check): it stays held up until a right click or Esc
+export function holdUp(node) { if (!(node._look || node._die)) return; open(node); view.pinned = true; }

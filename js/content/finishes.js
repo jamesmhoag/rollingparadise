@@ -66,7 +66,8 @@ export function walletLook(id, W = {}) {
   const type = WALLET_TYPES[L.type] ? L.type : /clip/.test(nm) || L.clasp === 'clip' ? 'clip' : /zip|snap|chain|magnet/.test(nm) || WALLET_CLASPS[L.clasp] ? 'clasped' : 'billfold';
   return { type, mat, color, trim: L.trim || '', lining: L.lining || '', glint: !!L.glint, sparkle: !!L.sparkle, stitch: L.stitch ?? /leather|cloth/.test(nm),
     clasp: WALLET_CLASPS[L.clasp] ? L.clasp : /zip/.test(nm) ? 'zip' : /chain/.test(nm) ? 'chain' : /magnet/.test(nm) ? 'magnet' : 'snap',
-    flap: clamp('flap', L.flap, 15), round: clamp('round', L.round, 6), pocket: part(L.pocket, mat, color), symbol: emblem(L) };
+    flap: clamp('flap', L.flap, 15), round: clamp('round', L.round, 6), pocket: part(L.pocket, mat, color), symbol: emblem(L),
+    wad: L.wad?.on ? part(L.wad, 'paper', '#8fbf86') : null }; // a clip's wad under its arm: off unless the look turns it on (any material)
 }
 export function jacketLook(id, J = {}) {
   const L = J.look || {}, nm = `${id} ${J.name || ''}`.toLowerCase(), mat = FINISHES[L.mat] ? L.mat : guessMat(J.name, id), color = L.color || J.color || '#5b6378';

@@ -39,7 +39,7 @@ export function gearMaker(key, redraw) {
     const b = btn('', () => set(ks, k), `<b>${F.name}</b><p>${F.text}</p>`, `small fin-btn ${cur === k ? 'on' : ''}`); b.append(sw, h('small', { text: F.name })); return guided(b, 'build-option'); }));
   // one part of the piece: what it is made of (or as the piece is) and its colour
   const matList = [[null, t('gear.part.same')], ...Object.entries(FINISHES).map(([k, F]) => [k, F.name])];
-  const part = (k, P) => field(k, h('span', { class: 'row wrap' }, select(['look', k, 'mat'], matList, X.look?.[k]?.mat || null), colour(['look', k, 'color'], P.color || L.color)), ['look', k]);
+  const part = (k, P, key = k === 'wadLook' ? 'wad' : k) => field(k, h('span', { class: 'row wrap' }, select(['look', key, 'mat'], matList, X.look?.[key]?.mat || null), colour(['look', key, 'color'], P.color || L.color)), ['look', key]);
   const syms = [[null, t('gear.symbol.none')], ...Object.keys(SYMBOLS).map((k) => [k, k])];
   const lookFields = [
     h('span', { class: 'cap', text: t('gear.part.made') }),
@@ -50,6 +50,8 @@ export function gearMaker(key, redraw) {
     ...(wallet ? [field('type', select(['look', 'type'], Object.entries(WALLET_TYPES), L.type), ['look', 'type']), part('pocket', L.pocket),
       field('trim', colour(['look', 'trim'], L.trim || L.color), ['look', 'trim']), field('lining', colour(['look', 'lining'], L.lining || '#1a1410'), ['look', 'lining']),
       field('stitch', check(['look', 'stitch'], L.stitch), ['look', 'stitch']), field('round', bounded(['look', 'round'], L.round, 'round'), ['look', 'round']),
+      // a clip's wad under its arm: off unless turned on, then made of any material
+      ...(L.type === 'clip' ? [field('wad', check(['look', 'wad', 'on'], !!L.wad), ['look', 'wad', 'on']), ...(L.wad ? [part('wadLook', L.wad)] : [])] : []),
       ...(L.type === 'clasped' ? [field('clasp', select(['look', 'clasp'], Object.entries(WALLET_CLASPS), L.clasp), ['look', 'clasp']), field('flap', bounded(['look', 'flap'], L.flap, 'flap'), ['look', 'flap'])] : [])]
       : [field('style', select(['look', 'style'], Object.entries(JACKET_STYLES), L.style), ['look', 'style']), part('sleeves', L.sleeves), part('trim', L.trim),
         field('lining', colour(['look', 'lining'], L.lining || '#000000'), ['look', 'lining']), field('collar', select(['look', 'collar'], Object.entries(JACKET_COLLARS), L.collar), ['look', 'collar']),

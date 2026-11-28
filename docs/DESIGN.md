@@ -1066,15 +1066,20 @@ for a close look, to be turned over (`ui/spin.js`, the look a die gets).
   it holds, and ice and fizz inside a clear drink are solid to the eye.
 - Right click lets go of anything held up close (as Esc does). While something is held up, it is gone from where it
   was (the one turns into the other) and is back when it is let go.
-- **A wallet held up close** (ui/gear3d.js heldIn) comes up larger than other things. A click opens it (a clip, with
-  no inside, fans out what it holds) or shuts it again, and either way it stays held up until a right click or Esc
-  puts it down. Open, it turns face on and holds still. Inside, one slit for each card it can hold and each pass (the
-  wallet's slots and passes): a billfold has its card slits on one leaf and its pass slits on the other, a clasped
-  pouch a column of each across its back; each slit is a padded pocket with a dark mouth. The very cards and passes
-  you carry stand in them, each a little lower than the last so every top shows; a clip lays them over its wad the
-  same way, cards on one side and passes on the other. Point at one and it is pulled out, larger, over the wallet,
-  which stays where it is; point at another and they change places; a right click puts it back (the next right click
-  puts the wallet down). When the wallet is put down, each goes back where it was.
+- **A wallet held up close** (ui/gear3d.js walletLook3d). Where a wallet carries things (the Coat Check, the Gear
+  maker's preview) it is looked into in the hand: pointed at, it stands out (it does not open where it lies); a click
+  holds it up close; a click there opens it (a clip, with no inside, lays out what it holds) or shuts it again, and
+  it stays held up until a right click or Esc. It stays at the size it came up at: opening does not shrink it, the
+  view grows round it and is kept on the screen. Open, it turns face on and holds still. Inside, one slit for each
+  card it can hold and each pass: a billfold has its card slits on one leaf and its pass slits on the other, a
+  clasped pouch a column of each across its back; each slit a padded pocket with a dark mouth, the top one set so its
+  card's top edge comes just below the fold. The very cards and passes you carry lie on their sides in them (the long
+  way across), each slit lower than the last so every top shows; a clip lays them the same way under its arm. Point
+  at one and it rises a little out of its slit, still on its side; click it and it comes out, upright and larger,
+  over the wallet (which stays where it is), where a click is its own (a card: click twice to drop it); a right click
+  puts it back, the next puts the wallet down, and everything goes back where it was.
+- A clip has no wad under its arm unless its look turns one on (Gear maker: Wad under the arm), in any material.
+- The Coat Check shows your jacket over your wallet, one above the other, the jacket larger.
 - **Fixed sizes, scrolling windows.** At the table the Book, the Run, the Roll and the Pouch keep everything in them
   at its own size: tricks are always the full card width, shelf items the full strip, dice their own size. Each is a
   window a whole number of rows tall; what does not fit is on further rows, reached with the wheel or the window's

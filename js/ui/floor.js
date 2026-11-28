@@ -315,11 +315,12 @@ function kitPanel() {
     h('div', { class: 'row', style: { alignItems: 'flex-start', gap: '18px' } }, rollerCard({ rid: run.roller || D.rollerOf(run.cls), v: st.v, dice: run.dice, tricks: run.tricks, crown: R.crownWorn(run) }),
     h('div', { class: 'col', style: { minWidth: 0, flex: 1 } },
       h('span', { class: 'cap', text: tx('floor.wallet-slots-plus-one', { name: R.walletOf(run).name, walletCardN: R.walletCards(run).length, slots: R.walletOf(run).slots, used: R.passSlotsUsed(run), passes: R.passCap(run.wallet) }) }),
-      // your wallet: point at it and it opens on the cards and passes you carry (click a card twice to drop it); its cash slot shows your purse
-      h('div', { class: 'row wrap', style: { alignItems: 'flex-end', gap: '18px' } }, walletEl(run.wallet, '', { cash: run.purse, passes: [...R.passesOf(run).map((f) => passEl(f)), ...R.keysOf(run).map((k) => keyEl(k))],
+      // your jacket, then under it your wallet: click the wallet to hold it up, click again to open it on the cards and passes you carry
+      // (point at one to raise it, click to pull it out; click a pulled card twice to drop it); its cash slot shows your purse
+      h('div', { class: 'coat-gear' }, jacketEl(run.jacket, 'coat-jacket'), walletEl(run.wallet, 'coat-wallet', { cash: run.purse, passes: [...R.passesOf(run).map((f) => passEl(f)), ...R.keysOf(run).map((k) => keyEl(k))],
         cards: R.walletCards(run).map((c) => { const el = cardEl(c, '', { punched: R.punchesOf(run, c) }); el._tip = () => cardTip(c, R.rollerStats(run).v) + tx('floor.takes-a-wallet-slot'); el.classList.add('has-tip');
           el.onclick = () => { if (!el._armed) { el._armed = true; el.classList.add('armed'); return toast(tx('floor.click-again-to-drop', { name: D.CARDS[c].name }), 'warn'); } if (!R.dropCard(run, c)) return toast(tx('floor.you-need-that-one'), 'warn'); closePanel(); rerender(); toast(tx('floor.dropped', { name: D.CARDS[c].name })); }; return el; }) }),
-        jacketEl(run.jacket), run.drink ? drinkEl(run.drink, run.drink.sips, run.drink.max) : null),
+        run.drink ? drinkEl(run.drink, run.drink.sips, run.drink.max) : null),
       // your dice by name: click one to give it a pet name, change it or take it away
       h('span', { class: 'cap', text: tx('floor.die-names') }), (() => { const edit = h('div', {}), list = h('div', { class: 'dicebox named' });
         const draw = () => list.replaceChildren(...run.dice.map((d) => { const el = dieEl(d); el._tip = () => dieTip(d) + tx('floor.die-name.click'); el.classList.add('has-tip');
