@@ -102,6 +102,8 @@ export function drinkModel(L, fill) {
       for (let i = 0; i < 46; i++) sparks.setColorAt(i, new T.Color().setHSL((i * 0.137) % 1, 1, 0.68)); all.add(sparks); }
     if (L.glow) { const m = (op, k) => new T.MeshBasicMaterial({ color: new T.Color(L.liquid.color).lerp(new T.Color(0xffffff), k), opacity: op, alphaHash: op < 1 });
       for (const [rad, op, k] of [[1.4, 1, 0.9], [2.5, 0.45, 0.5], [3.8, 0.2, 0.3]]) all.add(at(new T.Mesh(new T.SphereGeometry(rad, 18, 12), m(op, k)), 0, (level + V.floor) / 2 + 1)); }
+    // gems and coins dropped in: on the floor of a drink you see through, at the surface of one you cannot (bobbing there)
+    if (L.gems || L.coins) all.add(dropped(L, V, B, live, clear));
     // a toy in it: a starfish on the floor, a diver in the middle, a duck on the surface
     if (L.toy) all.add(toy(L, V, B, live));
   }
@@ -192,6 +194,20 @@ function garnish(L, V, B, fill) {
     const len = dip - y + 12, pick = new T.CylinderGeometry(0.2, 0.2, len, 8); pick.translate(0, len * 0.35, 0); o.add(body(pick, 'metal', '#d9d4c8')); pointTo(o, [R * 0.3, (dip + y) / 2 + 2, 0], [R * 0.9, y - 9, 0]); g.add(o); }
   if (L.garnish === 'mint') for (let i = 0; i < 6; i++) { const leaf = new T.SphereGeometry(2, 16, 10); leaf.scale(1, 0.25, 0.55); const m = at(body(leaf, 'velvet', i % 2 ? L.garnishColor : '#' + new T.Color(L.garnishColor).lerp(new T.Color(0xffffff), 0.2).getHexString()), R * 0.35 + Math.cos(i * 1.7) * 2, y - 1.5 - (i % 3) * 1.2, Math.sin(i * 1.7) * 2); m.rotation.set(i, i * 0.7, 0.6 + i * 0.3); g.add(m); }
   void fill; return g;
+}
+// a cut gem: a brilliant, its table, crown, girdle and pavilion, each facet flat
+function gemGeo(r) { const g = new T.LatheGeometry([[0.01, -r * 0.86], [r, 0], [r, r * 0.06], [r * 0.56, r * 0.42], [0.01, r * 0.42]].map(([x, y]) => new T.Vector2(x, y)), 8).toNonIndexed(); g.computeVertexNormals(); return g; }
+function dropped(L, V, B, live, clear) {
+  const g = new T.Group(), level = B.level, rnd = (i, k) => ((Math.sin(i * 12.9898 + k * 78.233) * 43758.5453) % 1 + 1) % 1;
+  const spot = (i, n, depth) => { const y = clear ? V.floor - depth : level + 0.4 - depth * 0.2, R = Math.max(0.5, B.rIn(y) - 3), a = i * 2.4 + 0.7, q = R * (0.25 + 0.6 * rnd(i, n)); return [Math.cos(a) * q, y, Math.sin(a) * q]; };
+  // (afloat, a gem shows its crown above the surface)
+  for (let i = 0; i < L.gems; i++) { const r = clear ? Math.min(3.2, B.rIn(V.floor - 2) * 0.55) : Math.min(4.4, B.rIn(level) * 0.4), m = body(gemGeo(r), 'gem', L.gemColor), [x, y, z] = spot(i, 7, clear ? r * 0.5 : r * 2.2);
+    m.rotation.set(clear ? 0.5 + rnd(i, 3) : 0.2 * rnd(i, 3), rnd(i, 4) * 6, 0.4 * rnd(i, 5)); at(m, x, y, z); g.add(m); if (!clear) { const y0 = m.position.y; live.bob.push((S) => { m.position.y = y0 + Math.sin(S.t * 1.4 + i) * 0.3 + S.s[0] * x + S.s[1] * z; }); } }
+  for (let i = 0; i < L.coins; i++) { const r = Math.min(3.1, B.rIn(V.floor - 1) * 0.5), coin = new T.Group(), [x, y, z] = spot(i + 3, 11, 0.4 + (i % 2) * 0.5);
+    coin.add(body(new T.CylinderGeometry(r, r, 0.55, 40), 'metal', L.coinColor), body(new T.TorusGeometry(r - 0.25, 0.22, 8, 40).rotateX(Math.PI / 2).translate(0, 0.28, 0), 'metal', L.coinColor), body(new T.CylinderGeometry(r * 0.45, r * 0.45, 0.7, 6), 'metal', L.coinColor));
+    coin.rotation.set(0.5 + rnd(i, 1) * 0.6, rnd(i, 2) * 6, (rnd(i, 6) - 0.5) * 0.8); // (lying askew on one another, faces showing) at(coin, x, y, z); g.add(coin);
+    if (!clear) { const y0 = coin.position.y; live.bob.push((S) => { coin.position.y = y0 + Math.sin(S.t * 1.1 + i * 2) * 0.25 + S.s[0] * x + S.s[1] * z; }); } }
+  return g;
 }
 // a toy in the drink: a starfish lying on the floor, a scuba diver hanging in the middle, a rubber duck afloat
 function toy(L, V, B, live) {

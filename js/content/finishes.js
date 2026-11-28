@@ -97,7 +97,7 @@ export const NEW_JACKET = { name: 'New Jacket', color: '#5b6378', effect: 'New �
 //   fizz: bubbles rise through it · sparkle: points of every colour drift in it · steam: it is hot · slosh: it moves
 //   with the glass (on unless turned off) · straw: its colour · garnish (DRINK_GARNISHES) and garnishColor (an
 //   umbrella's paper, a cherry, an olive, the fruit, the mint) · toy (DRINK_TOYS) and toyColor: something in it ·
-//   crustColor, fizzColor, foamColor
+//   crustColor, fizzColor, foamColor · gems (0 to 3) and gemColor: cut gems dropped in · coins (0 to 6) and coinColor
 export const DRINK_VESSELS = { tumbler: 'Tumbler', tall: 'Tall glass', mug: 'Mug', cup: 'Teacup and saucer', goblet: 'Goblet', coupe: 'Coupe', martini: 'Martini glass', shot: 'Shot glass' };
 export const DRINK_LIQUIDS = { liquid: 'Clear (see through it)', cream: 'Creamy', syrup: 'Glossy and deep', chromatic: 'Every colour at once' };
 export const DRINK_GARNISHES = { cherry: 'A cherry', umbrella: 'A paper umbrella', lemon: 'A slice of lemon', lime: 'A slice of lime', orange: 'A slice of orange', olive: 'An olive on a pick', mint: 'A sprig of mint' };
@@ -115,7 +115,7 @@ const DRINK_LOOKS = {
   juice: { vessel: 'goblet', garnish: 'orange', straw: '#3fb86b', crust: 'sugar' },
   special: { vessel: 'coupe', garnish: 'umbrella', fizz: true, toy: 'starfish' },
   royal: { vessel: 'goblet', rim: { mat: 'metal', color: '#e8c35a' }, fizz: true, garnish: 'cherry' },
-  diamond: { vessel: 'coupe', mat: 'diamond', liquid: { mat: 'chromatic' }, sparkle: true, fizz: true, glow: true },
+  diamond: { vessel: 'coupe', mat: 'diamond', liquid: { mat: 'chromatic' }, sparkle: true, fizz: true, glow: true, gems: 1 },
 };
 const hex = (c, d) => (/^#[0-9a-f]{6}$/i.test(c || '') ? c : d);
 export function drinkLook(d = {}) {
@@ -127,7 +127,7 @@ export function drinkLook(d = {}) {
     foam: Math.max(0, Math.min(1, +K.foam || 0)), ice: Math.max(0, Math.min(4, K.ice | 0)), inner: K.inner && K.inner.on !== false && (K.inner.on || K.inner.color) ? { color: hex(K.inner.color, '#ff3b6b') } : null, glow: !!K.glow,
     fizz: !!(K.fizz ?? K.bubbles), sparkle: !!K.sparkle, steam: !!K.steam, slosh: K.slosh !== false,
     straw: K.strawOn !== false && (K.strawOn || K.straw) ? hex(K.straw, '#ff5b6e') : null, garnish: pick(DRINK_GARNISHES, K.garnish), garnishColor: hex(K.garnishColor, GARNISH_COLORS[K.garnish] || '#ff5fa8'),
-    crustColor: hex(K.crustColor, CRUST_COLORS[K.crust] || '#ffffff'), fizzColor: hex(K.fizzColor, '#f6fcff'), foamColor: hex(K.foamColor, '#fffaf0'),
+    crustColor: hex(K.crustColor, CRUST_COLORS[K.crust] || '#ffffff'), gems: Math.max(0, Math.min(3, K.gems | 0)), gemColor: hex(K.gemColor, '#ffffff'), coins: Math.max(0, Math.min(6, K.coins | 0)), coinColor: hex(K.coinColor, '#e8c35a'), fizzColor: hex(K.fizzColor, '#f6fcff'), foamColor: hex(K.foamColor, '#fffaf0'),
     toy: pick(DRINK_TOYS, K.toy), toyColor: hex(K.toyColor, K.toy === 'diver' ? '#ffd23d' : K.toy === 'duck' ? '#ffd23d' : '#ff7a45') };
 }
 

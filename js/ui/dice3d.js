@@ -199,6 +199,8 @@ function material(mat, maps, base) {
     case 'syrup': return new T.MeshPhysicalMaterial({ ...common, color: rich(base), roughness: 0.06, clearcoat: 1, clearcoatRoughness: 0.02, emissive: rich(base).multiplyScalar(0.35), sheen: 0.4, sheenColor: hi(c, 0.5), envMapIntensity: 1.8 });
     // ice: water frozen clear, its inside crazed with fine cracks and caught bubbles (its relief: GRAIN.ice), bright where
     // it meets the light and cool where it does not (it is drawn as solid, so it shows through the clear drink it floats in)
+    // a cut gem: faceted, its own colour all through, fire in its facets (seen through a clear drink as ice is)
+    case 'gem': return refracting(new T.MeshPhysicalMaterial({ ...common, color: new T.Color(c).multiplyScalar(0.5), metalness: 0.25, roughness: 0, clearcoat: 1, clearcoatRoughness: 0, envMapIntensity: 3.2, iridescence: 0.8, iridescenceIOR: 2.0, iridescenceThicknessRange: [200, 700], flatShading: true }), c, 2.42);
     case 'ice': return refracting(new T.MeshPhysicalMaterial({ ...common, color: new T.Color(c).multiplyScalar(0.3), metalness: 0, roughness: 0.03, clearcoat: 0.6, clearcoatRoughness: 0.01, envMapIntensity: 1.3, iridescence: 0.15, iridescenceIOR: 1.31, normalScale: new T.Vector2(0.55, 0.55) }), c, 1.31);
     case 'glass': return new T.MeshPhysicalMaterial({ ...common, color: 0xffffff, transmission: 1, thickness: 0.9, ior: 1.52, roughness: 0.04, attenuationColor: c, attenuationDistance: 2.2, specularIntensity: 1, clearcoat: 0.4, envMapIntensity: 1.8 });
     case 'metal': return new T.MeshPhysicalMaterial({ ...common, color: new T.Color(c).lerp(new T.Color(0xffffff), 0.35), metalness: 1, roughness: 0.22, envMapIntensity: 2.1, clearcoat: 0.25 });

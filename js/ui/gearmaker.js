@@ -160,7 +160,9 @@ function drinkMaker(i, redraw) {
     h('span', { class: 'cap', text: t('gear.drink.extras') }),
     field('straw', h('span', { class: 'row wrap' }, check(['look', 'strawOn'], !!L.straw), ...(L.straw ? [colour(['look', 'straw'], L.straw)] : [])), ['look', 'straw']),
     field('garnish', h('span', { class: 'row wrap' }, select(['look', 'garnish'], opt(DRINK_GARNISHES), L.garnish), ...(L.garnish ? [colour(['look', 'garnishColor'], L.garnishColor)] : [])), ['look', 'garnish']),
-    field('toy', h('span', { class: 'row wrap' }, select(['look', 'toy'], opt(DRINK_TOYS), L.toy), ...(L.toy ? [colour(['look', 'toyColor'], L.toyColor)] : [])), ['look', 'toy'])];
+    field('toy', h('span', { class: 'row wrap' }, select(['look', 'toy'], opt(DRINK_TOYS), L.toy), ...(L.toy ? [colour(['look', 'toyColor'], L.toyColor)] : [])), ['look', 'toy']),
+    field('gems', h('span', { class: 'row wrap' }, range(['look', 'gems'], L.gems, 3), ...(L.gems ? [colour(['look', 'gemColor'], L.gemColor)] : [])), ['look', 'gems']),
+    field('coins', h('span', { class: 'row wrap' }, range(['look', 'coins'], L.coins, 6), ...(L.coins ? [colour(['look', 'coinColor'], L.coinColor)] : [])), ['look', 'coins'])];
   const glass = h('div', { class: 'gear-preview drink-preview' }, drinkEl(d, Math.ceil((d.sips || 3) * 0.75), d.sips || 3));
   return h('div', { class: 'b-maker' }, h('div', { class: 'b-fields' }, ...fields), shown(glass, 'gear.preview.drink'));
 }
