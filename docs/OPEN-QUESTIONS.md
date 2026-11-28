@@ -376,3 +376,12 @@ Not built yet, or only in part:
 - **The lit title sign.** Settled: it never blinks as a whole (no all-off, all-on). Each lit tube breathes and now and
   then buzzes on its own clock, a quick shiver of brightness. Say if the buzz should be rarer or stronger.
 - **Materials on dice.** The cloths, card stock and skins are in the renderer but are not offered as dice castings.
+
+## Round 21
+
+- **Focus, the TIP line.** The note was cut off after "you gain an extra bonus to primary TIP stat while you have".
+  Built as "T2 focus in both the Stake and the Bet", mirroring the CCC line. Say if it should be something else.
+- **Focus on the opening position.** A starting Stake lined up in one column (Owl's is) is already T2, so it gives
+  +1 to all three TIPs from turn one. Say if focus should only count from the second turn, or only in the Bet.
+- **The Run with the Book or Pouch open** covers about one and a half of the Run's three tricks. Say if the panel
+  should be narrower (the Pouch at four dice a row, say) or the Run should slide over while one is open.

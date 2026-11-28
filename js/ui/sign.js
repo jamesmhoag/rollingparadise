@@ -402,15 +402,28 @@ export function frameRooms(spec) {
   const base = spec.frame === 'none' ? 4 : 6 + tubes * 3.8 + strip, all = spec.frame === 'symbols' ? 6 : 0, at = (side) => (['edge', side].includes(spec.edgeAt) ? 7 : spec.edgeAt === 'corners' ? 2 : 0);
   return { top: Math.round(base + all + at('top')), bottom: Math.round(base + all + at('bottom')), side: Math.round(base + all + (spec.edgeAt === 'corners' ? 5 : 0)) };
 }
-// A sign's lettering is fitted to the room its frame and edging leave: if the name (with its symbol, its crown and
-// the class line) spills over that room either way, or runs wider than it, the name is set smaller until it fits.
+// A sign's lettering fills the room its frame and edging leave. The name is set as large as fits that room (wide and
+// tall, with its symbol, its crown and the class line), between NAME_FIT's bounds. The class line is sized with it
+// (CLS_FIT.k of the name) and tucked up under the name's foot by the same share of the name's size on every sign
+// (--cls-lift in style.css), so the overlap looks the same whatever the name; if the class line then runs wider than
+// the room, only it is made smaller. Measured on the letters themselves (a range over the text), not the boxes round them.
+const NAME_FIT = { min: 12, max: 42, fillW: 0.86, fillH: 0.9 }, CLS_FIT = { k: 0.34, min: 7, max: 14 }; // fillW, fillH: the share of the room the letters may take (script swashes and the glow reach past the letters' own box)
 export function fitSign(el) {
-  el.style.removeProperty('--name-fs'); const n = el.querySelector('.neon-name'); if (!n || !el.isConnected) return;
-  const cs = getComputedStyle(n), nk = parseFloat(cs.getPropertyValue('--nk')) || 1; let fs = (parseFloat(cs.fontSize) || 27) / nk; // in the sign's own size, before the face's scale
-  const ecs = getComputedStyle(el), pad = (k) => parseFloat(ecs[k]) || 0;
-  const spills = () => { const R0 = el.getBoundingClientRect(), k = R0.width / (el.offsetWidth || R0.width || 1) || 1, top = R0.top + pad('paddingTop') * k, bot = R0.bottom - pad('paddingBottom') * k, wide = R0.width - (pad('paddingLeft') + pad('paddingRight')) * k;
-    return [...el.children].filter((c) => !c.matches('svg, .badges, i')).some((c) => { const q = c.getBoundingClientRect(); return q.height && (q.top < top - 1.5 || q.bottom > bot + 1.5); }) || n.getBoundingClientRect().width > wide + 1.5; };
-  while (fs > 13 && spills()) { fs -= 1; el.style.setProperty('--name-fs', `${fs}px`); }
+  const n = el.querySelector('.neon-name'), c = el.querySelector('.neon-class'), face = el.querySelector('.nsign'); if (!n || !el.isConnected) return;
+  const R0 = el.getBoundingClientRect(); if (!R0.width || !R0.height) return;
+  const k = R0.width / (el.offsetWidth || R0.width) || 1, ecs = getComputedStyle(el), pad = (p) => (parseFloat(ecs[p]) || 0) * k;
+  const W = (R0.width - pad('paddingLeft') - pad('paddingRight')) * NAME_FIT.fillW, H = (R0.height - pad('paddingTop') - pad('paddingBottom')) * NAME_FIT.fillH;
+  const letters = (node) => { const r = document.createRange(); r.selectNodeContents(node); return r.getBoundingClientRect(); };
+  const room = (node) => { const cs = getComputedStyle(node), cut = node.classList.contains('crown-cut') ? 46 : 0; return ((parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0) - 2 * cut) * k; }; // the symbol's room beside the name
+  const hasCls = !!c?.textContent?.trim();
+  const setCls = (px) => el.style.setProperty('--cls-fs', `${px.toFixed(2)}px`);
+  const set = (fs) => { el.style.setProperty('--name-fs', `${fs.toFixed(2)}px`); setCls(Math.max(CLS_FIT.min, Math.min(CLS_FIT.max, fs * CLS_FIT.k))); };
+  const fits = () => { const nb = letters(n), cb = hasCls ? letters(c) : null, lift = (parseFloat(getComputedStyle(face).paddingTop) || 0) * k;
+    return nb.width + room(n) <= W + 0.5 && (cb ? cb.bottom : nb.bottom) - Math.min(nb.top, cb ? cb.top : nb.top) + lift <= H + 0.5; };
+  let lo = NAME_FIT.min, hi = NAME_FIT.max;
+  set(hi); if (fits()) lo = hi; else for (let i = 0; i < 8; i++) { const mid = (lo + hi) / 2; set(mid); if (fits()) lo = mid; else hi = mid; }
+  set(lo);
+  if (hasCls) { let cf = parseFloat(el.style.getPropertyValue('--cls-fs')); while (cf > CLS_FIT.min && letters(c).width > W + 0.5) { cf = Math.max(CLS_FIT.min, cf - 0.5); setCls(cf); } }
 }
 // The one way a Roller's sign is built, for anywhere it is shown: their seat at the table, the table's door, a
 // Roller's card, a business card, the Neon maker. It is always the same thing at the same size (.signbox: 196 × 88,

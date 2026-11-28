@@ -65,10 +65,11 @@ export const TUNING = {
     block: 'paid', // Block chips
     counter: 'paid', // Counter chips
   },
-  // Charisma, Cunning and Conviction are earned by occupying rows (lanes). Every row of the Stake holding a chip: +covered
-  // to your class's own reward stat; every row of the Bet holding a chip: +covered to all three. When those chips all
-  // line up in one column, +aligned instead of +covered.
-  occupancy: { covered: 1, focus: 1 }, // a zone's rows all held: +1 (Stake: the primary C; Bet: all three); focus in both: +1 primary and +1 all more
+  // Focus: what holding a chip in every row (lane) of the Stake or the Bet earns. T1 focus, a chip in every row in any
+  // columns: +t1 to all three Cs. T2 focus, every row held by one column: +t2 to all three TIPs and the Cs (counted once
+  // with T1's, not on top of it). Both zones at T1: +both more to the primary C; both at T2: +both more to the primary
+  // TIP too. Each group is capped at capTop for the primary and capOther for the other two: +2 / +1 / +1.
+  occupancy: { t1: 1, t2: 1, both: 1, capTop: 2, capOther: 1 },
   // the Sports Book
   book: {
     houseEdge: 0.95, // odds pay this share of the fair price

@@ -59,27 +59,33 @@ for (let seed = 1; seed <= 12; seed++) {
   assert(s.pouch.length >= beforeD, 'the end of the turn restores dice by Stake column');
 }
 
-// Charisma, Cunning and Conviction are earned by occupying rows: Stake rows → the class's own, Bet rows → all three
+// Focus: T1 (every row of a zone held) gives +1 to all Cs; T2 (every row held by one column) gives +1 to all TIPs as
+// well; T1 in both zones gives +1 more to the primary C, T2 in both +1 more to the primary TIP. Capped +2 / +1 / +1.
 {
   const run = R.newRun('hustler', 'standard', 77), { bout } = R.startIntro(run), s = bout.sides[0], m = s.dims.meterRows, C = s.dims.cols;
+  const tip0 = { ...s.tip }, tipUp = (k) => B.tipOf(s, k) - tip0[k];
   clearBoard(s); s.c = { charisma: 0, cunning: 0, conviction: 0 }; // no gear
-  assert(B.CCC.every((k) => B.cOf(s, k) === 0) && B.rewardOf(s, 'draw').n === 0, 'nothing held: no Charisma, Cunning or Conviction');
+  assert(B.CCC.every((k) => B.cOf(s, k) === 0) && B.TIP.every((k) => tipUp(k) === 0) && B.rewardOf(s, 'draw').n === 0, 'no focus: no Cs and no TIP bonus');
   for (let c = 0; c < C; c++) occupy(bout, s, m + (c % 2), c); // every Stake row, not lined up
-  assert(B.cOf(s, 'charisma') === 1 && B.cOf(s, 'cunning') === 0 && B.cOf(s, 'conviction') === 0, 'every Stake row held: +1 to the Hustler\'s own, Charisma');
+  assert(B.occBonus(s).tier.stake === 1 && B.CCC.every((k) => B.cOf(s, k) === 1) && B.TIP.every((k) => tipUp(k) === 0), 'T1 in the Stake: +1 to all three Cs, nothing to the TIPs');
   for (let c = 0; c < C; c++) occupy(bout, s, c % m, c);
-  assert(B.cOf(s, 'charisma') === 2 && B.cOf(s, 'cunning') === 1 && B.cOf(s, 'conviction') === 1, 'and every Bet row: +1 to all three (the class\'s usual 2 / 1 / 1)');
-  clearBoard(s); for (let c = 0; c < C; c++) { occupy(bout, s, m, c); occupy(bout, s, 0, c); }
-  assert(B.cOf(s, 'charisma') === 4 && B.cOf(s, 'cunning') === 2 && B.cOf(s, 'conviction') === 2, 'focus in both zones (each lined up in one column): +1 primary and +1 all more, for +4 / +2 / +2');
-  const on = B.rewardOf(s, 'draw'); assert(on.n === 4 * on.unused, 'unused draws pay at that rate');
+  assert(B.cOf(s, 'charisma') === 2 && B.cOf(s, 'cunning') === 1 && B.cOf(s, 'conviction') === 1, 'T1 in both zones: +1 more to the Hustler\'s primary C (2 / 1 / 1)');
+  clearBoard(s); for (let c = 0; c < C; c++) occupy(bout, s, m, c);
+  assert(B.occBonus(s).tier.stake === 2 && B.CCC.every((k) => B.cOf(s, k) === 1) && B.TIP.every((k) => tipUp(k) === 1), 'T2 in the Stake alone: +1 to all Cs and all TIPs');
+  for (let c = 0; c < C; c++) occupy(bout, s, 0, c);
+  assert(B.cOf(s, 'charisma') === 2 && B.cOf(s, 'cunning') === 1 && B.cOf(s, 'conviction') === 1, 'T2 in both: the Cs are at the cap, 2 / 1 / 1');
+  assert(tipUp('trickery') === 2 && tipUp('ingenuity') === 1 && tipUp('proficiency') === 1, 'T2 in both: +2 / +1 / +1 to the TIPs, the 2 on the primary (Trickery)');
+  const on = B.rewardOf(s, 'draw'); assert(on.n === 2 * on.unused, 'unused draws pay at that rate');
+  const P = B.statParts(s, 'trickery'); assert(P.focus === 2 && P.total === tip0.trickery + 2, 'the hover splits a TIP: base, focus, gear');
   s.grid[m][2].chips = [];
-  assert(B.cOf(s, 'charisma') === 1 && B.cOf(s, 'cunning') === 1, 'a Stake row left empty loses the Stake\'s part and the focus: the Bet still pays +1 to all');
-  const P = B.statParts(s, 'charisma'); assert(P.base === 1 && P.total === 1, 'the hover splits it: earned at the table, then gear and food');
-  for (let c = 0; c < C; c++) s.grid[0][c].chips = []; s.grid[m][2].chips = [{ id: 9e6, kind: 'std', value: 1 }];
-  assert(B.cOf(s, 'charisma') === 1 && B.cOf(s, 'cunning') === 0, 'one zone lined up on its own earns no focus: just its +1');
-  s.c = { charisma: 1, cunning: 0, conviction: 2 }; assert(B.cOf(s, 'charisma') === 2 && B.cOf(s, 'conviction') === 2, 'a jacket\'s or a sip\'s amounts add on top'); s.c = { charisma: 0, cunning: 0, conviction: 0 };
+  assert(B.occBonus(s).tier.stake === 0 && B.CCC.every((k) => B.cOf(s, k) === 1) && B.TIP.every((k) => tipUp(k) === 1), 'a Stake row left empty: the Bet\'s T2 still pays +1 all');
+  const PC = B.statParts(s, 'charisma'); assert(PC.base === 1 && PC.total === 1, 'the hover splits a C: earned at the table, then gear and food');
+  s.grid[m][2].chips = [{ id: 9e6, kind: 'std', value: 1 }]; for (let c = 0; c < C; c++) occupy(bout, s, 1 % m, c);
+  if (m > 1) assert(B.occBonus(s).tier.bet === 2 && tipUp('trickery') === 2, 'a second full column in the Bet is still T2');
+  s.c = { charisma: 1, cunning: 0, conviction: 2 }; assert(B.cOf(s, 'charisma') === 3 && B.cOf(s, 'conviction') === 3, 'a jacket\'s or a sip\'s amounts add on top of the cap'); s.c = { charisma: 0, cunning: 0, conviction: 0 };
   const fox = R.newRun('rascal', 'standard', 78), fb = R.startIntro(fox).bout.sides[0]; clearBoard(fb); fb.c = { charisma: 0, cunning: 0, conviction: 0 };
-  for (let c = 0; c < C; c++) occupy(bout, fb, fb.dims.meterRows, c);
-  assert(B.cOf(fb, 'cunning') === 1 && B.cOf(fb, 'charisma') === 0, 'a Rascal\'s Stake earns Cunning');
+  for (let c = 0; c < C; c++) { occupy(bout, fb, fb.dims.meterRows, c); occupy(bout, fb, 0, c); }
+  assert(B.cOf(fb, 'cunning') === 2 && B.cOf(fb, 'charisma') === 1 && B.tipOf(fb, 'ingenuity') === D.CLASSES.rascal.tip.ingenuity + 2, 'a Rascal\'s primaries are Cunning and Ingenuity');
 }
 
 // no Fully Occupied Bet bonus any more: a full Bet restores by column like any other
@@ -92,4 +98,4 @@ for (let seed = 1; seed <= 12; seed++) {
   assert(B.restorePlan(bout, s).nTricks === m, 'it restores one trick per occupied Bet column');
   const P = B.statParts(s, 'trickery'); assert(P.base === D.CLASSES.rascal.tip.trickery && P.base + P.gear === s.tip.trickery, 'a stat splits into base and gear');
 }
-console.log('ok, restore: tapping, restores by column, order, CCC earned by rows, no Full Bet bonus, stat parts');
+console.log('ok, restore: tapping, restores by column, order, focus tiers and caps, no Full Bet bonus, stat parts');

@@ -50,7 +50,9 @@ for (let seed = 1; seed <= 60; seed++) {
     if (run.purse > 50) R.placeBet(run, run.fs.book.events[0].key, 0, run.fs.book.min);
     const path = [0, 1 + (seed % 2)];
     for (let k = 0; k < 2 && alive; k++) {
-      const i = path[k], prep = R.newPrep(run, 'table', i); if (run.purse > 400) { R.setTilt(run, prep, 'hazard', true); R.setTilt(run, prep, 'creature', true); }
+      // the planned table, or another open one the purse covers (the planned one can cost more than is left)
+      let i = path[k]; if (!R.canAfford(run, 'table', i)) i = R.gamesOpen(run).find((g) => g.kind === 'table' && run.purse >= g.cost)?.idx ?? i;
+      const prep = R.newPrep(run, 'table', i); if (run.purse > 400) { R.setTilt(run, prep, 'hazard', true); R.setTilt(run, prep, 'creature', true); }
       if (k === 1 && run.fs.lastWin) prep.dd = true;
       run.plan.counts = null;
       if (!R.canAfford(run, 'table', i)) { assert(R.stranded(run), 'a table you cannot afford, with nothing else to play: shown the door'); alive = false; break; }

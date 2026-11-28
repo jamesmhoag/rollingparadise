@@ -15,7 +15,7 @@ import { MADE_CHIPS, HEIGHT } from './content/chipmaker.js';
 import { TUNING } from './content/tuning.js';
 import { rollDie, boutCopy, facesOf, upgrade as upgradeFaces } from './dice.js';
 export { rollDie };
-import { CLASSES as CLASS_BASE, DEFAULT_MAT, DIE_UPGRADES, TRICKS, TYPES, QDIE, FOIL, WEAR, defOf, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, CREATURES, ORBITALS, FELTS, TILTS, layWhat, layName, TILT_PRESSURE, tiltFrom, DENOM_VALUES, tiltChance, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS, primaryC, BOSS_TRAITS } from './data.js';
+import { CLASSES as CLASS_BASE, DEFAULT_MAT, DIE_UPGRADES, TRICKS, TYPES, QDIE, FOIL, WEAR, defOf, DICE, DIST, QMULT, HAZARD_KINDS, CALAMITIES, CREATURES, ORBITALS, FELTS, TILTS, layWhat, layName, TILT_PRESSURE, tiltFrom, DENOM_VALUES, tiltChance, shopVars, resistsOf, SHOP_CHIPS, INSTANCE_SHIELDS, SEQS, primaryC, primaryT, BOSS_TRAITS } from './data.js';
 import { t as tx } from './text.js';
 
 // The turn: Draw tricks; Roll (pick the dice; they are thrown as the Bid opens); Bid on tricks, seeing both rolls;
@@ -188,7 +188,7 @@ export const spying = (s) => tops(s, 'spy').length;
 export const sunny = (s) => (s.sky || []).some((o) => o.kind === 'sun');
 // a Ghost haunts a row: no trick aims at it
 export const haunted = (b, side) => new Set((b.creatures || []).filter((cr) => cr.kind === 'ghost' && cr.side === side.idx && !cr.gone && cr.arrive <= b.turn && cr.r >= 0).map((cr) => cr.r));
-export const tipOf = (s, k) => Math.max(0, s.tip[k] + (s.turnBonus[k] || 0));
+export const tipOf = (s, k) => Math.max(0, s.tip[k] + (occBonus(s)[k] || 0) + (s.turnBonus[k] || 0)); // T2 focus adds to the TIPs (occBonus)
 // Charisma, Cunning and Conviction: what occupying rows earns (occBonus) plus gear (a jacket: s.c) and food or a sip
 export const cOf = (s, k) => Math.max(0, (occBonus(s)[k] || 0) + (s.c[k] || 0) + (s.turnBonus[k] || 0));
 
@@ -691,17 +691,25 @@ export function occupancy(s) {
     stakeCovered: stakeRows.every((x) => x.n > 0), betCovered: betRows.every((x) => x.n > 0), stakeAligned: aligned(stakeCols), betAligned: aligned(betCols),
     full: betTotal > 0 && betSpaces >= betTotal };
 }
-// What occupying rows earns (a Roller has no Charisma, Cunning or Conviction of its own: 0 / 0 / 0, plus what a jacket,
-// food or a sip adds for as long as it lasts). A chip in every row (lane) of the Stake: +1 to the class's primary C.
-// A chip in every row of the Bet: +1 to all three. A zone counts on its own: its rows can't be split between the Stake
-// and the Bet. Both: +2 primary / +1 / +1. And focus in both zones (each zone's rows all held by one column of it):
-// +1 more to the primary and +1 more to all three, +4 / +2 / +2. Amounts: TUNING.occupancy.
-export const CCC = ['charisma', 'cunning', 'conviction'];
+// Focus: what holding rows earns (a Roller has no Charisma, Cunning or Conviction of its own: 0 / 0 / 0, plus what a
+// jacket, food or a sip adds for as long as it lasts). Each zone (the Stake, the Bet) has a focus tier:
+//   T1: a chip in every row (lane) of the zone, in any columns.   T2: every row held by one column of the zone.
+// T1 in either zone: +1 to all three Cs. T2 in either zone: +1 to all three TIPs as well (the Cs' +1 is the same one).
+// T1 in both zones: +1 more to the primary C. T2 in both: +1 more to the primary TIP too. Each group is capped at
+// +2 / +1 / +1 (the 2 on the primary), so T2 in both zones is the top: +2 / +1 / +1 to the Cs and to the TIPs.
+// Amounts: TUNING.occupancy. Read live, after every action.
+export const CCC = ['charisma', 'cunning', 'conviction'], TIP = ['trickery', 'ingenuity', 'proficiency'];
+export const focusTier = (o, zone) => ((zone === 'bet' ? o.betAligned : o.stakeAligned) >= 0 ? 2 : (zone === 'bet' ? o.betCovered : o.stakeCovered) ? 1 : 0);
 export function occBonus(s, o = occupancy(s)) {
-  const T = { covered: 1, focus: 1, ...(TUNING.occupancy || {}) }, out = { charisma: 0, cunning: 0, conviction: 0, parts: [] }, k = primaryC(s.cls);
-  if (o.stakeCovered) { out[k] += T.covered; out.parts.push({ zone: 'stake', n: T.covered, keys: [k] }); }
-  if (o.betCovered) { for (const x of CCC) out[x] += T.covered; out.parts.push({ zone: 'bet', n: T.covered, keys: CCC }); }
-  if (o.stakeCovered && o.betCovered && o.stakeAligned >= 0 && o.betAligned >= 0) { out[k] += T.focus; for (const x of CCC) out[x] += T.focus; out.parts.push({ zone: 'focus', n: T.focus, keys: [k], all: true }); }
+  const T = { t1: 1, t2: 1, both: 1, capTop: 2, capOther: 1, ...(TUNING.occupancy || {}) }, pc = primaryC(s.cls), pt = primaryT(s.cls);
+  const tier = { stake: focusTier(o, 'stake'), bet: focusTier(o, 'bet') }, top = Math.max(tier.stake, tier.bet), low = Math.min(tier.stake, tier.bet);
+  const out = { charisma: 0, cunning: 0, conviction: 0, trickery: 0, ingenuity: 0, proficiency: 0, tier, parts: [] };
+  const add = (why, n, keys) => { if (!n) return; for (const k of keys) out[k] += n; out.parts.push({ why, n, keys }); };
+  if (top >= 1) add('t1', T.t1, CCC);
+  if (top >= 2) add('t2', T.t2, TIP);
+  if (low >= 1) add('both1', T.both, [pc]);
+  if (low >= 2) add('both2', T.both, [pt]);
+  for (const k of [...CCC, ...TIP]) out[k] = Math.min(out[k], k === pc || k === pt ? T.capTop : T.capOther);
   return out;
 }
 // Restore order: tapped longest first. Ties: tricks by the phase they belong to, worse quality, basic before exotic
@@ -780,9 +788,9 @@ function* restorePhase(b) {
 // A stat as it stands this turn: the class's base, what gear and the run add (jacket, cards, rest, floor), and each
 // temporary change with where it came from (food, drink, Full Bet, Curse).
 export function statParts(s, k) {
-  const inTip = k in s.tip, base = inTip ? CLASS_BASE[s.cls]?.tip?.[k] ?? s.tip[k] : occBonus(s)[k] || 0; // CCC: what occupying rows earns now
+  const inTip = k in s.tip, focus = occBonus(s)[k] || 0, base = inTip ? CLASS_BASE[s.cls]?.tip?.[k] ?? s.tip[k] : focus; // CCC: what focus earns now
   const own = inTip ? s.tip[k] : base + (s.c[k] || 0), temp = (s.turnSrc || []).filter((x) => x.k === k);
-  return { k, base, gear: own - base, temp, tempN: sum(temp, (x) => x.n), total: inTip ? tipOf(s, k) : cOf(s, k) };
+  return { k, base, focus: inTip ? focus : 0, gear: own - base, temp, tempN: sum(temp, (x) => x.n), total: inTip ? tipOf(s, k) : cOf(s, k) };
 }
 
 // ---------- food ----------

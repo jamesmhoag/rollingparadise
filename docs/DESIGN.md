@@ -120,12 +120,16 @@ lane (`c`). Columns vary with Versatility and Depth; rows are always 5.
 - **Live preview.** `restorePlan` is read after every action: tapped tricks show under the Book and tapped dice after
   the Pouch, ringed **RESTORES** when the end of the turn would bring them back as the board stands now. The Restore
   badge counts them.
-- **Charisma, Cunning, Conviction are earned by occupying rows.** They have no class base. A chip in every row of
-  the **Stake** earns +1 to the class's own (Hustler Charisma, Rascal Cunning, Technician Conviction); a chip in every
-  row of the **Bet** earns +1 to all three. A zone counts on its own (its five rows can't be split between the Stake
-  and the Bet). Both together: 2 / 1 / 1, the 2 on the class's primary C. **Focus** in both zones (each zone's rows all
-  held by one of its columns) adds +1 more to the primary and +1 more to all three: 4 / 2 / 2. Focus in one zone alone
-  earns nothing extra. Otherwise they are 0, plus whatever a jacket, food or a sip adds for as long as it lasts. Amounts in `TUNING.occupancy`. Read live, and again when the House deploys.
+- **Focus.** Charisma, Cunning and Conviction have no class base; they, and a bonus to Trickery, Ingenuity and
+  Proficiency, are earned by holding rows. Each zone (the Stake, the Bet) has a focus tier: **T1**, a chip in every
+  row in any columns; **T2**, every row held by one column. T1 in either zone: +1 to all three Cs. T2 in either zone:
+  +1 to all three TIPs as well (the Cs' +1 is the same one, not a second). T1 in both zones: +1 more to the class's
+  primary C. T2 in both: +1 more to its primary TIP too. Focus adds at most +2 / +1 / +1 to each group (the 2 on the
+  primary), so T2 in both zones is the top: +2 / +1 / +1 Cs and +2 / +1 / +1 TIPs. Jackets, food and sips add on top
+  of that. The TIP bonus is live: holding T2 in the Bid step gives one more bid right away. Primaries: Hustler
+  Charisma and Trickery, Rascal Cunning and Ingenuity, Technician Conviction and Proficiency. Amounts and caps in
+  `TUNING.occupancy` (Build mode → Gameplay tuner → Focus). Read live, and again when the House deploys.
+  The meters under each zone show its tier (T1 gold, T2 cyan); the dots' hover says the rule and what focus earns now.
 - There is no Fully Occupied Bet bonus any more: more columns held is still how more tricks and dice restore.
 - **Meters on the position.** Under each zone of each position, by its label: a dot per row (lit when held, with what
   holding them all earns) and a bar per column (lit when held: each restores a trick on the Bet, a die on the Stake).
@@ -959,6 +963,11 @@ through tricks and chips, as before.
 ### At the table
 - The name plate is one fixed sign with the name and class; Worth, the Pit, bids, tapped pieces and the steps are the
   Roller's field beside it (the pots and ledger no longer sit between the Stakes: the Pit has that space).
+- **The name plate's lettering fills the plate** (`fitSign`, ui/sign.js): the name is set as large as fits the room the
+  frame and edging leave (a long name breaks onto two lines rather than shrinking to a sliver), the class line is sized
+  with it, and the class line tucks up under the name by the same share of the name's size on every sign (deeper under
+  script and hand faces, which have descenders; barely under capitals). Every sign is fitted the same way: the seats,
+  the table's door, cards, the name tag and the Neon maker.
 - Any trick under the pointer shows where its chips will land, with how many once the roll is known.
 - The end of a match plays one thing at a time: the call, the loser's sign sparking out, cracking and going dark, the
   winner's lap, then the readout.
@@ -1099,8 +1108,12 @@ for a close look, to be turned over (`ui/spin.js`, the look a die gets).
   the rest are faint (a ring where each chip goes, the name dimmer). The ◎ button by the turn's buttons turns the
   whole display off and on, and is remembered. The engine answers all of it from `landing` (bout.js): each space
   with `ch`, `lvl`, `foot` and `reach`.
-- **The turn's buttons stand under the Roll**, beside the tricks being bid on, when the dice are open (between the
-  seats when they are folded away). Three tricks stand in a row of the Run.
+- **The turn's buttons stand under the Roll** in every step: the step's button across the Roll's column, then Undo,
+  the speed and the aim display in a row under it. The Roll is always open by the middle of the table.
+- **The Book and the Pouch** are spines side by side at the outer edge of each half. One at a time opens as a panel
+  over the Run (the Book by itself in the Draw step, the Pouch in the Roll step until you throw; click a spine, or
+  press B or D, to open or close one, and opening one closes the other). The Run keeps its whole width in every step:
+  three tricks a row.
 - **One place, one text.** A text that arrives where another stands replaces it until it is over (`overText`,
   ui/core.js: the Roll's box while dice are held over it), and the general rule in core.js (MOMENT / STANDING)
   covers names over spaces too.

@@ -4,7 +4,7 @@ import { chipPainter } from './chippaint.js';
 import { stackEdit, ADDS } from '../stackedit.js';
 import { sfx } from './sfx.js';
 import { nameTag, app, hud, oppTip, trickTag, diceSummary } from './app.js';
-import { chipEl, chipSig, chipGlyph, chipTip, dieEl, dieTip, statTip, trickTip, trickChip, trickLook, trickWord, drinkEl, cardEl } from './parts.js';
+import { chipEl, chipSig, chipGlyph, chipTip, dieEl, dieTip, statTip, trickTip, trickChip, trickLook, trickWord, drinkEl, cardEl, focusRule, focusTierText } from './parts.js';
 import { jacketEl } from './gear.js';
 import { signOf, dressSign, dressFelt, nameSign } from './sign.js';
 import * as D from '../data.js';
@@ -31,8 +31,8 @@ export function positionView({ CH = 46, maxW = 400, mirror = false } = {}) {
     z.el = h('div', { class: `zone-label ${k}` }, h('b', { text: t(`prep.label.${k}`), guide: 'position-label' }), z.rows, z.bonus, z.cols); z.el.style.transition = 'left .45s, width .45s'; return z; };
   const Z = { stake: zone('stake'), bet: zone('bet') }; board.append(Z.stake.el, Z.bet.el);
   const xOf = (r) => (mirror ? r : rows - 1 - r) * CW;
-  const rowsTip = (k) => { if (!side) return ''; const o = B.occupancy(side), held = (k === 'bet' ? o.betRows : o.stakeRows).filter((x) => x.n > 0).length, pc = D.primaryC(side.cls);
-    return `${t(k === 'bet' ? 'prep.meter.bet.tip' : 'prep.meter.stake.tip', { stat: D.STATS[pc]?.name || '' })}<p class="v">${t('prep.meter.rows', { n: held, of: side.dims.cols })}</p>`; };
+  const rowsTip = (k) => { if (!side) return ''; const ob = B.occBonus(side);
+    return `${t('prep.meter.rows.tip', { zone: t(k === 'bet' ? 'table.zone-bet' : 'table.zone-stake'), tier: focusTierText(ob.tier[k]), rule: focusRule(side.cls) })}<p class="v">${t('prep.meter.rows', { n: (k === 'bet' ? B.occupancy(side).betRows : B.occupancy(side).stakeRows).filter((x) => x.n > 0).length, of: side.dims.cols })}</p>`; };
   const colsTip = (k) => { if (!side) return ''; const o = B.occupancy(side); return t(k === 'bet' ? 'prep.meter.cols.bet' : 'prep.meter.cols.stake', { n: k === 'bet' ? o.betColsOcc : o.stakeColsOcc, of: (k === 'bet' ? o.betCols : o.stakeCols).length }); };
   function draw(sd) {
     side = sd; rows = sd.rows; dressFelt(board, signOf(mirror ? 'them' : 'you', sd.sign)); const m = sd.dims.meterRows, C = sd.dims.cols, want = new Set(); CW = Math.max(30, Math.min(56, Math.floor(maxW / rows)));
@@ -55,10 +55,10 @@ export function positionView({ CH = 46, maxW = 400, mirror = false } = {}) {
       e.style.zIndex = 10 + col * 20 + lvl; e.style.opacity = 1; e.style.transform = `translate(${x}px, ${y}px)`; });
     for (const [k, e] of chips) if (!seen.has(k)) { const tf = e.style.transform.replace(/ scale\([^)]*\)/, ''); e.style.opacity = 0; e.style.transform = `${tf} scale(.2)`; chips.delete(k); setTimeout(() => e.remove(), 450); }
     // the marks under each zone, as at the table
-    const o = B.occupancy(sd), ob = B.occBonus(sd, o), focus = ob.parts.find((x) => x.zone === 'focus');
-    for (const k of ['bet', 'stake']) { const M = Z[k], rs = k === 'bet' ? o.betRows : o.stakeRows, cs = k === 'bet' ? o.betCols : o.stakeCols, al = k === 'bet' ? o.betAligned : o.stakeAligned, part = ob.parts.find((x) => x.zone === k);
-      M.rows.replaceChildren(...rs.map((x) => h('i', { class: x.n > 0 ? 'on' : '' }))); M.rows.classList.toggle('full', !!part); M.rows.classList.toggle('aligned', al >= 0);
-      swapText(M.bonus, part ? `+${part.n + (focus ? focus.n : 0)}` : ''); // the amount only: the dots' hover names the stat (a name here ran into the next label)
+    const o = B.occupancy(sd), ob = B.occBonus(sd, o);
+    for (const k of ['bet', 'stake']) { const M = Z[k], rs = k === 'bet' ? o.betRows : o.stakeRows, cs = k === 'bet' ? o.betCols : o.stakeCols, al = k === 'bet' ? o.betAligned : o.stakeAligned, tier = ob.tier[k];
+      M.rows.replaceChildren(...rs.map((x) => h('i', { class: x.n > 0 ? 'on' : '' }))); M.rows.classList.toggle('full', tier >= 1); M.rows.classList.toggle('aligned', tier >= 2);
+      swapText(M.bonus, tier ? t('table.zm-tier', { n: tier }) : ''); M.bonus.classList.toggle('t2', tier >= 2); // the zone's focus tier, as at the table
       M.cols.replaceChildren(...(mirror ? cs : cs.slice().reverse()).map((x) => h('i', { class: `${x.n > 0 ? 'on' : ''}${x.r === al ? ' al' : ''}` }))); }
   }
   // the space under a pointer: { r, c } in the side's rows, or null; on a chip, that chip's space and its place in the

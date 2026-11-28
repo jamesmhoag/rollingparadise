@@ -7,7 +7,7 @@ import { nameSign, signOf } from './sign.js';
 import * as D from '../data.js';
 import * as CM from '../content/chipmaker.js';
 import { cents, cap, shade } from '../util.js';
-import { multOf, makeOf, fxOf, traitRule } from '../bout.js';
+import { multOf, makeOf, fxOf, traitRule, occBonus, occupancy, CCC, TIP } from '../bout.js';
 import { facesOf, faceValue, matOf, dieName, petName } from '../dice.js';
 import { traitsOf, traitsHtml } from '../traits.js';
 import { iconStyle, textureOf } from './icons.js';
@@ -330,3 +330,20 @@ export function drinkEl(d, sips = d.sips, max = d.max || d.sips, cls = '') {
 }
 export function feltEl(id, cls = '') { const F = D.feltOf(id); return h('span', { class: `gfelt ${cls}`, style: { '--fa': F.a, '--fb': F.b, '--fr': F.rim } }); }
 export const feltStyle = (id) => { const F = D.feltOf(id), tex = textureOf('felt:' + id); return { '--fa': F.a, '--fb': F.b, '--fr': F.rim, ...(tex ? { '--ftex': `url("${tex}")` } : {}) }; };
+
+// ---------- focus (bout.js occBonus) ----------
+// The rule as it stands in the tuner, named for the class (its primary C and TIP), and what a side's focus earns now:
+// one text for the table's meters, the stat hovers and the position planner.
+export function focusRule(cls) {
+  const T = { t1: 1, t2: 1, both: 1, capTop: 2, capOther: 1, ...(D.TUNING.occupancy || {}) };
+  return tx('table.focus-rule', { t1: T.t1, t2: T.t2, both: T.both, top: T.capTop, other: T.capOther, pc: D.STATS[D.primaryC(cls)]?.name || '', pt: D.STATS[D.primaryT(cls)]?.name || '' });
+}
+export const focusTierText = (n) => (n ? tx('table.focus-tier', { n }) : tx('table.focus-none'));
+export function focusEarned(s, ob = occBonus(s)) { return [...CCC, ...TIP].filter((k) => ob[k]).map((k) => `+${ob[k]} ${D.STATS[k].name}`).join(', '); }
+const FOCUS_LINE = { t1: 'table.focus-t1', t2: 'table.focus-t2', both1: 'table.focus-both1', both2: 'table.focus-both2' };
+export function focusParts(s, ob = occBonus(s)) { return ob.parts.map((x) => tx(FOCUS_LINE[x.why], { n: x.n, stat: x.keys.map((k) => D.STATS[k].name).join(', ') })).join(' '); }
+export function focusRowsTip(s, k, o = occupancy(s)) {
+  const ob = occBonus(s, o), rows = k === 'bet' ? o.betRows : o.stakeRows, tier = ob.tier[k], zone = tx(k === 'bet' ? 'table.zone-bet' : 'table.zone-stake');
+  return tx('table.rows-tip', { zone, n: rows.filter((x) => x.n > 0).length, of: rows.length, rule: focusRule(s.cls), now: tier ? tx('table.rows-now', { tier: focusTierText(tier), list: focusEarned(s, ob) }) : tx('table.rows-now-none') })
+    + (tier === 1 ? `<p class="dim">${tx('table.rows-align-hint')}</p>` : '');
+}

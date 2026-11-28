@@ -751,28 +751,24 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 .die.m-diamond { filter: drop-shadow(0 0 6px rgba(200, 240, 255, .8)); }
 
 
-/* ---------- folding the Book and the dice (boutview.js syncFolds) ----------
-   Outside the phases that use them, the Book and the dice fold to thin spines and the Run takes their width.
-   A spine shows what is inside (a bar per trick in its type's colour, a mini die per die); click it, or press B or D,
-   to peek: the column opens on a panel over the Run until you click it again, press Esc or the phase moves on. */
+/* ---------- the Book and the Pouch (boutview.js syncFolds) ----------
+   Both are spines side by side at the outer edge of your half. One at a time opens as a panel over the Run: the Book
+   by itself to draw, the Pouch to roll; click a spine, or press B or D, to open or close one. A spine shows what is
+   inside (a bar per trick in its type's colour, a mini die per die). The Roll stays open by the middle. */
 .feed, .run-empty { transition: left .45s var(--ease), width .45s var(--ease), opacity .5s, height .3s; }
-.scene.bout .zt-book, .scene.bout .zt-dice, .tray-box, .tray-cap { transition: opacity .3s, translate .3s var(--ease); }
-.scene.bout.fold-book:not(.peek-book) .zt-book, .scene.bout.fold-dice:not(.peek-dice) :is(.zt-dice, .tray-box, .tray-cap):not(.them) { opacity: 0; pointer-events: none; }
-.scene.bout.peek-book .zt-book { z-index: 8; left: 52px !important; }
-.scene.bout.peek-dice :is(.zt-dice, .tray-box, .tray-cap) { z-index: 8; }
-.spine { position: absolute; top: 418px; width: 28px; height: 248px; padding: 8px 0; border-radius: 9px; border: 1px solid var(--line); background: rgba(9, 6, 24, .6); color: var(--gold);
-  display: flex; flex-direction: column; align-items: center; gap: 8px; font: inherit; cursor: pointer; opacity: 0; pointer-events: none; overflow: hidden; z-index: 5; transition: opacity .35s, border-color .25s, background .25s, box-shadow .25s; }
-.spine.book { left: 14px; } .spine.dice { left: 1044px; }
-.scene.bout.fold-book .spine.book, .scene.bout.fold-dice .spine.dice { opacity: 1; pointer-events: auto; }
+.scene.bout .zt-book, .scene.bout .zt-pouch, .scene.bout .zt-dice, .tray-box, .tray-cap { transition: opacity .3s, translate .3s var(--ease); }
+.spine { position: absolute; top: 462px; width: 28px; height: 246px; padding: 8px 0; border-radius: 9px; border: 1px solid var(--line); background: rgba(9, 6, 24, .6); color: var(--gold);
+  display: flex; flex-direction: column; align-items: center; gap: 8px; font: inherit; cursor: pointer; overflow: hidden; z-index: 5; transition: left .45s var(--ease), border-color .25s, background .25s, box-shadow .25s; }
 .spine:hover, .spine.peeking { border-color: rgba(110, 240, 255, .7); background: rgba(30, 20, 70, .85); box-shadow: 0 0 12px rgba(110, 240, 255, .25); }
 .spine .sp-t { writing-mode: vertical-rl; rotate: 180deg; font-size: 9.5px; letter-spacing: .22em; white-space: nowrap; flex: none; }
 .spine .sp-marks { display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 0; }
 .spine.book .sp-marks i { width: 14px; height: 6px; border-radius: 2px; background: var(--tc); box-shadow: 0 0 5px color-mix(in srgb, var(--tc) 60%, transparent); }
 .spine.dice .sp-marks .die { cursor: grab; } .spine.dice .sp-marks .die .ups { display: none; }
-.peek-panel { position: absolute; top: 410px; height: 300px; border-radius: 12px; border: 1px solid rgba(110, 240, 255, .45); background: #0b0720; box-shadow: 0 14px 40px rgba(0, 0, 0, .65);
-  z-index: 7; opacity: 0; pointer-events: none; transition: opacity .25s; cursor: pointer; }
-.peek-panel.book { left: 44px; width: 234px; } .peek-panel.dice { left: 832px; width: 204px; }
-.scene.bout.peek-book .peek-panel.book, .scene.bout.peek-dice .peek-panel.dice { opacity: 1; pointer-events: auto; }
+.open-panel { position: absolute; top: 458px; width: 196px; height: 252px; border-radius: 12px; border: 1px solid rgba(110, 240, 255, .45); background: #0b0720; box-shadow: 0 14px 40px rgba(0, 0, 0, .65);
+  z-index: 950; opacity: 0; pointer-events: none; transition: opacity .25s; }
+.scene.bout:is(.open-book, .open-pouch) .open-panel { opacity: 1; pointer-events: auto; }
+.scene.bout .zt-book, .scene.bout .zt-pouch { z-index: 955; opacity: 0; pointer-events: none; }
+.scene.bout.open-book .zt-book, .scene.bout.open-pouch .zt-pouch { opacity: 1; pointer-events: auto; }
 
 /* tapping and restoring: tapped tricks wait under the Book and tapped dice after the Pouch; the ones the end of this
    turn restores (as the board stands now) are ringed. Temporary stat changes colour their stat (up or down). */
@@ -826,8 +822,8 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 .zone-label.bet b { color: #7dffb5; text-shadow: 0 0 8px rgba(125, 255, 181, .5); } .zone-label.stake b { color: #ffc478; text-shadow: 0 0 8px rgba(255, 196, 120, .45); }
 /* bids pile on the trick's card: the pile is clickable (takes the top chip back), the card around it bids more */
 /* the dice column follows the Run */
-.zone-title.zt-dice, .tray-box, .tray-cap, .spine.dice, .peek-panel.dice { transition: left .45s var(--ease), opacity .3s; }
-.tray-box { top: 484px; } .tray-cap { top: 466px; } .spine.dice { top: 466px; height: 242px; } .peek-panel.dice { top: 458px; height: 256px; }
+.zone-title.zt-dice, .tray-box, .tray-cap { transition: left .45s var(--ease), opacity .3s; }
+.tray-box { top: 484px; } .tray-cap { top: 466px; }
 .run-empty { transition: left .45s var(--ease), width .45s var(--ease), opacity .5s; }
 
 /* ---------- two mirrored halves under the table (boutview.js runSpan) ----------
@@ -837,7 +833,6 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 .controls { left: 1046px; right: 16px; top: auto; bottom: 262px; flex-wrap: wrap-reverse; row-gap: 6px; } .controls .big { padding: 7px 20px; } .scene.bout .lib-btn { top: 376px; left: 1046px; right: auto; }
 .zone-title { text-transform: uppercase; }
 .tray-box { top: 466px; } .tray-cap { top: 454px; width: 112px; font-size: 9px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } .run-empty { top: 466px; height: 242px; }
-.spine { top: 478px; height: 230px; } .peek-panel { top: 458px; height: 256px; } .peek-panel.book { width: 196px; }
 .spine.them { opacity: 1; pointer-events: auto; cursor: help; color: var(--pink); } .spine.them:hover { box-shadow: none; }
 .away { opacity: 0 !important; pointer-events: none !important; }
 .zone-title, .tray-box, .spine.them { transition: left .45s var(--ease), opacity .3s; }
@@ -858,7 +853,9 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 .feed-head { display: flex; } .scene.bout .feed-head .lib-btn { position: static; padding: 0 10px; font-size: 9px; border-radius: 0 0 0 6px; } .feed-head .hist { border-radius: 0 10px 0 0; }
 .who.seat { position: absolute; top: 374px; width: 470px; z-index: 4; } .who.seat.me { left: 16px; } .who.seat.them { right: 16px; }
 .controls { left: 496px; right: auto; width: 288px; top: 392px; bottom: auto; justify-content: center; flex-wrap: nowrap; transition: left .3s var(--ease), top .3s var(--ease); z-index: 20; }
-.controls.by-roll { width: 190px; gap: 5px; } .controls.by-roll .big { padding: 6px 16px; } /* under the Roll, beside the tricks being bid on */
+/* the turn's buttons, always under the Roll: the step's button across the column, then Undo, the speed and the aim display */
+.scene.bout .controls { right: auto; bottom: auto; flex-direction: column; align-items: stretch; gap: 6px; flex-wrap: nowrap; justify-content: flex-start; }
+.scene.bout .controls > .btn.big { padding: 7px 12px; } .controls .ctrl-row { display: flex; gap: 6px; } .controls .ctrl-row .btn { flex: 1; justify-content: center; }
 /* the House's phases as a neon sign: unlit tubes in each phase's colour, the one being played switched on */
 .phases { height: 26px; top: 99px !important; border: 1.5px solid rgba(110, 240, 255, .35); border-radius: 14px; background: radial-gradient(ellipse at 50% 120%, rgba(110, 240, 255, .08), transparent 70%), #07040f;
   box-shadow: 0 0 10px rgba(110, 240, 255, .18), inset 0 0 14px rgba(0, 0, 0, .8); }
@@ -905,7 +902,7 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 .phases.house-on .ph-set.ph-plan span { transform: rotateX(-90deg); opacity: 0; transition-delay: calc(var(--i) * 50ms); }
 .phases .ph-set span + span { border-left: 1px solid rgba(110, 240, 255, .08); }
 /* the dice sit just under the commit button */
-.scene.bout .tray-box { top: 452px; } .scene.bout .tray-cap { top: 438px; } .spine.dice { top: 438px; height: 270px; }
+.scene.bout .tray-box { top: 452px; } .scene.bout .tray-cap { top: 438px; }
 .who.seat .pills.steps .pill { white-space: nowrap; padding: 2px 7px; font-size: 11.5px; } .who.seat .pills.steps { flex-wrap: nowrap; }
 
 /* ---------- the Rollers' name signs (colours from D.NEON, set in Build mode › Neon) ----------
@@ -913,8 +910,11 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 .who.seat { width: 424px; top: 368px; align-items: center; row-gap: 4px; }
 .who.seat.me { left: 10px; } /* its frame is its sign's (.neonsign.frame-*) */
 .who .name.nsign { display: inline-grid; justify-items: start; line-height: 1; cursor: help; } .who.them .name.nsign { justify-items: end; }
-.neon-name { font-family: var(--script) !important; font-weight: 400; font-size: calc(var(--name-fs, 27px) * var(--nk, 1)) !important; line-height: 26px; letter-spacing: .01em; }
-.neon-class { font-family: var(--display); font-size: calc(9.5px * var(--ck, 1)); font-weight: 700; letter-spacing: .32em; text-transform: uppercase; margin-top: 1px; padding-left: 2px; }
+.neon-name { font-family: var(--script) !important; font-weight: 400; font-size: calc(var(--name-fs, 27px) * var(--nk, 1)) !important; line-height: 1; letter-spacing: .01em; }
+.neon-class { font-family: var(--display); font-size: calc(var(--cls-fs, 9.5px) * var(--ck, 1)); font-weight: 700; letter-spacing: .32em; text-transform: uppercase; padding-left: 2px;
+  margin-top: calc(var(--name-fs, 27px) * var(--nk, 1) * var(--cls-lift, -.14)); } /* the class line tucks into the name's foot by the same share on every sign (sign.js fitSign) */
+.nsign { --cls-lift: -.14; } /* a script or hand name: the class line tucks up under its baseline, in among the descenders */
+.nsign:is(.nf-display, .nf-lines, .nf-neon, .nf-marquee, .nf-deco, .nf-inline, .nf-saloon, .nf-board) { --cls-lift: -.04; } /* capitals: no descenders, so only the line's own air is taken up */
 /* each line's face (sign.js nameFont, clsFont): any of the three. --nk and --ck scale a face to sit in the same room:
    the script is drawn small for its size, capitals large, and Monoton's lines need size to read as lines */
 .nsign.nf-display .neon-name { --nk: .74; font-family: var(--display) !important; text-transform: uppercase; letter-spacing: .08em; line-height: 1.05; }
@@ -952,7 +952,7 @@ img.ico { width: 1em; height: 1em; object-fit: contain; vertical-align: -.12em; 
 
 /* ---------- High Rollers: a bigger sign, and the business card with their trait ---------- */
 .who.them.boss .neon-name { font-size: calc(var(--name-fs, 38px) * var(--nk, 1)) !important; line-height: .95; }
-.who.them.boss .neon-class { font-size: calc(13px * var(--ck, 1)); letter-spacing: .36em; } .who.them.boss .cf-script .neon-class { letter-spacing: .02em; }
+.who.them.boss .neon-class { font-size: calc(var(--cls-fs, 13px) * var(--ck, 1)); letter-spacing: .36em; } .who.them.boss .cf-script .neon-class { letter-spacing: .02em; }
 .who.them.boss.seat { padding: 10px 14px; }
 .gcard.bizcard { --gc: #f3ead2; --ink: #2a1c0a; display: inline-grid; align-content: center; justify-items: start; gap: 1px; width: auto; min-width: 96px; height: 40px; padding: 3px 9px;
   border-radius: 4px; background: linear-gradient(160deg, #fbf5e4, #e3d6b3); color: #2a1c0a; box-shadow: 0 2px 6px rgba(0, 0, 0, .45); cursor: help; transform: rotate(-2deg); align-self: center; }
@@ -1292,7 +1292,7 @@ table.b-shop { border-collapse: collapse; width: 100%; font-size: 12px; margin-t
 .who.seat > .badges { display: flex; flex-wrap: nowrap; overflow: hidden; }
 .who.seat.me { width: 556px; } .who.seat .pills.steps .pill { font-size: 10px; padding: 1px 5px; } .who.seat .pills.steps { gap: 2px; }
 /* a narrow zone's label keeps to its own width: tighter letters, and the bonus amount moves into the hover */
-.zone-label.narrow { gap: 3px; } .zone-label.narrow b { letter-spacing: .08em; font-size: 9px; } .zone-label.narrow .zm-bonus { display: none; } .zone-label.narrow .zm-rows { gap: 1px; } .zone-label.narrow .zm-cols { gap: 1px; }
+.zone-label.narrow { gap: 3px; } .zone-label.narrow b { letter-spacing: .08em; font-size: 9px; } .zone-label.narrow .zm-bonus { font-size: 8.5px; } .zone-label.narrow .zm-rows { gap: 1px; } .zone-label.narrow .zm-cols { gap: 1px; }
 /* the step prompt sits on its own plate so it reads over the House's bulbs instead of running through them */
 .feed:not(.open) .feed-line.prompt { align-self: center; padding: 0 14px; border-radius: 9px; background: rgba(9, 6, 24, .88); box-shadow: 0 0 0 1px rgba(255, 215, 106, .25); max-width: 96%; transform: translateY(3px); }
 /* punch cards: a ring a punch, and a hole through the card for each one made */
@@ -1529,4 +1529,5 @@ body.spinning .thing > .th-body, body.carrying-now .thing > .th-body { transitio
 .aim.tag.low { translate: -50% -20%; } /* on the top row: inside the space, clear of the steps above the table */
 .aim.tag.opp b::before { content: '◂ '; color: var(--them); text-shadow: none; }
 .controls .btn.fx { opacity: .55; } .controls .btn.fx.on { opacity: 1; color: var(--gold); box-shadow: 0 0 8px rgba(255, 215, 106, .45); }
-.controls:not(.by-roll) { left: 572px; width: 226px; gap: 5px; } .controls:not(.by-roll) .big { padding: 6px 16px; } /* the dice folded away: between the two seats, clear of the steps */
+/* a zone's focus tier beside its row dots: T1 gold, T2 cyan */
+.zm-bonus.t2 { color: #bff8ff; text-shadow: 0 0 6px rgba(110, 240, 255, .75); }

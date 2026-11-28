@@ -29,6 +29,8 @@ export const rollerOf = (id) => (ROLLERS[id] ? id : Object.keys(ROLLERS).find((k
 // a Roller's hero and class together: 'Owl the Hustler'
 // the reward stat for a primary action stat
 export const C_OF = { trickery: 'charisma', ingenuity: 'cunning', proficiency: 'conviction' };
+export const TIP_OF = Object.fromEntries(Object.entries(C_OF).map(([k, v]) => [v, k])); // the action stat for a reward stat
+export const primaryT = (cls) => (C_OF[CLASSES[cls]?.primary] ? CLASSES[cls].primary : TIP_OF[primaryC(cls)] || 'trickery'); // the class's primary TIP
 export const primaryC = (cls) => (['charisma', 'cunning', 'conviction'].includes(CLASSES[cls]?.rewards) ? CLASSES[cls].rewards : C_OF[CLASSES[cls]?.primary] || 'charisma'); // the class's primary C
 // what sets a class apart, written from its numbers: the per-turn action it has most of, the position stat it leans on,
 // where it deploys from (its words for the table are its flavour line)
