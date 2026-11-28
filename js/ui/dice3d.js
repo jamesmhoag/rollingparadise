@@ -144,7 +144,7 @@ function engrave(type, mat, labels, F, atlas) {
       if (val === '6' || val === '9') hx.fillRect(cx - fsz * 0.22, cy + fsz * 0.46, fsz * 0.44, fsz * 0.08); }
   });
   // soften the recess walls a little (a rounded engraving, not a cut-out)
-  const soft = document.createElement('canvas'); soft.width = soft.height = S; const sx = soft.getContext('2d'); sx.filter = `blur(${Math.max(1, tile / (type === 'd4' ? 240 : 110))}px)`; // (a d4's cut is kept narrow: its numbers are thin) sx.drawImage(hc, 0, 0);
+  const soft = document.createElement('canvas'); soft.width = soft.height = S; const sx = soft.getContext('2d'); sx.filter = `blur(${Math.max(1, tile / (type === 'd4' ? 240 : 110))}px)`; /* (a d4's cut is kept narrow: its numbers are thin) */ sx.drawImage(hc, 0, 0);
   const H = sx.getImageData(0, 0, S, S).data, sharp = hx.getImageData(0, 0, S, S).data;
   return { S, look, H, sharp };
 }
