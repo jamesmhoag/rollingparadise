@@ -150,6 +150,101 @@ function folding(root, folds) {
 const NOTE_GREENS = ['#8fbf86', '#a5cf9a', '#7fb07a', '#b4d8a6'];
 const METAL = '#c9d0dc';
 
+// ---------- hardware ----------
+// What adorns a piece rather than being what it is made of: a snap (its cap, the socket it presses into, the stud
+// under the cap), a sewn button, a magnet, a zip, a turn-lock clasp, a rivet, a chain of links that really interlink.
+// Each is made of the look's hardware material and colour (any material) at its size. Built in px of the piece's
+// drawing, facing +z (out: facing -z, the outside of a sheet that is folded over toward you), set at (x, y, z).
+function hardware(H) {
+  const k = H.size || 1, m = (g) => body(g, H.mat, H.color), dark = (g) => body(g, 'plastic', '#0b0b10');
+  // (set into its geometry, not its group's transform: a sheet's folds carry geometry, so it goes round with what it is on)
+  const place = (grp, x, y, z, out) => { const M = new T.Matrix4().makeTranslation(x, -y, z); if (out) M.multiply(new T.Matrix4().makeRotationX(Math.PI));
+    const geos = new Set(); grp.traverse((m) => { if (m.isMesh) geos.add(m.geometry); }); for (const g of geos) g.applyMatrix4(M); return grp; };
+  const disc = (r, t, seg = 40) => new T.CylinderGeometry(r, r, t, seg).rotateX(Math.PI / 2).translate(0, 0, t / 2);
+  const ring = (r, t, z = 0) => new T.TorusGeometry(r, t, 12, 48).translate(0, 0, z);
+  const dome = (r, hgt) => { const g = new T.SphereGeometry(r, 40, 14, 0, Math.PI * 2, 0, Math.PI / 2); g.rotateX(Math.PI / 2); g.scale(1, 1, hgt / r); return g; };
+  return {
+    // the cap you see outside: a rolled rim and a low dome
+    cap(x, y, z, out) { const g = new T.Group(), r = 4.4 * k; g.add(m(disc(r, 0.7)), m(ring(r - 0.25, 0.42, 0.7)), m(dome(r - 0.5, 1.7 * k).translate(0, 0, 0.7))); return place(g, x, y, z, out); },
+    // the socket it presses into: a flange, a raised ring, the dark hole in its middle
+    socket(x, y, z, out) { const g = new T.Group(), r = 4 * k; g.add(m(disc(r, 0.5)), m(ring(r * 0.55, 0.55 * k, 0.9)), dark(disc(r * 0.32, 0.6))); return place(g, x, y, z, out); },
+    // the stud under the cap (inside the flap): a flange and a post with a lip
+    stud(x, y, z, out) { const g = new T.Group(), r = 3.6 * k; g.add(m(disc(r, 0.45)), m(disc(r * 0.42, 1.6 * k)), m(ring(r * 0.42, 0.28, 1.5 * k))); return place(g, x, y, z, out); },
+    // a sewn button: a dished disc, its rim, four holes, the thread crossed through them
+    button(x, y, z, out, thread = '#e9e2d0') { const g = new T.Group(), r = 4.4 * k; g.add(m(disc(r, 1.1)), m(ring(r - 0.4, 0.55, 1.1)));
+      for (const [a, b] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) g.add(dark(disc(0.55, 1.3).translate(a * 1.25 * k, b * 1.25 * k, 0)));
+      for (const sgn of [1, -1]) { const t = new T.BoxGeometry(3.6 * k, 0.4, 0.4); t.rotateZ(sgn * Math.PI / 4); t.translate(0, 0, 1.35); g.add(body(t, 'canvas', thread)); } return place(g, x, y, z, out); },
+    magnet(x, y, z, out) { const g = new T.Group(), r = 4.6 * k; g.add(m(disc(r, 0.9)), m(ring(r - 0.3, 0.35, 0.9)), m(disc(r * 0.5, 1.2))); return place(g, x, y, z, out); },
+    // a zip from x0 to x1: its tape, two rows of teeth meeting, the slider and its pull
+    zip(x0, x1, y, z, out) { const g = new T.Group(), len = x1 - x0, tape = new T.BoxGeometry(len, 4 * k, 0.4).translate(len / 2, 0, 0.2); g.add(body(tape, 'canvas', '#1c1c24'));
+      const n = Math.floor(len / (1.1 * k)); g.add(m(merged(Array.from({ length: n }, (_, i) => new T.BoxGeometry(0.8 * k, 1.5 * k, 0.9 * k).translate(i * 1.1 * k + 0.5, (i % 2 ? 0.55 : -0.55) * k, 0.75)))));
+      const sl = len * 0.72; g.add(m(new T.BoxGeometry(3.4 * k, 4.6 * k, 1.6 * k).translate(sl, 0, 1.2)), m(new T.BoxGeometry(2.2 * k, 6 * k, 0.6).translate(sl, -4.6 * k, 1.6)), dark(disc(0.6 * k, 0.8).translate(sl, -5.6 * k, 1.6)));
+      return place(g, x0, y, z, out); },
+    // a turn-lock: a plate, its knob, the bar across it
+    turnlock(x, y, z, out) { const g = new T.Group(); g.add(m(new T.BoxGeometry(12 * k, 8 * k, 0.8).translate(0, 0, 0.4)), m(ring(5.2 * k, 0.45, 0.8)), m(disc(2.6 * k, 1.8)), m(new T.BoxGeometry(6.4 * k, 1.4 * k, 1).translate(0, 0, 2.2)));
+      for (const sx of [-1, 1]) g.add(m(dome(0.8, 0.5).translate(sx * 4.6 * k, 0, 0.8))); return place(g, x, y, z, out); },
+    // the plate a turn-lock's knob passes through, on the part it closes onto
+    keeper(x, y, z, out) { const g = new T.Group(); g.add(m(new T.BoxGeometry(10 * k, 6 * k, 0.6).translate(0, 0, 0.3)), dark(new T.BoxGeometry(6.6 * k, 1.8 * k, 0.8).translate(0, 0, 0.4))); return place(g, x, y, z, out); },
+    rivet(x, y, z, out) { const g = new T.Group(); g.add(m(dome(1.6 * k, 0.9 * k))); return place(g, x, y, z, out); },
+  };
+}
+// several geometries as one (each with positions, normals and an index or none)
+function merged(geos) {
+  const pos = [], nrm = [], idx = []; let base = 0;
+  for (const g of geos) { const P = g.attributes.position.array, N = g.attributes.normal.array; pos.push(...P); nrm.push(...N); const I = g.index ? g.index.array : [...Array(P.length / 3).keys()]; for (const i of I) idx.push(i + base); base += P.length / 3; }
+  const out = new T.BufferGeometry(); out.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); out.setAttribute('normal', new T.Float32BufferAttribute(nrm, 3)); out.setIndex(idx); return out;
+}
+// A chain: oval links along a path (px [x, y, z] points, y down), each turned a quarter round from the last so they
+// really pass through one another, from a D-ring at its first point to one at its last.
+function chain(C, pts) {
+  const g = new T.Group(), curve = new T.CatmullRomCurve3(pts.map(([x, y, z = 0]) => new T.Vector3(x, -y, z)), false, 'centripetal');
+  const R = 2.3, tube = 0.62, long = 1.55, pitch = 2 * (R * long - tube) - tube * 0.9, n = Math.max(4, Math.round(curve.getLength() / pitch));
+  const zAxis = new T.Vector3(0, 0, 1), M = new T.Matrix4();
+  for (let i = 0; i <= n; i++) { const t = i / n, p = curve.getPointAt(t), x = curve.getTangentAt(t).normalize(), y = new T.Vector3().crossVectors(zAxis, x).normalize(), z = new T.Vector3().crossVectors(x, y);
+    const link = new T.TorusGeometry(R, tube, 12, 32); link.scale(long, 1, 1);
+    if (i % 2) M.makeBasis(x, z, y.clone().negate()); else M.makeBasis(x, y, z); link.applyMatrix4(M); link.translate(p.x, p.y, p.z); g.add(body(link, C.mat, C.color)); }
+  for (const t of [0, 1]) { const p = curve.getPointAt(t), d = new T.TorusGeometry(3.4, 0.8, 12, 32, Math.PI * 1.3); d.rotateY(Math.PI / 2); d.translate(p.x, p.y, p.z); g.add(body(d, C.mat, C.color)); }
+  return g;
+}
+
+// a closure: o: { x, flapY, flapOut (z of the outside it is on), flapIn (z of the inside under it), ontoY, ontoZ (where
+// it closes onto, its outside), zip: [x0, x1, y, z] }
+function closure(all, L, o) {
+  const H = hardware(L.hardware), c = L.clasp, onto = o.ontoOut !== false; // (onto: on the outside of what it closes onto, or its inside)
+  if (c === 'snap') all.add(H.cap(o.x, o.flapY, o.flapOut, true), H.stud(o.x, o.flapY, o.flapIn), H.socket(o.x, o.ontoY, o.ontoZ, onto));
+  else if (c === 'button') all.add(H.button(o.x, o.flapY, o.flapOut, true, thread(L.color)), H.socket(o.x, o.ontoY, o.ontoZ, onto));
+  else if (c === 'magnet') all.add(H.magnet(o.x, o.flapY, o.flapIn), H.magnet(o.x, o.ontoY, o.ontoZ, onto));
+  else if (c === 'turnlock') all.add(H.turnlock(o.x, o.ontoY, o.ontoZ, onto), H.keeper(o.x, o.flapY, o.flapOut, true));
+  else if (c === 'zip') { const [x0, x1, y, z] = o.zip; all.add(H.zip(x0, x1, y, z, true)); }
+}
+// what adorns it beside its closure: a chain from a ring at its side (o.x, from y0 to y1, hanging out on o.side), rivets
+// (after the folds are set: it hangs from the side that does not fold, and sags below it as far as its length says)
+function adorn(all, L, o) {
+  if (!L.chain) return; const n = L.chain.links, out = 8 + n * 0.25, sag = 6 + n * 1.1, sx = o.side, z = 3;
+  all.add(chain(L.chain, [[o.x + sx * 1.5, o.y0, z], [o.x + sx * out, o.y0 + sag * 0.5, z + 1], [o.x + sx * out * 0.9, o.y1 + sag, z + 2], [o.x + sx * 1.5, o.y1, z]]));
+}
+// rivets on the outside of what shows when it is shut (before the folds are set: they go round with it)
+function rivets(all, L, corners, zOut) { if (!L.rivets) return; const H = hardware({ ...L.hardware, size: L.hardware.size * 0.9 }); for (const [x, y] of corners) all.add(H.rivet(x, y, zOut(x, y) - 0.2, true)); }
+// A clutch: long and low, one sheet hinged along its long bottom edge so it opens like a bun. Open, the back leaf holds
+// the passes and the front leaf (folded down toward you) the cards, two columns of slits on each. Its closure is on the
+// front leaf's outside at its far edge, closing onto the back leaf's inside at its top.
+function clutchModel(L, HOLD, K) {
+  const { all, lining, cash, sleeve, slots, stickOf, slitTops, slits, r, leafSheet, hinged } = K, W = 176, H = 68, F = 12;
+  const S = leafSheet(-W / 2, -H / 2, W, H * 2 + F, ['y', -(H / 2 + F / 2), 7]);
+  all.add(lining(plate0(rrect(-W / 2 + 3, -H / 2 + 3, W - 6, H * 2 + F - 6, Math.max(1, r - 2)), 0.15, 0.25, 70)), cash(-W / 2 + 9, -H / 2 - 4, W - 18), sleeve(-W / 2 + 4, W - 8, H, 60));
+  // two columns of slits on each leaf: the passes on the back leaf, the cards on the front
+  const half = W / 2, stick = stickOf(half) * 0.62, cols = (n) => [Math.ceil(n / 2), Math.floor(n / 2)];
+  const leaf = (yHigh, yFoot, n, into, z0) => cols(n).forEach((m, c) => { if (m) all.add(slots(-W / 2 + c * half, half, yFoot, yHigh, m, into, slitTops(yHigh, yFoot, m, stick), stick, z0)); });
+  leaf(-H / 2, H / 2, HOLD.passes, slits.passes, 0); leaf(H / 2 + F, H * 1.5 + F, HOLD.cards, slits.cards, 0);
+  const far = H * 1.5 + F - 9, out = (y) => S.zBack(0, y) - 0.3;
+  // (what it closes onto faces you on the back leaf's inside, above its slits: under the cap when it is shut)
+  closure(all, L, { x: 0, flapY: far, flapOut: out(far), flapIn: 4.5, ontoY: -H / 2 + 9, ontoZ: 2.2, ontoOut: false, zip: [-W * 0.42, W * 0.42, H * 1.5 + F - 3.5, out(H * 1.5 + F - 4)] });
+  rivets(all, L, [[-W / 2 + 6, H / 2 + F + 6], [W / 2 - 6, H / 2 + F + 6], [-W / 2 + 6, H * 1.5 + F - 6], [W / 2 - 6, H * 1.5 + F - 6]], S.zBack);
+  const fold = folding(all, [{ axis: 'y', from: -H / 2, len: F, sign: -1 }]);
+  return hinged({ W, H, F, fold, chainY: [8, 30], box: [W + 18, H * 2 + F + 20], over: [[0, H / 2, W, H / 2], [0, H * 1.5 + F, W, H / 2]], rest: [14, -10] });
+}
+const plate0 = (pts, z, thick, cells) => soft(pts, { depth: thick, bevel: thick * 0.4, puff: 0, z, cells, smooth: 0 });
+
 // ---------- a wallet ----------
 // One sheet of what it is made of, padded, stitched round its edge, and folded: a billfold in half, a pouch up from
 // the bottom with its flap down over the front, a clip back on itself round the wad. Opening it unfolds the sheet.
@@ -188,6 +283,12 @@ function walletModel(L, notes, HOLD = { cards: 3, passes: 1 }) {
       g.add(part(plate(rrect(x + 5, top - 1.3, W - 10, 1.8, 0.8), 1.35 + i * 0.75, 0.12), 'silk', '#07060a')); // the mouth: the dark of the slit, just above the hem
       g.add(pocket(P), hem(x + 6, x + W - 6, top + 2.2, P.zAt, L.pocket.color)); into.push({ x0: x + 6, x1: x + W - 6, top, stick }); });
     return g; };
+  // one sheet for a wallet that folds in two (a billfold, a clutch): its outside, stitched round, w × hgt from the top left leaf
+  const leafSheet = (x0, y0, w, hgt, valley) => { const S = sheet(rrect(x0, y0, w, hgt, r), [valley]); all.add(skin(S));
+    if (L.stitch) all.add(stitches(rrect(x0 + 2.6, y0 + 2.6, w - 5.2, hgt - 5.2, Math.max(1, r - 2)), S.zBack, sew, { under: true })); return S; };
+  // what such a wallet is, once its sheet is folded: its chain from its first leaf's left edge, and how it is shown
+  const hinged = (o) => { adorn(all, L, { x: -o.W / 2, y0: -o.H / 2 + o.chainY[0], y1: -o.H / 2 + o.chainY[1], side: -1 });
+    return { root, pose: (t) => o.fold([Math.PI * (1 - t)]), w: o.W, h: o.H, box: [L.chain ? -32 : -18, -22, ...o.box], over: o.over, rest: o.rest, emblem: [o.W - 27, o.H - 27], gutter: o.F, slits }; };
   if (L.type === 'clip') { const W = 150, H = 86, arm = H - 12, F = 17, wide = 20, top = -H / 2 + 2; // a strip bent back on itself: one arm under the wad, the bend at the top, the other arm over everything
     // the wad under the arm: only when the look has one (look.wad), made of whatever it says
     if (L.wad) for (let i = 0; i < Math.max(1, notes); i++) all.add(part(soft(rrect(-W / 2 + 2 + i * 1.5, -H / 2 + 16 + i * 2, W - 4 - i * 3, H - 16 - i * 3.5, 5), { depth: 0.8, puff: 0.9, bevel: 0.5, z: 1.9 + i * 1.5, face: 'both', cells: 24 }), L.wad.mat, shade(L.wad.color, 1 - i * 0.08)));
@@ -211,24 +312,28 @@ function walletModel(L, notes, HOLD = { cards: 3, passes: 1 }) {
     const pTops = Array.from({ length: nP }, (_, i) => -H / 2 + 3 + stick + i * SLIT.step), lo = pTops[nP - 1] + 8, hi = wallTop - 2;
     const stepC = nC > 1 ? Math.max(4, Math.min(SLIT.step, (hi - lo) / (nC - 1))) : 0, cTops = Array.from({ length: nC }, (_, i) => hi - stepC * (nC - 1 - i));
     all.add(slots(-W / 2, W, H / 2, 0, nP, slits.passes, pTops, stick), slots(-W / 2, W, H / 2, 0, nC, slits.cards, cTops, stick, nP));
-    const out = (y) => S.zBack(0, y) - 0.6, tipY = yTop + 10, studY = Math.min(yEnd - 12, yEnd - wall + fl - 10);
-    if (L.clasp === 'zip') all.add(set(new T.BoxGeometry(W * 0.8, 2.6, 1.4), 'metal', METAL, 0, yTop + 4.5, out(yTop + 5)));
-    else if (L.clasp === 'magnet') all.add(set(new T.BoxGeometry(14, 8, 2.4), 'metal', '#6a7386', 0, tipY, out(tipY) - 0.6));
-    else if (L.clasp === 'snap') all.add(set(new T.SphereGeometry(4.6, 20, 12), 'metal', METAL, 0, tipY, out(tipY) - 0.4, [1, 1, 0.5]), set(new T.SphereGeometry(3.2, 16, 10), 'metal', '#8d95a6', 0, studY, out(studY), [1, 1, 0.4]));
-    else for (let i = 0; i < 7; i++) { const a = (i / 6) * Math.PI, g = new T.TorusGeometry(3, 0.75, 8, 16); if (i % 2) g.rotateY(Math.PI / 2); g.rotateZ(0.3); all.add(set(g, 'metal', METAL, W / 2 + 4 + Math.sin(a) * 9, -H / 2 + 30 + i * 5, -3)); }
+    // the closure: on the flap's outside near its tip, and what it closes onto on the wall it comes down over (seen when
+    // it is open, under where the flap lay); a snap's stud is inside the flap, under its cap
+    // (where the cap comes down, shut: on the wall folded up in front when the flap reaches it, its socket on the wall's
+    // outside; else on the pocketed front inside, above what is in it)
+    const out = (y) => S.zBack(0, y) - 0.3, tipY = yTop + 10, land = -H - tipY - Ft, onWall = land >= H / 2 - wall + 5, ontoY = onWall ? H + Fb - land : land;
+    closure(all, L, { x: 0, flapY: tipY, flapOut: out(tipY), flapIn: 0.5, ontoY, ontoZ: onWall ? out(ontoY) : 1.9 + (nP + nC) * 0.75, ontoOut: onWall, zip: [-W * 0.4, W * 0.4, yTop + 4.5, out(yTop + 5)] });
+    rivets(all, L, [[-W / 2 + 6, yEnd - 6], [W / 2 - 6, yEnd - 6], [-W / 2 + 6, H / 2 + Fb + 6], [W / 2 - 6, H / 2 + Fb + 6]], S.zBack);
     const fold = folding(all, [{ axis: 'y', from: -H / 2, len: Fb, sign: -1 }, { axis: 'y', from: H / 2, len: Ft, sign: 1 }]);
     // the gussets: a pleat of the lining at each side, between the back and the wall folded up in front of it (set after the fold: they do not fold)
     const deep = (2 * Fb) / Math.PI; for (const sx of [1, -1]) for (const half of [0, 1]) { const g = new T.BoxGeometry(0.5, wall - 3, deep * 0.62); g.rotateY(sx * (half ? -0.6 : 0.6)); all.add(set(g, 'silk', liningC, sx * (W / 2 - 3.2), H / 2 - wall / 2 + 1, deep * (half ? 0.74 : 0.26))); }
-    return { root, pose: (t) => fold([Math.PI, Math.PI * (1 - t) + 0.22 * t]), w: W, h: H, box: [-18, -Ft - fl - 16, W + 24, H + 18], over: [[0, H - wall + 1, W, wall]], rest: [10, -14], emblem: [12, 8], slits }; }
+    adorn(all, L, { x: W / 2, y0: -H / 2 + 14, y1: -H / 2 + 40, side: 1 });
+    return { root, pose: (t) => fold([Math.PI, Math.PI * (1 - t) + 0.22 * t]), w: W, h: H, box: [-18, -Ft - fl - 16, W + (L.chain ? 34 : 24), H + 18 + (L.chain ? 20 : 0)], over: [[0, H - wall + 1, W, wall]], rest: [10, -14], emblem: [12, 8], slits }; }
+  if (L.type === 'clutch') return clutchModel(L, HOLD, { all, lining, cash, sleeve, slots, stickOf, slitTops, slits, r, leafSheet, hinged });
   // a billfold: the two leaves are one sheet, folded down its middle
-  const W = 118, H = 92, F = 14, S = sheet(rrect(-W / 2, -H / 2, W * 2 + F, H, r), [['x', W / 2 + F / 2, 7]]); all.add(skin(S));
-  if (L.stitch) all.add(stitches(rrect(-W / 2 + 2.6, -H / 2 + 2.6, W * 2 + F - 5.2, H - 5.2, Math.max(1, r - 2)), S.zBack, sew, { under: true }));
+  const W = 118, H = 92, F = 14, S = leafSheet(-W / 2, -H / 2, W * 2 + F, H, ['x', W / 2 + F / 2, 7]);
   // inside: lined all over; behind everything the long pocket for the cash, hemmed along its top; on each leaf three card slots
   all.add(lining(plate(rrect(-W / 2 + 3, -H / 2 + 3, W * 2 + F - 6, H - 6, Math.max(1, r - 2)), 0.15, 0.25, { cells: 80 })), cash(-W / 2 + 9, -H / 2 - 4, W - 18));
   all.add(sleeve(-W / 2 + 4, W * 2 + F - 8, H, 80));
   all.add(slots(-W / 2, W, H / 2, -H / 2, HOLD.cards, slits.cards), slots(W / 2 + F, W, H / 2, -H / 2, HOLD.passes, slits.passes)); // the cards on one leaf, the passes on the other
+  rivets(all, L, [[W / 2 + F + 6, -H / 2 + 6], [W * 1.5 + F - 6, -H / 2 + 6], [W / 2 + F + 6, H / 2 - 6], [W * 1.5 + F - 6, H / 2 - 6]], S.zBack);
   const fold = folding(all, [{ axis: 'x', from: W / 2, len: F, sign: 1 }]);
-  return { root, pose: (t) => fold([Math.PI * (1 - t)]), w: W, h: H, box: [-18, -22, W * 2 + F + 18, H + 20], over: [[0, 46, W, 46], [W + F, 46, W, 46]], rest: [10, -14], emblem: [W - 27, H - 27], gutter: F, slits };
+  return hinged({ W, H, F, fold, chainY: [14, 40], box: [W * 2 + F + 18, H + 20], over: [[0, 46, W, 46], [W + F, 46, W, 46]], rest: [10, -14] });
 }
 
 // ---------- a jacket ----------

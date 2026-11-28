@@ -1679,3 +1679,18 @@ body.spinning .thing > .th-body, body.carrying-now .thing > .th-body { transitio
 .book-bar.on-table .bb-sort svg { width: 10px; height: 10px; }
 .book-bar.on-table .bb-gap { width: 2px; }
 .drink-preview { display: grid; place-items: center; min-height: 300px; } .drink-preview .gdrink { zoom: 5; }
+/* clutch: long and low, hinged along its bottom edge; its front leaf swings down and lies flat below the back */
+.gw-clutch { width: 176px; height: 68px; } .gw-clutch .gw-base, .gw-clutch .gw-cover { inset: 0; border-radius: var(--wr) var(--wr) 3px 3px; }
+.gw-clutch .gw-cover { transform-origin: 50% 100%; transform: translateZ(6px); transition: transform .5s var(--ease); }
+.gw-clutch .gw-out, .gw-clutch .gw-in { inset: 0; border-radius: inherit; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.gw-clutch .gw-in { transform: rotateX(180deg); border-radius: 3px 3px var(--wr) var(--wr); } .gw-clutch .gw-out { transform: translateZ(3px); box-shadow: 0 0 0 .6px rgba(0, 0, 0, .5); }
+.thing.th-wallet:hover > .th-body > .gw-clutch > .gw-cover, .gw-clutch.pin > .gw-cover { transform: translateZ(.6px) rotateX(-180deg); }
+.gw-clutch .wsym { right: 50%; translate: 50% 0; bottom: 7px; }
+.gw.gw-clutch.g3d > .gw-cover { transform: translateY(var(--g3-gutter, 0px)) translateZ(.6px) rotateX(-180deg) !important; }
+.gw-clasp.button, .gw-stud.button { width: 10px; height: 10px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #fff, #c9b48a 50%, #6a5530); box-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
+.gw-clasp.turnlock, .gw-stud.turnlock { width: 14px; height: 9px; border-radius: 2px; background: linear-gradient(180deg, #e6ebf2, #8c94a3); box-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
+.gw-clasp.none, .gw-stud.none { display: none; }
+.book-bar .bb-die svg, .book-bar .bb-named svg { width: 12px; height: 12px; fill: currentColor; }
+.book-bar .bb-die.on { color: #ffd76a; } .book-bar .bb-die.off { opacity: .45; }
+.book-bar .bb-named.on { color: #6ef0ff; border-color: rgba(110, 240, 255, .8); background: rgba(40, 90, 120, .35); }
+.book-bar.on-table .bb-die svg, .book-bar.on-table .bb-named svg { width: 10px; height: 10px; }

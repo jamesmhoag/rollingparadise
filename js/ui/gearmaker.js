@@ -73,7 +73,15 @@ export function gearMaker(key, redraw) {
       field('stitch', check(['look', 'stitch'], L.stitch), ['look', 'stitch']), field('round', bounded(['look', 'round'], L.round, 'round'), ['look', 'round']),
       // a clip's wad under its arm: off unless turned on, then made of any material
       ...(L.type === 'clip' ? [field('wad', check(['look', 'wad', 'on'], !!L.wad), ['look', 'wad', 'on']), ...(L.wad ? [part('wadLook', L.wad)] : [])] : []),
-      ...(L.type === 'clasped' ? [field('clasp', select(['look', 'clasp'], Object.entries(WALLET_CLASPS), L.clasp), ['look', 'clasp']), field('flap', bounded(['look', 'flap'], L.flap, 'flap'), ['look', 'flap'])] : [])]
+      ...(L.type === 'clasped' ? [field('flap', bounded(['look', 'flap'], L.flap, 'flap'), ['look', 'flap'])] : []),
+      // hardware: its closure (a pouch's or a clutch's), what all its hardware is made of and how big, a chain at its side, rivets
+      ...(L.type === 'clip' ? [] : [h('span', { class: 'cap', text: t('gear.part.hardware') }),
+        ...(L.type === 'clasped' || L.type === 'clutch' ? [field('clasp', select(['look', 'clasp'], Object.entries(WALLET_CLASPS), L.clasp), ['look', 'clasp'])] : []),
+        field('hardware', h('span', { class: 'row wrap' }, select(['look', 'hardware', 'mat'], matList.slice(1), L.hardware.mat), colour(['look', 'hardware', 'color'], L.hardware.color)), ['look', 'hardware']),
+        field('hwSize', bounded(['look', 'hardware', 'size'], L.hardware.size, 'hwSize'), ['look', 'hardware', 'size']),
+        field('chain', h('span', { class: 'row wrap' }, check(['look', 'chain', 'on'], !!L.chain), ...(L.chain ? [select(['look', 'chain', 'mat'], matList.slice(1), L.chain.mat), colour(['look', 'chain', 'color'], L.chain.color)] : [])), ['look', 'chain']),
+        ...(L.chain ? [field('links', bounded(['look', 'chain', 'links'], L.chain.links, 'links'), ['look', 'chain', 'links'])] : []),
+        field('rivets', check(['look', 'rivets'], L.rivets), ['look', 'rivets'])])]
       : [field('style', select(['look', 'style'], Object.entries(JACKET_STYLES), L.style), ['look', 'style']), part('sleeves', L.sleeves), part('trim', L.trim),
         field('lining', colour(['look', 'lining'], L.lining || '#000000'), ['look', 'lining']), field('collar', select(['look', 'collar'], Object.entries(JACKET_COLLARS), L.collar), ['look', 'collar']),
         field('closure', select(['look', 'closure'], Object.entries(JACKET_CLOSURES), L.closure), ['look', 'closure']),

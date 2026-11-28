@@ -42,9 +42,13 @@ export const finishOf = (f) => (f && FINISHES[f.m] ? { m: f.m, color: /^#[0-9a-f
 // made of and its colour, and the details its shape has.
 //   billfold  folds in two; its cover swings open: your cards inside the cover, your passes in the other leaf
 //   clasped   a pouch with a flap, held shut by its clasp; the flap lifts: cards and passes stand in it
+//   clutch    long and low, hinged along its bottom edge: it opens like a hot dog bun, passes in the back, cards in the front
+// Hardware adorns it rather than being what it is made of: its closure (a clasped pouch's or a clutch's: a snap with
+// its cap outside and its socket under it, a sewn button, a magnet, a zip, a turn-lock clasp), a chain hanging from a
+// ring at its side, and rivets at its corners, each of a material and colour (look.hardware, look.chain) and a size.
 //   clip      a band over the stack: everything it holds is in plain sight
-export const WALLET_TYPES = { billfold: 'Billfold', clasped: 'Clasped', clip: 'Clip' };
-export const WALLET_CLASPS = { snap: 'Snap', zip: 'Zip', chain: 'Chain', magnet: 'Magnet' };
+export const WALLET_TYPES = { billfold: 'Billfold', clasped: 'Clasped', clutch: 'Clutch', clip: 'Clip' };
+export const WALLET_CLASPS = { snap: 'Snap', button: 'Button', magnet: 'Magnet', zip: 'Zip', turnlock: 'Turn-lock clasp', none: 'None' };
 export const JACKET_STYLES = { blazer: 'Blazer', bomber: 'Bomber', coat: 'Long coat', parka: 'Parka' };
 export const JACKET_COLLARS = { lapel: 'Lapels', stand: 'Stand collar', crew: 'Crew neck', hood: 'Hood' };
 export const JACKET_CLOSURES = { buttons: 'Buttons', zip: 'Zip', open: 'Worn open' };
@@ -52,7 +56,7 @@ export const JACKET_CLOSURES = { buttons: 'Buttons', zip: 'Zip', open: 'Worn ope
 const STYLE = { blazer: { collar: 'lapel', closure: 'buttons', buttons: 2, length: 0, pockets: 2, ribbed: false }, bomber: { collar: 'stand', closure: 'zip', buttons: 0, length: 0, pockets: 2, ribbed: true },
   coat: { collar: 'lapel', closure: 'buttons', buttons: 3, length: 10, pockets: 2, ribbed: false }, parka: { collar: 'hood', closure: 'zip', buttons: 0, length: 5, pockets: 2, ribbed: false } };
 // bounds for the numbers a look can set (kept to what the drawn shapes can show)
-export const LOOK_BOUNDS = { buttons: [0, 4], flap: [8, 26], round: [2, 14], length: [0, 12], pockets: [0, 2], slots: [0, 8], keep: [2, 24], passes: [1, 6] };
+export const LOOK_BOUNDS = { hwSize: [0.6, 1.6], links: [8, 40], buttons: [0, 4], flap: [8, 26], round: [2, 14], length: [0, 12], pockets: [0, 2], slots: [0, 8], keep: [2, 24], passes: [1, 6] };
 const GUESS = [['leather', 'leather'], ['suede', 'suede'], ['velvet', 'velvet'], ['denim', 'denim'], ['silk', 'silk'], ['royal', 'silk'], ['cloth', 'canvas'], ['bomber', 'canvas'], ['tape', 'vinyl'], ['neon', 'vinyl'], ['rain', 'vinyl'],
   ['silver', 'metal'], ['magnetic', 'metal'], ['diamond', 'diamond'], ['down', 'silk'], ['sports', 'silk'], ['long', 'wool'], ['reading', 'wool'], ['standard', 'wool']];
 const guessMat = (name, id) => (GUESS.find(([w]) => `${id} ${name}`.toLowerCase().includes(w)) || [0, 'canvas'])[1];
@@ -63,9 +67,12 @@ const emblem = (L) => (L.symbol?.id ? { id: L.symbol.id, color: L.symbol.color |
 const part = (P, mat, color) => ({ mat: FINISHES[P?.mat] ? P.mat : mat, color: P?.color || color });
 export function walletLook(id, W = {}) {
   const L = W.look || {}, nm = `${id} ${W.name || ''}`.toLowerCase(), mat = FINISHES[L.mat] ? L.mat : guessMat(W.name, id), color = L.color || W.color || '#8d8478';
-  const type = WALLET_TYPES[L.type] ? L.type : /clip/.test(nm) || L.clasp === 'clip' ? 'clip' : /zip|snap|chain|magnet/.test(nm) || WALLET_CLASPS[L.clasp] ? 'clasped' : 'billfold';
+  const type = WALLET_TYPES[L.type] ? L.type : /clutch/.test(nm) ? 'clutch' : /clip/.test(nm) || L.clasp === 'clip' ? 'clip' : /zip|snap|chain|magnet/.test(nm) || WALLET_CLASPS[L.clasp] ? 'clasped' : 'billfold';
   return { type, mat, color, trim: L.trim || '', lining: L.lining || '', glint: !!L.glint, sparkle: !!L.sparkle, stitch: L.stitch ?? /leather|cloth/.test(nm),
-    clasp: WALLET_CLASPS[L.clasp] ? L.clasp : /zip/.test(nm) ? 'zip' : /chain/.test(nm) ? 'chain' : /magnet/.test(nm) ? 'magnet' : 'snap',
+    clasp: WALLET_CLASPS[L.clasp] ? L.clasp : /zip/.test(nm) ? 'zip' : /magnet/.test(nm) ? 'magnet' : 'snap', // (a chain was once a clasp: it is a chain on a snap now)
+    hardware: { ...part(L.hardware, 'metal', '#d4dae4'), size: clamp('hwSize', L.hardware?.size, 1) },
+    chain: (L.chain?.on ?? (L.clasp === 'chain' || /chain/.test(nm))) ? { ...part(L.chain, FINISHES[L.hardware?.mat] ? L.hardware.mat : 'metal', L.hardware?.color || '#d4dae4'), links: clamp('links', L.chain?.links, 22) } : null,
+    rivets: !!L.rivets,
     flap: clamp('flap', L.flap, 15), round: clamp('round', L.round, 6), pocket: part(L.pocket, mat, color), symbol: emblem(L),
     wad: L.wad?.on ? part(L.wad, 'paper', '#8fbf86') : null }; // a clip's wad under its arm: off unless the look turns it on (any material)
 }

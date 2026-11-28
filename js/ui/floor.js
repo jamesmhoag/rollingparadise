@@ -3,7 +3,7 @@ import { h, syncList, openPanel, closePanel, toast, btn, tween, pulse, swapText,
 import { holdUp } from './spin.js';
 import { sfx } from './sfx.js';
 import { openPack } from './foilpack.js';
-import { bookBar, bookView, onBook } from './bookbar.js';
+import { bookBar, bookView, onBook, pouchBar, pouchView, onPouch } from './bookbar.js';
 import { app, hud, oppTip, trickTag, diceSummary, nameTag } from './app.js';
 import { faceList, dieName, canMelt, matOf, rollDie, boutCopy } from '../dice.js';
 import { meltVolume, castNeed, castFor, mixDyes, mixOpen } from '../forge.js';
@@ -79,7 +79,7 @@ export function hubScene(root) {
   root.classList.add('on-floor');
   root.append(H.el, h('div', { class: 'page' }, h('div', { class: 'hub' },
     h('div', { class: 'side hub-me' }, nameTag('big'),
-      h('div', { class: 'box scroll', style: { flex: '1' } }, h('div', { class: 'row between book-head' }, h('span', { class: 'cap', text: t('floor.yourBook') }), bookBar()), book, h('span', { class: 'cap', text: tx('floor.your-pouch') }), pouch, hint)),
+      h('div', { class: 'box scroll', style: { flex: '1' } }, h('div', { class: 'row between book-head' }, h('span', { class: 'cap', text: t('floor.yourBook') }), bookBar()), book, h('div', { class: 'row between book-head' }, h('span', { class: 'cap', text: tx('floor.your-pouch') }), pouchBar(() => app.run.dice)), pouch, hint)),
     h('div', { class: 'plan-fit' }, plan),
     h('div', { class: 'side' }, h('div', { class: 'box scroll', style: { flex: '1' } }, h('span', { class: 'cap', text: t('floor.news') }), news)))));
 
@@ -128,11 +128,11 @@ export function hubScene(root) {
     syncList(news, run.news.slice(-7).map((text, i) => ({ text, k: run.news.length - Math.min(7, run.news.length) + i })).reverse(), (n) => n.k, (n) => h('li', { text: n.text }));
     syncList(book, bookView(run.tricks), (t) => t.uid + ':' + t.q + ':' + D.condOf(t), (t) => trickTag(t, run.cls));
     // your dice: point at one for what it is, click it to hold it up close
-    syncList(pouch, run.dice, (d) => d.id + ':' + faceList(d).join(), (d) => { const el = dieEl(d); el._tip = () => dieTip(d); el.classList.add('has-tip'); el.addEventListener('click', () => holdUp(el)); return el; });
+    syncList(pouch, pouchView(run.dice), (d) => d.id + ':' + faceList(d).join(), (d) => { const el = dieEl(d); el._tip = () => dieTip(d); el.classList.add('has-tip'); el.addEventListener('click', () => holdUp(el)); return el; });
     swapText(hint, R.brokeHint(run) || t('floor.pouchHint', { dice: diceSummary(run.dice) }));
     R.saveRun(run);
   }
-  rerender = render; render(); onBook(book, () => render());
+  rerender = render; render(); onBook(book, () => render()); onPouch(pouch, () => render());
   const onDev = () => { if (!root.isConnected) return document.removeEventListener('rp:dev', onDev); render(); }; document.addEventListener('rp:dev', onDev); // developer mode changed the run
   // no game left here that the purse covers: the House shows you the door (sell something first if you can)
   if (R.stranded(run)) setTimeout(() => { if (app.run === run && R.stranded(run)) doorPanel(); }, 900);
@@ -336,10 +336,10 @@ function kitPanel() {
           el.onclick = () => { if (!el._armed) { el._armed = true; el.classList.add('armed'); return toast(tx('floor.click-again-to-drop', { name: D.CARDS[c].name }), 'warn'); } if (!R.dropCard(run, c)) return toast(tx('floor.you-need-that-one'), 'warn'); closePanel(); rerender(); toast(tx('floor.dropped', { name: D.CARDS[c].name })); }; return el; }) }),
         run.drink ? drinkEl(run.drink, run.drink.sips, run.drink.max) : null),
       // your dice by name: click one to give it a pet name, change it or take it away
-      h('span', { class: 'cap', text: tx('floor.die-names') }), (() => { const edit = h('div', {}), list = h('div', { class: 'dicebox named' });
-        const draw = () => list.replaceChildren(...run.dice.map((d) => { const el = dieEl(d); el._tip = () => dieTip(d) + tx('floor.die-name.click'); el.classList.add('has-tip');
+      h('div', { class: 'row between book-head' }, h('span', { class: 'cap', text: tx('floor.die-names') }), pouchBar(() => run.dice)), (() => { const edit = h('div', {}), list = h('div', { class: 'dicebox named' });
+        const draw = () => list.replaceChildren(...pouchView(run.dice).map((d) => { const el = dieEl(d); el._tip = () => dieTip(d) + tx('floor.die-name.click'); el.classList.add('has-tip');
           const w = h('span', { class: `named-die ${petName(d) ? 'has' : ''}`, onclick: () => { edit.replaceChildren(nameField(run, d, draw)); edit.querySelector('input').focus(); } }, el, h('small', { text: petName(d) || '' })); return w; }));
-        draw(); return h('div', { class: 'col', style: { gap: '6px' } }, list, edit); })(),
+        draw(); onPouch(list, draw); return h('div', { class: 'col', style: { gap: '6px' } }, list, edit); })(),
       h('span', { class: 'cap', text: tx('floor.position') }), h('p', { class: 'sub', text: tx('floor.bet-rows-and-stake', { meterRows: st.dims.meterRows, barRows: st.dims.barRows, stackMax: st.dims.stackMax, barRows2: st.dims.barRows * 5 * st.dims.stackMax }) }),
       // your starting position, changed here as well as before each bout (it is the one every table starts from)
       (() => { const P = planner(() => ({}), null, { maxW: 300 }); P.update(); return h('div', { class: 'box' }, P.el); })(),

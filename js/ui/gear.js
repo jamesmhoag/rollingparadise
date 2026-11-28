@@ -43,8 +43,8 @@ function walletFace(id, cls, hold) {
   const well = (list, room) => [h('i', { class: 'gw-inside' }), tuck(list, room), pocket('gw-front'), L.stitch ? h('i', { class: 'gw-stitch low' }) : null];
   let kids;
   if (L.type === 'clip') kids = [L.wad ? h('span', { class: 'gw-wad' }, cashEl(hold.cash || 1, 'folded')) : null, tuck([...cards, ...passes], 138, 'all'), made('gw-band'), h('i', { class: 'gw-band-shine' })];
-  else if (L.type === 'clasped') kids = [h('span', { class: 'gw-base' }, made('gw-skin'), cashEl(hold.cash), ...well([...cards, ...passes], 124), L.clasp === 'chain' ? h('i', { class: 'gw-clasp chain' }) : h('i', { class: `gw-stud ${L.clasp}` })),
-    h('span', { class: 'gw-flap' }, outside('', L.clasp === 'chain' ? null : h('i', { class: `gw-clasp ${L.clasp}` }), emblemEl(L, 'wsym')), h('span', { class: 'gw-in' }, h('i', { class: 'gw-lining' })))];
+  else if (L.type === 'clasped') kids = [h('span', { class: 'gw-base' }, made('gw-skin'), cashEl(hold.cash), ...well([...cards, ...passes], 124), h('i', { class: `gw-stud ${L.clasp}` }), L.chain ? h('i', { class: 'gw-clasp chain' }) : null),
+    h('span', { class: 'gw-flap' }, outside('', h('i', { class: `gw-clasp ${L.clasp}` }), emblemEl(L, 'wsym')), h('span', { class: 'gw-in' }, h('i', { class: 'gw-lining' })))];
   else kids = [h('span', { class: 'gw-base' }, made('gw-skin'), cashEl(hold.cash), ...well(passes, 100)),
     h('span', { class: 'gw-cover' }, outside('', emblemEl(L, 'wsym')), h('span', { class: 'gw-in' }, made('gw-skin'), ...well(cards, 100)))];
   return h('span', { class: `gw gw-${L.type} ${Wl.crown ? 'crown' : ''} ${cls}`, style: vars }, ...kids, L.type === 'clip' ? null : emblemEl(L, 'wsym g3-em'));

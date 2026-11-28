@@ -17,7 +17,7 @@ import { chaser, cue } from './cue.js';
 import { signOf, dressSign, dressFelt, nameSign, crownLookOf, killSign, celebrateSign } from './sign.js';
 import { diceHtml, trickItem, bonusNeed, needCond } from './trickcard.js';
 import { sfx } from './sfx.js';
-import { bookBar, bookView, onBook } from './bookbar.js';
+import { bookBar, bookView, onBook, pouchBar, pouchView, onPouch } from './bookbar.js';
 import { t as tx } from '../text.js';
 
 // the table: the House's phase track runs along the top edge (y 100-124), the positions below it, and between them
@@ -111,10 +111,11 @@ export function boutScene(root, bout, ctx, onDone) {
   // The Pouch opens on the panel over the Run, five dice a row; folded, its dice gather in its spine.
   const ROLLED = 1.38, TRAY_STEP = 46, TRAY_PER = 3, TRAY_H = TRAY_ROWS * TRAY_STEP + 8;
   const DY = { tray: DICE_Y, ctrl: DICE_Y + TRAY_H + 8 }, POUCH_ROWS = Math.max(1, Math.floor(CARD_H / POUCH_STEP));
-  const PSTEP = 34, pouchList = (n) => { const g = spineGeo(); return listWin('pouch', { x: g.pouch + 8, y: LIST_Y, w: MENU_W - 28, h: LIST_H, sx: g.pouch + MENU_W - 19 }, n, Math.floor(LIST_H / PSTEP)); };
+  // (the open Pouch has its filters and sorts over its list, as the Book has)
+  const PSTEP = 34, PY = LIST_Y + BAR_H, PH = LIST_H - BAR_H, pouchList = (n) => { const g = spineGeo(); return listWin('pouch', { x: g.pouch + 8, y: PY, w: MENU_W - 28, h: PH, sx: g.pouch + MENU_W - 19 }, n, Math.floor(PH / PSTEP)); };
   const pouchSlot = (i, n, at) => { const g = spineGeo();
     if (!pouchOpen()) { windows.delete('pouch'); return { x: g.pouch + 3, y: RUN_Y + 30 + Math.min(i, 30) * 6, folded: true }; } // folded into its spine
-    const w = (at || pouchList(n))(i); return { x: g.pouch + 8, y: LIST_Y + w.rel * PSTEP, panel: true, listed: true, folded: w.folded, peek: w.peek && !w.folded }; }; // a die a line, its name beside it
+    const w = (at || pouchList(n))(i); return { x: g.pouch + 8, y: PY + w.rel * PSTEP, panel: true, listed: true, folded: w.folded, peek: w.peek && !w.folded }; }; // a die a line, its name beside it
   const traySlot = (i, si = 0) => { const x0 = diceAt(si), n = sideOf(si).tray.length, at = listWin('tray' + si, { x: x0, y: DY.tray, w: ROLL_W - 6, h: TRAY_H, sx: x0 + ROLL_W - 22 }, Math.ceil(n / TRAY_PER), TRAY_ROWS), w = at(Math.floor(i / TRAY_PER));
     return { x: x0 + 10 + (i % TRAY_PER) * TRAY_STEP, y: DY.tray + 13 + w.rel * TRAY_STEP, big: ROLLED, folded: w.folded || (w.peek && Math.floor(i / TRAY_PER) >= Math.ceil(n / TRAY_PER)), peek: w.peek && !w.folded }; }; // the roll: three dice a row
   // the Stage: what each Roller has paid, stacked in front of the House
@@ -322,6 +323,7 @@ export function boutScene(root, bout, ctx, onDone) {
   // the spines the Book and the Pouch fold into, side by side, and the panel the open one stands on over the Run
   const toggleOpen = (k) => { setOpen(opened() === k ? null : k); sfx('pick'); sync(); };
   const bookBarEl = bookBar('on-table'); onBook(bookBarEl, () => sync());
+  const pouchBarEl = pouchBar(() => me.pouch, 'on-table'); onPouch(pouchBarEl, () => sync());
   const spines = {
     book: h('button', { class: 'spine book', onclick: () => toggleOpen('book'), tip: () => tx('table.spine-book', { n: me.book.length, list: me.book.map((t) => `<span class="tag-t" style="--tc:${D.TYPES[D.defOf(t).type].color}">${D.defOf(t).name}</span>`).join(' ') || tx('table.spine-empty') }) },
       h('span', { class: 'sp-t' }), h('span', { class: 'sp-marks' })),
@@ -340,7 +342,7 @@ export function boutScene(root, bout, ctx, onDone) {
   const frameEls = [header, ...seats, stageBox, phasesEl, feedEl, runEmpty, oppEmpty,
         (ztRun = h('div', { class: 'zone-title', style: { top: TITLE_Y + 'px' }, tip: tx('table.run-tricks-you-have'), text: tx('table.your-run') })),
     (ztRoll = h('div', { class: 'zone-title zt-dice', style: { top: DICE_Y - 14 + 'px' }, tip: tx('table.the-roll-everything-you'), text: tx('table.the-roll') })), trayBox, trayCap,
-    spines.book, spines.dice, bookBarEl, ...Object.values(them),
+    spines.book, spines.dice, bookBarEl, pouchBarEl, ...Object.values(them),
     (controls = h('div', { class: 'controls' }, commitBtn, h('div', { class: 'ctrl-row' }, undoBtn, speedBtn))), ...coasters];
   feedEl.firstChild.prepend(btn(tx('title.library'), () => openLibrary(), tx('table.library-every-chip-trick'), 'small lib-btn'));
   const banner = h('div', { class: 'banner' });
@@ -584,6 +586,7 @@ export function boutScene(root, bout, ctx, onDone) {
     root.classList.toggle('open-book', ob); root.classList.toggle('open-pouch', op);
     spines.book.classList.toggle('peeking', ob); spines.dice.classList.toggle('peeking', op);
     { const g = spineGeo(); Object.assign(bookBarEl.style, { display: ob ? '' : 'none', left: g.book + 8 + 'px', top: LIST_Y - 2 + 'px', width: MENU_W - 30 + 'px' }); }
+    { const g = spineGeo(); Object.assign(pouchBarEl.style, { display: op ? '' : 'none', left: g.pouch + 8 + 'px', top: LIST_Y - 2 + 'px', width: MENU_W - 30 + 'px' }); }
     const tapN = (n) => (n ? ` · ${tx('table.tapped-n', { n })}` : '');
     swapText(spines.book.children[0], `${tx('table.book')} ${me.book.length}${tapN(me.tapped.tricks.length)}`); swapText(spines.dice.children[0], `${tx('table.pouch')} ${me.pouch.length}${tapN(me.tapped.dice.length)}`);
     syncList(spines.book.children[1], me.book, (t) => t.uid, (t) => h('i', { style: { '--tc': D.TYPES[D.defOf(t).type].color } }), () => {});
@@ -667,10 +670,12 @@ export function boutScene(root, bout, ctx, onDone) {
     for (const [uid, el] of els.cards) if (!cards.has(uid)) { els.cards.delete(uid); if (el.classList.contains('spent')) toPile(el, them.bspine); else { el.style.opacity = '0'; setTimeout(() => el.remove(), 500); } } // their spent tricks slide to their Book
 
     // dice: Pouch (unrolled), Rolled tray (value showing, not placed yet), or on a trick
-    const wantDice = new Map(), tapD = B.tappedInOrder(me).dice.map((x) => x.die), nPD = me.pouch.length + tapD.length;
-    const pouchAt = pouchOpen() ? pouchList(nPD) : null;
-    me.pouch.forEach((d, i) => { const p = pouchSlot(i, nPD, pouchAt); wantDice.set(d.id, { ...p, x: p.x + (ui.sel.has(d.id) && p.listed ? 6 : 0), y: p.y - (ui.sel.has(d.id) && !p.listed ? 7 : 0), d, picked: ui.sel.has(d.id) }); });
-    tapD.forEach((d, i) => wantDice.set(d.id, { ...pouchSlot(me.pouch.length + i, nPD, pouchAt), d, tapped: true, restoring: plan.dice.includes(d.id) }));
+    // (the Pouch lists what its filters show, in their order; what they hide folds into its spine)
+    const wantDice = new Map(), tapD = B.tappedInOrder(me).dice.map((x) => x.die), shownP = pouchView(me.pouch), nPD = shownP.length + tapD.length;
+    const pouchAt = pouchOpen() ? pouchList(nPD) : null, sp = spineGeo();
+    me.pouch.forEach((d, i) => { const at = shownP.indexOf(d), p = at < 0 ? { x: sp.pouch + 3, y: RUN_Y + 30 + Math.min(i, 30) * 6, folded: true } : pouchSlot(at, nPD, pouchAt);
+      wantDice.set(d.id, { ...p, x: p.x + (ui.sel.has(d.id) && p.listed ? 6 : 0), y: p.y - (ui.sel.has(d.id) && !p.listed ? 7 : 0), d, picked: ui.sel.has(d.id) }); });
+    tapD.forEach((d, i) => wantDice.set(d.id, { ...pouchSlot(shownP.length + i, nPD, pouchAt), d, tapped: true, restoring: plan.dice.includes(d.id) }));
     me.tray.forEach((d, i) => wantDice.set(d.id, { ...traySlot(i), d, value: d.value, rolled: true }));
     const glow = (si, e) => { const k = ckey(si, e.uid), sp = ui.spent.has(k); return { spent: sp, lit: !sp && (e.state === 'bid' || e.state === 'play'), lc: D.TYPES[D.defOf(e.trick).type]?.color }; }; // dice on a trick light and go out with it
     for (const e of me.run) { const cl = cards.get(e.uid), bd = new Set(B.bonusDice(e).map((x) => x.id)), g = glow(0, e); e.dice.forEach((d, i) => wantDice.set(d.id, { ...dieSlot(cl, i, e.dice.length), d, value: d.value, rolled: true, on: true, bonus: bd.has(d.id), ...g })); }

@@ -1243,3 +1243,21 @@ material. A sign's lettering is set and fitted in the room its edging leaves.
   orange, olive, mint), a toy (starfish, scuba diver, rubber duck).
 - **Held up close**, anything but a die only leans a little off upright as you drag it (and settles back upright);
   dragged on past the lean, a card or pass turns over. Dice still turn freely.
+
+## Round 27: the Pouch's filters and sorts, wallet hardware, the clutch
+
+- **The Pouch** has the Book's kind of bar wherever it shows (the table, the floor, the Coat Check, the Roller card):
+  a shape for each size of die it holds (click to hide or show those dice), named dice only, and sorts by sides,
+  material and dyes. Kept per viewer; every Pouch on screen follows it; at the table, hidden dice fold into the spine.
+- **Hardware** adorns a wallet rather than being what it is made of, each piece in the look's hardware material and
+  colour (any material) at its size: the closure of a clasped pouch or a clutch (a snap: its cap on the flap's
+  outside, its stud under the cap, its socket where the cap comes down, on the wall in front or on the pocketed front
+  inside, so it shows on the open part with the cards; a sewn button; a magnet; a zip with teeth, slider and pull; a
+  turn-lock clasp and its keeper), a chain hanging from a ring at its side, its oval links each turned a quarter from
+  the last so they interlink, and rivets on the outside. Hardware is set into the sheet's geometry, so it folds with it.
+  The chain was once a clasp: a wallet with one is a snap with a chain now (the Chained Snap).
+- **The clutch**: long and low, one sheet hinged along its long bottom edge so it opens like a bun; the back leaf
+  holds the passes and the front leaf the cards, two columns of slits on each; its closure on the front leaf's
+  outside at its far edge closes onto the back leaf's inside at its top.
+- **The Gear maker** sets all of it: type (billfold, clasped, clutch, clip), closure, hardware material, colour and
+  size, the chain (on, material, colour, length) and rivets.

@@ -7,7 +7,7 @@ import { trickTag } from './app.js';
 import { signOf, dressSign, crownLookOf, nameSign } from './sign.js';
 import * as D from '../data.js';
 import { t } from '../text.js';
-import { bookBar, bookView, onBook } from './bookbar.js';
+import { bookBar, bookView, onBook, pouchBar, pouchView, onPouch } from './bookbar.js';
 // rid: the Roller; v: the numbers to show ({ trickery.., balance.. }); dice: die objects; tricks: { id, q }; crown: worn
 export function rollerCard({ rid, v, dice, tricks, crown = null, tag = 'div', onclick = null }) {
   const X = D.ROLLERS[rid] || {}, id = X.cls, K = D.CLASSES[id]; if (!K) return h('div');
@@ -18,7 +18,7 @@ export function rollerCard({ rid, v, dice, tricks, crown = null, tag = 'div', on
     h('span', { class: 'cap', text: t('select.eachTurn') }), statRow(v, ['trickery', 'ingenuity', 'proficiency']),
     h('span', { class: 'cap', text: t('select.primaryC') }), h('div', { class: 'stats' }, h('span', { class: 'stat', tip: () => t('select.primaryC.tip', { stat: D.STATS[pc].name, text: D.STATS[pc].text }) }, h('em', { text: D.STATS[pc].name }))),
     h('span', { class: 'cap', text: t('select.position') }), statRow(v, ['balance', 'versatility', 'depth']),
-    h('span', { class: 'cap', text: t('select.pouch') }), h('div', { class: 'dicebox' }, dice.map((d) => { const e = dieEl(d); e._tip = () => dieTip(d); e.classList.add('has-tip'); return e; })),
+    ...pouchPart(dice, tag !== 'button'),
     ...bookPart(tricks, id, tag !== 'button'));
 }
 // a Roller as it walks in: its class's numbers, its starting dice and tricks
@@ -31,4 +31,10 @@ function bookPart(tricks, cls, bar) {
   const draw = () => inv.replaceChildren(...(bar ? bookView(all) : all).map((x) => trickTag(x, cls)));
   draw(); if (bar) onBook(inv, draw);
   return [bar ? h('div', { class: 'row between book-head' }, h('span', { class: 'cap', text: t('select.book') }), bookBar()) : h('span', { class: 'cap', text: t('select.book') }), inv];
+}
+// the Pouch on the card, the same way
+function pouchPart(dice, bar) {
+  const box = h('div', { class: 'dicebox' }), draw = () => box.replaceChildren(...(bar ? pouchView(dice) : dice).map((d) => { const e = dieEl(d); e._tip = () => dieTip(d); e.classList.add('has-tip'); return e; }));
+  draw(); if (bar) onPouch(box, draw);
+  return [bar ? h('div', { class: 'row between book-head' }, h('span', { class: 'cap', text: t('select.pouch') }), pouchBar(() => dice)) : h('span', { class: 'cap', text: t('select.pouch') }), box];
 }
