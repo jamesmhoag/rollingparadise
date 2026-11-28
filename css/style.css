@@ -1585,3 +1585,22 @@ body.spinning .thing > .th-body, body.carrying-now .thing > .th-body { transitio
 .plan-fit { display: grid; place-items: start center; min-width: 0; }
 .scene.on-floor .plan { zoom: .8; }
 .hub-pouch { gap: 4px; } .hub-pouch .die { cursor: var(--cur-pointer, pointer); }
+/* the Sports Book, settled (prep.js tickets): each bet a ticket; won is stamped in gold and its payout counts up, lost
+   is stamped in red and its stake is struck out */
+.tickets { display: grid; gap: 10px; }
+.ticket { position: relative; overflow: hidden; padding: 12px 16px 14px; border-radius: 12px; border: 2px dashed rgba(255, 255, 255, .28); background: linear-gradient(135deg, #22183f, #120c26);
+  opacity: 0; translate: 0 18px; scale: .96; transition: opacity .35s, translate .45s var(--ease), scale .45s var(--ease), border-color .3s, box-shadow .4s, filter .4s; }
+.ticket.in { opacity: 1; translate: 0 0; scale: 1; }
+.ticket .tk-head { display: flex; justify-content: space-between; align-items: baseline; } .ticket .tk-odds { font-weight: 700; color: #ffd76a; }
+.ticket .tk-pick { font-size: 20px; margin: 4px 0 2px; display: flex; gap: 8px; align-items: baseline; } .ticket .tk-winner { color: var(--cream); opacity: .8; }
+.ticket .tk-pay { position: absolute; right: 18px; bottom: 12px; font-size: 30px; font-weight: 800; letter-spacing: .02em; color: #fff; transition: color .3s, opacity .3s; }
+.ticket .tk-pay.gone { text-decoration: line-through; color: #ff6b6b; opacity: .65; }
+.ticket .tk-stamp { position: absolute; right: 22%; top: 50%; translate: 0 -50%; rotate: -14deg; scale: 3; opacity: 0; padding: 4px 14px; border: 4px solid currentColor; border-radius: 8px;
+  font: 900 34px/1 var(--display, inherit); letter-spacing: .12em; pointer-events: none; transition: scale .28s cubic-bezier(.2, 1.6, .4, 1), opacity .2s; }
+.ticket.stamped .tk-stamp { scale: 1; opacity: .9; }
+.ticket.won { border-color: #ffd76a; } .ticket.won .tk-stamp { color: #ffd76a; text-shadow: 0 0 14px rgba(255, 215, 106, .8); }
+.ticket.won.stamped { box-shadow: 0 0 0 1px #ffd76a, 0 0 34px rgba(255, 215, 106, .55); animation: tk-glow 1.4s ease-out 1; }
+.ticket.won.stamped .tk-pay { color: #ffd76a; text-shadow: 0 0 16px rgba(255, 215, 106, .9); }
+.ticket.lost .tk-stamp { color: #ff5a5a; } .ticket.lost.stamped { filter: saturate(.55) brightness(.85); animation: tk-shake .4s ease-out 1; }
+@keyframes tk-glow { 0% { background: linear-gradient(135deg, #6b5420, #2a1d0c); } 100% { background: linear-gradient(135deg, #22183f, #120c26); } }
+@keyframes tk-shake { 0%, 100% { translate: 0 0; } 25% { translate: -6px 0; } 50% { translate: 5px 0; } 75% { translate: -3px 0; } }

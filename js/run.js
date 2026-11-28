@@ -469,12 +469,15 @@ export function placeBet(run, key, pick, stake) {
   if (!spend(run, stake, tx('run.bet-on', { name: ev.field[pick].name }))) return false; ev.bet = { pick, stake }; return true;
 }
 // games are played while you are at the table
+// → the news lines, and out.tickets: each bet as a ticket ({ sport, pick, odds, winner, won, stake, pay }) for the
+// settlement to show at its size
 export function resolveBets(run) {
-  const out = [];
+  const out = []; out.tickets = [];
   for (const ev of run.fs?.book.events || []) {
     if (!ev.bet || ev.done) continue;
     const winner = run.rng.weighted(ev.field.map((_, i) => i), (i) => ev.field[i].p); ev.done = true; ev.winner = winner;
     const sp = D.SPORTS.find((s) => s.id === ev.sport), mine = ev.field[ev.bet.pick];
+    out.tickets.push({ sport: sp.name, pick: mine.name, odds: mine.label, winner: ev.field[winner].name, won: winner === ev.bet.pick, stake: ev.bet.stake, pay: winner === ev.bet.pick ? Math.round(ev.bet.stake * (1 + mine.pay)) : 0 });
     if (winner === ev.bet.pick) { const pay = Math.round(ev.bet.stake * (1 + mine.pay)); run.purse += pay; ledger(run, tx('run.bet-won', { name: sp.name }), pay); out.push(tx('run.wins-your-ticket-pays', { name: sp.name, name2: mine.name, label: mine.label, pay: pay.toLocaleString() })); }
     else out.push(tx('run.wins-your-ticket-on', { name: sp.name, name2: ev.field[winner].name, name3: mine.name }));
   }
@@ -796,7 +799,7 @@ export function settle(run, ctx, bout) {
     if (run.fs) run.fs.lastWin = null;
     ledger(run, tx('run.lost-to', { name: ctx.opp.name }), -start);
   }
-  res.news.push(...resolveBets(run));
+  { const bets = resolveBets(run); res.news.push(...bets); res.tickets = bets.tickets; }
   res.total = sm.win ? res.base + res.winnings : run.purse;
   return res;
 }
