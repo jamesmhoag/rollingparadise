@@ -180,8 +180,9 @@ function walletModel(L, notes, HOLD = { cards: 3, passes: 1 }) {
   const SLIT = { step: 13, low: 18, aspect: 0.72, stand: 0.34 }, stickOf = (W) => (W - 12) * SLIT.aspect * SLIT.stand;
   const slitTops = (yHigh, yFoot, n, stick) => { const y0 = yHigh + 3 + stick, step = n > 1 ? Math.min(SLIT.step, (yFoot - SLIT.low - y0) / (n - 1)) : 0; return Array.from({ length: n }, (_, i) => y0 + i * step); };
   const slits = { cards: [], passes: [] };
-  const slots = (x, W, yFoot, yHigh, n, into) => { const g = new T.Group(), stick = stickOf(W), tops = slitTops(yHigh, yFoot, n, stick);
-    tops.forEach((top, i) => { const P = soft(rrect(x + 3, top, W - 6, yFoot - 2 - top, [1.5, 1.5, 3, 3]), { depth: 0.3, bevel: 0.3, puff: 1.1, z: 1.5 + i * 0.75, round: 9, cells: 26 });
+  // (tops: where each slit's hem runs, top first; z0: how many pockets already lie behind these, higher on the panel)
+  const slots = (x, W, yFoot, yHigh, n, into, tops = null, stick = stickOf(W), z0 = 0) => { const g = new T.Group(); tops ||= slitTops(yHigh, yFoot, n, stick);
+    tops.forEach((top, j) => { const i = j + z0, P = soft(rrect(x + 3, top, W - 6, yFoot - 2 - top, [1.5, 1.5, 3, 3]), { depth: 0.3, bevel: 0.3, puff: 1.1, z: 1.5 + i * 0.75, round: 9, cells: 26 });
       g.add(part(plate(rrect(x + 5, top - 1.3, W - 10, 1.8, 0.8), 1.35 + i * 0.75, 0.12), 'silk', '#07060a')); // the mouth: the dark of the slit, just above the hem
       g.add(pocket(P), hem(x + 6, x + W - 6, top + 2.2, P.zAt, L.pocket.color)); into.push({ x0: x + 6, x1: x + W - 6, top, stick }); });
     return g; };
@@ -201,8 +202,13 @@ function walletModel(L, notes, HOLD = { cards: 3, passes: 1 }) {
     // inside: lined from the flap's tip to the wall's top, a hemmed pocket across the back for the cash, and slots for cards
     all.add(lining(plate(rrect(-W / 2 + 3, yTop + 3, W - 6, yEnd - yTop - 6, [tip - 2, tip - 2, 2, 2]), 0.15, 0.25, { cells: 70 })), cash(-W / 2 + 9, -H / 2 - 4, W - 18));
     all.add(sleeve(-W / 2 + 4, W - 8, H, 20));
-    // across its back, two columns of slits: the cards on the left, the passes on the right
-    const half = (W - 8) / 2; all.add(slots(-W / 2 + 2, half + 2, H / 2, -H / 2, HOLD.cards, slits.cards), slots(-W / 2 + 4 + half, half + 2, H / 2, -H / 2, HOLD.passes, slits.passes));
+    // across its back, slits the full width: the passes nearest the seam it folds on, the cards at the bottom, the
+    // lowest just above the wall folded up in front. Each stands less far out of its slit than in a billfold (the back
+    // is short), and the cards' slits close up when many must fit between the passes and the wall.
+    const stick = stickOf(W) * 0.55, wallTop = H / 2 - wall, nP = HOLD.passes, nC = HOLD.cards;
+    const pTops = Array.from({ length: nP }, (_, i) => -H / 2 + 3 + stick + i * SLIT.step), lo = pTops[nP - 1] + 8, hi = wallTop - 2;
+    const stepC = nC > 1 ? Math.max(4, Math.min(SLIT.step, (hi - lo) / (nC - 1))) : 0, cTops = Array.from({ length: nC }, (_, i) => hi - stepC * (nC - 1 - i));
+    all.add(slots(-W / 2, W, H / 2, 0, nP, slits.passes, pTops, stick), slots(-W / 2, W, H / 2, 0, nC, slits.cards, cTops, stick, nP));
     const out = (y) => S.zBack(0, y) - 0.6, tipY = yTop + 10, studY = Math.min(yEnd - 12, yEnd - wall + fl - 10);
     if (L.clasp === 'zip') all.add(set(new T.BoxGeometry(W * 0.8, 2.6, 1.4), 'metal', METAL, 0, yTop + 4.5, out(yTop + 5)));
     else if (L.clasp === 'magnet') all.add(set(new T.BoxGeometry(14, 8, 2.4), 'metal', '#6a7386', 0, tipY, out(tipY) - 0.6));
@@ -429,11 +435,11 @@ function walletLook3d(look, M, spec, V) {
   const items = [...held.cards.map((el, i) => ({ el, at: M.slits?.cards[i] })), ...held.passes.map((el, i) => ({ el, at: M.slits?.passes[i] }))].filter((x) => x.el && x.at);
   const homes = new Map(); let showing = false, out = null, up = null;
   const lay = (x, i) => { const { el, at } = x, ew = el.offsetWidth || 1, eh = el.offsetHeight || 1, side = eh > ew, long = side ? eh : ew, short = side ? ew : eh;
-    if (el === out) { const w = size * PULLED, s2 = w / ew; Object.assign(x.hold.style, { left: `${(size - w) / 2}px`, top: `${size * 0.04}px`, width: `${w}px`, height: `${eh * s2}px`, overflow: 'visible', zIndex: 60 });
+    if (el === out) { const w = size * PULLED, s2 = w / ew; Object.assign(x.hold.style, { left: `${(size - w) / 2}px`, top: `${size * 0.04}px`, width: `${w}px`, height: `${eh * s2}px`, overflow: 'visible', zIndex: 500 });
       el.style.transform = `scale(${s2})`; return; } // out of its slit: upright, larger, over the wallet
     const [ax] = P(at.x0, 0), [bx] = P(at.x1, 0), cw = bx - ax, s1 = cw / long, ch = short * s1, rise = x === up ? ch * NUDGE : 0;
     const [, top] = P(0, at.top - at.stick), [, hem] = P(0, at.top + 2.2), y = top - rise;
-    Object.assign(x.hold.style, { left: `${ax}px`, top: `${y}px`, width: `${cw}px`, height: `${at.loose ? ch : Math.max(2, hem - y)}px`, overflow: at.loose ? 'visible' : 'hidden', zIndex: x === up ? 40 : i + 1 });
+    Object.assign(x.hold.style, { left: `${ax}px`, top: `${y}px`, width: `${cw}px`, height: `${at.loose ? ch : Math.max(2, hem - y)}px`, overflow: at.loose ? 'visible' : 'hidden', zIndex: x === up ? 400 : 200 + Math.round(at.top) });
     el.style.transform = side ? `translate(0px, ${ew * s1}px) rotate(-90deg) scale(${s1})` : `scale(${s1})`; }; // on its side, the long way across the slit
   const place = () => items.forEach(lay);
   const show = (on) => { showing = on; shelf.classList.toggle('on', on); if (!on) { out = up = null; return; }

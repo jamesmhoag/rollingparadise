@@ -1071,8 +1071,9 @@ for a close look, to be turned over (`ui/spin.js`, the look a die gets).
   holds it up close; a click there opens it (a clip, with no inside, lays out what it holds) or shuts it again, and
   it stays held up until a right click or Esc. It stays at the size it came up at: opening does not shrink it, the
   view grows round it and is kept on the screen. Open, it turns face on and holds still. Inside, one slit for each
-  card it can hold and each pass: a billfold has its card slits on one leaf and its pass slits on the other, a
-  clasped pouch a column of each across its back; each slit a padded pocket with a dark mouth, the top one set so its
+  card it can hold and each pass: a billfold has its card slits on one leaf and its pass slits on the other; a
+  clasped pouch, which opens up and down, has them the full width of its back, the passes nearest the seam it folds
+  on and the cards at the bottom, the lowest just above the wall folded up in front; each slit a padded pocket with a dark mouth, the top one set so its
   card's top edge comes just below the fold. The very cards and passes you carry lie on their sides in them (the long
   way across), each slit lower than the last so every top shows; a clip lays them the same way under its arm. Point
   at one and it rises a little out of its slit, still on its side; click it and it comes out, upright and larger,
