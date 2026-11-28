@@ -102,7 +102,7 @@ export function drinkModel(L, fill) {
       for (let i = 0; i < 46; i++) sparks.setColorAt(i, new T.Color().setHSL((i * 0.137) % 1, 1, 0.68)); all.add(sparks); }
     if (L.glow) { const m = (op, k) => new T.MeshBasicMaterial({ color: new T.Color(L.liquid.color).lerp(new T.Color(0xffffff), k), opacity: op, alphaHash: op < 1 });
       for (const [rad, op, k] of [[1.4, 1, 0.9], [2.5, 0.45, 0.5], [3.8, 0.2, 0.3]]) all.add(at(new T.Mesh(new T.SphereGeometry(rad, 18, 12), m(op, k)), 0, (level + V.floor) / 2 + 1)); }
-    // gems and coins dropped in: on the floor of a drink you see through, at the surface of one you cannot (bobbing there)
+    // gems and coins dropped in: sunk, and going where gravity takes them as the glass tips
     if (L.gems || L.coins) all.add(dropped(L, V, B, live, clear));
     // a toy in it: a starfish on the floor, a diver in the middle, a duck on the surface
     if (L.toy) all.add(toy(L, V, B, live));
@@ -132,7 +132,7 @@ export function drinkModel(L, fill) {
     // (what floats on it tilts with it: a head of foam sits on the surface, not through it)
     for (const m of live.top) { m.rotation.set(-Math.atan(S.s[1]), 0, Math.atan(S.s[0])); }
     for (const c of live.ice) { const lift = Math.sin(S.t * 1.3 + c.ph) * 0.35; c.m.position.y = c.y + lift + S.s[0] * c.m.position.x + S.s[1] * c.m.position.z; c.m.rotation.y += dt * 0.08; }
-    for (const b of live.bob) b(S, dt);
+    S.up = [up.x, up.y, up.z]; for (const b of live.bob) b(S, dt);
     // a chromatic drink: white, then a tint rising through it, then white again, the tint a new colour each time round
     if (flow) { const w = 0.5 - 0.5 * Math.cos(S.t * 1.15), hue = (S.t * 0.05 + (S.hue ??= Math.random())) % 1, tint = new T.Color().setHSL(hue, 0.95, 0.56);
       flow.color.set(0xffffff).lerp(tint, w * 0.92); flow.emissive.set(0xffffff).lerp(tint, w).multiplyScalar(0.55 + 0.45 * w); flow.sheenColor.set(0xffffff).lerp(tint, 0.5 * w); }
@@ -197,17 +197,38 @@ function garnish(L, V, B, fill) {
 }
 // a cut gem: a brilliant, its table, crown, girdle and pavilion, each facet flat
 function gemGeo(r) { const g = new T.LatheGeometry([[0.01, -r * 0.86], [r, 0], [r, r * 0.06], [r * 0.56, r * 0.42], [0.01, r * 0.42]].map(([x, y]) => new T.Vector2(x, y)), 8).toNonIndexed(); g.computeVertexNormals(); return g; }
+// Gems and coins dropped in sink to the bottom and lie there; tip the glass and they go with gravity, a gem rolling over
+// and over, a coin sliding, up a curved bowl as far as the tip takes them and back down, never through the glass or
+// one another. In a drink you cannot see through they are still shown, dimmed, as if glimpsed through it.
 function dropped(L, V, B, live, clear) {
-  const g = new T.Group(), level = B.level, rnd = (i, k) => ((Math.sin(i * 12.9898 + k * 78.233) * 43758.5453) % 1 + 1) % 1;
-  const spot = (i, n, depth) => { const y = clear ? V.floor - depth : level + 0.4 - depth * 0.2, R = Math.max(0.5, B.rIn(y) - 3), a = i * 2.4 + 0.7, q = R * (0.25 + 0.6 * rnd(i, n)); return [Math.cos(a) * q, y, Math.sin(a) * q]; };
-  // (afloat, a gem shows its crown above the surface)
-  for (let i = 0; i < L.gems; i++) { const r = clear ? Math.min(3.2, B.rIn(V.floor - 2) * 0.55) : Math.min(4.4, B.rIn(level) * 0.4), m = body(gemGeo(r), 'gem', L.gemColor), [x, y, z] = spot(i, 7, clear ? r * 0.5 : r * 2.2);
-    m.rotation.set(clear ? 0.5 + rnd(i, 3) : 0.2 * rnd(i, 3), rnd(i, 4) * 6, 0.4 * rnd(i, 5)); at(m, x, y, z); g.add(m); if (!clear) { const y0 = m.position.y; live.bob.push((S) => { m.position.y = y0 + Math.sin(S.t * 1.4 + i) * 0.3 + S.s[0] * x + S.s[1] * z; }); } }
-  for (let i = 0; i < L.coins; i++) { const r = Math.min(3.1, B.rIn(V.floor - 1) * 0.5), coin = new T.Group(), [x, y, z] = spot(i + 3, 11, 0.4 + (i % 2) * 0.5);
-    // (lying askew on one another, faces showing)
+  const g = new T.Group(), rnd = (i, k) => ((Math.sin(i * 12.9898 + k * 78.233) * 43758.5453) % 1 + 1) % 1, items = [];
+  // where a thing of radius r rests at distance q from the middle: on the floor, or up the inside of the bowl
+  const rest = (q, r) => { if (q + r * 0.7 <= B.rIn(V.floor - 0.4)) return V.floor - r * 0.5;
+    for (let y = V.floor - 0.4; y > B.level; y -= 0.25) if (B.rIn(y) - r * 0.7 >= q) return y - r * 0.5; return B.level - r * 0.5; };
+  // how far out it can go: up the inside only while the inside is shallow enough to climb (a tumbler's wall it cannot)
+  const reach = (r) => { let q = 0; while (q < 40 && Math.abs(rest(q + 0.5, r) - rest(q, r)) / 0.5 < 1.1 && rest(q + 0.5, r) > B.level + r) q += 0.5; return Math.max(0.2, q); };
+  const REACH = new Map(), reachOf = (r) => (REACH.has(r) ? REACH.get(r) : REACH.set(r, reach(r)).get(r));
+  const show = (o) => { if (clear) return o; o.traverse((m) => { if (m.material) { m.material = m.material.clone(); Object.assign(m.material, { depthTest: false, transparent: true, opacity: 0.62 }); m.renderOrder = 6; } }); return o; };
+  const add = (o, r, roll, i) => { const a = i * 2.4 + 0.7, q = Math.min(reachOf(r), Math.max(0, B.rIn(V.floor - 1) - r) * (0.2 + 0.6 * rnd(i, 9))); g.add(show(o)); items.push({ o, r, roll, p0: [Math.cos(a) * q, Math.sin(a) * q] }); };
+  for (let i = 0; i < L.gems; i++) { const r = Math.min(3.2, B.rIn(V.floor - 2) * 0.55), m = body(gemGeo(r), 'gem', L.gemColor); m.rotation.set(0.5 + rnd(i, 3), rnd(i, 4) * 6, 0.4 * rnd(i, 5)); add(m, r, true, i); }
+  for (let i = 0; i < L.coins; i++) { const r = Math.min(3.1, B.rIn(V.floor - 1) * 0.5), coin = new T.Group();
     coin.add(body(new T.CylinderGeometry(r, r, 0.55, 40), 'metal', L.coinColor), body(new T.TorusGeometry(r - 0.25, 0.22, 8, 40).rotateX(Math.PI / 2).translate(0, 0.28, 0), 'metal', L.coinColor), body(new T.CylinderGeometry(r * 0.45, r * 0.45, 0.7, 6), 'metal', L.coinColor));
-    coin.rotation.set(0.5 + rnd(i, 1) * 0.6, rnd(i, 2) * 6, (rnd(i, 6) - 0.5) * 0.8); at(coin, x, y, z); g.add(coin);
-    if (!clear) { const y0 = coin.position.y; live.bob.push((S) => { coin.position.y = y0 + Math.sin(S.t * 1.1 + i * 2) * 0.25 + S.s[0] * x + S.s[1] * z; }); } }
+    coin.rotation.set((rnd(i, 1) - 0.5) * 0.5, rnd(i, 2) * 6, (rnd(i, 6) - 0.5) * 0.5); add(coin, r, false, i + 3); }
+  const G = 140, axis = new T.Vector3(), q = new T.Quaternion();
+  live.bob.push((S, dt) => {
+    const st = (S.drop ||= items.map((it) => ({ p: [...it.p0], v: [0, 0], q: it.o.quaternion.clone() }))), [ux, uy, uz] = S.up || [0, 1, 0];
+    items.forEach((it, i) => { const s = st[i], [x, z] = s.p, d = Math.hypot(x, z), out = d > 1e-4 ? [x / d, z / d] : [0, 0];
+      // gravity along the floor, and back down the bowl's side (its climb over a little way out)
+      const climb = (rest(d + 0.5, it.r) - rest(d, it.r)) / 0.5, ax = -ux * G + out[0] * climb * uy * G, az = -uz * G + out[1] * climb * uy * G, drag = Math.exp(-dt * (it.roll ? 1.6 : 3.2));
+      s.v = [(s.v[0] + ax * dt) * drag, (s.v[1] + az * dt) * drag]; s.p = [x + s.v[0] * dt, z + s.v[1] * dt];
+      const n = Math.hypot(...s.p), lim = reachOf(it.r); if (n > lim) { s.p = s.p.map((c) => (c * lim) / n); const k = (s.v[0] * s.p[0] + s.v[1] * s.p[1]) / lim; if (k > 0) s.v = [s.v[0] - (k * s.p[0]) / lim, s.v[1] - (k * s.p[1]) / lim]; }
+      // a gem rolls as far as it goes
+      const sp = Math.hypot(...s.v) * dt; if (it.roll && sp > 1e-4) { axis.set(s.v[1], 0, -s.v[0]).normalize(); s.q.premultiply(q.setFromAxisAngle(axis, sp / it.r)); } });
+    // (and none passes through another)
+    for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) { const a = st[i], b = st[j], dx = b.p[0] - a.p[0], dz = b.p[1] - a.p[1], d = Math.hypot(dx, dz) || 1e-3, m = (items[i].r + items[j].r) * 0.85;
+      if (d < m) { const push = (m - d) / 2; a.p = [a.p[0] - (dx / d) * push, a.p[1] - (dz / d) * push]; b.p = [b.p[0] + (dx / d) * push, b.p[1] + (dz / d) * push]; } }
+    items.forEach((it, i) => { const s = st[i]; at(it.o, s.p[0], rest(Math.hypot(...s.p), it.r), s.p[1]); it.o.quaternion.copy(s.q); });
+  });
   return g;
 }
 // a toy in the drink: a starfish lying on the floor, a scuba diver hanging in the middle, a rubber duck afloat

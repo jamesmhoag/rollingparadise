@@ -536,6 +536,7 @@ function dress(el, face, spec) {
     const paint = () => { const half = near + (far - near) * t; M.pose(t); if (M.frame) M.frame(lifeUp ||= M.state(), 0, R); cx.clearRect(0, 0, px, px); cx.drawImage(renderGroup(M.root, { w: px, h: px, view: [-half, -half, half, half], turn: R }), 0, 0); };
     const look = { el: wrap, size, name: spec.name, sub: spec.sub, start: new DOMMatrix().rotateSelf(-10, 24, 0), upright: spec.kind === 'drink' ? new DOMMatrix().rotateSelf(-12, 0, 0) : null, tilt: spec.kind === 'drink' ? [[-24, 42], [-18, 18]] : null, get matrix() { return R; }, setRotation(m) { R = m; paint(); } };
     if (spec.kind === 'wallet') return walletLook3d(look, M, spec, { wrap, cv, cx, size, u, near, bx0, by0, bx1, by1 });
+    Object.assign(wrap.style, { width: `${size}px`, height: `${size}px` }); // (the view takes up its room, so its name is under it)
     if (M.live) alive(wrap, () => { if (M.frame) { const now = performance.now(); M.frame(lifeUp ||= M.state(), lastUp ? (now - lastUp) / 1000 : 0, R); lastUp = now; } paint(); });
     return look; };
   aim(); draw();
